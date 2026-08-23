@@ -85,7 +85,7 @@ Do not install a single signature until this prints `image/png`.
    | `SA_CLIENT_EMAIL` | the service account's client email |
    | `SA_PRIVATE_KEY` | `private_key` from the JSON key, newlines as `\n` |
    | `LOG_SHEET_ID` | id of the run-log Sheet in `06 · Brand` |
-   | `SHARING_SCOPE_ENABLED` | **still unset as of 2026-08-22.** The delegation now carries `gmail.settings.sharing` (granted 2026-08-22), so step 1 below is done — but do not set this until the post-#456 code is actually pushed. See below; the order matters |
+   | `SHARING_SCOPE_ENABLED` | **`true` since 2026-08-23.** Both steps below are done and shared-mailbox signatures install. Set to `false` to turn them off again without touching the delegation |
 
 5. **Build, then set up clasp, then push.**
 
@@ -126,7 +126,7 @@ Do not install a single signature until this prints `image/png`.
 8. **Add the trigger** — Triggers -> Add trigger -> `installAllSignatures`,
    time-driven, day timer, 2am-3am.
 
-## Shared identities: what installs, and why it is currently nothing
+## Shared identities: what installs, and what it took to get there
 
 **An alias is not a send-as identity.** This is the single most important thing
 to know about the shared-identity branch, and an earlier revision of this file
@@ -156,12 +156,15 @@ entirely on which code is deployed:
 
 | Deployed code | `SHARING_SCOPE_ENABLED` | What `dame@` reports |
 |---|---|---|
-| pre-#456 | n/a (not read) | **`ERROR`** — one 403 aborts the whole user, so even his personal signature stops refreshing. **This is the live state as of 2026-08-22.** |
-| #456+ | unset / `false` | `PARTIAL`, 3 denied — personal signatures written, shared ones refused cleanly |
-| #456+ | `true` | `ok`, shared signatures installed |
+| pre-#456 | n/a (not read) | `ERROR` — one 403 aborts the whole user, so even his personal signature stops refreshing. Observed 8/21 and 8/22. |
+| #456+ | unset / `false` | `PARTIAL`, 3 denied — personal signatures written, shared ones refused cleanly. Observed 8/23. |
+| #456+ | `true` | `ok`, shared signatures installed. **This is the live state as of 2026-08-23** — `ok / 4 identities / 3 shared`. |
+
+All three rows were observed in that order, and they are in the log Sheet.
 
 So `0 shared` is only the expected answer for a user with **no** shared
-identities. For `dame@`, the expected answer is now a denied count.
+identities — which is everyone except `dame@`. For him the expected answer is
+now **`4 identities / 3 shared`**, and anything less means something regressed.
 
 **To make shared signatures install** for anyone else, the address has to
 become a send-as identity on their account too. There are two routes.
@@ -221,7 +224,7 @@ re-run, get the identical 403, and have no idea why.)
    (The edit dialog appends a row rather than replacing; check `basic` is
    still present before authorizing, because losing it breaks everything.)
 2. **Then the script property.** Set `SHARING_SCOPE_ENABLED` to `true`.
-   **NOT done, deliberately** — see the propagation note below.
+   **DONE 2026-08-23.**
 
 **Do not reverse these.** Asking for a scope the delegation does not carry
 fails the *entire* token exchange with `unauthorized_client` — not just the
@@ -229,15 +232,25 @@ shared identities, but every signature for every user. If that happens, set
 `SHARING_SCOPE_ENABLED` back to `false` and everything returns to working
 immediately; the error message says so too.
 
-**A granted scope is not an immediately usable one.** Google's domain-wide
-delegation changes propagate on their own schedule — minutes, sometimes
-longer. That is the same failure as step 2 running ahead of step 1, so treat
-"granted in the console" as the start of a window, not a green light. The
-safe sequence from here is: push the code, run `installAllSignatures()` and
-confirm it reports `PARTIAL` with a non-zero denied count (proving the basic
-path still works), *then* set the property, *then* run again. If the second
-run throws `unauthorized_client`, propagation has not finished — set the
-property back to `false`, wait, retry.
+**A granted scope may not be an immediately usable one.** Google's domain-wide
+delegation changes propagate on their own schedule, so treat "granted in the
+console" as the start of a window rather than a green light. The safe sequence
+is: push the code, run `installAllSignatures()` and confirm it reports
+`PARTIAL` with a non-zero denied count (which proves the `basic` path still
+works), *then* set the property, *then* run again. If that second run throws
+`unauthorized_client`, propagation has not finished — set the property back to
+`false`, wait, retry.
+
+**That sequence was followed on 2026-08-23 and both runs are in the log Sheet**,
+which is why it is written down: `PARTIAL / 1 identity, 3 denied / 0 shared`,
+then `ok / 4 identities / 3 shared`. Roughly 40 minutes elapsed between the
+console grant and the enabling run, and no `unauthorized_client` occurred — one
+data point, not a guaranteed propagation time.
+
+**Keep the two-run shape if you ever redo this.** The `PARTIAL` run is not a
+formality: it is the only observation that separates "the scope fixed it" from
+"the scope hid a still-broken loop". Skip it and a success at the end proves
+strictly less.
 
 To undo the whole thing later: set the property to `false` first, then remove
 the scope from the delegation. Same rule, reversed.

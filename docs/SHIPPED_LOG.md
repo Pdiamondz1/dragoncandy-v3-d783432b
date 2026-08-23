@@ -26,6 +26,49 @@
 >
 > **Adding an entry:** prepend it (newest first). See `knowledge-sync` step 4.
 
+## [2026-08-23] Shared-mailbox signatures install, and the middle run is the one that proves it
+
+**PRs** #458 (knowledge-sync, Codex clean at round 5) · no code change — this entry is a
+deploy and two configuration steps
+
+Three days of corrections ended in a working system. `clasp push` landed #456, the founder
+approved `gmail.settings.sharing`, and `dame@`'s final run logged **`ok / 4 identities /
+3 shared`** — `info@`, `support@` and `appstore@` now send with the DragonCandy signature. The
+other three users report `ok / 1 identity / 0 shared`, which is correct: nobody else has a
+shared identity.
+
+**The sequence mattered more than any single step.** Grant the scope in the admin console;
+deploy; run and confirm **`PARTIAL / 1 identity, 3 denied / 0 shared`**; *then* set
+`SHARING_SCOPE_ENABLED=true`; run again. Both runs are in the log Sheet, and **the middle one is
+load-bearing.** It is the only observation that separates *the scope fixed it* from *the scope
+masked a loop that was still broken* — had the enabling run been done alone, the success at the
+end would have proven strictly less. Same reasoning as choosing "signatures appear in other
+people's mailboxes" over a success message as the original acceptance signal.
+
+**Order is not optional and the failure is total, not partial.** Requesting a scope the
+delegation does not carry fails the *entire* token exchange with `unauthorized_client` — every
+signature for every user, not just the shared ones. Hence console first, property second, and a
+switch that defaults off. Roughly 40 minutes elapsed between grant and enabling run with no
+propagation failure: one data point, not a guaranteed interval.
+
+**Merged is not deployed.** #456 was correct in the repo for a full day while production ran the
+broken code, because `clasp push` needed a re-auth. Nothing detected it — Apps Script has no CI
+joining the repo to the live script, and the only thing that surfaced it was going to push. The
+nightly run failed twice in that window on a bug that was already fixed.
+
+**Codex took five rounds on the docs, four real P2s, all one shape.** Granting the scope made a
+dozen present-tense sentences false at once, scattered across the README, the concept page, the
+wiki index and this log — including "0 shared is expected", which had been true two days earlier
+and had become the wrong thing to accept. The wiki page's own status paragraph has now been
+wrong twice in three days by the same mechanism. **A dated status line on a RAG-fed page is a
+liability with a short half-life**; date it, and distrust it past its date.
+
+**Left open:** shared identities exist on no account but `dame@` — extending them is per-person,
+and the granted scope now permits either route. Outlook for Windows remains untested and
+untestable; the rendering matrix is four-of-five.
+
+→ `docs/wiki/concepts/workspace-email-signatures.md` · #453, #454, #455, #456, #458
+
 ## [2026-08-22] The fix I documented wouldn't have worked, and following it broke production
 
 **PRs** #455 (knowledge-sync) and #456 (`b0f4e4de`) · Codex clean after one P1 · 30 tests (was 24)

@@ -1,5 +1,28 @@
 # Wiki Log
 
+## [2026-08-23] update | It works — and the run that proves it is the middle one, not the last
+
+**Updated** [[Workspace Email Signatures]] and its `index.md` entry. Three days of successive
+corrections closed: `clasp push` deployed #456, the founder approved `gmail.settings.sharing`,
+the property was set, and `dame@`'s run logged **`ok / 4 identities / 3 shared`**.
+
+**The page now argues for the two-run sequence rather than just recording it.** Push → confirm
+`PARTIAL` with a non-zero denied count → set the property → run again. The intermediate
+`PARTIAL` is the only observation separating *the scope fixed it* from *the scope masked a loop
+that was still broken*; a lone success at the end proves strictly less. Same family as the
+original acceptance signal on this page — writing into mailboxes the script owner cannot
+otherwise touch, rather than trusting `4 × ok`.
+
+**Two additions to Known issues.** `0 shared` is now a *fault* for `dame@` and *correct* for
+everyone else, so the expected report is per-user and the README carries the matrix. And
+**merged is not deployed**: #456 was right in the repo for a day while prod ran the broken code,
+because `clasp push` needed a re-auth and nothing detects that gap.
+
+**The page's own status paragraph has now been wrong twice in three days** — "outstanding" when
+the admin work was done, then "pending deploy and property" when both had landed. It is dated,
+and says in-line that a present-tense status line on a RAG-fed page should be distrusted past
+its date. Recording the mechanism rather than just fixing the instance.
+
 ## [2026-08-22] ingest | The remedy the page prescribed was also wrong, and following it broke production
 
 Ingested `raw/sessions/2026-08-22-sendas-scope-403-and-partial-status.md`.

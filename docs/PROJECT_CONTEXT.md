@@ -131,15 +131,21 @@ Instagram, TikTok, YouTube), Google Maps (geocoding), Claude Sonnet 4 + Haiku
   P1: granting it in the console alone changes nothing, and requesting one the delegation does not
   carry fails the **entire** token exchange with `unauthorized_client` — hence default-off, and
   hence an order that is not optional: **console first, property second**). 30 tests, was 19.
-  **The scope decision was made and the grant is DONE (2026-08-22)** — client
-  `117869070719843760682` now carries both `gmail.settings.basic` and `gmail.settings.sharing`,
-  verified on the delegation list page with `basic` intact. **Pending (2026-08-22):** `clasp push`
-  — #456 is merged but **not deployed**, so the live script still runs the pre-#456 code, requests
-  only `basic`, and `dame@` keeps erroring nightly (blocked on a `clasp login` reauth,
-  `invalid_rapt`); then `SHARING_SCOPE_ENABLED=true`, **deliberately not set yet** — a delegation
-  grant propagates on Google's schedule, and inside that window flipping the property produces the
-  same `unauthorized_client` total outage as doing the two steps out of order, so the sequence is
-  push → confirm `PARTIAL` → flip → re-run; **Outlook for
+  **COMPLETE 2026-08-23 — shared-mailbox signatures install.** This line previously listed the
+  deploy and the property as pending; both landed within hours, the usual way. Scope granted on
+  client `117869070719843760682` (both scopes, `basic` verified intact), #456 deployed via
+  `clasp push`, `SHARING_SCOPE_ENABLED=true`, and the final run logged **`ok / 4 identities /
+  3 shared`** for `dame@` with `ok / 1 identity / 0 shared` for the other three — correct, since
+  only he has shared identities. **The two-run sequence is the part worth reusing:** push →
+  confirm `PARTIAL` with a non-zero denied count → flip the property → re-run. The intermediate
+  `PARTIAL` is load-bearing; it is the only observation separating *the scope fixed it* from *the
+  scope masked a still-broken loop*, and a lone success at the end proves strictly less.
+  ~40 minutes between grant and enabling run, no `unauthorized_client` — one propagation data
+  point, not a guarantee. Also learned: **merged is not deployed** — #456 sat fixed-in-repo and
+  broken-in-prod for a day because `clasp push` needed a re-auth, and nothing detected it (Apps
+  Script has no CI joining repo to live script). **Pending (2026-08-23):** shared identities exist
+  on **no account but `dame@`** — extending them means adding the identity per person, which the
+  granted scope now permits either by hand or via `sendAs.create`; **Outlook for
   Windows is untested and now untestable** (no access) — treat the rendering matrix as four-of-five;
   and Waves 2–3 (the People document set, and a *sendable* pitch deck — the current one is a React
   component). Workspace plan confirmed Business Standard, so shared drives were never at risk.

@@ -13,19 +13,22 @@ Every DragonCandy employee's Gmail signature, generated from one template and in
 automatically by a nightly Google Apps Script. Built 2026-08-20 as the code half of Wave 1 of
 the corporate Workspace setup.
 
-**Status, 2026-08-22.** The admin-console half — which no agent could do — is largely done: both
-shared drives exist and hold business documents, the service account has domain-wide delegation
-(`gmail.settings.basic`), and a daily 2–3am trigger is armed. It ran `4 × ok` on 2026-08-21.
-Google Groups (Task 8) were **deliberately skipped** rather than deferred; the sections below
-explain why that turned out not to matter. The `gmail.settings.sharing` scope **was granted on
-2026-08-22**, so the permission question is settled. Two things are genuinely open: **the merged
-#456 fix is not deployed** (`clasp push` blocked on a reauth), and **shared-mailbox signatures
-install nothing** until that push lands and `SHARING_SCOPE_ENABLED` is set — in that order. Both
-are in Known issues.
+**Status, 2026-08-23 — the system is complete and shared-mailbox signatures install.** Both
+shared drives exist and hold business documents; the delegation carries `gmail.settings.basic`
+**and** `gmail.settings.sharing`; #456 is deployed; `SHARING_SCOPE_ENABLED=true`; and a daily
+2–3am trigger is armed. The final run logged **`ok / 4 identities / 3 shared`** for `dame@` and
+`ok / 1 identity / 0 shared` for the other three, which is correct — only he has shared
+identities. Google Groups (Task 8) were **deliberately skipped** rather than deferred; the
+sections below explain why that turned out not to matter. What remains open is Outlook for
+Windows, which is untestable, and extending shared identities to anyone else.
 
-*An earlier revision of this paragraph called the admin half "founder-owned and outstanding at
-time of writing", which stopped being true the next day — the same staleness mechanism this
-project keeps hitting in `PROJECT_CONTEXT.md` §5. Caught by Codex, 2026-08-22.*
+*This paragraph has now been wrong twice, in the same way both times.* On 2026-08-20 it called
+the admin half "founder-owned and outstanding", which stopped being true the next day. On
+2026-08-22 it listed the deploy and the property as open; both landed within hours. Codex caught
+the first; the second was caught only because the work continued in the same session. **A
+present-tense status paragraph on a page that feeds a RAG is a liability with a short
+half-life** — the same mechanism `PROJECT_CONTEXT.md` §5 keeps hitting. Date it, and distrust it
+past its date.
 
 **The one-line summary: email is not the web, and almost every design decision here is a
 consequence of that.**
@@ -208,8 +211,8 @@ signature for every user. So enabling is ordered and the order is not optional:
 1. Admin console — add the scope to the existing delegation client.
    **Done 2026-08-22**, both scopes verified present on client
    `117869070719843760682`.
-2. *Then* set `SHARING_SCOPE_ENABLED=true`. **Not done**, and deliberately so
-   while the code is undeployed — see below.
+2. *Then* set `SHARING_SCOPE_ENABLED=true`. **Done 2026-08-23**, after the
+   deploy and after a `PARTIAL` run confirmed the narrow path still worked.
 
 Reversing it takes the whole system down until the property is set back. Disabling runs the same
 rule backwards: property first, scope second. The README, the spec and the runtime error message
@@ -224,24 +227,35 @@ Google's schedule — minutes, sometimes longer — so "granted in the console" 
 rather than flipping a switch. Inside that window, step 2 produces exactly the same
 `unauthorized_client` total failure as doing the steps out of order. This is why the scope was
 granted on 2026-08-22 while `SHARING_SCOPE_ENABLED` was deliberately left unset: the code was
-undeployed anyway, so there was nothing to gain from racing it. The intended sequence is push →
-run and confirm `PARTIAL` with a non-zero denied count (which proves the `basic` path still
-works) → set the property → run again.
+undeployed anyway, so there was nothing to gain from racing it. The sequence run on 2026-08-23
+was push → confirm `PARTIAL` with a non-zero denied count → set the property → run again, with
+about 40 minutes between the grant and the enabling run and no `unauthorized_client`. One data
+point about propagation, not a guaranteed interval.
+
+**The intermediate `PARTIAL` run is the load-bearing one, and it is worth keeping in any repeat
+of this.** It is the only observation that distinguishes *the scope fixed it* from *the scope
+masked a loop that was still broken*. Both runs are in the log Sheet:
+`PARTIAL / 1 identity, 3 denied / 0 shared`, then `ok / 4 identities / 3 shared`. Had the second
+been run alone, a success at the end would have proven strictly less — the same reasoning as
+using *signatures appearing in other people's mailboxes* rather than a success message as the
+original acceptance signal.
 
 ## Known issues
 
-- **Shared-mailbox signatures still install nothing.** The `gmail.settings.sharing` grant was
-  made 2026-08-22, so the *permission* half is settled — but the delegated JWT does not yet
-  request it (`SHARING_SCOPE_ENABLED` unset, and the code that reads it is undeployed).
-  **`0 shared` is no longer a safe thing to accept, though.** Three real send-as identities now
-  exist on `dame@`, so what a correct run reports depends on which code is live — `ERROR`
-  pre-#456, `PARTIAL` with 3 denied on #456 with the property off, `ok` with the property on.
-  A `0 shared` for a user who *has* shared identities means something is wrong. The matrix is in
-  `scripts/workspace/README.md`; read it before judging a run.
-- **#456 is merged and not deployed** (as of 2026-08-22). `clasp push` fails on a clasp
-  reauth (`invalid_grant` / `invalid_rapt`), so the **live Apps Script still runs pre-#456
-  code** and `dame@`'s nightly run keeps aborting on the first unwritable identity. Merged is
-  not deployed, and for Apps Script there is no CI that closes the gap.
+- **Shared signatures exist only on `dame@`.** `info@`, `support@` and `appstore@` were added
+  as send-as identities on his account and now carry the signature. Nobody else has any, so
+  `0 shared` is still the correct report for the other three users. Extending it means adding
+  the identity on each person's account — either by hand or via `sendAs.create`, both of which
+  the granted scope now permits.
+- **`0 shared` for `dame@` would be a fault.** His expected report is
+  **`ok / 4 identities / 3 shared`**; anything less means something regressed. The
+  deployed-code × property matrix in `scripts/workspace/README.md` gives the expected report for
+  each configuration — read it before judging a run.
+- **Merged is not deployed, and Apps Script has no CI that closes the gap.** #456 sat merged and
+  undeployed for a day because `clasp push` needed a re-auth, during which the nightly run kept
+  failing on code that was already fixed in the repo. Nothing detected that; it was found by
+  going to push. Worth remembering for any future change here — the repo state and the live
+  script are joined only by someone remembering to run `clasp push`.
 - **Outlook for Windows is untested and now untestable** — the account that could have
   checked it is gone. The rendering matrix is four-of-five (Gmail web light, Gmail web dark,
   Gmail iOS dark, images-disabled), not five-of-five. Do not describe it as verified.
