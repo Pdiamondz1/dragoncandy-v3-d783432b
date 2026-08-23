@@ -46,8 +46,16 @@ const K_MAX = 12;
 // text, so a leftover from an interrupted run would rank against itself at ~1.0 and silently
 // corrupt the controls, the tail share and the recall figures all at once — a report that looks
 // spectacular and means nothing.
-const TEMP_PREFIX = "internal-doc:ZZZ_RAGEVAL_Q";
-const TEMP_DOC_PREFIX = "docs/ZZZ_RAGEVAL_Q";
+const TEMP_PREFIX = "internal-doc:ZZZ_RAGEVAL_";
+const TEMP_DOC_PREFIX = "docs/ZZZ_RAGEVAL_";
+
+// A per-run tag, so two evaluations running at once cannot delete each other's rows mid-flight —
+// which would abort one of them with missing embeddings, or worse, hand it vectors from rows the
+// other run had overwritten. The final cleanup touches only THIS run's tag; the startup sweep
+// deliberately skips it, since anything carrying it belongs to a run still in progress.
+const RUN = `${process.pid.toString(36)}${Date.now().toString(36)}`;
+const RUN_PREFIX = `${TEMP_PREFIX}${RUN}_`;
+const RUN_DOC_PREFIX = `${TEMP_DOC_PREFIX}${RUN}_`;
 
 const KEY = process.env.SUPABASE_SECRET_KEY ?? process.env.SUPABASE_SERVICE_ROLE_KEY;
 if (!KEY) {
@@ -68,38 +76,46 @@ const parseVec = (e) => (typeof e === "string" ? JSON.parse(e) : e);
  * Rows are read first and deleted BY ID, never by the `like` pattern used to find them: `_` is a
  * single-character LIKE wildcard, this prefix is full of them, and this is a DELETE.
  */
-async function sweepTempRows() {
+async function sweepTempRows({ only = null, spare = null } = {}) {
   // Never throws. It is called from a `finally`, and an exception raised there would replace the
   // error that got us into the finally, skip the reporting path, and leave the rows in place —
   // which is the exact outcome this function exists to prevent.
   try {
-    return await sweep();
+    return await sweep(only, spare);
   } catch (e) {
     return `cleanup FAILED to run: ${e instanceof Error ? e.message : String(e)}. ` +
       `Prune: delete from donny_knowledge where metadata->>'source_id' like '${TEMP_PREFIX}%';`;
   }
 }
 
-async function sweep() {
+async function sweep(only, spare) {
   let failed = 0;
   for (const [table, sel, filter, keyName, prefix] of [
     ["donny_knowledge", "id,metadata", `metadata->>source_id=like.${TEMP_PREFIX}*`, "id", TEMP_PREFIX],
-    ["internal_docs", "path", "path=like.docs/ZZZ_RAGEVAL_Q*", "path", TEMP_DOC_PREFIX],
+    ["internal_docs", "path", `path=like.${TEMP_DOC_PREFIX}*`, "path", TEMP_DOC_PREFIX],
   ]) {
     const rows = await (await fetch(`${REST}${table}?select=${sel}&${filter}`, { headers: H })).json();
     if (!Array.isArray(rows)) { failed++; continue; }
     for (const row of rows) {
       const idStr = table === "internal_docs" ? row.path : String(row.metadata?.source_id ?? "");
       if (!idStr.startsWith(prefix)) continue;   // literal re-check; the filter above is a LIKE
+      const tag = table === "internal_docs" ? RUN_DOC_PREFIX : RUN_PREFIX;
+      if (only && !idStr.startsWith(tag)) continue;    // this run's rows only
+      if (spare && idStr.startsWith(tag)) continue;    // never touch a live run's rows
       const d = await fetch(`${REST}${table}?${keyName}=eq.${encodeURIComponent(row[keyName])}`, { method: "DELETE", headers: H });
       if (!d.ok) failed++;
     }
   }
   // Verified by RE-READING both tables, not by trusting the DELETE responses.
-  const leftRag = await (await fetch(`${REST}donny_knowledge?select=id&metadata->>source_id=like.${TEMP_PREFIX}*`, { headers: H })).json();
-  const leftDocs = await (await fetch(`${REST}internal_docs?select=path&path=like.docs/ZZZ_RAGEVAL_Q*`, { headers: H })).json();
-  const nRag = Array.isArray(leftRag) ? leftRag.length : -1;
-  const nDocs = Array.isArray(leftDocs) ? leftDocs.length : -1;
+  const scope = only ? RUN_PREFIX : TEMP_PREFIX;
+  const scopeDoc = only ? RUN_DOC_PREFIX : TEMP_DOC_PREFIX;
+  const leftRag = await (await fetch(`${REST}donny_knowledge?select=id,metadata&metadata->>source_id=like.${scope}*`, { headers: H })).json();
+  const leftDocs = await (await fetch(`${REST}internal_docs?select=path&path=like.${scopeDoc}*`, { headers: H })).json();
+  // A concurrent run's rows are not this run's problem, so they do not count as leftovers.
+  const nRag = Array.isArray(leftRag)
+    ? leftRag.filter((r) => { const i = String(r.metadata?.source_id ?? ""); return only ? i.startsWith(RUN_PREFIX) : !i.startsWith(RUN_PREFIX); }).length : -1;
+  const nDocs = Array.isArray(leftDocs)
+    ? leftDocs.filter((r) => (only ? r.path.startsWith(RUN_DOC_PREFIX) : !r.path.startsWith(RUN_DOC_PREFIX))).length : -1;
   if (failed === 0 && nRag === 0 && nDocs === 0) return null;
   return `cleanup incomplete — ${failed} DELETE(s) failed, ${nRag} donny_knowledge and ${nDocs} ` +
     `internal_docs row(s) remain. Prune: delete from donny_knowledge where ` +
@@ -135,6 +151,12 @@ for (let offset = 0; ; offset += 50) {
   if (page.length < 50) break;
 }
 console.log(`index: ${index.length} chunks, ${new Set(index.map((r) => r.doc)).size} documents`);
+if (index.length === 0) {
+  // Every `hits[0].sim` below would throw on an empty index. A fresh or unsynced target is a
+  // configuration problem, and it should say so rather than surface as a TypeError.
+  console.error(`no internal rows at ${REST} — is this the right target, and has the sync run?`);
+  process.exit(1);
+}
 if (stale > 0) {
   console.warn(`WARNING: ${stale} leftover evaluation row(s) found and excluded from the index — a ` +
     `previous run was interrupted before cleanup.`);
@@ -143,7 +165,7 @@ if (stale > 0) {
 // missed an interrupted run that cleared its RAG rows but left internal_docs behind — invisible
 // to that counter and, on the OPENAI_API_KEY path, never swept at all. Two SELECTs when clean.
 {
-  const err = await sweepTempRows();
+  const err = await sweepTempRows({ spare: true });   // never touch a concurrent run's rows
   if (err) console.warn(`startup sweep: ${err}`);
   else if (stale > 0) console.log("  leftovers removed (verified by re-reading both tables)");
 }
@@ -196,8 +218,8 @@ if (openai) {
 } else {
   console.log("no OPENAI_API_KEY — borrowing the server's key via short-lived internal rows (deleted below)");
   let mintError = null, cleanupError = null;
-  const id = (i) => `internal-doc:ZZZ_RAGEVAL_Q${String(i).padStart(3, "0")}`;
-  const path = (i) => `docs/ZZZ_RAGEVAL_Q${String(i).padStart(3, "0")}.md`;
+  const id = (i) => `${RUN_PREFIX}Q${String(i).padStart(3, "0")}`;
+  const path = (i) => `${RUN_DOC_PREFIX}Q${String(i).padStart(3, "0")}.md`;
   const pages = all.map((x, i) => ({
     source_id: id(i), content: x.q, scope: "internal", full_content: x.q,
     metadata: { title: `ragevalq${i}`, type: "internal_doc", path: path(i), tags: "" },
@@ -211,14 +233,14 @@ if (openai) {
       // cleanup below exists to prevent.
       if (!r.ok || b.errors) throw new Error(`mint failed: ${r.status} errors=${b.errors}`);
     }
-    const rows = await (await fetch(`${REST}donny_knowledge?select=metadata,embedding&metadata->>source_id=like.internal-doc:ZZZ_RAGEVAL_Q*&limit=500`, { headers: H })).json();
+    const rows = await (await fetch(`${REST}donny_knowledge?select=metadata,embedding&metadata->>source_id=like.${RUN_PREFIX}*&limit=500`, { headers: H })).json();
     const byId = new Map(rows.map((r) => [r.metadata.source_id, parseVec(r.embedding)]));
     vectors = all.map((_, i) => byId.get(id(i)));
   } catch (e) {
     mintError = e;
   } finally {
     // Always clean up, including on failure — a leaked row is retrievable by internal Donny.
-    cleanupError = await sweepTempRows();
+    cleanupError = await sweepTempRows({ only: true });   // this run's rows only
     if (!cleanupError) console.log("temporary rows cleaned up (verified by re-reading both tables)");
   }
   // Surfaced only after cleanup has run, so the failure is reported AND the rows are gone.

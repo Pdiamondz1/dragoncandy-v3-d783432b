@@ -9,12 +9,14 @@ relevance labels beside it.
 [[RAG Document Chunking]] proved the text was reachable; this asks whether Donny finds it. Controls
 separate cleanly (0/8 out-of-corpus queries beat the weakest real one), chunking did not break what
 worked (old top document still top for 43/53, none fell out of top-10), and k=10 is kept on evidence
-rather than arithmetic (recall 78% at k=5, 100% at k=10).
+rather than arithmetic (recall **65% at k=5, 91% at k=10** after that metric was corrected).
 
-Two failures recorded because they outlast the numbers: choosing k from similarity alone **does not
-work** here — 0.404 at rank 20 against a 0.280 control ceiling, no cutoff to find — and the first
+Three failures recorded because they outlast the numbers: choosing k from similarity alone **does
+not work** here — 0.404 at rank 20 against a 0.280 control ceiling, no cutoff to find; the first
 judging pass truncated passages to 340 chars and so **repeated the very defect it was measuring**,
-with 22 of 84 "not relevant" calls hiding the query term past the cut.
+with 22 of 84 "not relevant" calls hiding the query term past the cut; and the recall metric counted
+distinct *documents* where production returns *chunks*, crediting results Donny never receives, with
+a unit test pinning the error in as many words.
 
 ## [2026-08-23] ingest | The comment was true, and about the wrong reader
 
