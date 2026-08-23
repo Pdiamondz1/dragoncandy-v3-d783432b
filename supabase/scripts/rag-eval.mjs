@@ -41,6 +41,13 @@ if (REST === SYNC) {
 const OLD_CAP = 24_000;   // the truncation point this change removed
 const K_MAX = 12;
 
+// Prefix for the temporary rows this script writes when it has to borrow the server's embedding
+// key. Rows carrying it are EXCLUDED from the index unconditionally: their content IS the query
+// text, so a leftover from an interrupted run would rank against itself at ~1.0 and silently
+// corrupt the controls, the tail share and the recall figures all at once — a report that looks
+// spectacular and means nothing.
+const TEMP_PREFIX = "internal-doc:ZZZ_RAGEVAL_Q";
+
 const KEY = process.env.SUPABASE_SECRET_KEY ?? process.env.SUPABASE_SERVICE_ROLE_KEY;
 if (!KEY) {
   console.error("Set SUPABASE_SECRET_KEY (the same key the sync scripts use).");
@@ -59,12 +66,14 @@ for (const l of labelRows) {
 
 // ── the live index ───────────────────────────────────────────────────────────────────────────
 const index = [];
+let stale = 0;
 for (let offset = 0; ; offset += 50) {
   const r = await fetch(`${REST}donny_knowledge?select=content,metadata,embedding&scope=eq.internal&order=id.asc&limit=50&offset=${offset}`, { headers: H });
   if (!r.ok) { console.error(`index read failed: ${r.status}`); process.exit(1); }
   const page = await r.json();
   if (page.length === 0) break;
   for (const row of page) {
+    if (String(row.metadata?.source_id ?? "").startsWith(TEMP_PREFIX)) { stale++; continue; }
     index.push({
       id: row.metadata?.source_id,
       doc: row.metadata?.chunk_base ?? row.metadata?.source_id,
@@ -76,6 +85,11 @@ for (let offset = 0; ; offset += 50) {
   if (page.length < 50) break;
 }
 console.log(`index: ${index.length} chunks, ${new Set(index.map((r) => r.doc)).size} documents`);
+if (stale > 0) {
+  console.warn(`WARNING: ${stale} leftover evaluation row(s) found and excluded from the index — a ` +
+    `previous run was interrupted before cleanup. The cleanup below sweeps every row carrying the ` +
+    `prefix, not just this run's, so they go too.`);
+}
 
 // ── where does each chunk sit in its source document? ────────────────────────────────────────
 // Needed for the one metric that requires no human judgment: how much of what we return is text
@@ -124,7 +138,7 @@ if (openai) {
   vectors = (await r.json()).data.map((d) => d.embedding);
 } else {
   console.log("no OPENAI_API_KEY — borrowing the server's key via short-lived internal rows (deleted below)");
-  let mintError = null;
+  let mintError = null, cleanupError = null;
   const id = (i) => `internal-doc:ZZZ_RAGEVAL_Q${String(i).padStart(3, "0")}`;
   const path = (i) => `docs/ZZZ_RAGEVAL_Q${String(i).padStart(3, "0")}.md`;
   const pages = all.map((x, i) => ({
@@ -147,15 +161,56 @@ if (openai) {
     mintError = e;
   } finally {
     // Always clean up, including on failure — a leaked row is retrievable by internal Donny.
+    // Every DELETE is checked: an ignored non-2xx here means the script reports success while
+    // the rows it wrote are still being served, which is the failure this block exists to avoid.
+    let delFailed = 0;
     for (let i = 0; i < pages.length; i++) {
-      await fetch(`${REST}donny_knowledge?metadata->>source_id=eq.${encodeURIComponent(id(i))}`, { method: "DELETE", headers: H });
-      await fetch(`${REST}internal_docs?path=eq.${encodeURIComponent(path(i))}`, { method: "DELETE", headers: H });
+      for (const url of [
+        `${REST}donny_knowledge?metadata->>source_id=eq.${encodeURIComponent(id(i))}`,
+        `${REST}internal_docs?path=eq.${encodeURIComponent(path(i))}`,
+      ]) {
+        const d = await fetch(url, { method: "DELETE", headers: H });
+        if (!d.ok) delFailed++;
+      }
     }
-    const leftover = await (await fetch(`${REST}donny_knowledge?select=id&metadata->>source_id=like.internal-doc:ZZZ_RAGEVAL_Q*`, { headers: H })).json();
-    console.log(`temporary rows cleaned up${leftover.length ? ` — ${leftover.length} LEFT BEHIND, prune them` : ""}`);
+    // Sweep any row carrying the prefix, not only this run's ids — an earlier interrupted run
+    // leaves rows this run never enumerated, and they are unambiguously this script's own
+    // artifacts. Deleted BY ID after a read, never by a `like` pattern: `_` is a single-character
+    // LIKE wildcard and the prefix is full of them, and this is a DELETE.
+    for (const [table, sel, filter] of [
+      ["donny_knowledge", "id,metadata", `metadata->>source_id=like.${TEMP_PREFIX}*`],
+      ["internal_docs", "path", "path=like.docs/ZZZ_RAGEVAL_Q*"],
+    ]) {
+      const rows = await (await fetch(`${REST}${table}?select=${sel}&${filter}`, { headers: H })).json();
+      if (!Array.isArray(rows)) continue;
+      for (const row of rows) {
+        // Re-check the prefix literally, because the pattern above is a LIKE and this is a DELETE.
+        const keyName = table === "internal_docs" ? "path" : "id";
+        const idStr = table === "internal_docs" ? row.path : String(row.metadata?.source_id ?? "");
+        const literal = table === "internal_docs" ? idStr.startsWith("docs/ZZZ_RAGEVAL_Q") : idStr.startsWith(TEMP_PREFIX);
+        if (!literal) continue;
+        const d = await fetch(`${REST}${table}?${keyName}=eq.${encodeURIComponent(row[keyName])}`, { method: "DELETE", headers: H });
+        if (!d.ok) delFailed++;
+      }
+    }
+
+    // Verified by RE-READING both tables, not by trusting the DELETE responses.
+    const leftRag = await (await fetch(`${REST}donny_knowledge?select=id&metadata->>source_id=like.${TEMP_PREFIX}*`, { headers: H })).json();
+    const leftDocs = await (await fetch(`${REST}internal_docs?select=path&path=like.docs/ZZZ_RAGEVAL_Q*`, { headers: H })).json();
+    const leftN = (Array.isArray(leftRag) ? leftRag.length : 1) + (Array.isArray(leftDocs) ? leftDocs.length : 1);
+    if (leftN > 0 || delFailed > 0) {
+      cleanupError = `cleanup incomplete — ${delFailed} DELETE(s) failed, ` +
+        `${Array.isArray(leftRag) ? leftRag.length : "?"} donny_knowledge and ` +
+        `${Array.isArray(leftDocs) ? leftDocs.length : "?"} internal_docs row(s) remain. ` +
+        `Prune: delete from donny_knowledge where metadata->>'source_id' like '${TEMP_PREFIX}%';`;
+    } else {
+      console.log("temporary rows cleaned up (verified by re-reading both tables)");
+    }
   }
   // Surfaced only after cleanup has run, so the failure is reported AND the rows are gone.
-  if (mintError) { console.error(String(mintError.message ?? mintError)); process.exit(1); }
+  if (cleanupError) console.error(cleanupError);
+  if (mintError) console.error(String(mintError.message ?? mintError));
+  if (mintError || cleanupError) process.exit(1);
 }
 if (vectors.some((v) => !v)) { console.error("some query embeddings are missing; aborting"); process.exit(1); }
 
