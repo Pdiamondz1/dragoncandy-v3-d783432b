@@ -491,6 +491,23 @@ when a future outcome is added and this file is forgotten — an inclusion list 
 counting it (under-throttles, costs money), an exclusion list counts it (over-throttles, annoys one
 user). Fail closed toward the attacker.
 
+The `data-exposure-reviewer` pass found two, both low, and one was **declined on the record rather
+than quietly skipped**:
+
+- **Taken.** The 429 body returned `reason: "ip_daily"`, which tells a caller that *other* accounts
+  sharing their NAT or office IP consumed the shared bucket — no identity and no count, but still a
+  fact about strangers that this caller has no business learning. The response now collapses it to
+  `user_daily`; the true reason stays in the log. Free, because the two already produced the
+  identical human-readable string. Note the test written for it **failed first, correctly**: an
+  unscoped "never mention `reservation.reason`" assertion also forbade the `console.warn`, which is
+  exactly where the true reason belongs. Scope an assertion to the place you actually mean.
+- **Declined:** a pre-existing existence oracle where a body-supplied `orgUnitId` returns 404 when
+  absent and 403 when it exists but the caller is not an active owner/admin. Untouched by this diff,
+  and unexploitable against a v4 UUID keyspace — while the distinction is genuinely useful to an
+  operator debugging a real id. Folding an unrelated behaviour change into a throttle PR is the same
+  scope creep declined twice the same day (the 500-vs-401 pair). Recorded here so the next person
+  finds a decision rather than an oversight.
+
 The frontend needed **no change**, which is worth stating rather than leaving implicit:
 `verifyAddress.ts` is deliberately fire-and-forget and its header already names "rate limit" among
 the failures it must swallow. A 429 must never surface as "your save failed", because the save

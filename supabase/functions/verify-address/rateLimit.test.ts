@@ -90,6 +90,21 @@ describe('throttle wiring', () => {
     expect(migrationSrc).not.toContain("outcome = 'answered'");
   });
 
+  it('never returns ip_daily to the caller', () => {
+    // 'ip_daily' means OTHER accounts sharing this IP consumed the bucket. The LOG may say so;
+    // the RESPONSE may not. So the assertion has to be scoped to the response body — an
+    // unscoped `not.toMatch(/reason: reservation.reason/)` also forbids the console.warn, which
+    // is precisely where the true reason belongs. (It did, and this test caught it.)
+    const start = indexSrc.indexOf('return json(req, 429,');
+    expect(start).toBeGreaterThan(-1);
+    const responseBlock = indexSrc.slice(start, indexSrc.indexOf('});', start) + 3);
+
+    expect(responseBlock).toContain('publicReason');
+    expect(responseBlock).not.toContain('reservation.reason');
+    // And the collapse itself: anything that is not a burst must report as the daily reason.
+    expect(indexSrc).toMatch(/publicReason\s*=\s*reservation\.reason === "user_burst"\s*\?\s*"user_burst"\s*:\s*"user_daily"/);
+  });
+
   it('keeps the throttle decision out of TypeScript', () => {
     // verify-phone's Codex P1 was a check-then-act race created by exactly this: a decision in
     // application code over a prior read. There must be no local comparison against the caps.

@@ -371,11 +371,18 @@ const handler = async (req: Request): Promise<Response> => {
     // No stamp is touched on this path — a throttled caller keeps whatever verification they
     // already had.
     console.warn("verify-address: throttled", { role, reason: reservation.reason });
+    // The TRUE reason stays in the log; the RESPONSE collapses 'ip_daily' into 'user_daily'.
+    // Returning 'ip_daily' would tell the caller that OTHER accounts sharing their NAT or office
+    // IP have consumed the shared bucket — no identity and no count, but still a fact about
+    // strangers' activity that this caller has no business learning. The two already produce the
+    // identical human-readable string, so collapsing the machine-readable field costs the client
+    // nothing: both mean "wait until tomorrow", and only 'user_burst' means "wait a minute".
+    const publicReason = reservation.reason === "user_burst" ? "user_burst" : "user_daily";
     return json(req, 429, {
-      error: reservation.reason === "user_burst"
+      error: publicReason === "user_burst"
         ? "Too many address checks just now. Try again in a minute."
         : "Too many address checks today. Try again tomorrow.",
-      reason: reservation.reason,
+      reason: publicReason,
     });
   }
 
