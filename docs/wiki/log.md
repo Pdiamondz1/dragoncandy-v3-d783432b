@@ -1,5 +1,37 @@
 # Wiki Log
 
+## [2026-08-23] ingest | The white band, the one iOS was hiding, and five reels talking over the slogan
+
+Ingested `raw/sessions/2026-08-23-landing-footer-ios-inset-and-reel-recut.md`.
+**Updated** [[Landing Cinematic Single-CTA Redesign]] and [[Mobile Viewport & Fixed Positioning]]
+(new §8). No new page — both findings belong on pages that already exist.
+
+The landing footer shipped as an opaque white band and was overruled on sight. Making it
+transparent exposed a **second** white band, on iOS only, that had been live for every page in the
+app: `contentInset: 'always'` shrinks `documentElement.clientHeight` by the top safe-area inset
+(840 vs 778, inset 62, measured inside a real WKWebView) while `innerHeight`/`100vh`/`100dvh` keep
+reporting the full height, so `AppShell`'s `h-screen` overhangs the document box. Invisible for as
+long as every surface above it was also white. **A defect hidden by a coincidence of palette is
+still a defect.**
+
+The paired lesson is sharper than either half. A review had claimed the same `100vh`/`100dvh`
+mismatch caused a scroll on **mobile Safari**; that was measured and refuted (a container taller
+than its content produces no overflow — "unused space" is not "scrollable space"), and the obvious
+one-word shell fix would have regressed every short dashboard page. Having refuted it there, the
+class was treated as closed. It was not. **Refuting a claim on the surface where it was raised does
+not refute it on the surfaces where it was never tested.**
+
+Separately, five of ten reels carried burned-in captions from their original social posts — found
+by sampling every reel into a contact sheet, not by watching, because captions come and go in under
+a second and the eye forgives them in motion in a way it does not when frozen behind a headline.
+Three trimmed to a clean window, two dropped. That re-cut changed which frames exist and
+re-brightened the library, dropping the pink and mint accents to 1.88:1 / 1.90:1 at p90 against a
+3.0:1 bar — **trimming a clip is a contrast change, not just a length change**. Scrim middle stop
+40% → 60%, the lowest clearing 3.0 on both the brightest frame's mean and its p90.
+
+Two of my own predictions corrected in the runbook: CRF moved only −31% (cutting runtime did more),
+and `du -sh` over-states this directory by 5 MB because it counts allocated blocks.
+
 ## [2026-08-23] ingest | Seven scoping errors in one warning, and not one wrong calculation
 
 Ingested `raw/sessions/2026-08-23-per-user-shared-signature-warning.md`.
@@ -84,6 +116,47 @@ something is free — is itself a claim, and the only instrument that settles it
 Three claims, three refutations; the first two caught by reading and by review, the third only
 by running it, and only the third cost anything. Reviews catch claims that contradict something
 already written down; they cannot catch one that is merely untested and plausible.
+
+## [2026-08-22] ingest | Landing rebuilt as one dark video screen — flag deleted, doors deleted, and a watchdog margin bug Codex caught
+
+Ingested `raw/sessions/2026-08-22-landing-cinematic-single-cta.md`. **New page**
+[[Landing Cinematic Single-CTA Redesign]], plus source [[Landing Cinematic Single-CTA Redesign
+Session]]. Updated (not new) [[Landing "Human-driven. AI-assisted." Redesign]] and
+[[Landing Cinematic Video Redesign]] with supersession notes — both edited in place per
+"flag contradictions explicitly," not silently overwritten.
+
+**Branch is UNMERGED** — `feat/landing-cinematic-single-cta`, blocked on written permission from
+ABB and Uncle Rocco for their footage. Nothing in this ingest describes the live site; dragoncandy.io
+still serves the PR #293 light two-door landing until this merges.
+
+**The transferable finding is a margin bug in a safety mechanism, not a UI change.**
+`RotatingBackdrop`'s 15s stall watchdog exists to force-advance a clip that never fires `ended` or
+`error`. The new 12s-per-clip cap left only ~3s of margin against it, and the watchdog armed on a
+layer becoming *active* rather than on playback actually *starting* — slow-connection startup
+buffering alone could eat that margin and cut a healthy clip. Codex (the mandatory second reviewer)
+caught it as a P2. The fix keeps arming on layer-active (the backstop for a clip that never starts
+at all) and additionally resets on the `playing` event — the tempting one-line alternative (arm only
+on `playing`) would have converted a bounded 15s stall into a permanent freeze for any clip that
+never fires `playing`. Recorded on the new page because the pattern — a mitigation's timing margin
+is a claim about its inputs, and needs re-verifying whenever an input (here, clip length) changes —
+outlives this specific watchdog.
+
+**Two encodes per reel, chosen by viewport orientation and verified live on both surfaces** (desktop
+served `-wide`, a 390×844 emulated device served portrait) — not merely coded and assumed. Crop
+windows were hand-picked per clip by watching the footage (`y` 300–650 across ten clips), not a
+blind centre crop.
+
+**The video-backdrop feature flag was deleted, not left off-by-default** — with the video as the
+whole page, an "off" state ships a blank homepage, which is an outage costumed as a kill switch.
+
+**Not verified, recorded explicitly:** the design spec's brightest-frame contrast check (§7) has not
+been run across the ten clips.
+
+`index.md` (1 Sources line + 1 new Concepts entry + 2 Concepts entries corrected in place, 0
+orphans by path). `SHIPPED_LOG.md` prepended. `PROJECT_CONTEXT.md` §5 already carried an accurate
+one-line In-flight entry from an earlier task in this same branch — verified accurate, left
+untouched. RAG sync deliberately **not run** — branch unmerged; the committed post-merge hook syncs
+on the `main` fast-forward after merge, per the `[rag-sync]` skill lesson.
 
 ## [2026-08-21] ingest | An alias is not a send-as identity either — the claim that did not survive its first run
 

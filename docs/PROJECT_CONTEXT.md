@@ -96,6 +96,22 @@ Instagram, TikTok, YouTube), Google Maps (geocoding), Claude Sonnet 4 + Haiku
 
 ### In flight
 
+- **Landing rebuilt as one dark, full-bleed cinematic screen** — logo, eyebrow, slogan, single
+  "Get started" CTA over **eight** real rotating ABB + Uncle Rocco reels (this line said *ten*
+  until 2026-08-23), replacing the six-section light page, the contact form and the video-backdrop
+  feature flag. The footer is **transparent** — it shipped as an opaque white band, the founder
+  overruled that on sight, and removing it exposed an iOS-only white band underneath that had been
+  live for every page in the app: `contentInset: 'always'` shrinks `documentElement.clientHeight`
+  by the top safe-area inset (840 vs 778 measured in a real WKWebView) while viewport units keep
+  reporting the full height, so `AppShell`'s `h-screen` overhung the document box. Closed by
+  `contentInset: 'never'` — the CSS already pays back `env(safe-area-*)` everywhere. Five reels
+  also carried burned-in captions from their original posts; three were trimmed to a clean window
+  and two dropped, which re-brightened the library enough to force the scrim's middle stop 40% →
+  60% to keep the accent words above 3.0:1. Library 36 MB → 16 MB, iOS binary 54 MB → 39 MB.
+  Verified on desktop, mobile (both orientations) and the iOS shell on simulator; Codex clean.
+  `docs/DESIGN_SYSTEM.md` and `docs/runbooks/landing-video-backdrop-kit.md` updated to match.
+  **UNMERGED** — blocked on written permission from ABB and Uncle Rocco for their footage; merging
+  deploys. → `feat/landing-cinematic-single-cta` · #459
 - **Google Workspace corporate setup (Wave 1)** — the company's own Workspace: two shared drives,
   nine Google Groups replacing personal aliases, brand assets, and email signatures that install
   themselves. **MERGED (#453, `d83fcbe3`, 2026-08-21) and the admin half is largely DONE** — this
@@ -747,9 +763,11 @@ Instagram, TikTok, YouTube), Google Maps (geocoding), Claude Sonnet 4 + Haiku
   `donny-orchestrator`'s `donny_tool_executions` insert (columns that did not exist + a missing
   NOT NULL `message_id`) → deployed v69. → `docs/wiki/concepts/reading-agent-traces.md` · #292, #296
 - **Public landing — "Human-driven. AI-assisted." redesign** — full visual + messaging rebuild
-  to the founder mockup; landing rejoins the light app on its own additive `landing-*` tokens +
-  fonts. The cinematic-video system is preserved but opt-in behind
-  `LANDING_VIDEO_BACKDROP_ENABLED` (default off).
+  to the founder mockup; at the time, landing rejoined the light app on its own additive
+  `landing-*` tokens + fonts, with the cinematic-video system preserved but opt-in behind
+  `LANDING_VIDEO_BACKDROP_ENABLED` (default off). **Superseded 2026-08-22** by the
+  cinematic single-CTA redesign — the landing is dark again (`bg-landing-grape`) and the video
+  backdrop is the default experience, not an opt-in flag; see that entry for the current state.
   → `docs/wiki/concepts/landing-human-driven-redesign.md` · #293
 - **Auth session management** — loading guard, 3-hour inactivity timeout, session-hint
   cleanup. → `docs/SHIPPED_LOG.md`

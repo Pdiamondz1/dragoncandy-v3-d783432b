@@ -1,131 +1,82 @@
 import { describe, it, expect } from "vitest";
-import {
-  resolveLandingClip,
-  resolveLandingPlaylist,
-  mergeBackdropPlaylist,
-  playlistSignature,
-  LANDING_CLIPS,
-  type LandingClip,
-  type LandingClipKey,
-} from "./landingClips";
+import { existsSync } from "node:fs";
+import { join } from "node:path";
+import { LANDING_REELS, resolveReelSource } from "./landingClips";
 
-describe("resolveLandingClip", () => {
-  it("returns empty src/poster for an unfilled key (proof.reel is reserved, unrendered)", () => {
-    expect(resolveLandingClip("proof.reel")).toEqual({ src: undefined, poster: undefined });
-  });
-
-  it("resolves the live hero clips wired into the registry", () => {
-    for (const key of ["hero.business", "hero.creator", "hero.brand"] as const) {
-      const clip = resolveLandingClip(key);
-      expect(clip.src).toMatch(/^\/landing\/.+\.mp4$/);
-      expect(clip.poster).toMatch(/^\/landing\/.+\.jpg$/);
+describe("LANDING_REELS", () => {
+  it("has eight reels, each with a portrait source and poster", () => {
+    expect(LANDING_REELS).toHaveLength(8);
+    for (const reel of LANDING_REELS) {
+      expect(reel.src).toMatch(/^\/landing\/reels\/[a-z0-9-]+\.mp4$/);
+      expect(reel.poster).toMatch(/^\/landing\/reels\/[a-z0-9-]+-poster\.jpg$/);
     }
   });
 
-  it("returns the configured entry when the registry has one", () => {
-    const registry = { "hero.business": { src: "s.mp4", poster: "p.jpg" } } as Record<LandingClipKey, { src?: string; poster?: string }>;
-    expect(resolveLandingClip("hero.business", registry)).toEqual({ src: "s.mp4", poster: "p.jpg" });
+  it("never plays two clips from the same restaurant back to back more than the split forces", () => {
+    // Five ABB and three Uncle Rocco cannot alternate perfectly: in a cycle of 8, the
+    // majority restaurant must touch itself at least 5 - 3 = 2 times. More than that and the
+    // page starts reading as one restaurant's showreel, which is the thing this order exists
+    // to prevent. Wraps, because the playlist loops.
+    const restaurant = (src: string) =>
+      src.includes("uncle-rocco") ? "uncle-rocco" : "abb";
+    const names = LANDING_REELS.map((r) => restaurant(r.src));
+    const abb = names.filter((n) => n === "abb").length;
+    const adjacent = names.filter(
+      (n, i) => n === names[(i + 1) % names.length],
+    ).length;
+
+    expect(abb).toBe(5);
+    expect(adjacent).toBe(Math.abs(abb - (names.length - abb)));
   });
 
-  it("never throws on a key missing from a partial registry", () => {
-    expect(resolveLandingClip("proof.reel", {} as never)).toEqual({ src: undefined, poster: undefined });
+  it("carries no reel whose burned-in caption was the reason it was cut", () => {
+    // uncle-rocco-brunch and uncle-rocco-pancakes showed a caption from the original post for
+    // their whole duration, so neither could be trimmed to a clean window and both were
+    // dropped. Re-adding either by slug would put competing text back under the slogan.
+    const slugs = LANDING_REELS.map((r) => r.src);
+    expect(slugs).not.toContain("/landing/reels/uncle-rocco-brunch.mp4");
+    expect(slugs).not.toContain("/landing/reels/uncle-rocco-pancakes.mp4");
   });
-});
 
-describe("resolveLandingPlaylist", () => {
-  it("returns an ordered multi-clip playlist for business and creator", () => {
-    for (const key of ["hero.business", "hero.creator"] as const) {
-      const list = resolveLandingPlaylist(key);
-      expect(list.length).toBeGreaterThan(1);
-      // First clip is unchanged from the single-clip registry (first frame stays the same).
-      expect(list[0].src).toBe(LANDING_CLIPS[key].src);
-      for (const clip of list) {
-        expect(clip.src).toMatch(/^\/landing\/.+\.mp4$/);
-        expect(clip.poster).toMatch(/^\/landing\/.+\.jpg$/);
+  it("points at files that actually exist in public/", () => {
+    // A typo in a path is invisible until someone loads the page on a slow
+    // connection and gets a black rectangle. Catch it here instead.
+    for (const reel of LANDING_REELS) {
+      for (const p of [reel.src, reel.poster, reel.wide, reel.widePoster]) {
+        if (!p) continue;
+        expect(existsSync(join(process.cwd(), "public", p))).toBe(true);
       }
     }
   });
-
-  it("falls back to the single registry clip when no playlist is registered (hero.brand)", () => {
-    // hero.brand has no LANDING_PLAYLISTS entry but is wired in LANDING_CLIPS.
-    const list = resolveLandingPlaylist("hero.brand");
-    expect(list).toEqual([
-      { src: LANDING_CLIPS["hero.brand"].src, poster: LANDING_CLIPS["hero.brand"].poster },
-    ]);
-  });
-
-  it("returns an empty array when neither a playlist nor a single clip has a src (proof.reel)", () => {
-    expect(resolveLandingPlaylist("proof.reel")).toEqual([]);
-  });
-
-  it("filters out playlist entries that have no src", () => {
-    const playlists: Partial<Record<LandingClipKey, LandingClip[]>> = {
-      "hero.business": [
-        { src: "/landing/a.mp4", poster: "/landing/a.jpg" },
-        { poster: "/landing/no-src.jpg" }, // dropped — no src
-        { src: "/landing/b.mp4" },
-      ],
-    };
-    const list = resolveLandingPlaylist("hero.business", playlists);
-    expect(list.map((c) => c.src)).toEqual(["/landing/a.mp4", "/landing/b.mp4"]);
-  });
 });
 
-describe("mergeBackdropPlaylist", () => {
-  const s = (n: string) => ({ src: `/landing/${n}.mp4`, poster: `/landing/${n}.jpg` });
-  const d = (n: string) => ({ src: `https://cdn/${n}.mp4` });
-  const staticClips = [s("h1"), s("h2")];
-  const dynamicClips = [d("boost1"), d("boost2")];
+describe("resolveReelSource", () => {
+  const reel = {
+    src: "/landing/reels/a.mp4",
+    poster: "/landing/reels/a-poster.jpg",
+    wide: "/landing/reels/a-wide.mp4",
+    widePoster: "/landing/reels/a-wide-poster.jpg",
+  };
 
-  it("leads with static clips, then dynamic (trailing), for hero.business", () => {
-    const out = mergeBackdropPlaylist("hero.business", staticClips, dynamicClips);
-    expect(out.map((c) => c.src)).toEqual([
-      "/landing/h1.mp4", "/landing/h2.mp4", "https://cdn/boost1.mp4", "https://cdn/boost2.mp4",
-    ]);
-  });
-
-  it("also applies to hero.creator (curated leads, dynamic trails)", () => {
-    const out = mergeBackdropPlaylist("hero.creator", staticClips, dynamicClips);
-    expect(out[0].src).toBe("/landing/h1.mp4");
-    expect(out[out.length - 1].src).toBe("https://cdn/boost2.mp4");
+  it("returns the portrait source in portrait", () => {
+    expect(resolveReelSource(reel, false)).toEqual({
+      src: "/landing/reels/a.mp4",
+      poster: "/landing/reels/a-poster.jpg",
+    });
   });
 
-  it("returns static unchanged for hero.brand (not an eligible key)", () => {
-    expect(mergeBackdropPlaylist("hero.brand", staticClips, dynamicClips)).toBe(staticClips);
+  it("returns the wide source in landscape", () => {
+    expect(resolveReelSource(reel, true)).toEqual({
+      src: "/landing/reels/a-wide.mp4",
+      poster: "/landing/reels/a-wide-poster.jpg",
+    });
   });
 
-  it("returns static unchanged when there are no dynamic clips", () => {
-    expect(mergeBackdropPlaylist("hero.business", staticClips, [])).toBe(staticClips);
-  });
-
-  it("de-dupes by src", () => {
-    const out = mergeBackdropPlaylist("hero.business", [d("x")], [d("x")]);
-    expect(out).toHaveLength(1);
-  });
-
-  it("caps the merged total", () => {
-    const many = Array.from({ length: 10 }, (_, i) => d(`v${i}`));
-    expect(mergeBackdropPlaylist("hero.business", staticClips, many).length).toBeLessThanOrEqual(6);
-  });
-});
-
-describe("playlistSignature", () => {
-  it("changes when the joined srcs change (grow)", () => {
-    const a = playlistSignature("business", [{ src: "a.mp4" }]);
-    const b = playlistSignature("business", [{ src: "x.mp4" }, { src: "a.mp4" }]);
-    expect(a).not.toBe(b);
-  });
-  it("changes for same-length different-clips", () => {
-    const a = playlistSignature("business", [{ src: "a.mp4" }]);
-    const b = playlistSignature("business", [{ src: "b.mp4" }]);
-    expect(a).not.toBe(b);
-  });
-  it("is stable for identical contents", () => {
-    expect(playlistSignature("business", [{ src: "a.mp4" }]))
-      .toBe(playlistSignature("business", [{ src: "a.mp4" }]));
-  });
-  it("differs by role", () => {
-    expect(playlistSignature("business", [{ src: "a.mp4" }]))
-      .not.toBe(playlistSignature("creator", [{ src: "a.mp4" }]));
+  it("falls back to portrait in landscape when no wide encode exists", () => {
+    const { wide: _w, widePoster: _wp, ...noWide } = reel;
+    expect(resolveReelSource(noWide, true)).toEqual({
+      src: "/landing/reels/a.mp4",
+      poster: "/landing/reels/a-poster.jpg",
+    });
   });
 });

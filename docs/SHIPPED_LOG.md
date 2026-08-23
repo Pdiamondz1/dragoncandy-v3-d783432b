@@ -191,6 +191,123 @@ Outlook for Windows remains untested and untestable.
 
 → `docs/wiki/concepts/workspace-email-signatures.md` · #455, #456
 
+## [2026-08-22] Landing becomes one dark video screen, and a safety margin the redesign silently ate
+
+**Branch `feat/landing-cinematic-single-cta` — UNMERGED.** Blocked on written permission from the
+two restaurants (ABB, Uncle Rocco) whose footage the reels use. This entry records a finished
+build, not a live change — dragoncandy.io still serves the light, two-door "Human-driven.
+AI-assisted." landing (PR #293) until this merges.
+
+**Amended 2026-08-23 — the footer stopped being white, and that exposed an iOS bug.** The founder
+saw the shipped page and said the white band across the bottom could not stay. The footer is now
+transparent with no top border, and `RotatingBackdrop` moved from `LandingHero` up to the page
+wrapper so the footage runs edge to edge behind it; `LandingHero` paints no background at all.
+Legibility was measured, not assumed: against the brightest frame in the footer's band across all
+twenty encodes, worst case is **7.42:1** for `text-white/70` over the scrim's heaviest stop
+(`to-landing-grape/95`), versus 4.5:1 required for normal-size text — several reels hit literal
+pure white in that band and still clear it.
+
+Removing the white footer then revealed a **second** white band, on iOS only, that had been there
+all along. `capacitor.config.ts` set `ios.contentInset: 'always'`, under which WebKit shrinks
+`documentElement.clientHeight` by the top safe-area inset while `innerHeight`, `100vh` and `100dvh`
+all keep reporting the full height. Measured inside the real WKWebView (iPhone 17 Pro simulator):
+`innerHeight` **840**, `documentElement.clientHeight` **778**, `safe-area-inset-top` **62** — and
+778 = 840 − 62 exactly. Content sized to `100dvh` overhung the document box by ~96pt, the
+webview's own white background showed through beneath it, and it **clipped the footer's
+Terms/Privacy/Help links**. Fixed with `contentInset: 'never'`: the app already pays back
+`env(safe-area-*)` in CSS everywhere it matters, so insetting natively too was two mechanisms
+solving one problem and disagreeing on the answer. Afterwards all four numbers agree at 874, the
+insets still report 62/34, and the light `/terms` page is unchanged. **The bug was live for every
+page in the app** — `AppShell` is `h-screen` — and invisible only because every other surface is
+white. Changing the palette is what surfaced it. Not reproducible in any browser or emulator.
+
+Two findings left for the founder rather than fixed: **five of the ten reels carry burned-in
+captions** from their original social posts ("What I mean by: 'Wanna grab brunch?'", "This and an
+iced latte.", "THE COAL OVEN", "Steak Frites", and a stitched-in meme), and the worst of them sits
+where the slogan sits; the desktop 16:9 crops remove two but keep four. And the reels are **36 MB
+inside a 54 MB iOS binary** — two-thirds of the app is a landing page a signed-in user never sees.
+
+16 commits, 129 files, +2353/−3894. The public landing collapses from six scrollable sections plus
+a contact form to **one screen**: a fixed logo header, a full-bleed video hero (ten real ABB +
+Uncle Rocco reels, rotating, curated only — no user uploads), an eyebrow, a slogan, and a single
+"Get started" CTA. ~20 files of dead code deleted outright, not hidden behind a flag: the six old
+sections, `HeroDoors`, `VideoSlot`/`MediaSlot`, `heroRole.ts`, the DragonFeed dynamic-clip merge
+(`useLandingBackdropPlaylist`), and — once its only producer was gone — `pendingBrief`.
+
+**The role question wasn't rebuilt, it moved.** The old hero asked "Business, Creator, or Brand?"
+on the landing itself. The new hero asks nothing; its one CTA goes to `/auth?mode=signup`, which
+already has a `role-selection` step for a missing `?role=`, built on a prior branch for an
+unrelated reason. Deleting the on-landing doors cost zero new code — it just relocated the question
+to a screen already built to ask it.
+
+**Two encodes per reel, chosen by viewport orientation — and proven live on both surfaces, not
+just written to spec.** Source footage is 720×1280 portrait. Desktop gets a per-clip 16:9 crop
+whose window (`y` 300–650 across the ten clips) was chosen by **watching each clip**, not a blind
+centre crop — food framed low wants `y≈550`, a face or sign held high wants `y≈300`; a centre crop
+(`y=437`) routinely frames ceiling or tablecloth instead of the subject. Phones get the uncropped
+as-shot file. Verified in-browser: desktop served the `-wide` encodes; a 390×844 emulated device
+served the portrait ones.
+
+**Every reel capped at 12 seconds, and the cap's own justification hid a margin bug the mandatory
+second reviewer caught.** `RotatingBackdrop`'s `MAX_DWELL_MS` (15s) force-advances a clip that
+neither fires `ended` nor `error` — a backstop against an undecodable-but-silent codec or a
+mid-play stall, sized to comfortably outlast a healthy ~6–10s clip. The 12s cap was meant to keep
+every clip well inside that ceiling, but the watchdog **armed the instant a layer became active**
+(told to play), not when playback actually **started** — against a 12s clip that leaves only ~3s of
+margin, which slow-connection startup buffering alone can exceed, force-advancing a clip that was
+merely slow to start, not broken. Codex flagged it as a P2 (commit `c0b78766`). The fix keeps
+arming on layer-active (still the correct backstop for a clip that genuinely never starts) and
+additionally resets the timer on the layer's `playing` event, so a slow-starting clip gets its full
+15s dwell measured from real playback start. **The tempting one-line alternative — arm only on
+`playing`** — would have been strictly worse: a clip that never fires `playing` at all would then
+never arm any timer, turning a bounded 15s stall into a permanent freeze. The transferable rule: a
+mitigation's timing margin is a claim about its inputs, and it needs re-checking every time an
+input it depends on (here, clip length) changes — dropping the assumed length from ~6–10s to a
+strict 12s cap silently consumed the margin the original 15s figure was sized against.
+
+**The feature flag was deleted, not left off-by-default.** `LANDING_VIDEO_BACKDROP_ENABLED` made
+sense when video was optional set-dressing on a working light hero. Here the video **is** the
+page — an "off" state would ship a blank homepage, which is an outage wearing a kill-switch
+costume, not an actual one. The real fallback (no clips / a failed clip / `prefers-reduced-motion`)
+is `RotatingBackdrop`'s own poster-still path, confirmed by observation: with reduced motion
+forced, zero `<video>` elements mounted and the network log showed no media requests.
+
+**A whole-branch review, run after every per-task review had already passed, found three defects
+no single task's review could see — each was a mismatch BETWEEN files, not a bug within one**
+(commit `73948f0f`): the page **scrolled** despite being built as one screen (a `min-h-screen`
+wrapper stacked with a sticky header and a `min-h-[100dvh]` hero — the exact `vh`-family unit the
+design system forbids for bottom-anchored UI — fixed with an absolute header + `flex-1` hero +
+`shrink-0` footer); a **white cold-load flash** because both surfaces that paint before the now-dark
+landing renders (`App.tsx`'s Suspense fallback, `index.html`'s prerendered splash) were still
+hard-coded white from the prior light design; and a **spec-vs-plan disagreement that read as a
+contradiction until correctly scoped** — the spec said "thin white footer," the plan said keep
+`bg-landing-grape`, and both were right because they meant different elements (the footer bar vs.
+the page wrapper behind it). Spec won on the footer itself.
+
+**`generate-anonymous-brief` is now orphaned and was deliberately left deployed, not undeployed.**
+Its only caller — the landing's brief-preview flow — was deleted with the six sections; it still
+spends real Anthropic tokens per call if reached directly. Recorded as a cost-visibility follow-up
+in the spec rather than fixed here, since undeploying is a separate decision from a landing rebuild
+and the function costs nothing while nothing calls it.
+
+**The design spec's brightest-frame-contrast check (§7) has been run.** Method: all ten reels
+sampled at their brightest sampled frame in the vertical middle band — where the scrim is thinnest
+(40%) and the slogan sits — composited over `landing-grape`, then scored by WCAG contrast ratio.
+Worst case across the whole library: white 6.24:1, pink (`#F9BFD6`) 4.00:1, mint (`#7BE3C0`)
+4.04:1; tightest clip is `abb-montauk-monday` (a bright ocean frame). The slogan is large display
+text (3.0:1 required) — every clip clears it with margin, and white also clears the stricter
+4.5:1 normal-text bar. Caveat: only the PORTRAIT encodes were sampled (the emulated viewport used
+was portrait); the desktop wide crops are a different subset of the same footage and remain
+unsampled. Footage permission from ABB and Uncle Rocco has still **not** been obtained; that gates
+the merge, not the build.
+
+`docs/DESIGN_SYSTEM.md` and `docs/runbooks/landing-video-backdrop-kit.md` were corrected in-branch
+(commit `40d525c3`) to describe the dark, video-led landing; this entry does not duplicate that
+work. Spec: `docs/superpowers/specs/2026-08-22-landing-page-cinematic-single-cta-design.md`. Plan:
+`docs/superpowers/specs/2026-08-22-landing-cinematic-single-cta.md` (ten tasks, tree green after
+each).
+→ `docs/wiki/concepts/landing-cinematic-single-cta.md` · `feat/landing-cinematic-single-cta`
+
 ## [2026-08-21] Wave 1 went live, and its first run disproved the documentation it shipped with
 
 **PRs** #453 (merged 11:35 UTC) and #454 (merged 21:00 UTC) · Codex clean at round 4 ·

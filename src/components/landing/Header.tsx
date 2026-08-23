@@ -1,144 +1,46 @@
-import React, { useEffect, useState } from "react";
+import React from "react";
 import { useNavigate } from "react-router-dom";
-import { Menu } from "lucide-react";
-import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
-import { LandingButton } from "@/components/landing/LandingButton";
-
-const scrollToSection = (id: string) => {
-  const el = document.getElementById(id);
-  if (el) el.scrollIntoView({ behavior: "smooth" });
-};
-
-const navLinks = [
-  { label: "For businesses", target: "business" },
-  { label: "For creators", target: "creators" },
-  { label: "How it works", target: "how" },
-  { label: "Meet Donny", target: "donny" },
-];
 
 export const Header: React.FC = () => {
   const navigate = useNavigate();
-  const [sheetOpen, setSheetOpen] = useState(false);
-  const [scrolled, setScrolled] = useState(false);
 
-  // The landing renders inside the app shell's scrolling `#main-content`, so `window.scrollY`
-  // is always 0 — key the scroll-state off that container (falling back to the window for the
-  // standalone/prerender case). At the very top the header is transparent so it blends into the
-  // hero's soft glow; once you scroll it fades to a frosted-white bar that stays legible over the
-  // colored sections below.
-  useEffect(() => {
-    if (typeof document === "undefined") return;
-    const scroller = document.getElementById("main-content");
-    const target: HTMLElement | Window = scroller ?? window;
-    const read = () => (scroller ? scroller.scrollTop : window.scrollY);
-    const onScroll = () => setScrolled(read() > 12);
-    onScroll();
-    target.addEventListener("scroll", onScroll, { passive: true });
-    return () => target.removeEventListener("scroll", onScroll);
-  }, []);
-
-  const handleNavClick = (sectionId: string) => {
-    setSheetOpen(false);
-    setTimeout(() => scrollToSection(sectionId), 350);
-  };
-
+  // The mobile sheet this used to close before routing is gone; the body is now a plain
+  // navigate — kept as a named handler since it's still the Log in action's entry point.
   const handleNavigate = (path: string) => {
-    setSheetOpen(false);
-    setTimeout(() => navigate(path), 350);
+    navigate(path);
   };
 
   return (
-    // `sticky top-0` sticks to the app shell's scrolling `#main-content` — but ONLY because the
-    // LandingPage wrapper no longer has an `overflow-x` (which would make it the scroll container
-    // and break sticky). Transparent over the hero glow, frosted-white once scrolled for legibility.
+    // `absolute inset-x-0 top-0` overlays the header on the hero instead of occupying flow
+    // space — the page is a single non-scrolling screen now, so `sticky` (which still reserves
+    // its own row) would push the hero down and cost a slice of the one viewport we have. The
+    // bar is permanently transparent — there's video behind it, not a scrolling page of colored
+    // sections to frost over. `z-40`, not `z-50`: app chrome must stay below the Radix modal
+    // layer (DESIGN_SYSTEM.md).
     <header
       // `pt-[env(safe-area-inset-top)]` pays back `viewport-fit=cover` — in the native shell this
       // bar otherwise sits under the status bar / Dynamic Island (observed on device 2026-08-14).
       // The header itself carries no padding, so the raw inset is the whole correction; the inner
       // div keeps its own py-3.5. Zero on the web. See DESIGN_SYSTEM.md.
-      className={`sticky top-0 z-50 pt-[env(safe-area-inset-top)] transition-colors duration-300 ${
-        scrolled ? "bg-white/85 backdrop-blur-md" : "bg-transparent"
-      }`}
+      className="absolute inset-x-0 top-0 z-40 bg-transparent pt-[env(safe-area-inset-top)]"
     >
       <div className="mx-auto flex max-w-6xl items-center justify-between px-5 py-3.5 sm:px-8 lg:px-12">
         <button
           type="button"
           aria-label="DragonCandy home"
-          onClick={() => navigate("/")}
+          onClick={() => handleNavigate("/")}
           className="cursor-pointer border-none bg-transparent p-0"
         >
           <img src="/logo.webp" alt="DragonCandy" className="h-12 w-auto lg:h-14" />
         </button>
 
-        {/* Desktop nav */}
-        <nav aria-label="Primary" className="hidden items-center gap-7 md:flex">
-          {navLinks.map((link) => (
-            <button
-              key={link.label}
-              onClick={() => scrollToSection(link.target)}
-              className="cursor-pointer border-none bg-transparent text-sm font-medium text-landing-ink-soft transition-colors duration-200 hover:text-landing-ink"
-            >
-              {link.label}
-            </button>
-          ))}
-          <button
-            onClick={() => navigate("/auth?mode=login")}
-            className="cursor-pointer border-none bg-transparent text-sm font-medium text-landing-ink-soft transition-colors duration-200 hover:text-landing-ink"
-          >
-            Log in
-          </button>
-          <LandingButton
-            variant="pink"
-            onClick={() => navigate("/auth?mode=signup")}
-            className="px-6 py-2.5 text-sm"
-          >
-            Get started
-          </LandingButton>
-        </nav>
-
-        {/* Mobile hamburger */}
-        <div className="md:hidden">
-          <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
-            <SheetTrigger asChild>
-              <button
-                className="rounded-full p-2 text-landing-ink transition-colors hover:bg-landing-lilac"
-                aria-label="Toggle menu"
-              >
-                <Menu className="h-6 w-6" />
-              </button>
-            </SheetTrigger>
-            <SheetContent
-              side="right"
-              className="w-64 border-landing-line bg-white pt-10 text-landing-ink"
-            >
-              <div className="flex flex-col gap-2">
-                {navLinks.map((link) => (
-                  <button
-                    key={link.label}
-                    onClick={() => handleNavClick(link.target)}
-                    className="w-full cursor-pointer rounded-full border-none bg-transparent px-4 py-2.5 text-left font-medium text-landing-ink-soft transition-colors hover:bg-landing-lilac hover:text-landing-ink"
-                  >
-                    {link.label}
-                  </button>
-                ))}
-                <hr className="my-2 border-landing-line" />
-                <button
-                  onClick={() => handleNavigate("/auth?mode=login")}
-                  className="w-full cursor-pointer rounded-full border-none bg-transparent px-4 py-2.5 text-left font-medium text-landing-ink-soft transition-colors hover:bg-landing-lilac hover:text-landing-ink"
-                >
-                  Log in
-                </button>
-                <LandingButton
-                  variant="pink"
-                  onClick={() => handleNavigate("/auth?mode=signup")}
-                  className="mt-1 w-full"
-                >
-                  Get started
-                </LandingButton>
-              </div>
-            </SheetContent>
-          </Sheet>
-        </div>
+        <button
+          type="button"
+          onClick={() => handleNavigate("/auth?mode=login")}
+          className="cursor-pointer border-none bg-transparent text-sm font-medium text-white/80 transition-colors duration-200 hover:text-white"
+        >
+          Log in
+        </button>
       </div>
     </header>
   );

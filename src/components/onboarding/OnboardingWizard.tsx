@@ -5,7 +5,6 @@ import { useAuth } from '@/hooks/useAuth';
 import { useAutoDetect } from '@/hooks/useAutoDetect';
 import { supabase } from '@/integrations/supabase/client';
 import { uploadProfileAsset } from '@/lib/storage/uploadProfileAsset';
-import { consumePendingBrief } from '@/lib/pendingBrief';
 import { toast } from 'sonner';
 import { AuthShell } from '@/components/auth/AuthShell';
 import { LandingButton } from '@/components/landing/LandingButton';
@@ -234,10 +233,7 @@ export function OnboardingWizard() {
       await refreshProfile();
 
       toast.success('Profile created!');
-      // Honor a guest's saved brief (landing "Save this brief — sign up free"):
-      // business/brand → straight into the campaign builder pre-filled; else dashboard.
-      const pending = consumePendingBrief(role);
-      navigate(pending?.redirectTo ?? DASHBOARD_ROUTES[role]);
+      navigate(DASHBOARD_ROUTES[role]);
     } catch (err) {
       console.error(err);
       toast.error('Something went wrong. Please try again.');
