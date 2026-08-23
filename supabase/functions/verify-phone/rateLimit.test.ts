@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { isAllowedCountry, exceedsSendLimit, SEND_LIMIT_PER_WINDOW } from './rateLimit';
+import { isAllowedCountry } from './rateLimit';
 
 describe('isAllowedCountry', () => {
   it('accepts a US number when the allowlist is US', () => {
@@ -36,19 +36,10 @@ describe('isAllowedCountry', () => {
   });
 });
 
-describe('exceedsSendLimit', () => {
-  it('allows a first send', () => {
-    expect(exceedsSendLimit([])).toBe(false);
-  });
-
-  it('refuses the send after the limit is reached', () => {
-    const now = Date.now();
-    const recent = Array.from({ length: SEND_LIMIT_PER_WINDOW }, () => new Date(now - 60_000).toISOString());
-    expect(exceedsSendLimit(recent)).toBe(true);
-  });
-
-  it('ignores attempts outside the window', () => {
-    const old = Array.from({ length: SEND_LIMIT_PER_WINDOW }, () => new Date(Date.now() - 48 * 3600_000).toISOString());
-    expect(exceedsSendLimit(old)).toBe(false);
-  });
-});
+// The send-limit and cooldown DECISIONS are no longer testable here, and that is
+// deliberate: `exceedsSendLimit` / `withinCooldown` were deleted when the throttle moved
+// into the `reserve_phone_verification_send` RPC (migration 20260824160000), which does
+// the count and the reserving INSERT atomically. Their three tests went with them rather
+// than being kept green against code nothing calls. The SQL decision has no unit test —
+// it needs a database — and that gap is recorded in
+// docs/wiki/concepts/identity-verification.md rather than papered over here.

@@ -72,10 +72,14 @@ opposite default in the same codebase for a different surface, and getting the t
 risk, not a hypothetical one.
 
 `verify-phone`'s throttle initially inherited the display instinct: any read error against
-`phone_verification_attempts` logged and returned `[]`/`undefined`, which `exceedsSendLimit([])`
-resolves as "allow". A transient blip, a future RLS change, or a connection cap would silently
-disable the *only* defense against SMS pumping while still returning 200s. Fixed to refuse the send
-on any read error instead. The IP-salt fallback got the identical treatment for the identical reason:
+`phone_verification_attempts` logged and returned `[]`/`undefined`, which the then-live
+`exceedsSendLimit([])` resolved as "allow". A transient blip, a future RLS change, or a connection
+cap would silently disable the *only* defense against SMS pumping while still returning 200s. Fixed
+to refuse the send on any read error instead. **That whole read-then-decide shape is now gone** —
+the Codex P1 pass replaced it with the atomic `reserve_phone_verification_send` RPC (migration
+`20260824160000`), and `exceedsSendLimit` / `withinCooldown` were **deleted**, not left orphaned.
+The fail-closed rule survived the move intact: a failed or null RPC result refuses the send with a
+503. The IP-salt fallback got the identical treatment for the identical reason:
 the "fallback" salt was a literal string committed to the repo, so hashing IPs against it was one
 cheap offline precomputation from full recovery — refuse `start` entirely until the real secret
 exists, rather than silently run the throttle in a state where it protects nothing.
@@ -183,6 +187,35 @@ grep for `from('profiles')` with single quotes missed two double-quoted call sit
 mechanism, same root cause (a completeness claim built on one search or one named site is a claim
 about the search, not about the code).
 
+## Compare the row against ITSELF, never against the caller's copy of it
+
+`verify-address`'s first fix for the stamp-an-address-nobody-checked forgery conditioned the final
+UPDATE on the fields the CALLER submitted (`.eq('city', submittedCity)` …). That closed the attack
+and opened two silent, permanent failures, because the caller's copy and the stored row are written
+by different code paths that normalize differently:
+
+- `OnboardingWizard.tsx` upserts `{city, country, timezone}` with **no `postal_code`**, so a postal
+  code saved earlier through the full profile editor survives the upsert — then the client asked to
+  verify with `postalCode: null`, the predicate took its `.is('postal_code', null)` branch, and the
+  stored `'07030'` did not match. Zero rows, no stamp, `200 {verified:false}` — and since
+  `addressChanged` will not re-fire, that account was **permanently unverifiable with no
+  user-visible signal**. (Note this is the wizard being a second writer *again* — the third time on
+  this branch. See the section above.)
+- `useCreatorProfileSubmit.ts` and `useOrgData.ts` store city/country/address **untrimmed** while
+  the client helper sent them **trimmed**, so a pasted `'Hoboken '` never matched `'Hoboken'`.
+
+The fix was not to patch the predicate field by field. `verify-address` now **reads the stored
+address row server-side, geocodes exactly what it read, and conditions the write on those exact
+stored values** — a genuine compare-and-set of the row against itself. The request body carries no
+address fields at all any more (only `role`, and `orgUnitId` for a business), so the caller cannot
+influence what gets geocoded — which closes the original forgery *structurally*, upstream of any
+predicate, rather than by comparison. The planning half is pure and unit-tested
+(`supabase/functions/verify-address/storedAddress.ts`): predicate values are verbatim, geocode query
+text is trimmed, and a missing row is distinguished from a blank address.
+
+**The generalizable rule: a compare-and-set is only sound when both sides of the comparison come
+from the same read.** Two normalizations of "the same" value are two values.
+
 ## `now()` is the transaction timestamp
 
 A prod proof of the address-invalidation trigger failed on its first attempt, and the failure was the
@@ -221,9 +254,15 @@ anything.
   `deriveIdentitySignals` was fixed (the final blocking finding) to correctly distinguish "Stripe has
   never reported" (`unknown`) from "Stripe reported nothing outstanding" (`met`), but the volume of
   accounts still awaiting a first `account.updated` event is unmeasured going into merge.
-- **`withinCooldown` (verify-phone's rate-limit guard) has zero test coverage** — ruled necessary
-  early (Ruling 5), never actually executed. A count-based test check ("N tests claimed, N present")
-  reconciled by coincidence once the NANP fix round happened to add exactly 2 more tests.
+- **The verify-phone send throttle has NO automated coverage at all** — not just the cooldown. This
+  entry used to name `withinCooldown` alone; that function no longer exists. The whole decision
+  (daily cap, cooldown, and the reserving INSERT) now lives in the
+  `reserve_phone_verification_send` RPC, which needs a database to exercise and therefore runs under
+  no CI test. It is proven only by a hand-run, rolled-back prod script (4 concurrent calls → 3
+  reserved, 4th declined, 3 rows actually inserted). `rateLimit.test.ts` still covers
+  `isAllowedCountry`, which is the only pure decision left in that function. The three
+  `exceedsSendLimit` tests were deleted with their subject rather than kept green against code
+  nothing calls — a suite that passes while its subject moved is worse than a known gap.
 - **`lat`/`lng` are client-writable directly** on `creator_profiles`/`org_units` — only
   `address_verified_at` is guarded. Bounded (the readiness engine keys off the stamp alone, so a
   forged coordinate proves nothing there, and the re-verification trigger nulls `lat`/`lng` alongside

@@ -1,4 +1,4 @@
-import { createClient } from "npm:@supabase/supabase-js@2.57.2";
+import { createClient, type SupabaseClient } from "npm:@supabase/supabase-js@2.57.2";
 import { corsHeaders } from "../_shared/cors.ts";
 import {
   SEND_LIMIT_PER_WINDOW,
@@ -75,7 +75,7 @@ function twilioAuthHeader(accountSid: string, authToken: string): string {
 }
 
 async function recordAttempt(
-  supabase: ReturnType<typeof createClient>,
+  supabase: SupabaseClient,
   params: { userId: string; ipHash: string | null; action: Action; outcome: string },
 ): Promise<void> {
   const { error } = await supabase.from("phone_verification_attempts").insert({
@@ -99,12 +99,15 @@ async function recordAttempt(
 // Fix: `reserveVerificationSend` below calls a SECURITY DEFINER Postgres RPC that makes
 // the count-and-insert ATOMIC — a transaction-scoped advisory lock serializes concurrent
 // callers for the same user/ip key, so only one of them can observe "under the limit"
-// and reserve a slot; the loser sees the winner's row (or the lock's own effect on the
-// count) once it acquires the lock. The RPC INSERTs the 'sent' row itself, BEFORE this
-// function ever calls Twilio — so a slot is reserved first, spent second.
+// and reserve a slot; once the loser acquires the lock its next statement takes a fresh
+// READ COMMITTED snapshot, so it counts the winner's row. The RPC INSERTs the 'sent' row
+// itself, BEFORE this function ever calls Twilio — so a slot is reserved first, spent
+// second.
 //
-// A `null` return means the RPC call itself failed (network/DB error), which this
-// function MUST treat as "refuse the send", not "no prior history" — the same
+// A `null` return means no usable reservation came back — either the RPC call itself
+// errored (network/DB error, or the migration not yet applied) or it returned a null
+// body with no error. Both are handled identically, and this function MUST treat either
+// as "refuse the send", not "no prior history" — the same
 // fail-closed contract Finding 1 established for the old read helpers: silently
 // coercing a failure into "allow" would remove the send limit on any transient error
 // while still returning 200s. Fail open toward the user, fail closed toward the
@@ -114,7 +117,7 @@ type ReserveSendResult =
   | { reserved: false; reason: "limit" | "cooldown" };
 
 async function reserveVerificationSend(
-  supabase: ReturnType<typeof createClient>,
+  supabase: SupabaseClient,
   userId: string,
   ipHash: string | null,
 ): Promise<ReserveSendResult | null> {
@@ -129,7 +132,10 @@ async function reserveVerificationSend(
     console.error("verify-phone: reserve_phone_verification_send failed", error);
     return null;
   }
-  return data as ReserveSendResult;
+  // `?? null` is not decoration: PostgREST can return a null body with no error, and the
+  // old `data as ReserveSendResult` cast asserted a non-null result the call does not
+  // guarantee. Both null shapes reach the same fail-closed branch in the caller.
+  return (data ?? null) as ReserveSendResult | null;
 }
 
 /** Flips a reserved-but-unsent attempt row's outcome — used only when Twilio itself
@@ -137,7 +143,7 @@ async function reserveVerificationSend(
  * quota (see the RPC's counting predicate, outcome IN ('sent','rejected')) — that is
  * the fail-closed point of reserving before calling Twilio at all. */
 async function markAttemptRejected(
-  supabase: ReturnType<typeof createClient>,
+  supabase: SupabaseClient,
   attemptId: string,
 ): Promise<void> {
   const { error } = await supabase

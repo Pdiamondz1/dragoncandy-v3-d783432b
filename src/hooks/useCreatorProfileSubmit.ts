@@ -142,10 +142,14 @@ export const useCreatorProfileSubmit = () => {
           );
 
       if (addressChanged) {
+        // Fired AFTER the save above — the edge function reads the STORED row, so the
+        // write has to have landed first. The values passed here are only a local
+        // "is there anything to verify" guard; they are not sent (see verifyAddress.ts),
+        // which is why an untrimmed 'Hoboken ' in storage can no longer fail to match a
+        // trimmed 'Hoboken' on the wire.
         void requestCreatorAddressVerification({
           city: formData.city,
           country: formData.country,
-          postalCode: formData.postal_code,
         });
       }
 

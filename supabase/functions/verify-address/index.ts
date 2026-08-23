@@ -1,21 +1,43 @@
 import { createClient } from "npm:@supabase/supabase-js@2.57.2";
 import { corsHeaders } from "../_shared/cors.ts";
 import { resolveVerifiedAddress, CREATOR_PRECISION, BUSINESS_PRECISION } from "./resolveVerifiedAddress.ts";
+import {
+  planCreatorVerification,
+  planBusinessVerification,
+  type AddressPlan,
+} from "./storedAddress.ts";
 
 // Address verification via the Google Geocoding REST API. Two shapes share this function:
-//   { role: 'creator', city, country, postalCode? }
+//   { role: 'creator' }
 //     — geocodes to a CITY/POSTAL CENTROID ONLY (CREATOR_PRECISION). A creator's home
 //       address is not something this platform should hold at street precision.
-//       Writes creator_profiles (the caller's own row, matched on user_id = auth.uid()).
-//   { role: 'business', orgUnitId, address }
+//       Reads and writes creator_profiles (the caller's own row, matched on
+//       user_id = auth.uid()).
+//   { role: 'business', orgUnitId }
 //     — geocodes to STREET precision (BUSINESS_PRECISION). A business is a place
-//       customers visit and already publishes its address. Writes org_units, after
-//       confirming the caller is an ACTIVE owner/admin of the unit's org — this
+//       customers visit and already publishes its address. Reads and writes org_units,
+//       after confirming the caller is an ACTIVE owner/admin of the unit's org — this
 //       function writes with the service-role client, which bypasses the
 //       unit_update_owner_admin RLS policy, so the same check is re-asserted here by
 //       hand rather than relied on implicitly (see DATABASE_SCHEMA.md's note on
 //       SECURITY DEFINER RPCs silently opting out of RLS — same lesson, different
 //       mechanism: a service-role client opts out just as completely).
+//
+// THE REQUEST BODY CARRIES NO ADDRESS FIELDS, DELIBERATELY. It names only which row to
+// act on (`role`, and for a business the `orgUnitId` whose org membership is then
+// checked). The address that gets geocoded is READ FROM THE STORED ROW, server-side, and
+// the write is conditioned on those same stored values. Earlier revisions accepted
+// `city` / `country` / `postalCode` / `address` in the body and compared the caller's
+// copy against the row; that produced two silent permanent failures (an onboarding path
+// that omits postal_code, and untrimmed stored values vs trimmed submitted ones) —
+// see storedAddress.ts's header for both traces. The fields were REMOVED rather than
+// accepted-and-ignored: a field that is parsed but unused is an invitation for the next
+// edit to start trusting it again, and it makes the request look as though it decides
+// what gets geocoded when it must never be able to. Extra JSON keys from an older
+// client bundle are simply ignored by req.json(), so this is backward compatible.
+// This is also what closes the original forgery structurally rather than by predicate:
+// a caller cannot geocode an address they have not actually stored, because the caller
+// has no way to name an address at all.
 //
 // Identity is ALWAYS the caller's own JWT via auth.getUser() — never a body-supplied
 // user id or org_unit id treated as a grant. address_verified_at / lat / lng are
@@ -41,11 +63,7 @@ type Role = "creator" | "business";
 
 interface VerifyAddressRequest {
   role?: string;
-  city?: string;
-  country?: string;
-  postalCode?: string;
   orgUnitId?: string;
-  address?: string;
 }
 
 interface GeocodeApiResult {
@@ -115,40 +133,34 @@ const handler = async (req: Request): Promise<Response> => {
     { auth: { persistSession: false } },
   );
 
-  let queryText: string;
+  // Read the stored address, then plan from it: the geocode query text AND the exact
+  // column/value predicate the write will be conditioned on both come out of this one
+  // read (see storedAddress.ts). Nothing from the request body reaches either.
+  let plan: AddressPlan;
   let precision: readonly string[];
   let orgUnitId = "";
-  // Canonical fields this attempt actually geocoded, carried through to the final
-  // update so the write can be conditioned on the stored row still matching what was
-  // submitted (see the forgery/out-of-order-write note below, near the write).
-  let creatorCity = "";
-  let creatorCountry = "";
-  let creatorPostalCode = "";
-  let orgUnitAddress = "";
 
   if (role === "creator") {
-    const city = typeof payload.city === "string" ? payload.city.trim() : "";
-    const country = typeof payload.country === "string" ? payload.country.trim() : "";
-    const postalCode = typeof payload.postalCode === "string" ? payload.postalCode.trim() : "";
-    if (!city || !country) {
-      return json(req, 400, { error: "city and country are required" });
+    const { data: profile, error: profileError } = await supabase
+      .from("creator_profiles")
+      .select("city, country, postal_code")
+      .eq("user_id", user.id)
+      .maybeSingle();
+    if (profileError) {
+      console.error("verify-address: failed to read creator profile", profileError);
+      return json(req, 500, { error: "Could not verify address. Please try again." });
     }
-    creatorCity = city;
-    creatorCountry = country;
-    creatorPostalCode = postalCode;
-    queryText = [city, postalCode, country].filter(Boolean).join(", ");
+    plan = planCreatorVerification(profile);
     precision = CREATOR_PRECISION;
   } else {
     orgUnitId = typeof payload.orgUnitId === "string" ? payload.orgUnitId.trim() : "";
-    const address = typeof payload.address === "string" ? payload.address.trim() : "";
-    if (!orgUnitId || !address) {
-      return json(req, 400, { error: "orgUnitId and address are required" });
+    if (!orgUnitId) {
+      return json(req, 400, { error: "orgUnitId is required" });
     }
-    orgUnitAddress = address;
 
     const { data: unit, error: unitError } = await supabase
       .from("org_units")
-      .select("id, org_id")
+      .select("id, org_id, address")
       .eq("id", orgUnitId)
       .maybeSingle();
     if (unitError) {
@@ -177,15 +189,30 @@ const handler = async (req: Request): Promise<Response> => {
       return json(req, 403, { error: "Not authorized to update this location" });
     }
 
-    queryText = address;
+    plan = planBusinessVerification(unit);
     precision = BUSINESS_PRECISION;
+  }
+
+  if (!plan.ok) {
+    // Nothing to geocode, so nothing is written and no stamp is touched. Both causes are
+    // named explicitly rather than folded into one message: an operator seeing this needs
+    // to know whether the row is absent or merely blank, because they are different
+    // problems (a provisioning bug vs. a user who has not entered an address). Never log
+    // the address fields themselves (see the header note on logging).
+    console.warn(
+      plan.reason === "missing_row"
+        ? "verify-address: no stored address row for this caller; nothing to verify"
+        : "verify-address: stored row has no address to geocode; nothing to verify",
+      { role },
+    );
+    return json(req, 200, { verified: false, reason: plan.reason });
   }
 
   let geocoded: GeocodeApiResponse;
   try {
     // URLSearchParams, not manual string interpolation — correctness (proper escaping),
     // not the security fix below by itself.
-    const params = new URLSearchParams({ address: queryText, key: apiKey });
+    const params = new URLSearchParams({ address: plan.queryText, key: apiKey });
     const resp = await fetch(`${GEOCODE_BASE}?${params.toString()}`);
     if (!resp.ok) {
       console.error("verify-address: Google Geocoding request failed", resp.status);
@@ -211,48 +238,30 @@ const handler = async (req: Request): Promise<Response> => {
     address_verified_at: resolved?.verifiedAt ?? null,
   };
 
-  // Condition the write on the stored row still carrying the SAME canonical address
-  // fields this attempt geocoded. Without this, the update matches on user_id/orgUnitId
-  // alone, so it stamps whatever address is CURRENTLY stored — which may no longer be
-  // the one this request resolved coordinates for:
-  //   - Forgery: a caller submits a different, valid address (one that geocodes
-  //     cleanly) while their STORED address is unverified. The old code stamped the
-  //     stored, unverified address as verified — attesting to an address nobody
-  //     actually checked.
-  //   - Out-of-order writes: two rapid edits can have their verify-address calls
-  //     resolve out of order, so an older geocode overwrites a newer address's
-  //     coordinates and stamp.
-  // Matching on the submitted fields makes the write match ZERO rows if the stored
-  // address has moved on since this request started — the correct outcome, not an
-  // error: the next save re-fires verification against whatever is stored now.
+  // Compare-and-set: the write is conditioned on the stored row still carrying the exact
+  // values this attempt read and geocoded. Without it, the update matches on
+  // user_id/orgUnitId alone and stamps whatever address is CURRENTLY stored — which may
+  // no longer be the one that produced these coordinates, if a concurrent save changed
+  // it while Google was resolving. That includes the out-of-order case: two rapid edits
+  // whose verify calls resolve in the wrong order, where the older geocode would
+  // otherwise overwrite the newer address's stamp.
   //
-  // PostgREST .eq() never matches NULL (NULL = x is NULL, not true in SQL), so a field
-  // the client omitted — which useCreatorProfileSubmit.ts stores as NULL, never '' —
-  // must be matched with .is(col, null) instead. Never silently skip a field: an
-  // omitted predicate would widen the match back toward the unconditioned write this
-  // fix removes.
-  let updatedRows: Array<Record<string, string>> | null;
-  let writeError: { message: string } | null;
+  // The predicate terms come from `plan.match` — i.e. from the row itself, verbatim —
+  // so `.eq()` vs `.is(col, null)` is decided by what is actually stored rather than by
+  // whether a request field was omitted. Never skip a term: an omitted predicate would
+  // widen the match back toward the unconditioned write.
+  const table = role === "creator" ? "creator_profiles" : "org_units";
+  const idColumn = role === "creator" ? "user_id" : "id";
+  const idValue = role === "creator" ? user.id : orgUnitId;
 
-  if (role === "creator") {
-    let creatorQuery = supabase
-      .from("creator_profiles")
-      .update(update)
-      .eq("user_id", user.id)
-      .eq("city", creatorCity)
-      .eq("country", creatorCountry);
-    creatorQuery = creatorPostalCode
-      ? creatorQuery.eq("postal_code", creatorPostalCode)
-      : creatorQuery.is("postal_code", null);
-    ({ data: updatedRows, error: writeError } = await creatorQuery.select("user_id"));
-  } else {
-    ({ data: updatedRows, error: writeError } = await supabase
-      .from("org_units")
-      .update(update)
-      .eq("id", orgUnitId)
-      .eq("address", orgUnitAddress)
-      .select("id"));
+  let writeQuery = supabase.from(table).update(update).eq(idColumn, idValue);
+  for (const term of plan.match) {
+    writeQuery = term.value === null
+      ? writeQuery.is(term.column, null)
+      : writeQuery.eq(term.column, term.value);
   }
+
+  const { data: updatedRows, error: writeError } = await writeQuery.select(idColumn);
 
   if (writeError) {
     console.error("verify-address: failed to write verified address", writeError);
@@ -260,12 +269,22 @@ const handler = async (req: Request): Promise<Response> => {
   }
 
   if (!updatedRows || updatedRows.length === 0) {
-    // Zero rows matched: the stored address changed under us between this request
-    // starting and the geocode resolving. Not an error — the row itself is fine, and
-    // whatever save changed the address either already fired its own verification
-    // attempt or will on the next save. Never log the address fields here (see the
-    // header note on GOOGLE_MAPS_SERVER_API_KEY logging).
-    console.warn("verify-address: stored address changed during verification; stamp discarded", { role });
+    // Zero rows matched. Now that both the geocode input and the predicate come from one
+    // server-side read of the row, this can mean exactly two things, and an operator
+    // should be pointed at both rather than at one guess:
+    //   1. A concurrent save changed the stored address between our read and our write —
+    //      the compare-and-set doing its job. Not an error: that save fires (or will
+    //      fire) its own verification against whatever it stored.
+    //   2. The row was deleted between our read and our write.
+    // It can NO LONGER mean "the caller submitted an address that does not match the
+    // stored one" — the caller submits no address at all — nor either of the two
+    // normalization mismatches that used to land here silently and permanently
+    // (see storedAddress.ts). Never log the address fields here (see the header note on
+    // GOOGLE_MAPS_SERVER_API_KEY logging).
+    console.warn(
+      "verify-address: stored address row changed or disappeared between read and write; stamp discarded",
+      { role },
+    );
     return json(req, 200, { verified: false, stale: true });
   }
 

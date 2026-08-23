@@ -15,11 +15,25 @@
 -- returns "declined" and inserts nothing), the second then re-counts against the row the first one
 -- just wrote (or the now-later timestamp), inside the SAME lock.
 --
--- Two lock keys are taken, in a FIXED order (user key first, then ip key) on every call — the
--- fixed order is what rules out a deadlock cycle when two different users happen to share an IP
--- and call concurrently. Distinct literal prefixes ('phone_verify_send:user:' /
--- 'phone_verify_send:ip:') keep a user id and an ip hash from ever colliding on the same
--- hashtext() bucket by coincidence.
+-- Two lock keys are taken, in a FIXED order (user key first, then ip key) on every call. The
+-- fixed order is what keeps two different users who happen to share an IP from forming a
+-- deadlock cycle: both hold their own user key and queue on the same ip key, which is a queue
+-- rather than a cycle.
+--
+-- The distinct literal prefixes ('phone_verify_send:user:' / 'phone_verify_send:ip:') guarantee
+-- distinct lock INPUTS. They do NOT guarantee distinct lock KEYS, and an earlier revision of this
+-- comment claimed a user id and an ip hash could "never" collide on the same hashtext() bucket —
+-- that is false. hashtext() is 32-bit, so collisions exist by pigeonhole and are simply
+-- coincidental. They are also inconsequential here:
+--   * a collision between two different callers' keys costs needless serialization, never
+--     correctness — the counts and the INSERT are unaffected;
+--   * a collision between THIS call's own two keys is re-entrant — advisory locks stack within a
+--     transaction, so the second acquire returns immediately and there is no self-deadlock;
+--   * a genuine cross-transaction deadlock would need two simultaneous collisions
+--     (h(user:u1) = h(ip:i2) AND h(ip:i1) = h(user:u2)), and even then Postgres's deadlock
+--     detector aborts one side, the RPC returns an error, and the caller fails CLOSED with a 503
+--     — no SMS sent, no quota lost.
+-- So: collisions are possible, cheap, and safe. Do not restore the "never" claim.
 --
 -- Counting predicate: outcome IN ('sent', 'rejected'), never outcome = 'sent' alone. The caller
 -- (verify-phone/index.ts) reserves a slot here BEFORE calling Twilio, and if Twilio itself then
@@ -32,9 +46,12 @@
 -- 'rejected' would silently hand back the slot it just consumed, and repeated Twilio failures
 -- (real or attacker-induced, e.g. a bad number chosen to make Twilio 4xx) would never throttle.
 -- 'throttled' and 'blocked_country' rows are deliberately excluded from the count — those attempts
--- never reserved a slot in the first place ('blocked_country' is decided before this function is
--- ever called, and 'throttled' rows are never inserted by this function at all — see the decline
--- branches below, which return without writing anything).
+-- never reserved a slot in the first place. 'blocked_country' is decided in the caller before this
+-- function is ever reached. 'throttled' is written by the CALLER TOO, not here: this function's
+-- decline branches below return without writing anything, and verify-phone/index.ts then inserts
+-- an audit row with outcome 'throttled' (index.ts:~251). Excluded from the count either way, so
+-- a throttled caller cannot deepen their own throttle — but the row does exist, so do not read
+-- this paragraph as "no 'throttled' row is ever written".
 --
 -- service_role only, matching every other write path on this table.
 

@@ -246,13 +246,21 @@ export function OnboardingWizard() {
               (existingCreator.country ?? null) !== locationData.country;
 
         // Best-effort, fire-and-forget: never block or fail onboarding on a geocode
-        // outcome. See src/lib/verifyAddress.ts. Onboarding has no postal code field —
-        // only auto-detected city/country.
+        // outcome. See src/lib/verifyAddress.ts. Fired AFTER the upsert above, which is
+        // load-bearing: the edge function reads the STORED row, so calling first would
+        // verify the previous address.
+        //
+        // Onboarding has no postal code field, and this wizard's upsert therefore leaves
+        // any postal code a returning creator already saved through the full profile
+        // editor untouched. That used to matter: the client sent postalCode: null, the
+        // function matched `.is('postal_code', null)`, the stored '07030' did not match,
+        // and the account became silently and permanently unverifiable. The function now
+        // reads and matches the row's own postal code, so an omission here cannot
+        // desynchronise anything.
         if (addressChanged) {
           void requestCreatorAddressVerification({
             city: locationData.city,
             country: locationData.country,
-            postalCode: null,
           });
         }
       } else {

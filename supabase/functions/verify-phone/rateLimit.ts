@@ -1,8 +1,17 @@
 /**
- * Pure throttling and allowlist logic for phone verification.
+ * Pure allowlist logic and throttle CONSTANTS for phone verification.
  *
  * Kept dependency-free and separate from index.ts so it runs under Vitest in CI — the
  * edge function itself cannot, because of its Deno-only imports.
+ *
+ * The throttle DECISION does not live here. It used to (`exceedsSendLimit` /
+ * `withinCooldown`, both deleted), and that was the bug: an application-code decision
+ * over a prior read is a check-then-act race, so it moved into the
+ * `reserve_phone_verification_send` RPC (migration 20260824160000) where the count and
+ * the reserving INSERT happen atomically under one advisory lock. index.ts imports only
+ * the three constants below — which it passes to the RPC as parameters — plus
+ * `isAllowedCountry`. Do not re-add a TypeScript throttle helper here: a second decision
+ * site is a second answer.
  */
 
 export const SEND_LIMIT_PER_WINDOW = 3;
@@ -58,15 +67,4 @@ export function isAllowedCountry(phone: string, allowed: readonly string[]): boo
       return true;
     }),
   );
-}
-
-export function exceedsSendLimit(recentIsoTimestamps: readonly string[]): boolean {
-  const cutoff = Date.now() - WINDOW_MS;
-  const inWindow = recentIsoTimestamps.filter((t) => new Date(t).getTime() >= cutoff);
-  return inWindow.length >= SEND_LIMIT_PER_WINDOW;
-}
-
-export function withinCooldown(lastIsoTimestamp: string | undefined): boolean {
-  if (!lastIsoTimestamp) return false;
-  return Date.now() - new Date(lastIsoTimestamp).getTime() < COOLDOWN_MS;
 }
