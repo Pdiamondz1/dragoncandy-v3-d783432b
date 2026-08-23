@@ -124,13 +124,15 @@ Instagram, TikTok, YouTube), Google Maps (geocoding), Claude Sonnet 4 + Haiku
   filing monthly duplicates. The measurement itself **never fails on a regression**; the reporting
   step carries the verdict, so a human can run it without the tool treating curiosity as a build
   failure. Four decisions about *how a guard fails* are the durable part: comparability is checked
-  **before** anything is compared and **per metric** (a changed label set costs the recall
-  denominators, not the control check); a threshold naming a metric the run does not produce is
-  reported as **unchecked**, since it would otherwise pass forever; **NOT COMPARABLE is itself a
-  finding**, because silence there reads exactly like a clean month; and the job **never re-records
-  its own baseline** — a guard that follows the observed value is a thermometer reporting room
-  temperature. Automation cannot fix the real weakness (7 labelled queries of 53), so every finding
-  prints that line. Verified by **forced controls on all five report branches**, since a run
+  **before** anything is compared, **per metric** (a changed label set costs the recall
+  denominators, not the control check) and **by identity rather than count** — Codex found that
+  counting lets one query be swapped for another while the run still calls itself comparable, so
+  the baseline now carries order-independent hashes of the query and label sets; **two kinds of
+  silence are themselves findings** (*not comparable*, and a configured threshold that did not run
+  — either reads exactly like a clean month, which is this pipeline's own defect one level up);
+  and the job **never re-records its own baseline** — a guard that follows the observed value is a
+  thermometer reporting room temperature. Automation cannot fix the real weakness (7 labelled queries of 53), so every finding
+  prints that line. Verified by **forced controls on all eight report branches**, since a run
   printing "no regression" is not evidence the guard works. **Pending (2026-08-23):** the scheduled
   run has **never fired** and no finding has ever been filed from one; it needs
   `RAG_EVAL_SUPABASE_SECRET_KEY` in a `rag-eval` GitHub Environment (until then it fails loudly at

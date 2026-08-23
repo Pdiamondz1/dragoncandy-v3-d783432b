@@ -35,7 +35,7 @@ configuration that no longer ships.
 - **The measurement never fails on a regression.** Exit code stays clean; the reporting step
   decides what a measurement means. This is what lets a human run it to see where things stand
   without the tool treating curiosity as a build failure.
-- `compareToBaseline()` (pure, in `score.mjs`, 7 tests) with reference values in
+- `compareToBaseline()` (pure, in `score.mjs`) with reference values in
   `baseline.metrics` and tolerances in `baseline.thresholds`, so one number appears once.
 - `rag-eval-report.mjs` files an AIOS finding through `aios-report-ingest`, fingerprinted per
   metric (`rag-eval:<metric>`) so a persistent regression bumps `occurrences` rather than filing
@@ -51,12 +51,16 @@ Changing the *label* set moves only the recall/precision denominators, so the co
 one that makes every other number readable) still runs. Declaring the whole run incomparable
 there would throw away the most important check.
 
-**A threshold naming a metric the run does not produce is reported as unchecked.** A guard that
-cannot fire is indistinguishable from a guard that is working.
+**Comparability is decided by identity, not by count** (see the Codex round below — this started
+as a count check and that was a hole). The baseline records order-independent hashes of the query
+set and the labels; the run recomputes both.
 
-**NOT COMPARABLE is itself a finding**, at medium. Silence there is indistinguishable from a
-clean month, and a guard that has quietly stopped guarding is the exact failure this whole
-workstream came out of.
+**A guard that cannot fire is indistinguishable from a guard that is working**, so a threshold
+that did not run is recorded as structured data, not prose, and files its own finding.
+
+**NOT COMPARABLE is itself a finding**, at medium — as is a skipped check. Silence in either case
+is indistinguishable from a clean month, and a guard that has quietly stopped guarding is the
+exact failure this whole workstream came out of.
 
 **The baseline is never re-recorded by the job.** A guard that follows the observed value is a
 thermometer reporting room temperature no matter what the room is doing. Re-recording is a PR.
@@ -80,16 +84,34 @@ denominator and nothing compares to the baseline. The run counts how many distin
 in `donny_tool_executions` are not in the set, so the set going stale is visible rather than
 silent. Measured 0 of 53 — which doubles as evidence the probe reads the right column at all.
 
+## Codex round 1 — two findings, both mine, both the same mistake being automated
+
+**P1: comparability was decided by counting.** Swap one query for another while keeping 53, and
+the run was declared comparable though it was measuring different inputs. Closed by recording an
+order-independent hash of the query set and of the labels in the baseline and recomputing both per
+run. A baseline with no hash is *not comparable* rather than falling back to counts — a
+compatibility fallback would reinstate the hole silently, on exactly the older files most likely
+to have drifted. The committed-baseline tests now recompute both hashes from the real files.
+
+**P2: a skipped check printed "no regression" and exited 0.** A threshold whose metric was
+renamed, or whose baseline figure was missing, or which needed labels that no longer match, was
+recorded only as prose — so a guard being switched off was reported as success. `compareToBaseline`
+now returns a structured `unchecked[]` and the reporter files its own medium finding from it. This
+is the trap the session wrote explicit comments about, reintroduced one level up in the code that
+reads those comments' output.
+
 ## Verification
 
-- Two real prod runs of the evaluation: 401 chunks / 143 documents, controls 0/8 above the
-  weakest real query, recall@10 0.913, located 397/401, temp rows cleaned up both times. The
-  second ran against the new baseline and reported all four checks `ok`.
-- Forced controls on all five report branches (recall, controls, index-size, not-comparable,
-  no-baseline) — each fired at the right severity; clean path exits 0.
+- Three real prod runs of the evaluation: 401 chunks / 143 documents, controls 0/8 above the
+  weakest real query, recall@10 0.913, located 397/401, temporary rows cleaned up every
+  time. The second and third ran against the new baseline and reported all four checks `ok`.
+- Forced controls on all eight report branches — clean, three regressions, a swapped query with
+  the count unchanged, a relabelling with the count unchanged, a threshold naming a metric that
+  no longer exists, and no baseline at all. Each fired at the right severity; only the clean
+  path exits 0.
 - Three committed-baseline tests keep `baseline.json` in step with `queries.json` and
   `labels.json`; drift there would make every scheduled run come back NOT COMPARABLE.
-- `npm run typecheck`, `npm run test` (2,634 pass, was 2,621), `npm run build` — clean.
+- `npm run typecheck`, `npm run test` (2,642 pass, was 2,621), `npm run build` — clean.
 
 ## Known gaps at hand-off
 

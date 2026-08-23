@@ -7,6 +7,10 @@
   "controlSetSize": 8,
   "labelledQueries": 7,
 
+  "hashNote": "Identity, not size. Replacing one query while keeping 53 leaves every count intact and changes what is being measured, so comparability is decided by these hashes. Order-independent (the inputs are sorted before hashing), so reordering queries.json is not a change. Regenerate with `node -e` against hashQueries/hashLabels in rag-eval/score.mjs — the committed-baseline tests recompute them from the real files and fail if this drifts.",
+  "querySetHash": "c3ad4ab3213a32d8",
+  "labelSetHash": "f563447bfe76dd47",
+
   "metrics": {
     "controlsAboveWeakestReal": 0,
     "recallAt10": 0.913,

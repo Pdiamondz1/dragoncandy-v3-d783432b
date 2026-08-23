@@ -13,11 +13,16 @@ re-runs the evaluation against a committed baseline and files an AIOS finding on
 moves.
 
 The design decisions that outlast the numbers: comparability is checked **before** anything is
-compared and **per metric** (a changed label set costs the recall denominators, not the control
-check); a threshold naming a metric the run does not produce is reported as unchecked rather than
-silently passing; **NOT COMPARABLE is itself a finding**, since silence there reads exactly like a
-clean month; and the job never re-records its own baseline — a guard that follows the observed
-value is a thermometer reporting room temperature no matter what the room is doing.
+compared, **per metric** (a changed label set costs the recall denominators, not the control check),
+and **by identity rather than count** — Codex found that counting lets one query be swapped for
+another while the run still calls itself comparable, so the baseline now carries order-independent
+hashes of both sets; **two kinds of silence are themselves findings** (*not comparable*, and a
+configured threshold that did not run — either reads exactly like a clean month); and the job never
+re-records its own baseline — a guard that follows the observed value is a thermometer reporting
+room temperature no matter what the room is doing.
+
+Both Codex findings were the mistake being automated, one level up: a comparison that could not
+tell two different benchmarks apart, and a guard that reported success while switched off.
 
 What automation cannot fix is stated in the findings themselves: recall rests on **7 labelled
 queries of 53**, and every finding carries that line so a precise-looking number never reads as

@@ -103,14 +103,29 @@ local files only. Skipping the install removes a few minutes and, more to the po
 registry-resolution step from a job that has the prod key exported — the same reasoning
 `synthetic-weight.yml` records for never using `npx --yes`.
 
-**Verification.** Two real prod runs (401 chunks / 143 documents, controls 0/8 above the weakest
+**Codex found two holes, both mine, and both are the same mistake as the one being automated.**
+(1) *Comparability was decided by counting.* Swap one query for another, keep 53, and the run was
+declared comparable while measuring a different benchmark — reporting a clean month, or a
+regression, about something nobody recorded. Now the baseline records an **order-independent hash**
+of the query set and of the labels, and the run recomputes both; a baseline carrying no hash is
+*not comparable* rather than falling back to counts, since a compatibility fallback would reinstate
+the hole silently on exactly the files most likely to have drifted. (2) *A skipped check printed
+"no regression" and exited 0.* A threshold whose metric was renamed, or whose baseline figure went
+missing, or which needed labels that no longer match, was recorded as prose and then read as a
+clean month — a guard switched off, reported as success. Skipped checks are now structured data and
+file their own medium finding. That is the trap this very session wrote comments about and then
+left in the reporter one level up.
+
+**Verification.** Three real prod runs (401 chunks / 143 documents, controls 0/8 above the weakest
 real query, recall@10 0.913, located 397/401, temporary rows cleaned up both times; the second ran
-against the new baseline and reported all four checks `ok`). **Forced controls on all five report
-branches** — recall, controls, index size, not-comparable, no-baseline — each firing at the right
-severity, with the clean path exiting 0, because a run that prints "no regression" is not evidence
-the guard works. Three committed-baseline tests keep `baseline.json` in step with `queries.json`
-and `labels.json`; drift there would make every scheduled run come back NOT COMPARABLE. Tests
-2,621 → **2,634**; typecheck and build clean.
+against the new baseline and reported all four checks `ok`). **Forced controls on all eight report
+branches** — clean, three regressions, a query swapped with the count unchanged, a relabelling with
+the count unchanged, a threshold naming a metric that no longer exists, and no baseline at all —
+each firing at the right severity, with only the clean path exiting 0, because a run that prints
+"no regression" is not evidence the guard works. The committed-baseline tests recompute both hashes
+from the real files, so a baseline drifting away from `queries.json` or `labels.json` fails at PR
+time instead of turning every scheduled run into a silent NOT COMPARABLE. Tests 2,621 → **2,642**;
+typecheck and build clean. Codex clean at round 2.
 
 **Open at hand-off:** the scheduled run has **never fired** and no finding has ever been filed from
 one — everything above is proven by forced controls. It needs `RAG_EVAL_SUPABASE_SECRET_KEY` in a

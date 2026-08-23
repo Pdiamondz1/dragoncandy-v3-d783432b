@@ -153,12 +153,23 @@ Reference values live in `baseline.metrics`, tolerances in `baseline.thresholds`
 appears once. Comparability is checked **before** anything is compared, and **per metric**:
 changing the query set makes nothing comparable, but changing the *label* set moves only the
 recall and precision denominators, so the control check — the one that matters most — still runs.
-A threshold naming a metric the run does not produce is reported as unchecked rather than
-silently passing; a guard that cannot fire is indistinguishable from a guard that is working.
 
-**Not comparable is itself a finding**, at medium. Silence there would be indistinguishable from a
-clean month, and a guard that has quietly stopped guarding is the exact failure this whole
-workstream came out of.
+**Comparability is decided by IDENTITY, not by count.** The baseline records a hash of the query
+set and of the labels; the run recomputes both. Counting was the first design and it leaves a
+hole Codex found: swap one query for another and the count is still 53, so the run is declared
+comparable while measuring a different benchmark — and reports a clean month, or a regression,
+about something nobody recorded. The hashes are order-independent, because reordering
+`queries.json` is not a change to what is being measured and a guard that fires on a diff-only
+edit gets muted. A baseline carrying no hash at all is **not comparable** rather than falling back
+to counts: a compatibility fallback would reinstate the hole silently, on exactly the older files
+most likely to have drifted.
+
+**Two kinds of silence are themselves findings.** *Not comparable* files at medium. So does a
+configured threshold that **did not run** — because the metric was renamed, its baseline figure is
+missing, or the label set moved and took the label-dependent checks with it. Left as a printed
+note, either one reads as a clean month, which is the same shape as the defect this pipeline
+exists to catch, reintroduced one level up. The reporter is allowed to be quiet in exactly one
+state: every configured threshold ran, and every one stayed inside its tolerance.
 
 **The baseline is never re-recorded by the job.** A guard that follows the observed value is a
 thermometer reporting room temperature no matter what the room is doing. Re-recording is a PR.

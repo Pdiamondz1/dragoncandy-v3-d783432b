@@ -29,7 +29,9 @@
 import { readFileSync, writeFileSync, existsSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
-import { rank, controlSeparation, recallPrecision, tailShare, compareToBaseline } from "./rag-eval/score.mjs";
+import {
+  rank, controlSeparation, recallPrecision, tailShare, compareToBaseline, hashQueries, hashLabels,
+} from "./rag-eval/score.mjs";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 
@@ -361,6 +363,11 @@ const result = {
   realQueries: realR.length,
   controlQueries: sep.controlCount,
   labelledQueries: labelled,
+  // Identity, not just size. A baseline comparison that checks counts alone calls a run
+  // comparable after one query has been swapped for another — measuring a different benchmark
+  // and reporting confidently about it.
+  querySetHash: hashQueries({ real, control }),
+  labelSetHash: hashLabels(labelRows),
   benchmarkDrift: unseenQueries,
 };
 
@@ -375,6 +382,7 @@ if (existsSync(BASELINE_PATH)) {
     console.log(`   ${c.breached ? "REGRESSED" : "ok       "} ${c.key.padEnd(26)} ` +
       `baseline ${fmt(c.baseline)}  now ${fmt(c.observed)}  (tolerance ${fmt(c.tolerance)})`);
   }
+  for (const u of v.unchecked ?? []) console.log(`   NOT CHECKED ${u.key.padEnd(26)} ${u.reason}`);
   if (!v.comparable) console.log("   NOT COMPARABLE — see the note above.");
   else if (v.regressions.length === 0) console.log("   no metric moved past its tolerance.");
 } else {

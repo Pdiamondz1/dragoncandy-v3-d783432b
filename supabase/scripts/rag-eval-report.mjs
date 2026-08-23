@@ -100,6 +100,27 @@ if (!verdict) {
     source: "rag-eval",
   });
 } else {
+  // A configured threshold that did not run is a guard silently switched off. Left as a printed
+  // note it reads as a clean month — which is the same shape as the defect this pipeline exists
+  // to catch, reintroduced one level up. One finding covers all the causes (a renamed metric, a
+  // missing baseline figure, a label set that no longer matches), because they have one remedy:
+  // re-record the baseline in a PR.
+  if (verdict.unchecked?.length) {
+    findings.push({
+      severity: "medium",
+      title: `RAG retrieval evaluation skipped ${verdict.unchecked.length} configured check(s)`,
+      summary_md:
+        "These thresholds are configured in `supabase/scripts/rag-eval/baseline.json` but did not " +
+        "run, so **nothing guarded them this month**:\n\n" +
+        verdict.unchecked.map((u) => `- \`${u.key}\` — ${u.reason}`).join("\n") +
+        "\n\nFix by re-recording the baseline from a run you trust, in a PR. Removing the " +
+        "threshold instead is a decision to stop guarding the metric — fine, but say so.\n" +
+        contextBlock(),
+      evidence: { unchecked: verdict.unchecked },
+      fingerprint: "rag-eval:unchecked-thresholds",
+      source: "rag-eval",
+    });
+  }
   for (const r of verdict.regressions) {
     findings.push({
       severity: r.severity,
@@ -120,6 +141,8 @@ if (findings.length === 0) {
   const checked = verdict.checks.map((c) => c.key).join(", ");
   console.log(`no regression — ${verdict.checks.length} check(s) within tolerance (${checked}).`);
   for (const n of verdict.notes) console.log(`note: ${n}`);
+  // Reaching here means every configured threshold ran and stayed inside its tolerance. That is
+  // the ONLY state in which this script is allowed to be quiet.
   process.exit(0);
 }
 
