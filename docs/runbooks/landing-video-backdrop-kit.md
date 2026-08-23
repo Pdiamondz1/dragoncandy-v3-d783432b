@@ -48,13 +48,13 @@ OUT=public/landing/reels
 
 # Portrait — as shot, audio stripped, web-optimised. Add -ss $TS -t $TD before -c:v if trimming.
 ffmpeg -y -i "$SRC" -an [-ss $TS -t $TD] \
-  -c:v libx264 -crf 24 -preset slow -pix_fmt yuv420p \
+  -c:v libx264 -crf 30 -preset slow -pix_fmt yuv420p \
   -movflags +faststart "$OUT/$SLUG.mp4"
 
 # Wide — 16:9 crop at the chosen Y offset, same trim window, native 720 width (no upscale — the
 # source only has 720 columns of pixels either way).
 ffmpeg -y -i "$SRC" -an [-ss $TS -t $TD] -vf "crop=720:405:0:$Y" \
-  -c:v libx264 -crf 24 -preset slow -pix_fmt yuv420p \
+  -c:v libx264 -crf 30 -preset slow -pix_fmt yuv420p \
   -movflags +faststart "$OUT/$SLUG-wide.mp4"
 
 # Posters — a representative second per encode, chosen per clip (see below), never a blind default.
@@ -62,9 +62,17 @@ ffmpeg -y -ss $PT -i "$OUT/$SLUG.mp4"      -frames:v 1 -q:v 4 "$OUT/$SLUG-poster
 ffmpeg -y -ss $PT -i "$OUT/$SLUG-wide.mp4" -frames:v 1 -q:v 4 "$OUT/$SLUG-wide-poster.jpg"
 ```
 
-**`crf 24` is the starting point, not a fixed value** — the 2026-08-22 batch measured ~42.9 MB at
-`crf 24` (over the 40 MB ceiling below) and was re-tuned to `crf 26` for the whole batch, landing
-at 38 MB. Re-tune the same way if a future batch runs over.
+**`crf 30` is the current value, and CRF moves the needle less than you expect.** History: the
+2026-08-22 batch went `crf 24` (~42.9 MB, over the ceiling) → `crf 26` (38 MB). The 2026-08-23
+re-cut went to **`crf 30`**, measured on this footage as only **−31%** versus `crf 24` — nothing
+like the halving a two-stop CRF jump suggests, because fire, steam and food close-ups are
+genuinely expensive to encode. **Duration is the bigger lever than CRF**: dropping two reels and
+trimming three cut total runtime 27%, which did more than the CRF change did.
+
+**Verify quality at the value you pick, don't assume it.** `crf 30` was accepted by A/B-ing a
+coal-oven fire frame (the hardest content in the library) against `crf 24` at display size: no
+visible difference, and that is before the scrim covers 60% of it. Do the same A/B rather than
+trusting the number.
 
 **Known dimension quirk:** `crop=720:405:0:$Y` asks for height 405, which is odd. `-pix_fmt
 yuv420p` requires 4:2:0 chroma subsampling, which requires even width and height, so libx264
@@ -110,6 +118,40 @@ timing or well-tested code. Clips already at or under 12s are encoded whole with
 because its 12.07s source duration was mis-classified as "already under the cap"; the fix was
 re-encoding with an explicit `-t 12` (see commit `21caeaf8`). `ffprobe`-check every output's
 duration before committing — see Verification below.
+
+## No burned-in captions — the rule that cost two reels
+
+**A reel that carries its own text cannot go behind the slogan.** These are real social posts, and
+social posts are captioned: hard subtitles, a title card, a stitched-in meme. Whatever the reel
+says competes with "Where Restaurants & Creators build content together" sitting on top of it, and
+the slogan is the one that loses — the viewer reads two headlines and believes neither.
+
+This was missed on the first pass and found on 2026-08-23 by sampling every reel four times into a
+contact sheet. **Five of ten were carrying text.** Check this way, not by watching the clips —
+captions come and go in under a second and the eye forgives them in motion in a way it does not
+when they are frozen behind a headline.
+
+| reel | text | window | outcome |
+|---|---|---|---|
+| `abb-flatbread` | hard subtitles nearly throughout | clean only 26.8–31.5s | **trimmed** to 26.8 +4.4s (fire → pizza) |
+| `uncle-rocco-new-menu` | stitched-in meme + caption | clean after ~3.4s | **trimmed** to 3.6 +8.5s |
+| `uncle-rocco-steak-frites` | "Steak Frites" title card | appears 12.0–12.8s | **trimmed** to 0.5 +11.5s |
+| `uncle-rocco-brunch` | "What I mean by: 'Wanna grab brunch?'" | **entire clip** | **dropped** |
+| `uncle-rocco-pancakes` | "This and an iced latte." | **entire clip** | **dropped** |
+
+Two consequences worth carrying:
+
+- **A clean window can be shorter than the 12s cap, and that is fine.** `abb-flatbread` is 4.4s.
+  The cap is a ceiling the stall watchdog imposes, not a target.
+- **Dropping reels changes the restaurant mix, and the mix is a design constraint.** Both drops
+  were Uncle Rocco, taking the library from 5/5 to 5 ABB / 3 Uncle Rocco. Perfect alternation is
+  then impossible; `landingClips.ts` documents the minimum-adjacency order and a test pins it.
+- **Re-cutting changes the brightness, which changes the scrim.** The new windows are brighter
+  (a coal-oven fire; an outdoor daylight street), which dropped the pink and mint accent words to
+  1.88:1 and 1.90:1 over the brightest tenth of the band behind them. The scrim's middle stop went
+  40% → **60%**, the lowest value clearing 3.0:1 on both the brightest frame's mean and its 90th
+  percentile. **Re-run the contrast check after any re-cut — trimming a clip is a contrast change,
+  not just a length change.**
 
 ## Choosing the crop offset, trim window, and poster — judgement, not mechanics
 
@@ -192,14 +234,20 @@ bigger change than the naming contract above warrants — see `src/components/la
 
 ## The 40 MB ceiling
 
-**Expected total: 30–40 MB, committed to the repo.** This is the entire homepage's payload — it
-ships to every visitor who lands on `/`. Report the real measured total after encoding; don't
-restate the target as if it were the result. The 2026-08-22 library measured **38 MB (38,944 KB)**
-at `crf 26` after the `crf 24` first pass came in at ~42.9 MB, over the ceiling.
+**Expected total: under 20 MB, committed to the repo.** This is the entire homepage's payload —
+it ships to every visitor who lands on `/`, **and it ships inside the iOS binary**, because
+`capacitor.config.ts` sets `webDir: 'dist'` with no `server.url`. Before the 2026-08-23 re-cut the
+reels were 36 MB of a **54 MB** app: two thirds of the native binary was a landing page a
+signed-in user never sees. That is the reason the ceiling came down.
 
-**If a future batch exceeds 40 MB, stop and re-tune (`-crf 26`, or higher) before committing.**
-Re-encoding one clip at a time and re-checking `du -sh` is cheaper than shipping an oversized
-homepage.
+Report the real measured total after encoding, and **sum the file bytes rather than reading
+`du -sh`** — `du` reports allocated blocks and over-states a directory of 32 files by several MB
+(it said 21 MB where the actual content was 16.0 MB). The 2026-08-23 library measures **16.0 MB**
+(portrait 11.0, wide 4.4, posters 0.6) at `crf 30` across eight reels.
+
+**If a future batch exceeds 20 MB, stop and re-tune before committing** — first by cutting
+runtime (drop or trim a reel), then by raising CRF. Re-encoding one clip at a time is cheaper than
+shipping an oversized homepage, and far cheaper than shipping an oversized app.
 
 ## Verification
 

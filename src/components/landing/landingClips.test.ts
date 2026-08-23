@@ -4,12 +4,38 @@ import { join } from "node:path";
 import { LANDING_REELS, resolveReelSource } from "./landingClips";
 
 describe("LANDING_REELS", () => {
-  it("has ten reels, each with a portrait source and poster", () => {
-    expect(LANDING_REELS).toHaveLength(10);
+  it("has eight reels, each with a portrait source and poster", () => {
+    expect(LANDING_REELS).toHaveLength(8);
     for (const reel of LANDING_REELS) {
       expect(reel.src).toMatch(/^\/landing\/reels\/[a-z0-9-]+\.mp4$/);
       expect(reel.poster).toMatch(/^\/landing\/reels\/[a-z0-9-]+-poster\.jpg$/);
     }
+  });
+
+  it("never plays two clips from the same restaurant back to back more than the split forces", () => {
+    // Five ABB and three Uncle Rocco cannot alternate perfectly: in a cycle of 8, the
+    // majority restaurant must touch itself at least 5 - 3 = 2 times. More than that and the
+    // page starts reading as one restaurant's showreel, which is the thing this order exists
+    // to prevent. Wraps, because the playlist loops.
+    const restaurant = (src: string) =>
+      src.includes("uncle-rocco") ? "uncle-rocco" : "abb";
+    const names = LANDING_REELS.map((r) => restaurant(r.src));
+    const abb = names.filter((n) => n === "abb").length;
+    const adjacent = names.filter(
+      (n, i) => n === names[(i + 1) % names.length],
+    ).length;
+
+    expect(abb).toBe(5);
+    expect(adjacent).toBe(Math.abs(abb - (names.length - abb)));
+  });
+
+  it("carries no reel whose burned-in caption was the reason it was cut", () => {
+    // uncle-rocco-brunch and uncle-rocco-pancakes showed a caption from the original post for
+    // their whole duration, so neither could be trimmed to a clean window and both were
+    // dropped. Re-adding either by slug would put competing text back under the slogan.
+    const slugs = LANDING_REELS.map((r) => r.src);
+    expect(slugs).not.toContain("/landing/reels/uncle-rocco-brunch.mp4");
+    expect(slugs).not.toContain("/landing/reels/uncle-rocco-pancakes.mp4");
   });
 
   it("points at files that actually exist in public/", () => {

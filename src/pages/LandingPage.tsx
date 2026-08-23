@@ -43,10 +43,17 @@ export default function LandingPage() {
       {/* Scrim. Darker at top and bottom so the header, the CTA and the footer stay legible over
           a bright frame; lighter through the middle so the footage still reads as footage. The
           bottom stop is the heaviest because the footer's text is the smallest on the page and
-          therefore needs the highest contrast ratio. */}
+          therefore needs the highest contrast ratio.
+          The middle stop is 60%, not the 40% this shipped with. Re-cutting the reel library —
+          `abb-flatbread` became a coal-oven fire, `uncle-rocco-new-menu` an outdoor daylight
+          street — raised the brightest frames enough that the pink and mint accent words fell to
+          1.88:1 and 1.90:1 across the brightest 10% of the band behind them, against the 3.0:1
+          that large text needs. 60% is the lowest stop that clears 3.0 on BOTH the mean of the
+          brightest frame and that frame's 90th percentile; 40/50/55 all clear the mean and fail
+          the percentile. Measured per reel, not estimated — see the runbook. */}
       <div
         aria-hidden
-        className="absolute inset-0 -z-10 bg-gradient-to-b from-landing-grape/70 via-landing-grape/40 to-landing-grape/95"
+        className="absolute inset-0 -z-10 bg-gradient-to-b from-landing-grape/70 via-landing-grape/60 to-landing-grape/95"
       />
 
       <Header />
