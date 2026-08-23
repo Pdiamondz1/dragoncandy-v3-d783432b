@@ -69,6 +69,18 @@ const parseVec = (e) => (typeof e === "string" ? JSON.parse(e) : e);
  * single-character LIKE wildcard, this prefix is full of them, and this is a DELETE.
  */
 async function sweepTempRows() {
+  // Never throws. It is called from a `finally`, and an exception raised there would replace the
+  // error that got us into the finally, skip the reporting path, and leave the rows in place —
+  // which is the exact outcome this function exists to prevent.
+  try {
+    return await sweep();
+  } catch (e) {
+    return `cleanup FAILED to run: ${e instanceof Error ? e.message : String(e)}. ` +
+      `Prune: delete from donny_knowledge where metadata->>'source_id' like '${TEMP_PREFIX}%';`;
+  }
+}
+
+async function sweep() {
   let failed = 0;
   for (const [table, sel, filter, keyName, prefix] of [
     ["donny_knowledge", "id,metadata", `metadata->>source_id=like.${TEMP_PREFIX}*`, "id", TEMP_PREFIX],
@@ -125,9 +137,15 @@ for (let offset = 0; ; offset += 50) {
 console.log(`index: ${index.length} chunks, ${new Set(index.map((r) => r.doc)).size} documents`);
 if (stale > 0) {
   console.warn(`WARNING: ${stale} leftover evaluation row(s) found and excluded from the index — a ` +
-    `previous run was interrupted before cleanup. Sweeping them now.`);
+    `previous run was interrupted before cleanup.`);
+}
+// Unconditional, and BOTH tables. `stale` counts donny_knowledge rows only, so gating on it
+// missed an interrupted run that cleared its RAG rows but left internal_docs behind — invisible
+// to that counter and, on the OPENAI_API_KEY path, never swept at all. Two SELECTs when clean.
+{
   const err = await sweepTempRows();
-  console.log(err ? `  ${err}` : "  leftovers removed (verified by re-reading both tables)");
+  if (err) console.warn(`startup sweep: ${err}`);
+  else if (stale > 0) console.log("  leftovers removed (verified by re-reading both tables)");
 }
 
 // ── where does each chunk sit in its source document? ────────────────────────────────────────
