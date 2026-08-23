@@ -227,13 +227,23 @@ slice's interface.
 Actions name the keys they demand, in one place:
 
 ```ts
-const ACTION_REQUIREMENTS: Record<GatedAction, RequirementKey[]> = {
-  publish_campaign: ['stripe', 'address'],
+const ACTION_REQUIREMENTS: Record<GatedAction, readonly RequirementKey[]> = {
+  publish_campaign: ['stripe'],
   apply_campaign:   ['stripe'],
   accept_offer:     ['stripe'],
-  // slice 2 adds business_identity / phone_verified here, not at call sites
+  // slice 2 adds business_identity / phone_verified / address here,
+  // once each has a capture flow — never at the call sites.
 };
 ```
+
+**Slice 1 ships this registry demanding `stripe` and nothing else — which is
+exactly today's behavior, refactored.** An earlier draft had
+`publish_campaign` demand `address`, and writing the consistency test (§10)
+proved it wrong twice over: brands can publish campaigns but have no `address`
+requirement (§4.4), so the test would fail; and address *capture* does not exist
+until slice 4, so gating on it would brick publishing for everyone. This is
+§11's rollout rule doing its job at design time — nothing gates on a dimension
+whose capture flow has not shipped.
 
 A call site becomes `<ReadinessGate action="publish_campaign">`. Three reasons
 this indirection earns its place:
