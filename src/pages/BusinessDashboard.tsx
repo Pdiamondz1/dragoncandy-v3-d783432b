@@ -13,17 +13,10 @@ import { DonnyHome } from '@/components/donny/DonnyHome';
 import BusinessOverview from './BusinessOverview';
 
 const BusinessDashboard = () => {
-  const { missions, isFirstRun, completeMission, skipMissions } = useFirstRunMissions();
+  const { isFirstRun, skipMissions } = useFirstRunMissions();
 
-  if (isFirstRun && missions) {
-    return (
-      <FirstRunDashboard
-        role="business_client"
-        missions={missions}
-        onCompleteMission={completeMission}
-        onSkip={skipMissions}
-      />
-    );
+  if (isFirstRun) {
+    return <FirstRunDashboard role="business_client" onSkip={skipMissions} />;
   }
 
   if (!DONNY_FIRST_DASHBOARD_ENABLED) {

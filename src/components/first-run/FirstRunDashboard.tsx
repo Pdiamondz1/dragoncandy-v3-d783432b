@@ -2,17 +2,15 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { FirstRunHero } from './FirstRunHero';
 import { MissionChecklist } from './MissionChecklist';
-import type { UserRole, RoleMissions } from '@/types/firstRun';
+import type { UserRole } from '@/types/firstRun';
 import donnyEmblem from '@/assets/donny-emblem.webp';
 
 interface FirstRunDashboardProps {
   role: UserRole;
-  missions: RoleMissions;
-  onCompleteMission: (key: string) => void;
   onSkip: () => void;
 }
 
-export function FirstRunDashboard({ role, missions, onCompleteMission: _onCompleteMission, onSkip }: FirstRunDashboardProps) {
+export function FirstRunDashboard({ role, onSkip }: FirstRunDashboardProps) {
   const { profile } = useAuth();
   const navigate = useNavigate();
 
@@ -29,32 +27,6 @@ export function FirstRunDashboard({ role, missions, onCompleteMission: _onComple
         break;
       case 'brand':
         navigate('/dashboard/brand/style-picker');
-        break;
-    }
-  };
-
-  const handleMissionGo = (key: string) => {
-    switch (key) {
-      case 'browse_inspiration':
-      case 'create_campaign':
-      case 'launch_campaign':
-        navigate('/dashboard/business/campaigns/create');
-        break;
-      case 'view_campaigns':
-      case 'apply_campaign':
-        navigate('/dashboard/creator/campaigns');
-        break;
-      case 'add_portfolio':
-        navigate('/dashboard/creator/settings');
-        break;
-      case 'select_style':
-        navigate('/dashboard/brand/style-picker');
-        break;
-      case 'browse_creators':
-        navigate('/dashboard/brand/creators');
-        break;
-      case 'create_sponsorship':
-        navigate('/dashboard/brand/campaigns/create');
         break;
     }
   };
@@ -76,12 +48,7 @@ export function FirstRunDashboard({ role, missions, onCompleteMission: _onComple
       </div>
 
       <FirstRunHero name={displayName} role={role} onCtaClick={handleCtaClick} />
-      <MissionChecklist
-        role={role}
-        missions={missions}
-        onMissionGo={handleMissionGo}
-        onSkip={onSkip}
-      />
+      <MissionChecklist role={role} onSkip={onSkip} />
 
       <p className="text-center text-xs text-gray-500 mt-4">
         Takes about 60 seconds total ⚡
