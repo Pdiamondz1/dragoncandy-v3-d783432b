@@ -271,12 +271,20 @@ run reports `PARTIAL` with a denied count. An operator who reads "disabled" as
 To actually remove them, do one of these while the scope is still granted and
 the flag still `true`:
 
-- **Per identity, by hand** — Gmail → Settings → Accounts and Import → "Send
-  mail as" → *edit info* on the address → clear the signature. Or delete the
-  send-as identity outright, which also stops it matching.
-- **In bulk** — patch each identity's signature to an empty string via the same
-  `settings/sendAs/{email}` call the installer uses. There is no helper for this
-  in `Code.gs`; it would need writing.
+- **In bulk, via the API** — PATCH each identity's `signature` to an empty
+  string through the same `settings/sendAs/{email}` call the installer uses.
+  There is no helper for this in `Code.gs`; it would need writing. This is the
+  reliable route, because it targets exactly the field the installer wrote.
+- **Delete the send-as identity** — Gmail → Settings → Accounts and Import →
+  "Send mail as" → *delete*. Blunt (the address stops being usable as a sender)
+  but unambiguous, and it stops the installer matching it.
+- **By hand in the UI** — Gmail → Settings → **General → Signature**, *not* the
+  "edit info" dialog on the send-as address, which only covers display name and
+  reply-to. **Caveat: this path is unverified.** Gmail's General tab manages
+  named signatures with per-address defaults, and the exact correspondence
+  between those and the `sendAs[].signature` field this script writes has not
+  been checked on a real account. Confirm before relying on it, or use the API
+  route above.
 
 Order matters here too: revoke the scope first and **this automation** can no
 longer clear them. That is a limit of the tooling, not of Gmail — the mailbox
