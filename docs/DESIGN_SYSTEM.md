@@ -330,6 +330,38 @@ same token/font system, unaffected; `/internal` stays dark.
   `100dvh` `main` hands short pages the same dead scroll one container down — so `DashboardLayout` tracks
   the shell. Pinned by `src/layoutViewportHeight.test.ts`, as a text assertion, because jsdom has no layout
   engine to evaluate a CSS length. See `docs/wiki/concepts/mobile-viewport-fixed-positioning.md` (§9).
+* **`body` must be sized in the SAME UNIT as the shell — `height: 100dvh`, never `height: 100%`.**
+  A percentage resolves against the initial containing block, which on iOS Safari is the **small**
+  viewport (toolbars showing). `100dvh` is the **current** dynamic viewport, and it **grows** as
+  Safari collapses or compacts its toolbars — aggressively so in landscape. So with `AppShell` at
+  `h-[100dvh]` and `body` at `height: 100%`, the shell outgrows body's fixed box the moment the
+  toolbar moves, body scrolls by exactly that difference, and the strip below the shell paints
+  body's own background: **white**.
+  **This project measured the two units disagreeing and did not connect it.** The "screen jumps"
+  fix recorded body `clientHeight` **753** against `100vh` **833** — then changed the *shell's*
+  unit and left the other side of the comparison on `%`. That closed the always-80px case and left
+  a gap that opens and shuts with the toolbar. Founder-reported 2026-08-24 with screenshots: white
+  below the footer in portrait, much more of it in landscape, scrollbar visible in both.
+  **The durable rule is not "use dvh" — it is that a height comparison has TWO sides, and fixing
+  one of them is not fixing it.** Invisible in Chrome, in device emulation and in the Capacitor
+  WebView, all for the same reason: none has a collapsing toolbar, so ICB `===` dvh and the gap is
+  structurally zero. Third defect in this family after the two rules below.
+  Keep `height: 100%` only as a fallback declared **before** the `dvh` line; if it came after it
+  would win. Pinned by `src/documentOverscroll.test.ts`, which checks the declaration order too.
+* **The landing locks the document while it is mounted, and scales down on SHORT viewports.**
+  `html.landing-surface, html.landing-surface body { overflow: hidden }` — the landing is one
+  screen by definition, so the document has nowhere to scroll. This is the guard that does not
+  depend on a unit comparison coming out right, and it is also the standard way to stop the iOS
+  rubber-band, which cannot fire on a document with no scrollable overflow. **`#main-content` is
+  deliberately NOT locked**: if the content ever genuinely does not fit, `main` can still scroll,
+  so the only CTA can never become unreachable. Clipping "Get started" is a worse failure than a
+  scrollbar.
+  The fit itself comes from a **height** breakpoint, `short:` (`max-height: 430px`) in
+  `tailwind.config.ts` — no width breakpoint can see that a phone is held sideways. Measured, not
+  guessed: the hero's natural content is **277px** at landscape width plus a **78px** footer =
+  **355px**, against roughly **310px** a phone leaves once Safari's toolbars show. `short:` steps
+  the headline, CTA, lead-in and footer down to **195px** total. Re-measure if the hero gains a
+  line.
 * **A page with nothing to scroll can still be DRAGGED, and the gutter it opens is white** —
   `html, body { overscroll-behavior-y: none }` in `src/index.css`, plus a canvas colour for any
   dark surface. Closing the scrollable gap (`h-[100dvh]`, above) fixed the screen *jumping*; it did

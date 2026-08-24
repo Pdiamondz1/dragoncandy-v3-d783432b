@@ -22,8 +22,30 @@
      Known cost, accepted: this also disables pull-to-refresh on Android Chrome. For an app that
      ships inside a native wrapper, a page that cannot be dragged is the intent, not a
      regression. See docs/DESIGN_SYSTEM.md. */
+  /* `height: 100dvh`, NOT `height: 100%` — body must be measured in the same unit as the shell,
+     or the two disagree and the difference becomes scrollable white.
+
+     A percentage height resolves against the INITIAL CONTAINING BLOCK, and on iOS Safari the ICB
+     is the SMALL viewport (toolbars showing). `100dvh` is the CURRENT dynamic viewport, which
+     GROWS as Safari collapses or compacts its toolbars — aggressively so in landscape. So with
+     body pinned at the small height and `AppShell` at `h-[100dvh]`, the shell outgrows body's box
+     the moment the toolbar moves, body scrolls by exactly that difference, and the strip below
+     the shell paints body's own background: white.
+
+     This repo already measured the two units disagreeing and did not connect it: fixing the jump
+     (see layoutViewportHeight.test.ts) recorded body `clientHeight` **753** against `100vh`
+     **833**. That fix changed the SHELL's unit from vh to dvh and left the other side of the
+     comparison on `%` — which closed the always-80px case and left a gap that opens and shuts
+     with the toolbar. Reported 2026-08-24 with screenshots: white below the footer in portrait,
+     a lot more of it in landscape, scrollbar visible in both.
+
+     Invisible in Chrome, in device emulation and in the Capacitor WebView, all for one reason:
+     none of them has a collapsing toolbar, so ICB === dvh and the gap is structurally zero.
+     Third defect in this family (see DESIGN_SYSTEM.md sec 8 and sec 9) that only a real phone
+     could show. */
   html {
-    height: 100%;
+    height: 100%; /* fallback for engines without dvh; overridden immediately below */
+    height: 100dvh;
     max-width: 100%;
     overflow-x: hidden;
     overscroll-behavior-y: none;
@@ -34,7 +56,8 @@
   }
 
   body {
-    height: 100%;
+    height: 100%; /* fallback; see the html rule above for why dvh is the load-bearing one */
+    height: 100dvh;
     max-width: 100%;
     overflow-x: hidden;
     overscroll-behavior-y: none;
@@ -56,6 +79,23 @@
      rather than a white band that reads as a broken page. */
   html.landing-surface {
     @apply bg-landing-grape;
+  }
+
+  /* The landing is one screen by definition, so while it is mounted the DOCUMENT cannot scroll
+     at all. This is the guard that does not depend on a unit comparison coming out right: even
+     if some future element outgrows the viewport, the document has nowhere to go and no white
+     strip can open under it. It is also the standard way to stop the iOS rubber-band, which does
+     not fire on a document with no scrollable overflow — so it covers the case where
+     `overscroll-behavior` is applied but not honoured.
+
+     Scoped to the landing on purpose: app pages legitimately scroll.
+
+     `#main-content` is deliberately NOT locked. If the landing's content ever genuinely does not
+     fit — a very short landscape window — main can still scroll, so the "Get started" button can
+     never become unreachable. Clipping the only CTA is a worse failure than a scrollbar. */
+  html.landing-surface,
+  html.landing-surface body {
+    overflow: hidden;
   }
 
   /* Prevent any element from exceeding viewport width on mobile */
