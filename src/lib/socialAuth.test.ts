@@ -1,0 +1,147 @@
+// @vitest-environment jsdom
+import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
+import {
+  SOCIAL_PROVIDERS,
+  PROVIDER_LABELS,
+  isAccountRole,
+  stashPendingRole,
+  takePendingRole,
+} from './socialAuth';
+
+describe('isAccountRole', () => {
+  it.each(['business_client', 'content_creator', 'brand'])('accepts %s', (role) => {
+    expect(isAccountRole(role)).toBe(true);
+  });
+
+  /**
+   * The value comes back from sessionStorage, which anything in this origin can
+   * write, and is handed straight to an RPC that sets an account type. Casting it
+   * would make "whatever was in storage" the account type.
+   */
+  it.each([null, undefined, '', 'admin', 'ADMIN', 'content creator', 0, {}, ['brand']])(
+    'rejects %s',
+    (value) => {
+      expect(isAccountRole(value)).toBe(false);
+    },
+  );
+});
+
+describe('pending role round trip', () => {
+  beforeEach(() => sessionStorage.clear());
+
+  it('returns what was stashed', () => {
+    stashPendingRole('business_client');
+    expect(takePendingRole()).toBe('business_client');
+  });
+
+  /**
+   * One round trip only. A role left behind in a shared browser would silently
+   * re-file the next person's account.
+   */
+  it('is consumed by the first read', () => {
+    stashPendingRole('brand');
+    expect(takePendingRole()).toBe('brand');
+    expect(takePendingRole()).toBeNull();
+  });
+
+  it('returns null when nothing was stashed', () => {
+    expect(takePendingRole()).toBeNull();
+  });
+
+  it('drops a value that is not one of the three roles, and still clears it', () => {
+    sessionStorage.setItem('dc_oauth_pending_role', 'admin');
+    expect(takePendingRole()).toBeNull();
+    expect(sessionStorage.getItem('dc_oauth_pending_role')).toBeNull();
+  });
+
+  it('does not throw when storage is unavailable', () => {
+    const spy = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
+      throw new Error('storage disabled');
+    });
+    expect(() => stashPendingRole('content_creator')).not.toThrow();
+    spy.mockRestore();
+  });
+});
+
+describe('provider list', () => {
+  it('labels every provider it offers', () => {
+    for (const p of SOCIAL_PROVIDERS) {
+      expect(PROVIDER_LABELS[p]).toBeTruthy();
+    }
+  });
+
+  /**
+   * The client list and `handle_new_user`'s allowlist decide two halves of one
+   * question — whether an account from this provider counts as email-verified.
+   * Added here alone, its users are told to verify an email that will never be
+   * sent; added there alone, it does nothing. Neither half fails visibly, so the
+   * pairing is asserted rather than remembered.
+   */
+  it('matches the provider allowlist in the migration that grants verification', () => {
+    const sql = readFileSync(
+      join(process.cwd(), 'supabase/migrations/20260825140000_social_login_support.sql'),
+      'utf8',
+    );
+    const match = sql.match(/v_provider IN \(([^)]*)\)/);
+    expect(match, 'provider allowlist not found in the migration').not.toBeNull();
+    const inMigration = [...match![1].matchAll(/'([a-z]+)'/g)].map((m) => m[1]).sort();
+    expect(inMigration).toEqual([...SOCIAL_PROVIDERS].sort());
+  });
+
+  /**
+   * Apple requires Sign in with Apple in any iOS app offering another social
+   * login, and this app ships in a Capacitor shell. Dropping it is an App Store
+   * rejection, not a preference.
+   */
+  it('includes Apple, which iOS requires alongside any other social login', () => {
+    expect(SOCIAL_PROVIDERS).toContain('apple');
+  });
+});
+
+describe('the RPC this calls actually exists', () => {
+  const MIGRATION = 'supabase/migrations/20260825140000_social_login_support.sql';
+
+  /**
+   * TypeScript will not catch a typo here, and this was checked rather than
+   * assumed: a control file calling `supabase.rpc('this_function_does_not_exist_anywhere')`
+   * produced ZERO type errors, so the `Database` generic is not constraining
+   * `rpc()` on this client. Combined with `applyPendingRole` swallowing every
+   * failure — deliberately, since a role is not worth blocking a sign-in over —
+   * a misspelled name would be silent in both directions.
+   */
+  it('names a function the migration creates, with the parameter it declares', () => {
+    const src = readFileSync(join(process.cwd(), 'src/lib/socialAuth.ts'), 'utf8');
+    const call = src.match(/supabase\.rpc\(\s*'([a-z_]+)'\s*,\s*\{\s*([a-z_]+):/);
+    expect(call, 'no rpc call found in socialAuth.ts').not.toBeNull();
+    const [, fnName, paramName] = call!;
+
+    const sql = readFileSync(join(process.cwd(), MIGRATION), 'utf8');
+    expect(sql).toContain(`function public.${fnName}(${paramName} `);
+  });
+
+  /**
+   * The RPC is reachable by signed-in users and by nobody else. A definer
+   * function is executable by PUBLIC unless revoked — the Supabase default this
+   * project has been bitten by before.
+   */
+  it('is revoked from anon and granted to authenticated', () => {
+    const sql = readFileSync(join(process.cwd(), MIGRATION), 'utf8');
+    expect(sql).toMatch(/revoke execute on function public\.claim_initial_role[^;]*from public, anon;/);
+    expect(sql).toMatch(/grant execute on function public\.claim_initial_role[^;]*to authenticated;/);
+  });
+
+  /**
+   * The whole point of the migration's first half. Mirroring `email_confirmed_at`
+   * would auto-verify every password signup, because Supabase's own confirmation
+   * is disabled on this project (45 of 45 users confirmed, 44 within one second
+   * of creation).
+   */
+  it('grants verification from the provider, never from email_confirmed_at', () => {
+    const sql = readFileSync(join(process.cwd(), MIGRATION), 'utf8');
+    const code = sql.split('\n').filter((l) => !l.trimStart().startsWith('--')).join('\n');
+    expect(code).toContain('v_email_verified := v_provider IN');
+    expect(code).not.toContain('email_confirmed_at');
+  });
+});

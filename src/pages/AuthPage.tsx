@@ -11,6 +11,8 @@ import { BRAND_ROLE_ENABLED } from "@/lib/featureConfig";
 import { AuthShell } from "@/components/auth/AuthShell";
 import { Eyebrow } from "@/components/landing/Eyebrow";
 import { ALLOWED_REDIRECT_ORIGINS } from "@/lib/allowedOrigins";
+import { SocialAuthButtons } from "@/components/auth/SocialAuthButtons";
+import { applyPendingRole } from "@/lib/socialAuth";
 
 type SignupStep = "role-selection" | "signup-form";
 
@@ -80,6 +82,13 @@ const AuthPage = () => {
     if (!user) return;
 
     try {
+      // Apply the role a social signup chose, BEFORE reading the profile below —
+      // `claim_initial_role` may change it, and reading first would route the user
+      // by the trigger's default (`content_creator`) for exactly one visit, landing
+      // a restaurant on the creator dashboard. Resolves to null and does nothing
+      // for every password login, which stash nothing.
+      await applyPendingRole();
+
       const { data: profile } = await supabase
         .from('profiles')
         .select('role, email_verified')
@@ -275,6 +284,10 @@ const AuthPage = () => {
 
           <AuthForm mode="login" onError={setError} />
 
+          {/* Role is null on login: the account already has one, and `claim_initial_role`
+              refuses anything but a fresh account anyway. */}
+          <SocialAuthButtons mode="login" role={null} onError={setError} />
+
           {error === 'verify_email' ? (
             <div className="bg-red-50 border border-red-200 px-4 py-3 rounded-xl mt-3 max-w-sm md:max-w-md mx-auto text-center space-y-2">
               <p className="text-sm text-red-600">
@@ -330,6 +343,8 @@ const AuthPage = () => {
             preSelectedRole={selectedRole}
             onChangeRole={handleChangeRole}
           />
+
+          <SocialAuthButtons mode="signup" role={selectedRole} onError={setError} />
 
           {error === 'verify_email' ? (
             <div className="bg-red-50 border border-red-200 px-4 py-3 rounded-xl mt-3 max-w-sm md:max-w-md mx-auto text-center space-y-2">
