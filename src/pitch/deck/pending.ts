@@ -88,14 +88,55 @@ export const FOUNDER_INPUTS = {
   },
   hobokenRestaurantCount: {
     key: 'hobokenRestaurantCount',
-    question: 'How many restaurants are there in Hoboken — a countable number, with its source?',
+    question:
+      'How many restaurants operate in Hoboken IN TOTAL — the town-wide denominator, with its source? (Our own count is not this number: that is two.)',
     blocks: 'Hoboken liquidity',
     why: 'The liquidity model reaches a threshold in N months; the share of the town that represents is what makes the number mean anything, and no file in this repo holds it.',
+    // Asked once and answered with a different fact (2026-08-24): the founder replied "two —
+    // Uncle Rocco's and Antique Bar & Bakery", which is OUR restaurant count, not the town's.
+    // That is not a misreading to shrug at — the slide's own label read "Restaurants in
+    // Hoboken:", which next to a liquidity model says our supply just as naturally as it says
+    // the denominator. The label and this question are both now explicit about which is meant.
+    // The founder's answer is recorded where it belongs, in the Q&A doc's traction paragraph.
     value: null,
   },
 } as const satisfies Record<string, FounderInput>;
 
 export type FounderInputKey = keyof typeof FOUNDER_INPUTS;
+
+/**
+ * Facts the founders supplied that the repo cannot derive, and that are NOT one of the
+ * five §8 holes — answers, not gaps.
+ *
+ * They live here rather than in the assumptions register on purpose. The register's
+ * provenance vocabulary is MEASURED / BENCHMARKED / MODELED, and a founder saying a thing
+ * is none of the three. Tagging one `MEASURED` because it came from a person who would
+ * know is precisely the failure the Codex second review caught on the registered-user
+ * count: a provenance tag applied to a copy vouches for it. So these carry their own
+ * source and date in the type, and every consumer prints them.
+ */
+export interface FounderFact {
+  readonly statement: string;
+  /** Who said it, in what setting. Never a document that quotes them. */
+  readonly source: string;
+  readonly asOf: string;
+}
+
+export const FOUNDER_FACTS = {
+  /**
+   * The count an investor asks for in the room. Deliberately separate from the register's
+   * `registeredUsers` (45 accounts) and `payingCustomers` (0): three different numbers
+   * that describe three different things, and quoting one for another is how a deck gets
+   * caught. A committed launch restaurant is neither an account nor a customer.
+   */
+  launchRestaurants: {
+    statement:
+      'Two restaurants are committed to launch: Antique Bar & Bakery (the CEO\'s own) and Uncle Rocco\'s.',
+    source: 'founder statement, Damon Williams (CTO), in session',
+    asOf: '2026-08-24',
+  },
+} as const satisfies Record<string, FounderFact>;
+
 
 /** Every input still unanswered, in declaration order. */
 export const OUTSTANDING: readonly FounderInput[] = Object.values(

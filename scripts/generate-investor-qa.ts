@@ -28,7 +28,7 @@ import {
 } from '../src/pitch/model/derive';
 import { count, money, moneyShort, pct } from '../src/pitch/deck/format';
 import { GLOSSARY } from '../src/pitch/deck/glossary';
-import { OUTSTANDING } from '../src/pitch/deck/pending';
+import { FOUNDER_FACTS, OUTSTANDING } from '../src/pitch/deck/pending';
 
 const OUT = 'docs/DragonCandy_Investor_QA.md';
 
@@ -96,6 +96,12 @@ p('DragonCandy has **zero paying customers** and Stripe is in test mode. Prices 
 p('built platform are real and measured; the volumes they are multiplied by are modelled.');
 p('Every table below says which is which, and saying it first is stronger than being');
 p('asked.');
+p();
+p('**"So how many restaurants do you actually have?"** — ' + FOUNDER_FACTS.launchRestaurants.statement);
+p(`That is a different number from the **${count(OPERATING.registeredUsers.value)} registered accounts** and from the`);
+p('**' + count(OPERATING.payingCustomers.value) + ' paying customers**, and the three must not be substituted for each other in the');
+p(`room. Source: ${FOUNDER_FACTS.launchRestaurants.source}, ${FOUNDER_FACTS.launchRestaurants.asOf} — a founder`);
+p('statement, which is why it is not in the assumptions register and carries no provenance tag.');
 p();
 
 p('## Slide 6 — what is actually built');
