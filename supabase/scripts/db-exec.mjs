@@ -32,12 +32,15 @@
 // transaction, and records its ledger row in the same transaction so "applied" and "recorded" cannot
 // diverge. This project has three recorded instances of `recorded != actual` and one of
 // applied-but-not-recorded; both directions are the same bug wearing different clothes.
+//
+// Because that wrapper is the whole promise, `db:apply` REFUSES a migration that issues its own
+// BEGIN/COMMIT/ROLLBACK — an inner COMMIT ends the wrapper early and the ledger insert lands
+// outside it. See findTransactionControl.
 
 import { readFileSync, existsSync } from 'node:fs';
 import { basename, dirname, join } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { createInterface } from 'node:readline';
-import { pathToFileURL } from 'node:url';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const ENV_FILE = join(HERE, '.env.sync.local');
@@ -116,6 +119,95 @@ function printRows(rows) {
 }
 
 // ---------------------------------------------------------------------------
+// Transaction-control detection
+
+/**
+ * Blank out everything Postgres does not read as code: line and block comments, single-quoted
+ * strings, and dollar-quoted bodies. Regions are replaced space-for-space so offsets survive.
+ *
+ * The dollar-quote case is the whole reason this exists. `BEGIN` is also plpgsql block syntax, and
+ * 164 of this repo's migrations contain it inside a $$...$$ function body — a naive keyword scan
+ * would reject nearly every migration in the project.
+ */
+export function stripNonCode(sql) {
+  let out = '';
+  let i = 0;
+  const blank = (n) => ' '.repeat(n);
+
+  while (i < sql.length) {
+    const rest = sql.slice(i);
+
+    if (rest.startsWith('--')) {
+      const end = sql.indexOf('\n', i);
+      const stop = end === -1 ? sql.length : end;
+      out += blank(stop - i);
+      i = stop;
+      continue;
+    }
+
+    if (rest.startsWith('/*')) {
+      // Postgres block comments nest.
+      let depth = 1;
+      let j = i + 2;
+      while (j < sql.length && depth > 0) {
+        if (sql.startsWith('/*', j)) { depth++; j += 2; }
+        else if (sql.startsWith('*/', j)) { depth--; j += 2; }
+        else j++;
+      }
+      out += blank(j - i);
+      i = j;
+      continue;
+    }
+
+    if (rest[0] === "'") {
+      let j = i + 1;
+      while (j < sql.length) {
+        if (sql[j] === "'" && sql[j + 1] === "'") j += 2;
+        else if (sql[j] === "'") { j++; break; }
+        else j++;
+      }
+      out += blank(j - i);
+      i = j;
+      continue;
+    }
+
+    const dollar = rest.match(/^\$([A-Za-z_][A-Za-z0-9_]*)?\$/);
+    if (dollar) {
+      const tag = dollar[0];
+      const close = sql.indexOf(tag, i + tag.length);
+      const stop = close === -1 ? sql.length : close + tag.length;
+      out += blank(stop - i);
+      i = stop;
+      continue;
+    }
+
+    out += sql[i];
+    i++;
+  }
+  return out;
+}
+
+/**
+ * Return the transaction-control keyword a migration issues at statement level, or null.
+ *
+ * Why it matters, from a Codex review of this file: `db:apply` wraps the migration and its ledger
+ * row in one transaction so "applied" and "recorded" cannot diverge. A migration carrying its own
+ * COMMIT ends that wrapper early — the ledger insert then runs outside it, and a failure there
+ * leaves the schema applied and unrecorded. That is precisely the failure the wrapper exists to
+ * prevent, so the guarantee would be silently false exactly when it was needed.
+ * `20260719080000_dezzy_content_playbooks_shipped_log.sql` in this repo does this.
+ *
+ * `END` is a synonym for COMMIT and is deliberately NOT matched: it is also how a CASE expression
+ * closes, so matching it produces false positives on ordinary SQL. The gap is narrow, because a
+ * file that commits must first BEGIN and BEGIN is matched — the only miss is a file that leans on
+ * the wrapper's BEGIN and closes it with a bare END.
+ */
+export function findTransactionControl(sql) {
+  const m = stripNonCode(sql).match(/(?:^|;)\s*(begin|start\s+transaction|commit|rollback)\b/i);
+  return m ? m[1].toLowerCase().replace(/\s+/g, ' ') : null;
+}
+
+// ---------------------------------------------------------------------------
 // Commands
 
 export async function cmdQuery(token, ref, args) {
@@ -191,6 +283,23 @@ export async function cmdApply(token, ref, args) {
   // The cost of two calls is that they can half-apply — the migration runs, the ledger does not.
   // That is checked for explicitly below rather than left to the exit code.
   const noTx = args.includes('--no-transaction');
+
+  // The wrapper's atomicity is a promise about THIS file, so it gets checked against this file.
+  // Not a concern in --no-transaction mode, where there is no wrapper to end early.
+  if (!noTx) {
+    const txControl = findTransactionControl(sql);
+    if (txControl) {
+      die(
+        `${file} issues its own "${txControl}" at statement level.\n` +
+        '  db:apply wraps the migration and its ledger row in ONE transaction so that "applied" and\n' +
+        '  "recorded" cannot diverge. A COMMIT inside the file ends that wrapper early, and the ledger\n' +
+        '  insert then runs outside it — so the guarantee would be false exactly when it mattered.\n' +
+        '  Remove the transaction control from the file (db:apply supplies it), or pass\n' +
+        '  --no-transaction and record the version yourself if the ledger step fails.',
+      );
+    }
+  }
+
   const ledger = `insert into supabase_migrations.schema_migrations (version, name) values ('${version}', '${name.replace(/'/g, "''")}') on conflict (version) do nothing;`;
 
   console.error('');

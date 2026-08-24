@@ -14,7 +14,7 @@ import { mkdtempSync, writeFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
-import { cmdApply, runSql, ApiError } from './db-exec.mjs';
+import { cmdApply, runSql, ApiError, findTransactionControl } from './db-exec.mjs';
 
 const TOKEN = 'sbp_test_token_not_real';
 const REF = 'testprojectref';
@@ -155,5 +155,71 @@ describe('runSql', () => {
       expect(err).toBeInstanceOf(ApiError);
       expect(err.message).not.toContain(TOKEN);
     }
+  });
+});
+
+describe('findTransactionControl', () => {
+  // The false-positive control, and the reason this needs a scanner rather than a bare regex.
+  // 164 of this repo's 403 migrations contain BEGIN inside a plpgsql body. Swept 2026-08-24:
+  // exactly one file flagged, and it is the one the review named.
+  it('ignores BEGIN inside a dollar-quoted plpgsql body', () => {
+    const sql = [
+      'create or replace function public.f() returns trigger',
+      'language plpgsql as $$',
+      'begin',
+      "  if new.x is null then raise exception 'nope'; end if;",
+      '  return new;',
+      'end;',
+      '$$;',
+    ].join('\n');
+    expect(findTransactionControl(sql)).toBeNull();
+  });
+
+  it('ignores a tagged dollar quote', () => {
+    expect(findTransactionControl('do $body$ begin perform 1; end $body$;')).toBeNull();
+  });
+
+  it('ignores transaction words inside comments and string literals', () => {
+    expect(findTransactionControl('-- begin; commit;\nselect 1;')).toBeNull();
+    expect(findTransactionControl('/* commit; */ select 1;')).toBeNull();
+    expect(findTransactionControl("select 'commit;' as note;")).toBeNull();
+  });
+
+  it('ignores a CASE expression that closes with END', () => {
+    expect(findTransactionControl('select case when a then 1 else 2 end;')).toBeNull();
+  });
+
+  it('finds real transaction control at statement level', () => {
+    expect(findTransactionControl('begin;\nupdate t set x = 1;\ncommit;')).toBe('begin');
+    expect(findTransactionControl('update t set x = 1;\ncommit;')).toBe('commit');
+    expect(findTransactionControl('update t set x = 1;\nrollback;')).toBe('rollback');
+    expect(findTransactionControl('start transaction;\nselect 1;')).toBe('start transaction');
+  });
+});
+
+describe('db:apply refuses a migration that controls its own transaction', () => {
+  it('refuses in the wrapped path, naming the file and the keyword', async () => {
+    writeFileSync(migrationPath, 'begin;\nupdate t set x = 1;\ncommit;\n');
+    stubFetch([NOT_YET_RECORDED]);
+    const exit = vi.spyOn(process, 'exit').mockImplementation(() => {
+      throw new Error('__exit__');
+    });
+
+    await expect(cmdApply(TOKEN, REF, [migrationPath])).rejects.toThrow('__exit__');
+    expect(exit).toHaveBeenCalledWith(1);
+
+    const said = console.error.mock.calls.flat().join('\n');
+    expect(said).toContain(VERSION + '_example.sql');
+    expect(said).toContain('begin');
+    // Nothing was applied — only the not-yet-recorded pre-check ran.
+    expect(calls).toHaveLength(1);
+  });
+
+  it('allows it under --no-transaction, where there is no wrapper to end early', async () => {
+    writeFileSync(migrationPath, 'begin;\nupdate t set x = 1;\ncommit;\n');
+    stubFetch([NOT_YET_RECORDED, { ok: true, rows: [] }, { ok: true, rows: [] }, NOW_RECORDED]);
+
+    await cmdApply(TOKEN, REF, [migrationPath, '--no-transaction']);
+    expect(calls).toHaveLength(4);
   });
 });
