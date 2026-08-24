@@ -130,3 +130,41 @@ describe('redirect target', () => {
     expect(body).not.toMatch(/supabase\.co/);
   });
 });
+
+describe('revoking the grant', () => {
+  it('prefers the refresh token, which is the one that carries the grant', () => {
+    // This shipped revoking only the ACCESS token, under a comment asserting
+    // that invalidated the whole grant. It was never checked and it is wrong:
+    // RFC 7009 makes refresh->access a SHOULD and access->refresh only a MAY,
+    // and X's own docs claim no cascade in either direction.
+    //
+    // The failure that allowed: an EXPIRED access token plus a live refresh
+    // token, where revocation succeeds for a token X no longer recognises while
+    // the grant stays authorized -- and disconnect then deletes our only copy
+    // of the credential that could have withdrawn it.
+    const body = bodyOf('export async function revokeGrant');
+    expect(body).toMatch(/refreshToken/);
+    expect(body).toMatch(/'refresh_token'/);
+  });
+
+  it('falls back to the access token when offline access was declined', () => {
+    // A connection with no refresh token is a real state. The access token is
+    // then all there is, and its result stands alone.
+    expect(bodyOf('export async function revokeGrant')).toMatch(
+      /if \(!refreshToken\) return revokeToken\(accessToken, 'access_token'\);/,
+    );
+  });
+
+  it('does not attempt the access token when the grant revoke failed', () => {
+    // On `failed` the caller keeps the row and retries the whole thing, so a
+    // second call is wasted and could mislead a reader into thinking something
+    // was withdrawn.
+    expect(bodyOf('export async function revokeGrant')).toMatch(
+      /outcome !== 'failed'/,
+    );
+  });
+
+  it('treats a token X no longer recognises as already in the state we wanted', () => {
+    expect(bodyOf('export async function revokeToken')).toMatch(/already_invalid/);
+  });
+});

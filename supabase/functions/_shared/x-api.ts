@@ -387,8 +387,35 @@ export function refreshAccessToken(refreshToken: string): Promise<XTokenSet> {
  * Hand the grant back. Best-effort by contract, and the caller decides what a
  * failure means — see `x-disconnect` for the ordering, which follows YouTube and
  * Facebook: never abandon a live grant.
+ *
+ * ---------------------------------------------------------------------------
+ * PREFER THE REFRESH TOKEN, and this is a correction of a claim made here
+ * earlier.
+ *
+ * This function used to send `token_type_hint: 'access_token'` unconditionally,
+ * under a comment asserting that "revoking the ACCESS token invalidates the
+ * whole grant including the refresh token, so one call is enough". That was
+ * never checked, and it is not what the specification says.
+ *
+ * RFC 7009 §2.1 is asymmetric on purpose. Revoking a REFRESH token: the server
+ * "SHOULD also invalidate all access tokens based on the same authorization
+ * grant". Revoking an ACCESS token: the server "MAY revoke the respective
+ * refresh token as well" — may, not should. X's own documentation says only
+ * that the endpoint "invalidates an access token or refresh token" and claims
+ * no cascade in either direction.
+ *
+ * So the failure the old code allowed was real: with an EXPIRED access token
+ * and a live refresh token, revocation can return success for a token X no
+ * longer recognises while the grant it belongs to stays authorized — and
+ * `x-disconnect` would then delete our only copy of the refresh token and
+ * report a successful disconnect. The user is told access is withdrawn while X
+ * still authorizes the app, with nothing left that could revoke it.
+ * ---------------------------------------------------------------------------
  */
-export async function revokeToken(token: string): Promise<'revoked' | 'already_invalid' | 'failed'> {
+export async function revokeToken(
+  token: string,
+  hint: 'access_token' | 'refresh_token' = 'access_token',
+): Promise<'revoked' | 'already_invalid' | 'failed'> {
   try {
     const res = await fetch(`${X_API}/2/oauth2/revoke`, {
       method: 'POST',
@@ -398,7 +425,7 @@ export async function revokeToken(token: string): Promise<'revoked' | 'already_i
       },
       body: new URLSearchParams({
         token,
-        token_type_hint: 'access_token',
+        token_type_hint: hint,
         client_id: env(CLIENT_ID_ENV),
       }),
     });
@@ -409,4 +436,28 @@ export async function revokeToken(token: string): Promise<'revoked' | 'already_i
   } catch {
     return 'failed';
   }
+}
+
+/**
+ * Withdraw the whole grant, using the strongest credential available.
+ *
+ * The refresh token is the one that carries the grant, so it goes first and its
+ * result is authoritative. The access token is then revoked too, best-effort,
+ * because the cascade in RFC 7009 is a SHOULD rather than a MUST and one extra
+ * call is cheap insurance against a server that does not implement it.
+ *
+ * With no refresh token — `offline.access` declined — the access token is all
+ * there is, and its result stands alone.
+ */
+export async function revokeGrant(
+  accessToken: string,
+  refreshToken: string | null,
+): Promise<'revoked' | 'already_invalid' | 'failed'> {
+  if (!refreshToken) return revokeToken(accessToken, 'access_token');
+
+  const outcome = await revokeToken(refreshToken, 'refresh_token');
+  // Only worth attempting if the grant is actually gone; on `failed` the caller
+  // keeps the row and retries the whole thing.
+  if (outcome !== 'failed') await revokeToken(accessToken, 'access_token');
+  return outcome;
 }

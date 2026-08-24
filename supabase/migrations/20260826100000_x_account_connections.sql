@@ -243,7 +243,25 @@ create or replace function public.claim_x_token_refresh(
   -- How long a claim may be held before it is assumed dead. Generous relative to
   -- an edge function's own timeout: expiring a LIVE claim is worse than waiting,
   -- because it re-introduces exactly the concurrent refresh this prevents.
-  p_claim_ttl_seconds integer default 60
+  p_claim_ttl_seconds integer default 60,
+  -- ---------------------------------------------------------------------------
+  -- The token X just rejected, for the case an expiry cannot see.
+  --
+  -- X can revoke at any moment — a user removing the app does exactly that —
+  -- and `access_token_expires_at` goes on looking healthy for up to two hours
+  -- afterwards. So a caller holding a 401 needs to say "refresh unless someone
+  -- has ALREADY replaced the token I was rejected on", and that is a question
+  -- about identity, not about time.
+  --
+  -- The first attempt expressed it as an enormous skew, which was wrong and the
+  -- Codex review caught it: a 2-hour token can never satisfy a 30-day
+  -- threshold, so the branch that should have said "someone else already fixed
+  -- this" could never fire. Two concurrent 401s therefore refreshed SERIALLY,
+  -- the second rotating away the token the first had just minted, and the first
+  -- then marked a healthy connection `needs_reconnect`. A guard expressed
+  -- through an impossible threshold is not a guard.
+  -- ---------------------------------------------------------------------------
+  p_rejected_access_token text default null
 )
 returns jsonb
 language plpgsql
@@ -270,10 +288,20 @@ begin
     return jsonb_build_object('claimed', false, 'reason', 'no_connection');
   end if;
 
+  -- Someone else already replaced the token this caller was rejected on. The
+  -- correct answer is theirs — refreshing again would rotate away a credential
+  -- that works.
+  --
+  -- Checked BEFORE the expiry test, because the whole point of this branch is
+  -- the case where the expiry still looks fine and the token is dead anyway.
+  if p_rejected_access_token is not null then
+    if v_conn.access_token is distinct from p_rejected_access_token then
+      return jsonb_build_object('claimed', false, 'reason', 'fresh');
+    end if;
   -- Someone else refreshed while we were queued on the lock. This is the common
   -- case under concurrency and it must NOT result in a second call to X: the
   -- refresh token they used may already be dead.
-  if v_conn.access_token_expires_at > now() + make_interval(secs => p_skew_seconds) then
+  elsif v_conn.access_token_expires_at > now() + make_interval(secs => p_skew_seconds) then
     return jsonb_build_object('claimed', false, 'reason', 'fresh');
   end if;
 
@@ -303,9 +331,9 @@ begin
 end;
 $$;
 
-revoke execute on function public.claim_x_token_refresh(uuid, integer, integer)
+revoke execute on function public.claim_x_token_refresh(uuid, integer, integer, text)
   from public, anon, authenticated;
-grant execute on function public.claim_x_token_refresh(uuid, integer, integer) to service_role;
+grant execute on function public.claim_x_token_refresh(uuid, integer, integer, text) to service_role;
 
 -- ---------------------------------------------------------------------------
 -- commit_x_token_refresh — store the rotated pair, or record that it failed.

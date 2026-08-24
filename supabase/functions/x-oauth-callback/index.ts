@@ -26,7 +26,7 @@ import {
   exchangeCode,
   nonceFromState,
   redirectUriFor,
-  revokeToken,
+  revokeGrant,
   safeReturnOrigin,
   verifyState,
   XError,
@@ -50,6 +50,7 @@ serve(async (req: Request) => {
 
   // Held so the catch can hand a live grant back rather than abandoning it.
   let mintedAccessToken: string | null = null;
+  let mintedRefreshToken: string | null = null;
   let stored = false;
 
   try {
@@ -87,6 +88,7 @@ serve(async (req: Request) => {
 
     const tokens = await exchangeCode(code, redirectUri, verifier);
     mintedAccessToken = tokens.access_token;
+    mintedRefreshToken = tokens.refresh_token;
 
     // Ask X who this is rather than trusting anything the browser sent. The
     // account identity has to come from the token itself.
@@ -110,13 +112,16 @@ serve(async (req: Request) => {
     // is handed back until the replacement has actually succeeded.
     const { data: existing } = await supabase
       .from(TABLE)
-      .select('x_user_id, access_token')
+      .select('x_user_id, access_token, refresh_token')
       .eq('user_id', user.id)
       .maybeSingle();
 
     const replacing =
       existing && existing.x_user_id !== account.x_user_id
-        ? (existing.access_token as string)
+        ? {
+            access: existing.access_token as string,
+            refresh: (existing.refresh_token as string | null) ?? null,
+          }
         : null;
 
     const { error: upsertError } = await supabase.from(TABLE).upsert(
@@ -177,7 +182,7 @@ serve(async (req: Request) => {
     // broken connect for a connection that works. Logged, because an orphaned
     // grant is invisible otherwise.
     if (replacing) {
-      const previous = await revokeToken(replacing);
+      const previous = await revokeGrant(replacing.access, replacing.refresh);
       console.error(
         `[x-oauth-callback] replaced ${existing?.x_user_id}; previous grant: ${previous}`,
       );
@@ -200,7 +205,7 @@ serve(async (req: Request) => {
     // the invariant YouTube and Facebook both keep, and the one Instagram
     // structurally cannot.
     if (mintedAccessToken && !stored) {
-      const outcome = await revokeToken(mintedAccessToken);
+      const outcome = await revokeGrant(mintedAccessToken, mintedRefreshToken);
       console.error('[x-oauth-callback] failed after minting; revoke:', outcome);
     }
 

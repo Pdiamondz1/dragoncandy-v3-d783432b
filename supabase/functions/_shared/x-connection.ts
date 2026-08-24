@@ -95,20 +95,6 @@ export class XReconnectRequiredError extends XError {
 }
 
 /**
- * A skew so large that `claim_x_token_refresh` can never answer `fresh`.
- *
- * Reads oddly and is exactly right. The parameter means "how much life must a
- * token have left to be worth keeping", so an enormous value says "nothing I
- * currently hold is good enough" — which is the truth after X has answered 401
- * on a token whose recorded expiry still looks fine.
- *
- * Expressed through the existing parameter rather than a new `p_force` argument
- * because that would mean a second migration to change a function signature, for
- * a behaviour the signature already expresses.
- */
-const FORCE_REFRESH_SKEW_SECONDS = 30 * 24 * 60 * 60;
-
-/**
  * Mark a connection as needing the user to reconnect.
  *
  * Best-effort: the caller is already on an error path and a failure to record
@@ -150,12 +136,22 @@ export async function getUsableAccessToken(
    */
   opts: { force?: boolean } = {},
 ): Promise<string> {
-  const skew = opts.force ? FORCE_REFRESH_SKEW_SECONDS : REFRESH_SKEW_SECONDS;
   if (!opts.force && isFresh(conn.access_token_expires_at)) return conn.access_token;
 
   const { data: claim, error: claimError } = await supabase.rpc('claim_x_token_refresh', {
     p_user_id: conn.user_id,
-    p_skew_seconds: skew,
+    p_skew_seconds: REFRESH_SKEW_SECONDS,
+    // IDENTITY, not an impossible threshold.
+    //
+    // The first version of this expressed force as a 30-day skew, so the RPC
+    // could never answer `fresh` — a two-hour token cannot satisfy it. Two
+    // concurrent 401s therefore refreshed SERIALLY: the second rotated away the
+    // token the first had just minted, and the first then marked a healthy
+    // connection `needs_reconnect`. Caught by the Codex review.
+    //
+    // Naming the rejected token asks the right question instead: "has anyone
+    // already replaced the credential I was rejected on?" If yes, use theirs.
+    p_rejected_access_token: opts.force ? conn.access_token : null,
   });
 
   if (claimError) throw new XError('storage_failed', claimError.message, 500);
@@ -168,11 +164,10 @@ export async function getUsableAccessToken(
         // than reusing our stale copy — and if it is still not fresh, say so
         // instead of calling X behind their back.
         //
-        // Under `force` this is the good outcome: the token we were handed a 401
-        // for has already been replaced by another caller, so the right move is
-        // to use theirs rather than spend a second refresh token on the same
-        // problem. `!==` on the token, not `isFresh`, because under force the
-        // question is "is this a DIFFERENT token", not "does it look current".
+        // Under `force` the RPC decides this by token identity, so `fresh` here
+        // already means "someone replaced the credential you were rejected on".
+        // The re-read still matters: the RPC tells us the row changed, not what
+        // it changed to.
         const latest = await loadConnection(supabase, conn.user_id);
         if (opts.force && latest && latest.access_token !== conn.access_token) {
           return latest.access_token;

@@ -18,7 +18,7 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'npm:@supabase/supabase-js@2';
 import { corsHeaders } from '../_shared/cors.ts';
-import { revokeToken, XError } from '../_shared/x-api.ts';
+import { revokeGrant, XError } from '../_shared/x-api.ts';
 import { loadConnection, TABLE } from '../_shared/x-connection.ts';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
@@ -58,11 +58,18 @@ serve(async (req: Request) => {
       return json(req, { disconnected: true, revoked: 'already_gone' });
     }
 
-    // Revoking the ACCESS token invalidates the whole grant including the
-    // refresh token, so one call is enough. Sent even when the access token has
-    // expired — an expired access token still identifies the grant to X, and
-    // trying costs nothing while skipping it would strand a live refresh token.
-    const outcome = await revokeToken(conn.access_token);
+    // The REFRESH token first, because it is the one that carries the grant.
+    //
+    // This used to revoke only the access token, under a comment claiming that
+    // invalidated the whole grant. Unchecked, and wrong: RFC 7009 makes
+    // refresh→access a SHOULD and access→refresh only a MAY, and X claims no
+    // cascade either way. With an expired access token and a live refresh
+    // token, that revoke could return success for a token X no longer
+    // recognises while the grant stayed authorized — and the delete below would
+    // then destroy our only copy of the credential that could have withdrawn
+    // it. The user would be told access was withdrawn while X still authorized
+    // the app.
+    const outcome = await revokeGrant(conn.access_token, conn.refresh_token);
 
     if (outcome === 'failed') {
       // Keep the row. It holds the only copy of the token, so deleting now would
