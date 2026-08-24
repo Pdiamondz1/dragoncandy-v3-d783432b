@@ -1,7 +1,10 @@
 # X (Twitter) analytics connector — setup
 
-Everything the code cannot do for itself. The connector is built and tested; none
-of it can connect an account until the steps below are done.
+Everything the code cannot do for itself.
+
+**Steps 1-3 are DONE (2026-08-24), verified by reading them back after a full
+page reload.** What remains is steps 4-6: apply the migration, deploy the four
+functions, connect an account. See the status box under each heading.
 
 Related: [[X Analytics Connector]] · `docs/runbooks/google-oauth-demo-video.md`
 (the site-gate conflict at the end applies here too).
@@ -15,9 +18,13 @@ post — publishing stays with Outstand under the 2026-08-23 scope decision.
 
 ---
 
-## 1. Change the registered callback URL — **required, and it is currently wrong**
+## 1. Change the registered callback URL — **required, and it was wrong**
 
-**Current value** (set 2026-08-23):
+> **DONE 2026-08-24.** Now `https://dragoncandy.com/x/callback`, confirmed after
+> a full page reload rather than trusting the save. Only the apex is registered;
+> see the note below on the other seven.
+
+**Previous value** (set 2026-08-23):
 `https://zocahiffooqdybdhguqv.supabase.co/functions/v1/x-oauth-callback`
 
 **Change to** (the field takes several — see the note on registering all of them
@@ -99,7 +106,11 @@ redirect mismatch — closed, visible, and fixed by adding one line here.
 
 ## 2. Narrow app permissions to **Read**
 
-Currently **Read and write**. This connector requests only read scopes, so write
+> **DONE 2026-08-24.** Read is selected and persisted through a reload. **Type of
+> App is unchanged at "Web App, Automated App or Bot — Confidential client"**,
+> which is load-bearing: it is why the token and revoke calls use HTTP Basic.
+
+Was **Read and write**. This connector requests only read scopes, so write
 is unused — but an app permission level is a ceiling, not a description, and
 leaving it wide means the app *could* request write without a console change.
 
@@ -112,8 +123,26 @@ code and are already read-only.
 
 ## 3. Generate and set `X_OAUTH_STATE_SECRET`
 
-`X_CLIENT_ID` and `X_CLIENT_SECRET` are already set (2026-08-23). The state
-signing secret is **not**.
+> **DONE 2026-08-24.** Set, and verified distinct from the Google, Instagram and
+> Facebook state secrets by comparing digests. The value was generated straight
+> into a temp file, read by `secrets set`, and deleted — it was never printed.
+>
+> **`X_CLIENT_ID` is also now PROVEN to be this console's app**, by hashing the
+> client ID read off the Keys page and matching it against the deployed secret's
+> digest. That is identity confirmed without ever reading a secret value.
+>
+> **A control was needed to make that check mean anything, and it changed the
+> answer.** The first comparison did NOT match, which looks like a wrong
+> deployed secret. Before concluding that, the same method was run against
+> `SUPABASE_URL`, whose plaintext is known: it matched, proving Supabase's digest
+> really is a plain SHA-256 and the method is sound. That pointed the finger at
+> the *input* — the client ID had been read off a SCREENSHOT, where `bzl`
+> (lowercase L) renders almost identically to `bz1` (digit one). Re-read as page
+> text, it matched. **A screenshot is not a record of a value**; read identifiers
+> from the DOM.
+
+`X_CLIENT_ID` and `X_CLIENT_SECRET` were already set (2026-08-23). The state
+signing secret was **not**.
 
 Every connector has its own. The `purpose` tag already stops one flow's state
 being replayed against another, so sharing a key would not be exploitable today —
