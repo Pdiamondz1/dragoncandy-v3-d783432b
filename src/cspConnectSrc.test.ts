@@ -49,6 +49,29 @@ describe('CSP connect-src', () => {
     }
   });
 
+  /**
+   * REDIRECT TARGETS ARE A SEPARATE HOST, AND THE TEST ABOVE CANNOT SEE THEM.
+   *
+   * CSP is enforced on every hop of a redirect, not just the URL the code names. The test
+   * above derives hosts from `fetch(...)` call sites, so a host that only ever appears as
+   * a 3xx `Location` is structurally invisible to it — it will report green while the
+   * request is blocked.
+   *
+   * That is not hypothetical. Allow-listing `api.bigdatacloud.net` was the fix for the
+   * defect described at the top of this file, and it did NOT work: that host answers
+   * **307 -> https://api-bdc.io**, and the browser refused the second hop. Observed on
+   * production 2026-08-24 on a real signup, as
+   * `Connecting to 'https://api-bdc.io/...' violates the following Content Security Policy
+   * directive`, with city/country still null in the database while `timezone` was set.
+   *
+   * So this one is pinned by hand, with the reason attached. When a fetched host is
+   * added, check where it actually LANDS (`curl -o /dev/null -w '%{redirect_url}'`)
+   * rather than trusting the URL in the source.
+   */
+  it('allows the host api.bigdatacloud.net redirects to (307 -> api-bdc.io)', () => {
+    expect(connectSrc).toContain('https://api-bdc.io');
+  });
+
   it('still allows the hosts the rest of the app depends on', () => {
     for (const host of ['*.supabase.co', 'api.stripe.com', 'maps.googleapis.com']) {
       expect(connectSrc).toContain(host);
