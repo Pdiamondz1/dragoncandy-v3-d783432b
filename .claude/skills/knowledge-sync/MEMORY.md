@@ -267,7 +267,46 @@
   ledger. **When merging `main` into a branch that adds a migration, check the version before
   reading the diff**, and prefer a stamp that is not a round hour.
 
+- **[link-check-linewrap] A `[[...]]` regex over `log.md` reports false orphans, because wikilinks
+  wrap.** On 2026-08-24 an ad-hoc checker flagged **37** unresolved links; nearly every one was a
+  link split across two lines by prose wrapping (`[[Investor Pitch Deck &\nCapital Raise]]`), plus a
+  handful of deliberate non-page references (`[[verify-knowledge]]`, `[[wiki-ops]]` — skills, not
+  pages). The check is still worth running, but **scope it to the links this run added** and
+  normalise whitespace before comparing; a repo-wide sweep produces a pile of prose "fixes" that
+  change nothing and risk reflowing paragraphs someone wrote deliberately. Companion to
+  `[orphans]`, which matches on the `(path/to/file.md)` link target and does not have this problem.
+
 ## Run log (newest first — add each new entry at the TOP; never edit/delete past entries)
+
+### [2026-08-24] Launch events, the Hoboken denominator, Drive delivery (PRs #513, #515, `docs/launch-events-and-drive-upload`)
+
+**Output:** `docs/wiki/raw/sessions/2026-08-24-launch-events-and-drive-delivery.md` → new
+[[Drive Artifact Delivery]] + [[Investor Pitch Deck & Capital Raise]] (three new sections; the
+"both open, neither merged" banner corrected in place; outstanding inputs five → four) ·
+`log.md` entry *"Launch events, the Hoboken denominator, and Drive delivery"* · `SHIPPED_LOG.md`
+prepended · `PROJECT_CONTEXT.md` §5 edited in place.
+
+**Happened:** a session that produced two kinds of knowledge — deck content (founder facts) and a
+new capability (rclone uploads). Split into a compound edit and a new page respectively, per
+`[new-page-vs-compound]`: the delivery mechanism is a distinct SUBJECT (it already has a second
+customer waiting — `docs/hiring/pdf/`, whose toolchain is still uncommitted), not a topical
+neighbour of the deck.
+
+**Worked:** `[status-correction]` paid twice. §5's line said "**Pending:** merge #506 then #509"
+and the wiki page's banner said "both open, neither merged" — both falsified the same day, both
+edited in place with the old claim quoted rather than silently replaced. Also ran the `[scope]` and
+`[scope-paths]` checks first; `git log HEAD..origin/main -- docs/wiki/ docs/SHIPPED_LOG.md` was
+empty, so no parallel knowledge work to collide with.
+
+**Failed:** my ad-hoc wikilink checker reported **37 unresolved links** in `log.md`, nearly all
+false — a `\[\[([^\]]+)\]\]` regex does not know that a wikilink can wrap across a line, so
+`[[Investor Pitch Deck &\nCapital Raise]]` reads as an unknown page. I nearly went fixing prose
+that was fine. Narrowing the check to the links *this run added* answered the real question in one
+command.
+
+**Remember:** see the new `[link-check-linewrap]` Lesson. Also worth carrying into the next run:
+**a `**Pending:**` clause written in the morning can be false by the afternoon** — this one was
+stale within hours of the previous knowledge-sync, for the third time this month.
 
 ### [2026-08-24] The fix that did not fix it — a height comparison has two sides (`worktree-DC-landing-page-fix3`)
 

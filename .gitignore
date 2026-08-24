@@ -16,6 +16,8 @@ dist-ssr
 # The -notes copy carries Joe's speaker notes and must never be committed or sent.
 dragoncandy-pitch.pdf
 dragoncandy-pitch-notes.pdf
+dragoncandy-pitch.manifest.json
+dragoncandy-pitch-notes.manifest.json
 
 # Environment variables
 .env

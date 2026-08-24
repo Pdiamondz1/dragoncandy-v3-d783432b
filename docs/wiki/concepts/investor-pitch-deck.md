@@ -3,7 +3,7 @@ title: Investor Pitch Deck & Capital Raise
 type: concept
 created: 2026-06-17
 updated: 2026-08-24
-sources: [2026-06-17-investor-pitch-deck-cost-model.md, 2026-08-24-investor-deck-plan-b.md]
+sources: [2026-06-17-investor-pitch-deck-cost-model.md, 2026-08-24-investor-deck-plan-b.md, 2026-08-24-launch-events-and-drive-delivery.md]
 tags: [fundraising, pitch-deck, cost-model, raise, donny, brands, provenance]
 ---
 # Investor Pitch Deck & Capital Raise
@@ -31,7 +31,8 @@ the "The Station" template deck (CEO Joe Castelo's prior raise), in the AIOS Wor
   deck renders **only from the production build**, not `vite dev`. `dragoncandy-pitch.pdf` is
   **gitignored** (worktree-only, never in the PR; regenerate from code).
 
-> **REBUILT 2026-08-23/24 (PRs #506, #509 — both open, neither merged).** Everything below the
+> **REBUILT 2026-08-23/24 and MERGED (#506, #509; then #513, #515).** This banner read "both
+> open, neither merged" until 2026-08-24. Everything below the
 > next two sections describes the FIRST deck and is kept as history. What changed: the numbers now
 > live in a versioned model (`src/pitch/model/`) that the deck, the generated diligence document
 > and the interactive artifact all read, the slide order follows the advisor's brief rather than
@@ -86,12 +87,64 @@ the honest answer to "how do you know that?".
   says 92 pages / 269 hooks; `scripts/update-scale-numbers.mjs`, which writes that line, counts
   96 / 277. Quote the command.
 
+### A mark asked one question and got the answer to another (#513)
+
+The liquidity slide's founder mark was labelled **"Restaurants in Hoboken:"**. Beside a liquidity
+model that phrase says *our supply* as naturally as it says *the town's total*, and it was answered
+with ours — **two: Antique Bar & Bakery and Uncle Rocco's**. The model needs the **denominator**:
+two restaurants out of forty is a different story from two out of four hundred.
+
+The label now says **town-wide** and the question says what the answer is not. **The durable half
+is that a plausible answer to the wrong question looks exactly like progress** — nothing about the
+reply flagged it; it had to be noticed.
+
+The founder's answer went into a new **`FOUNDER_FACTS`**, deliberately *not* the assumptions
+register: the register's vocabulary is `MEASURED` / `BENCHMARKED` / `MODELED`, and a founder saying
+a thing is none of the three. `FounderFact` carries its own `source` and `asOf`, and every consumer
+prints them — the deck inline for want of space, the Q&A document in full.
+
+The test's first draft was worthless: it asserted the **slide's** text contained "town-wide" and
+**passed against the old label**, because `PendingMark` renders the question and the question says
+town-wide. A whole-slide text search cannot tell a label from the thing next to it.
+
+### Three launch events (#515)
+
+Founders stated three: **Hoboken at Antique Lofts**, **Palm Beach at the Colony Hotel**, **Montauk
+at a venue not yet chosen**. Recorded as cities and venues and nothing else, because that is all
+that was said.
+
+**They are events, not a change to the metro sequence** (Hoboken → Manhattan → Palm Beach, each
+gated on density before the next; Montauk is not a metro). Read as three simultaneous market
+launches they would contradict the deck's own liquidity slide, which argues that creator-side lag
+kills local marketplaces. Read as events they cohere: one network in three places across the year.
+**That last clause is an argument, not a finding** — the Q&A document says so in as many words,
+because an earlier draft asserted the seasonal overlap as a sourced fact and Codex caught it.
+
+**Nobody has priced them, and the ask is derived from the budget**, whose marketing provision is
+scoped to one city. Pricing them moves the raise; omitting them asks for an uncosted plan. Both are
+founder decisions, so `launchEventPlan` marks the hole rather than inventing a number.
+
+Explaining that collision in `deck/pending.ts` **failed the confidentiality build**: that module is
+in the public bundle's graph, so its strings ship — and so would a comment, via the sourcemap. The
+arithmetic lives in `confidential.ts` now. See [[Build-Time Confidentiality]].
+
+### Delivery: `npm run pitch:upload` (#515)
+
+The deck now goes to `DragonCandy — Confidential › 11 · Finance` in one command, via rclone. The
+guard worth knowing is that **the wrong build is refused by page count, not by filename** — a
+rename defeats a name check, and the notes build is the one file that must never reach an investor.
+And the *first* upload put the **redacted** deck there under a name promising the complete one,
+because both builds have the same page count and every page is a JPEG. Full mechanics:
+[[Drive Artifact Delivery]].
+
 ### Still outstanding
 
-The five inputs spec §8 says the build stops at — SAFE terms, real team bios, Uncle Rocco's status,
-Adrian Vella's consent to be named, and a countable Hoboken restaurant number. Each renders as a
-marked hole on its slide and is printed by the exporter before it writes a PDF. The corrected raise
-is **$1,462,568**, inside the intended $500K–$1.5M pre-seed band by $37K.
+Four founder inputs, each a marked hole on its slide and printed by the exporter before it writes a
+PDF: **SAFE terms**, **real team bios**, a **countable Hoboken restaurant number** (town-wide), and
+the **launch-event dates, venue bookings and budget**. Uncle Rocco's status and Adrian Vella's
+consent were answered 2026-08-24 — Adrian as a **board member**, not an advisor, which the deck had
+understated throughout. The corrected raise is **$1,462,568**, inside the intended $500K–$1.5M
+pre-seed band by $37K.
 
 ## The ask (superseded — the first deck's framing)
 
@@ -140,7 +193,7 @@ Flywheel]] and [[Self-Improving App]] told as a fundraising narrative.
 
 ## See Also
 
-- [[Investor Pitch Deck & Cost Model Session]] · [[Build-Time Confidentiality]]
+- [[Investor Pitch Deck & Cost Model Session]] · [[Build-Time Confidentiality]] · [[Drive Artifact Delivery]]
 - [[Pricing Architecture]] · [[Take-Rate Ladder]] · [[Data Flywheel]]
 - [[Donny AI]] · [[DragonDash]] · [[DragonShare]]
 - [[North Star & KPI Scorecard]] · [[Self-Improving App]] · [[Musk's Algorithm]]
