@@ -11,6 +11,7 @@ const complete: ReadinessContext = {
   dismissed: [],
   orgUnits: undefined,
   orgMemberCount: undefined,
+  orgInvitedCount: undefined,
   stripe: { hasAccount: true, onboardingComplete: true },
   socialActiveCount: 1,
   creator: { skills: ['photography'], bio: 'I shoot food.', portfolioUrls: ['https://example.test/1'] },

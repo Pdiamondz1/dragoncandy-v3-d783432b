@@ -40,6 +40,8 @@ export interface AccountReadinessDetail {
   prof: Record<string, unknown> | null | undefined;
   roleProfile: Record<string, unknown> | null | undefined;
   memberCount: number | undefined;
+  /** Invitations sent and not yet answered — see `deriveTeam`. */
+  invitedCount: number | undefined;
 }
 
 /**
@@ -84,15 +86,30 @@ export async function fetchAccountReadinessDetail(
   // Only run the count when we actually know the org — never substitute a
   // sentinel id. A read we didn't attempt must stay `undefined`, not a fact.
   let memberCount: number | undefined;
+  let invitedCount: number | undefined;
   if (orgId) {
-    const { count, error } = await supabase.from('org_members')
-      .select('id', { count: 'exact', head: true })
-      .eq('org_id', orgId)
-      .eq('invitation_status', 'active');
-    if (error) {
-      console.error('useAccountReadiness: failed to load org member count', error);
+    // Counted separately rather than fetched as one grouped read, because the two
+    // failures are independent: an unreadable invited count must leave `deriveTeam`
+    // able to answer met/unmet from the active count, not drag both to `unknown`.
+    const [activeResult, invitedResult] = await Promise.all([
+      supabase.from('org_members')
+        .select('id', { count: 'exact', head: true })
+        .eq('org_id', orgId)
+        .eq('invitation_status', 'active'),
+      supabase.from('org_members')
+        .select('id', { count: 'exact', head: true })
+        .eq('org_id', orgId)
+        .eq('invitation_status', 'invited'),
+    ]);
+    if (activeResult.error) {
+      console.error('useAccountReadiness: failed to load org member count', activeResult.error);
     } else {
-      memberCount = count ?? undefined;
+      memberCount = activeResult.count ?? undefined;
+    }
+    if (invitedResult.error) {
+      console.error('useAccountReadiness: failed to load org invite count', invitedResult.error);
+    } else {
+      invitedCount = invitedResult.count ?? undefined;
     }
   }
 
@@ -100,6 +117,7 @@ export async function fetchAccountReadinessDetail(
     prof: profResult.error ? undefined : (profResult.data as Record<string, unknown> | null),
     roleProfile: roleResult.error ? undefined : (roleResult.data as Record<string, unknown> | null),
     memberCount,
+    invitedCount,
   };
 }
 
@@ -223,6 +241,7 @@ export function useAccountReadiness(role: AccountRole, opts: Options = {}): UseA
         addressVerifiedAt: u.address_verified_at,
       })),
       orgMemberCount: detail.data?.memberCount,
+      orgInvitedCount: detail.data?.invitedCount,
       stripe: liveStripe ? live : mirrored,
       socialActiveCount: socialAccounts?.length,
       creator: isCreator && rp

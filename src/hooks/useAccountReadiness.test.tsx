@@ -45,6 +45,7 @@ const baseCtx: ReadinessContext = {
   dismissed: [],
   orgUnits: undefined,
   orgMemberCount: undefined,
+  orgInvitedCount: undefined,
   stripe: undefined,
   socialActiveCount: undefined,
   creator: undefined,

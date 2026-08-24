@@ -168,10 +168,29 @@ export function deriveLocations(ctx: ReadinessContext): RequirementState {
   return ctx.orgUnits.every((u) => nonEmpty(u.address)) ? MET : UNMET;
 }
 
+/**
+ * `pending` when an invitation is outstanding, because the owner has already done the
+ * thing the checklist is asking for and the remaining step belongs to someone else.
+ * Without it, inviting a teammate leaves "Invite your team" reading exactly as it did
+ * before you invited them — telling someone to do what they just did.
+ *
+ * Order matters: the invited check runs BEFORE the met check, but only in the branch
+ * where nobody has joined. An org that already has two active members is met, and an
+ * unanswered third invitation must not drag it back to pending.
+ */
 export function deriveTeam(ctx: ReadinessContext): RequirementState {
   if (dismissed(ctx, 'team')) return MET;
   if (ctx.orgMemberCount === undefined) return UNKNOWN;
-  return ctx.orgMemberCount > 1 ? MET : UNMET;
+  if (ctx.orgMemberCount > 1) return MET;
+  if (ctx.orgInvitedCount !== undefined && ctx.orgInvitedCount > 0) {
+    return {
+      status: 'pending',
+      detail: ctx.orgInvitedCount === 1
+        ? 'Invite sent — waiting for them to accept.'
+        : `${ctx.orgInvitedCount} invites sent — waiting for them to accept.`,
+    };
+  }
+  return UNMET;
 }
 
 export function deriveSkills(ctx: ReadinessContext): RequirementState {
