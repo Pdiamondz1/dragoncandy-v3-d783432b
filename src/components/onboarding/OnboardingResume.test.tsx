@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import '@testing-library/jest-dom';
-import { render, screen } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 /**
@@ -18,6 +18,8 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
  * by the Codex second review.
  */
 const mocks = vi.hoisted(() => ({
+  readError: null as { message: string } | null,
+  upsert: vi.fn().mockResolvedValue({ error: null }),
   row: {
     creator_name: 'Joey Smalls',
     bio: 'I shoot food.',
@@ -40,9 +42,11 @@ vi.mock('@/hooks/useAutoDetect', () => ({
 vi.mock('@/integrations/supabase/client', () => ({
   supabase: {
     from: () => ({
-      upsert: vi.fn().mockResolvedValue({ error: null }),
+      upsert: mocks.upsert,
       update: vi.fn(() => ({ eq: vi.fn().mockResolvedValue({ error: null }) })),
-      select: () => ({ eq: () => ({ maybeSingle: async () => ({ data: mocks.row, error: null }) }) }),
+      select: () => ({ eq: () => ({ maybeSingle: async () => ({
+        data: mocks.readError ? null : mocks.row, error: mocks.readError,
+      }) }) }),
     }),
   },
 }));
@@ -73,6 +77,36 @@ function setSearch(search: string) {
   window.history.replaceState({}, '', `/profile/setup${search}`);
 }
 
+/**
+ * Walk a CREATOR to the collect/service boundary. That boundary is leaving `bio`, NOT
+ * `identity` — `ROLE_STEPS.content_creator` is identity → skills → bio → phone → payments.
+ * An earlier draft of the two tests below clicked Continue once and asserted the upsert had
+ * not run, which was true no matter what the guard did, because one Continue never reaches
+ * the save at all. The paired control is what exposed it.
+ */
+async function reachCollectBoundary() {
+  fireEvent.change(screen.getByRole('textbox'), { target: { value: 'Anything' } });
+  fireEvent.click(screen.getByRole('button', { name: /Continue/i }));
+
+  // Skills. Two traps here, both hit while writing this:
+  //   - picking "the first button that isn't Continue" grabbed the icon-only BACK button
+  //     (empty text, so the filter kept it) and walked the wizard backwards; and
+  //   - clicking a skill unconditionally TOGGLES OFF one that hydration already selected,
+  //     leaving the slide invalid and Continue disabled.
+  // So: only select something when nothing is selected yet, which the disabled state of
+  // Continue tells us directly.
+  const skillsContinue = await screen.findByRole('button', { name: /Continue/i });
+  if ((skillsContinue as HTMLButtonElement).disabled) {
+    fireEvent.click(screen.getByRole('button', { name: /Design/i }));
+  }
+  fireEvent.click(screen.getByRole('button', { name: /Continue/i }));
+
+  // bio — leaving THIS slide is what triggers the core save
+  const bio = await screen.findByPlaceholderText(/viral food content/i);
+  fireEvent.change(bio, { target: { value: 'I shoot food.' } });
+  fireEvent.click(screen.getByRole('button', { name: /Continue/i }));
+}
+
 describe('OnboardingWizard — resuming after Stripe', () => {
   beforeEach(() => {
     mocks.row = {
@@ -80,6 +114,8 @@ describe('OnboardingWizard — resuming after Stripe', () => {
       avatar_url: null, allow_portfolio_in_feed: true, is_completed: true,
     };
     setSearch('');
+    mocks.readError = null;
+    mocks.upsert.mockClear();
   });
 
   it('lands on the payments slide, not slide 1, when Stripe sends the user back', async () => {
@@ -129,5 +165,50 @@ describe('OnboardingWizard — resuming after Stripe', () => {
     renderWizard();
     await screen.findByRole('heading', { name: /Set up payments/i });
     expect(window.location.search).toContain('stripe_onboarding=complete');
+  });
+
+
+  /**
+   * Codex P1, round 2. A failed READ and an absent ROW are opposite cases: absent means a
+   * new signup and a blank form is right; a failure means we do not KNOW, and the creator
+   * upsert has no `ignoreDuplicates`, so continuing could write blanks over a real
+   * profile. The first draft of the hydration treated both as "no row" — and its comment
+   * justified it by reasoning about the first-time user, while the dangerous case is the
+   * returning one.
+   */
+  it('refuses to run the overwriting save when the profile read failed', async () => {
+    mocks.readError = { message: 'network' };
+    renderWizard();
+    await screen.findByRole('heading', { name: /What should we call you\?/i });
+    await reachCollectBoundary();
+    await waitFor(() => expect(mocks.upsert).not.toHaveBeenCalled());
+  });
+
+  /** Control: the identical journey with a healthy read MUST reach the save, or the test
+   *  above passes for the wrong reason. */
+  it('control — the same journey does save when the read succeeded', async () => {
+    mocks.row = null; // new signup: blank form, nothing to overwrite
+    renderWizard();
+    await screen.findByRole('heading', { name: /What should we call you\?/i });
+    await reachCollectBoundary();
+    await waitFor(() => expect(mocks.upsert).toHaveBeenCalled());
+  });
+
+  /**
+   * Codex P2, round 2. Hydration restored the existing image into `avatarPreview` only,
+   * while `saveCore` derives `avatarUrl` from a freshly uploaded file. So a returning user
+   * who edited any collect field and continued would upsert `avatar_url: null` and delete
+   * the picture still visible on screen — a silent deletion, with the image on screen the
+   * whole time.
+   */
+  it('keeps the existing avatar when a returning user re-saves without changing it', async () => {
+    mocks.row = { ...(mocks.row as Record<string, unknown>), avatar_url: 'u1/avatar-existing.jpg' };
+    renderWizard();
+    await screen.findByDisplayValue('Joey Smalls');
+    await reachCollectBoundary();
+
+    await waitFor(() => expect(mocks.upsert).toHaveBeenCalled());
+    const written = mocks.upsert.mock.calls.at(-1)?.[0] as Record<string, unknown>;
+    expect(written.avatar_url).toBe('u1/avatar-existing.jpg');
   });
 });

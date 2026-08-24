@@ -109,6 +109,9 @@ export function OnboardingWizard() {
   // collect slide needs the profile rows to exist, AND needs them to match what is on
   // screen. A plain "have we saved once" boolean did the first job and not the second —
   // going back, correcting a field and continuing left the edit visible and unsaved.
+  // Set when the hydration read ERRORS. Blocks the collect→service boundary, because
+  // that is where the overwriting upsert runs and we cannot know what we would clobber.
+  const [hydrationFailed, setHydrationFailed] = useState(false);
   const [savedFingerprint, setSavedFingerprint] = useState<string | null>(null);
   const [savedLocationKey, setSavedLocationKey] = useState<string | null>(null);
   const [phoneVerified, setPhoneVerified] = useState(false);
@@ -126,6 +129,13 @@ export function OnboardingWizard() {
     autoDetect.city || null, autoDetect.country || null, autoDetect.timezone || null,
   ]);
   const uploadedAvatar = useRef<{ file: File; path: string } | null>(null);
+  /**
+   * The avatar this account ALREADY has, read back during hydration. `saveCore` derives
+   * `avatarUrl` from a freshly uploaded file only, so without this a returning user who
+   * edits any collect field and continues would upsert `avatar_url: null` and delete the
+   * picture still visible on screen. Codex P2, second review round.
+   */
+  const hydratedAvatarPath = useRef<string | null>(null);
   const advancing = useRef(false);
 
   const queryClient = useQueryClient();
@@ -174,10 +184,19 @@ export function OnboardingWizard() {
             .eq('user_id', user.id)
             .maybeSingle();
 
-      // A failed read must leave a FIRST-TIME user's blank wizard alone rather than
-      // guessing. `maybeSingle` gives null for "no row", which is the ordinary new-signup
-      // case and not an error.
-      if (cancelled || error || !data) return;
+      if (cancelled) return;
+
+      // A FAILED READ AND AN ABSENT ROW ARE OPPOSITE CASES, and an earlier draft of this
+      // block treated them the same — the comment here even justified it, reasoning about
+      // the first-time user while the dangerous case is the returning one. If the read
+      // errors we do not know whether a profile exists, so a blank form must not be allowed
+      // to become an upsert over one. `maybeSingle` gives null for "no row", which IS the
+      // ordinary new-signup case; an `error` is not. Codex P1, second review round.
+      if (error) {
+        setHydrationFailed(true);
+        return;
+      }
+      if (!data) return;
       const row = data as unknown as Record<string, unknown>;
 
       const str = (v: unknown) => (typeof v === 'string' ? v : '');
@@ -187,12 +206,14 @@ export function OnboardingWizard() {
         setName(prev => prev || str(row.creator_name));
         setBio(prev => prev || str(row.bio));
         setSkills(prev => (prev.length ? prev : arr(row.skills)));
+        hydratedAvatarPath.current = str(row.avatar_url) || null;
         setAvatarPreview(prev => prev || str(row.avatar_url) || null);
         if (typeof row.allow_portfolio_in_feed === 'boolean') setShowInFeed(row.allow_portfolio_in_feed);
       } else {
         setName(prev => prev || str(row.business_name));
         setIndustry(prev => prev || str(row.industry));
         setCuisines(prev => (prev.length ? prev : arr(row.cuisines)));
+        hydratedAvatarPath.current = str(row.logo_url) || null;
         setAvatarPreview(prev => prev || str(row.logo_url) || null);
       }
 
@@ -273,6 +294,14 @@ export function OnboardingWizard() {
     advancing.current = true;
     try {
       if (currentStep === lastCollectStep(role) && currentFingerprint !== savedFingerprint) {
+        // Refuse rather than guess. If hydration failed we do not know whether this
+        // account already has a profile, and `saveCore`'s creator upsert carries no
+        // `ignoreDuplicates` — so continuing could write whatever is on screen (possibly
+        // blank) over real data. Reloading re-runs the read, which is the retry.
+        if (hydrationFailed) {
+          toast.error("We couldn't load your profile. Reload the page before continuing so we don't overwrite it.");
+          return;
+        }
         const ok = await saveCore();
         if (!ok) return;
       }
@@ -329,7 +358,7 @@ export function OnboardingWizard() {
       // Reuse the path from a previous save rather than uploading the same picture twice.
       // Only the FILE changing is worth another upload; a second save triggered by an
       // edited name would otherwise leave an orphaned object in storage every time.
-      let avatarUrl: string | null = uploadedAvatar.current?.path ?? null;
+      let avatarUrl: string | null = uploadedAvatar.current?.path ?? hydratedAvatarPath.current ?? null;
       if (avatarFile && uploadedAvatar.current?.file !== avatarFile) {
         const isCreator = role === 'content_creator';
         const result = await uploadProfileAsset({
