@@ -172,7 +172,7 @@ serve(async (req: Request) => {
     // Store the snapshot AND the account figures it carries, so the status card
     // has a current follower count without a second billed read. Claim-bound,
     // so a caller that stalled past the TTL cannot overwrite a newer snapshot.
-    const { error: writeError } = await supabase.rpc('commit_x_insights_read', {
+    const { data: commit, error: writeError } = await supabase.rpc('commit_x_insights_read', {
       p_user_id: user.id,
       p_claim_id: claim.claim_id,
       p_insights: insights,
@@ -182,6 +182,30 @@ serve(async (req: Request) => {
       p_following_count: insights.account.following_count,
       p_tweet_count: insights.account.tweet_count,
     });
+
+    // A STALE CLAIM HERE MEANS THESE FIGURES BELONG TO A DIFFERENT ACCOUNT.
+    //
+    // The user reconnected — possibly to another X account — while this paid
+    // read was in flight, and `store_x_connection` cleared our claim. The
+    // numbers in hand are real, and they are the OLD account's. Returning them
+    // would put one account's analytics under another account's name on the
+    // card, and React Query would cache that under an unchanged key for fifteen
+    // minutes.
+    //
+    // So they are thrown away. The read is already billed either way; the only
+    // question is whether we also show something false. See [[Honest
+    // Analytics]] — attributing a real measurement to the wrong subject is a
+    // fabrication even though every figure in it is true.
+    if (!writeError && commit?.committed === false && commit?.reason === 'stale_claim') {
+      return json(
+        req,
+        {
+          error: 'connection_changed',
+          message: 'Your X connection changed while we were loading it. Reloading now.',
+        },
+        409,
+      );
+    }
 
     // The read already happened and was already billed, so failing the request
     // here would charge the user twice for one answer. Logged, not thrown — but

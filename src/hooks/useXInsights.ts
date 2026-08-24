@@ -35,6 +35,18 @@ import { codeFromInvokeError, messageFromInvokeError } from '@/lib/invokeError';
  */
 const RECONNECT_CODES = new Set(['needs_reconnect']);
 
+/**
+ * The connection changed underneath a read, so our cached view of BOTH queries
+ * is describing something that no longer exists.
+ *
+ * Distinct from `needs_reconnect`: nothing is broken and the user has nothing to
+ * fix. They reconnected — possibly to a different X account — while a read was
+ * in flight, and the server correctly threw away figures that belonged to the
+ * previous account rather than showing them under the new one. The right
+ * response is to fetch again, not to show an error.
+ */
+const CHANGED_CODES = new Set(['connection_changed']);
+
 export interface XPostMetrics {
   id: string;
   created_at: string | null;
@@ -109,6 +121,12 @@ export function useXInsights(options: { enabled?: boolean } = {}) {
         if (RECONNECT_CODES.has(code)) {
           void queryClient.invalidateQueries({ queryKey: ['x-connection', user?.id] });
         }
+        if (CHANGED_CODES.has(code)) {
+          // Refetch both: the connection identity moved, so the card's name and
+          // its figures are stale together.
+          void queryClient.invalidateQueries({ queryKey: ['x-connection', user?.id] });
+          void queryClient.invalidateQueries({ queryKey: ['x-insights', user?.id] });
+        }
         throw new Error(await messageFromInvokeError(error, 'Could not read X analytics'));
       }
       if (!data) throw new Error('Could not read X analytics');
@@ -144,8 +162,11 @@ export function useRefreshXInsights() {
         // keeps hiding the one button that fixes it, which is the whole defect
         // this pattern exists to prevent.
         const code = await codeFromInvokeError(error, '');
-        if (RECONNECT_CODES.has(code)) {
+        if (RECONNECT_CODES.has(code) || CHANGED_CODES.has(code)) {
           void queryClient.invalidateQueries({ queryKey: ['x-connection', user?.id] });
+        }
+        if (CHANGED_CODES.has(code)) {
+          void queryClient.invalidateQueries({ queryKey: ['x-insights', user?.id] });
         }
         throw new Error(await messageFromInvokeError(error, 'Could not refresh X analytics'));
       }
