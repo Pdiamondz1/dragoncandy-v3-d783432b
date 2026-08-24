@@ -37,7 +37,10 @@ npm run db:apply -- supabase/migrations/<file>.sql   # Apply ONE migration + its
 ```
 
 **Running SQL — read this before reaching for anything else.** `supabase db push` is **banned**
-here: the migration ledger has diverged by 200+ files, so a push re-runs them against prod. The CLI
+here. Measured 2026-08-24: of 396 distinct migration versions on disk, **227 are not in the
+ledger** — a push re-runs all 227 against prod. It diverges the other way too, and further:
+**229 recorded versions have no file in the repo**, so the repo cannot rebuild prod either (that
+is how `can_notify_user` was nearly lost — see `docs/wiki/concepts/notification-delivery.md`). The CLI
 has no `db execute`, psql is not installed, and the Supabase MCP's OAuth has been returning
 `{"message":"Unrecognized client_id"}`. `db:query` / `db:apply` (`supabase/scripts/db-exec.mjs`) go
 through the Management API instead — the same path the dashboard SQL editor uses. They need a
@@ -49,6 +52,13 @@ its ledger row so **applied** and **recorded** cannot diverge, refuses a version
 (most migrations are not idempotent), requires a typed `yes`, and reads the ledger back afterwards.
 **It still does not prove the objects exist** — verify those yourself, with a control that could
 have failed. This project has three recorded cases of `recorded ≠ actual`.
+
+Two refusals are deliberate, so don't work around them: it rejects a migration that issues its own
+`BEGIN`/`COMMIT`/`END`/`ABORT` (an inner commit ends the wrapper, so the ledger row lands outside
+it — remove the transaction control, `db:apply` supplies it), and a concurrent ledger write aborts
+the whole transaction rather than being swallowed. `--no-transaction` is for DDL Postgres won't run
+inside a transaction (`CREATE INDEX CONCURRENTLY`); the file must then hold exactly one such
+statement, and that mode cannot offer the atomicity guarantee.
 
 **Workflow:** One change → `npm run build` → verify → push. Always build before pushing to main.
 
