@@ -541,6 +541,23 @@ holds no Toast credentials. See §6.
   "Add all required permissions" button that would add both. Corrects a claim made the same hour:
   the field is **`OAuth redirect URIs`, plural** — a chip list, not the single box the first-run
   dialog shows, so preview origins can be registered whenever wanted.
+  **Two branches picked the same migration version, and nothing noticed until they met (2026-08-24).**
+  `feat/verify-address-throttle` shipped `20260825100000_reserve_address_verification` while this
+  branch was open, and this branch's table carried the *same* stamp. It is recorded in prod's
+  ledger, so `db:apply` would have refused the Instagram table as already recorded, and forcing it
+  past that is precisely how `recorded != actual` happens — the failure this project has three
+  cases of. Renumbered to `20260825120000` (table) and `20260825130000` (cron). The durable half is
+  `supabase/migrations.test.ts`, which found **seven** collisions already in the tree; those are
+  **frozen rather than fixed** — none of the seven is in prod's ledger at all (0 rows, checked the
+  same day), so renumbering them would churn fourteen files and tell us nothing about prod. It
+  compares an exact set, so a third file joining a frozen version fails too, and a forced control
+  proved it fails and names both files. **A version is a timestamp a human picks, so two branches
+  open on one day will eventually pick the same round number — the check is worth more than the
+  fix.**
+  **The Lighthouse failure on this PR was variance, not the branch:** desktop performance measured
+  0.73 against the 0.90 gate on 2026-08-23 while every other PR that day passed, and a re-run after
+  merging main — with no change to any landing-page file — came back green. Codex clean at round 1
+  on the merge.
   **Pending:** the three secrets; registering the deauthorize + data-deletion URLs (the endpoints
   had to exist first); the Vault secret `instagram_refresh_sweep_url` (absent, the cron fails
   quietly in `cron.job_run_details`); App Review, which needs a demo video — and note the site-gate
