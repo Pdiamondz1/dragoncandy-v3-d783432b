@@ -149,8 +149,12 @@ holds no Toast credentials. See §6.
   and deliberately **unpriced**, because the ask is derived from a budget scoped to one city.
   **Pending:** four §8 founder inputs — SAFE terms, team bios, a town-wide Hoboken restaurant count,
   and the launch-event dates/venue bookings/budget — each marked on its slide and printed by the
-  exporter; and **rclone's shared Google client ID retires during 2026**, warned only as a one-line
-  NOTICE, so the remote needs a project-owned OAuth client ID. Note the corrected raise of
+  exporter; and the **credential** under `pitch:upload` — rclone's shared Google client ID retires
+  during 2026, warned only as a one-line NOTICE. **rclone itself is not going away**, and every
+  alternative needs its own credential anyway, so the fix is a project-owned OAuth client (15
+  minutes) or the **service-account transport now built into the uploader** — dormant until a key
+  is dropped in, needing shared-drive *membership* rather than domain-wide delegation, and
+  **never yet run against real Google credentials**. Note the corrected raise of
   **$1,462,568** sits inside the $500K–$1.5M band by $37K.
   → `docs/wiki/concepts/investor-pitch-deck.md` · `docs/wiki/concepts/build-time-confidentiality.md` · `docs/wiki/concepts/drive-artifact-delivery.md` · #506, #509, #513, #515
 - **Social login (Google/Apple/Facebook) — shipped dark, and a one-line fix that would have

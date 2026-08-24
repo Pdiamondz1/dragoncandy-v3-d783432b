@@ -39,15 +39,33 @@
  * premise, and it is an easy mistake: the notes build sitting in this directory was four
  * hours behind the code and looked identical in `ls`.
  *
- * And the upload is verified by MD5 rather than by rclone's exit code. Vendors report
- * success on writes that did not stick; this project has the scars.
+ * And the upload is verified by MD5 rather than by the transport's exit code. Vendors
+ * report success on writes that did not stick; this project has the scars.
+ *
+ * ## Two transports
+ *
+ * Drop a service-account key in and this uses the Drive API directly; without one it
+ * shells out to rclone. The service account is the destination — headless, so the same
+ * command works in CI and on a new machine, and free of rclone's borrowed OAuth client ID,
+ * which Google retires during 2026. See `lib/drive-service-account.ts`.
+ *
+ * **The service-account path has never completed a real upload.** No key exists on this
+ * machine, so it is proven by unit tests over its pure parts and by nothing else; rclone
+ * is what has actually put the deck on Drive. Do not describe it as working until it has.
+ * A key that is present but broken **fails** rather than falling back, so the first real
+ * run cannot quietly succeed by the old route and look like a passing test of the new one.
  */
 import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { readFileSync, statSync, readdirSync } from 'node:fs';
+import { existsSync, readFileSync, statSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 
 import { NOTES } from '../src/pitch/slides/notes';
+import {
+  parseServiceAccountKey,
+  resolveKeySource,
+  uploadToDrive,
+} from './lib/drive-service-account';
 
 /** `DragonCandy — Confidential`, and its `11 · Finance` folder. */
 const TEAM_DRIVE_ID = '0AGQe4NGwWqV8Uk9PVA';
@@ -189,30 +207,68 @@ console.log(
 );
 console.log(`Uploading as: ${REMOTE_NAME}`);
 
-execFileSync('rclone', ['copyto', local, `${REMOTE}${REMOTE_NAME}`, ...rcloneArgs], {
-  stdio: ['ignore', 'inherit', 'inherit'],
-});
+/**
+ * Two transports, chosen by whether a service-account key is configured.
+ *
+ * The service account is the destination: headless, so the same command runs in CI and on
+ * a new machine, and free of rclone's borrowed OAuth client, which Google retires during
+ * 2026. rclone remains the fallback because it is the one that has actually put a file on
+ * Drive — see the note below on what has and has not been proven.
+ *
+ * **A key that is present but broken must FAIL, never fall back.** Falling back would turn
+ * a misconfigured secret into a green run reporting success by a route nobody chose, which
+ * is the exact shape of silent failure this repo keeps recording. `parseServiceAccountKey`
+ * throws; nothing catches it.
+ */
+const keySource = resolveKeySource(process.env, existsSync);
 
-// Verified against the bytes Drive actually holds. rclone exiting 0 says the transfer
-// returned, not that the file on the other side is this one.
-const listing = JSON.parse(
-  execFileSync('rclone', ['lsjson', REMOTE, '--hash', '--files-only', ...rcloneArgs], {
-    encoding: 'utf8',
-  }),
-) as Array<{ Name: string; Size: number; Hashes?: { md5?: string } }>;
+async function upload(): Promise<{ md5: string; size: number }> {
+  if (keySource.kind === 'none') {
+    console.log('Transport: rclone (no service-account key configured).');
+    execFileSync('rclone', ['copyto', local, `${REMOTE}${REMOTE_NAME}`, ...rcloneArgs], {
+      stdio: ['ignore', 'inherit', 'inherit'],
+    });
 
-const remote = listing.find((f) => f.Name === REMOTE_NAME);
-if (!remote) die(`Uploaded, but "${REMOTE_NAME}" is not in the folder listing afterwards.`);
-if (remote.Hashes?.md5 !== localMd5) {
+    // rclone exiting 0 says the transfer returned, not that the file on the other side is
+    // this one. Read the folder back.
+    const listing = JSON.parse(
+      execFileSync('rclone', ['lsjson', REMOTE, '--hash', '--files-only', ...rcloneArgs], {
+        encoding: 'utf8',
+      }),
+    ) as Array<{ Name: string; Size: number; Hashes?: { md5?: string } }>;
+    const remote = listing.find((f) => f.Name === REMOTE_NAME);
+    if (!remote) die(`Uploaded, but "${REMOTE_NAME}" is not in the folder listing afterwards.`);
+    return { md5: remote.Hashes?.md5 ?? '', size: remote.Size };
+  }
+
+  const raw =
+    keySource.kind === 'json' ? keySource.raw : readFileSync(keySource.path, 'utf8');
+  const key = parseServiceAccountKey(raw, keySource.from);
+  console.log(`Transport: service account ${key.client_email} (from ${keySource.from}).`);
+
+  const result = await uploadToDrive({
+    key,
+    driveId: TEAM_DRIVE_ID,
+    folderId: FOLDER_ID,
+    name: REMOTE_NAME,
+    bytes: pdf,
+    mimeType: 'application/pdf',
+  });
+  return { md5: result.md5, size: result.size };
+}
+
+const remote = await upload();
+
+if (remote.md5 !== localMd5) {
   die(
     `Uploaded, but the copy on Drive is not this file.\n` +
       `  local  md5 ${localMd5} (${pdf.length} bytes)\n` +
-      `  remote md5 ${remote.Hashes?.md5 ?? '(none reported)'} (${remote.Size} bytes)`,
+      `  remote md5 ${remote.md5 || '(none reported)'} (${remote.size} bytes)`,
   );
 }
 
 console.log(
-  `\nVerified on Drive — md5 ${localMd5}, ${remote.Size.toLocaleString()} bytes.\n` +
+  `\nVerified on Drive — md5 ${localMd5}, ${remote.size.toLocaleString()} bytes.\n` +
     `DragonCandy — Confidential › 11 · Finance › ${REMOTE_NAME}\n` +
     `https://drive.google.com/drive/folders/${FOLDER_ID}`,
 );

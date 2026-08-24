@@ -3,7 +3,7 @@ title: Drive Artifact Delivery
 type: concept
 created: 2026-08-24
 updated: 2026-08-24
-sources: [2026-08-24-launch-events-and-drive-delivery.md]
+sources: [2026-08-24-launch-events-and-drive-delivery.md, 2026-08-24-drive-service-account.md]
 tags: [google-drive, rclone, tooling, confidentiality, delivery]
 ---
 # Drive Artifact Delivery
@@ -22,7 +22,54 @@ It remains the right tool for **small text documents**, which it converts to Goo
 The Investor Q&A went up that way. Verify by reading back: that upload's API response reported
 `fileSize: 1`, which looks exactly like an empty file and was not one.
 
-## rclone, and why it rather than the others
+## Two transports, chosen by whether a key is configured
+
+`npm run pitch:upload` uses the **Drive API as a service account** when a key is
+configured, and shells out to **rclone** when one is not. The guards, the manifest check
+and the md5 verification are identical either way — only the transport moves.
+
+**The service account is the destination.** It is headless: no browser consent, no user
+token to re-approve, so the same command runs in CI and on a new engineer's machine on day
+one. Installing a binary and completing an OAuth round trip is a poor first task for
+someone whose job that week is to publish a deck. It also sidesteps rclone's retiring
+client ID entirely.
+
+**It does NOT need domain-wide delegation.** The Workspace signature installer uses DWD
+because it must act *as* each user, writing into mailboxes it does not own. This does not:
+a service account can be added as a **member of a shared drive** like any other principal,
+and files it creates are owned by the drive. That is narrower and safer — no ability to
+impersonate anyone — so do not copy the signature script's setup here.
+
+Failing to add it as a member is the likeliest setup mistake, and Drive reports it as a
+bare **404 on the folder**, which reads like a wrong ID and sends you checking the ID. The
+uploader turns that into a sentence naming the account to add.
+
+**A key that is present but broken fails; it does not fall back.** Falling back would turn
+a misconfigured secret into a green run that succeeded by a route nobody chose — the exact
+silent-success shape this project keeps recording. Key sources, in precedence order:
+`GOOGLE_DRIVE_SA_KEY_JSON` (inline, for CI, which has a secret store and no filesystem),
+`GOOGLE_DRIVE_SA_KEY` (a path), then `.drive-service-account.json` (gitignored, so a local
+machine needs no configuration and its absence is what keeps the transport dormant).
+
+No new dependency: the token is an RS256 JWT signed with `node:crypto` and one form POST,
+about forty lines. Uploads are **resumable**, not multipart — multipart caps at 5 MB and
+the deck is already 4, which is a countdown rather than a margin.
+
+> **It has never completed a real upload.** No key exists on this machine yet, so the
+> service-account path is proven by unit tests over its pure parts and a fake `fetch`, and
+> by nothing else. rclone is what has actually put the deck on Drive. Do not describe it as
+> working until it has.
+
+### What running the control found
+
+A key that is PEM-*shaped* but damaged — a truncated paste, or one that lost characters
+passing through an environment variable — slipped past the validator, which only checks for
+the `BEGIN PRIVATE KEY` header, and died inside OpenSSL as
+`DECODER routines::unsupported` over an ASN.1 stack. True, and useless to whoever has to fix
+it. The signer now catches that and says what to do. **The guard written to prevent exactly
+that message did not cover the case; only running it showed that.**
+
+## rclone, and why it rather than the other CLIs
 
 Installed 2026-08-24 (`brew install rclone`, 1.75.0), remote **`dcdrive`**, authorized as
 `dame@dragoncandy.com` with `scope=drive`. Chosen over `gdrive` and friends for one reason:
@@ -36,8 +83,10 @@ Shared drives are not reachable by default. Both flags are required:
 
 Drive and folder IDs are in project memory (`google-workspace-drive-ids`), not in the repo.
 The narrower `drive.file` scope cannot write into a folder the app did not create, so it does
-not do this job; the alternative to a broad user-scoped grant is a service account with
-domain-wide delegation.
+not do this job; the alternative to a broad user-scoped grant is the service account above —
+by **membership**, not by domain-wide delegation. (An earlier revision of this line said DWD.
+It was wrong, and the distinction is the whole security argument: DWD can impersonate every
+user in the domain, while membership grants exactly one drive.)
 
 **`scope=drive` grants read/write across the authorizing user's whole Drive.** That is a real
 permission decision, not a formality — say so before asking anyone to run the config command.
@@ -46,9 +95,13 @@ permission decision, not a formality — say so before asking anyone to run the 
 
 rclone's default config uses rclone's **shared** Google client ID, which is being retired and
 **stops working during 2026**. Every command prints this as a one-line `NOTICE`, which is
-exactly the kind of warning a `grep -v` in a script removes forever. The fix is a
-project-owned OAuth client ID set as `client_id`/`client_secret` on the remote.
-**Not done — do it before an upload that matters, not after one fails.**
+exactly the kind of warning a `grep -v` in a script removes forever.
+
+Two answers, and they are not alternatives so much as a sequence. The cheap one is a
+project-owned OAuth client ID set as `client_id`/`client_secret` on the remote — fifteen
+minutes, no code change. The durable one is the service-account transport above, which does
+not use an OAuth client at all. **Neither is done**, so today the fallback path is still
+running on borrowed credentials with a fuse on them.
 
 ## `npm run pitch:upload`
 
