@@ -130,8 +130,16 @@ finishing a development branch / opening a PR, run an independent Codex pass and
 on its findings:
 
 ```bash
-codex review --base main --title "<short title>"   # run from the worktree
+git fetch origin
+codex review --base origin/main --title "<short title>"   # run from the worktree
 ```
+
+**`origin/main`, never `main`.** `--base main` resolves the **local** ref, which in a worktree is
+frozen at creation time and updated by nothing. On PR #498 it was two commits stale, so the review
+diffed against a tree where the previous PR had never merged, re-reviewed shipped work as new, and
+produced a confident finding about a line that was in the file all along. Confirm the range is
+non-empty first (`git diff origin/main...HEAD --stat`) — a clean verdict over an empty diff is false
+assurance on an unreviewed branch — and check any finding against the file before acting on it.
 
 (Other modes: `--uncommitted` for staged/unstaged/untracked changes, `--commit <sha>`
 for a single commit.) If Codex flags real issues, Codex fixes them and Codex is
