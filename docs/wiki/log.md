@@ -1,5 +1,40 @@
 # Wiki Log
 
+## [2026-08-23] update | A remedy nobody opened the console to confirm
+
+**Updated** [[Identity & Address Verification]], `docs/DATABASE_SCHEMA.md` and
+`docs/PROJECT_CONTEXT.md` §5 for the `verify-address` throttle
+(`feat/verify-address-throttle`) — and to delete a claim this project made twice.
+
+`verify-address` shipped with no throttle, recorded as acceptable because a compensating control
+existed: *set a daily quota cap on Geocoding in the Google Cloud console.* Written into two files,
+each time as "the only bound on that spend". **It does not exist.** The console shows *v3 requests
+per day* as **Unlimited**, its edit control disabled — *"Quota is not adjustable"* — and it refuses
+to attach an alert either. Google removed per-day caps for Maps Platform; only a per-minute limit
+(3,000) remains, which bounds burst rate, not daily spend. What was actually bounding spend is the
+**$300 free trial** on `forward-deck-506417-g9` — real, chosen by nobody, and gone on *Activate*.
+
+Two durable points: **a compensating control is not a control until someone has performed it**, and
+**the remedy must be checked in the same pass as the defect** — reviewing the code but assuming the
+mitigation leaves a finding *closed on paper*, which is worse than open, because an open finding
+still attracts attention.
+
+Closed by mirroring `verify-phone`: `reserve_address_verification` (`20260825100000`), atomic
+count-and-reserve under advisory locks, called immediately before the billed request. Three
+divergences argued rather than copied — no cooldown (a geocode is ~1/1000th an SMS, and a cooldown
+would punish a business saving several locations in a sitting), two user windows, and a counting
+predicate that is an **exclusion** so a future outcome counts by default.
+
+**Codex P1, and the irony was exact:** the first revision recorded a decline row on every throttled
+request, so the audit path of a spend control was itself an unbounded write — a storage and
+query-degradation DoS inside the endpoint meant to bound abuse. Now capped at one row per user per
+day, decided inside the same lock. Also recorded: **two over-broad test assertions caught
+themselves** here — one forbade the `console.warn` that legitimately carries the true decline
+reason, the other tripped on the comment warning people not to reintroduce the deleted function.
+*Assert the thing you mean, not the string it contains.*
+
+Pages updated: [[Identity & Address Verification]]
+
 ## [2026-08-23] update | The staging route we did not need to build
 
 Checked, before building it, the requirement that made a demo-video staging route look

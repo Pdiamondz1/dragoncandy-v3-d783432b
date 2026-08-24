@@ -1,4 +1,4 @@
-import { createClient } from "npm:@supabase/supabase-js@2.57.2";
+import { createClient, type SupabaseClient } from "npm:@supabase/supabase-js@2.57.2";
 import { corsHeaders } from "../_shared/cors.ts";
 import { resolveVerifiedAddress, isGeocodeAnswer, CREATOR_PRECISION, BUSINESS_PRECISION } from "./resolveVerifiedAddress.ts";
 import {
@@ -6,6 +6,13 @@ import {
   planBusinessVerification,
   type AddressPlan,
 } from "./storedAddress.ts";
+import {
+  DAILY_LIMIT,
+  DAILY_WINDOW_MS,
+  BURST_LIMIT,
+  BURST_WINDOW_MS,
+  IP_DAILY_LIMIT,
+} from "./rateLimit.ts";
 
 // Address verification via the Google Geocoding REST API. Two shapes share this function:
 //   { role: 'creator' }
@@ -89,6 +96,108 @@ const json = (req: Request, status: number, body: Record<string, unknown>) =>
     headers: { ...corsHeaders(req), "Content-Type": "application/json" },
   });
 
+/**
+ * Pure SHA-256 hex digest via Web Crypto. Inlined rather than imported from verify-phone's
+ * directory so this function's deploy bundle has no dependency on another function's internal
+ * file staying put — the same reason verify-phone inlines it rather than importing from
+ * donny-knowledge-sync.
+ */
+async function sha256Hex(input: string): Promise<string> {
+  const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(input));
+  return Array.from(new Uint8Array(buf))
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
+}
+
+/**
+ * Server-side salted IP hash. Never store or log the raw address, and NEVER fall back to a
+ * hardcoded salt — SHA-256 over the ~4 billion IPv4 space with a known, committed salt is one
+ * cheap offline precomputation, which would make "the raw IP is never stored" true in letter and
+ * false in spirit.
+ *
+ * The salt is PHONE_VERIFY_IP_SALT, shared with verify-phone rather than a new
+ * ADDRESS_VERIFY_IP_SALT. Deliberate, for two reasons. The purpose is identical ("do not store
+ * raw IPs"), and a new secret would mean this ships fail-closed-and-broken until someone
+ * provisions it — which is precisely how the phone path sat inert for a day. The cost of sharing
+ * is that one IP hashes to the same value in both tables; both are service-role-only with no
+ * client access, so that correlation is available to nobody who could not already join them.
+ * If the salt is ever rotated, both throttles reset their IP dimension together — an acceptable
+ * one-time effect, not a correctness problem, since the user dimension is unaffected.
+ */
+async function hashIp(req: Request): Promise<string | null> {
+  const raw = (req.headers.get("x-forwarded-for") ?? "").split(",")[0].trim();
+  if (!raw) return null;
+  const salt = Deno.env.get("PHONE_VERIFY_IP_SALT");
+  if (!salt) return null;
+  return sha256Hex(`${salt}:${raw}`);
+}
+
+// The throttle decision is made in the database, not here — see rateLimit.ts's header and the
+// migration's. `reserveAddressVerification` calls a SECURITY DEFINER RPC that makes the
+// count-and-insert ATOMIC, so concurrent callers cannot all observe "under the limit".
+//
+// A `null` return means no usable reservation came back: the RPC errored (network/DB, or the
+// migration not applied), or it returned a null body with no error. Both MUST be treated as
+// "refuse", never as "no prior history" — silently coercing a failure into "allow" would remove
+// the only spend control that exists on any transient error, while still returning 200s. Fail
+// open toward the user, fail closed toward the attacker; here the attacker's lever is our Google
+// bill, so this side fails closed.
+type ReserveResult =
+  | { reserved: true; reason: "ok"; attempt_id: string }
+  | { reserved: false; reason: "user_daily" | "user_burst" | "ip_daily" };
+
+async function reserveAddressVerification(
+  supabase: SupabaseClient,
+  userId: string,
+  ipHash: string | null,
+  role: Role,
+): Promise<ReserveResult | null> {
+  const { data, error } = await supabase.rpc("reserve_address_verification", {
+    p_user_id: userId,
+    p_ip_hash: ipHash,
+    p_role: role,
+    p_user_limit: DAILY_LIMIT,
+    p_user_window_seconds: Math.floor(DAILY_WINDOW_MS / 1000),
+    p_burst_limit: BURST_LIMIT,
+    p_burst_window_seconds: Math.floor(BURST_WINDOW_MS / 1000),
+    p_ip_limit: IP_DAILY_LIMIT,
+  });
+  if (error) {
+    console.error("verify-address: reserve_address_verification failed", error);
+    return null;
+  }
+  // `?? null` is not decoration: PostgREST can return a null body with no error, and a cast would
+  // assert a non-null result the call does not guarantee. Both null shapes reach the same
+  // fail-closed branch in the caller.
+  return (data ?? null) as ReserveResult | null;
+}
+
+/**
+ * Records how a reserved slot was actually spent. Never gives the slot back: both 'answered' and
+ * 'failed' count toward the caps (the RPC counts everything except 'throttled'), because a
+ * request that reached Google was billed whether or not it produced an answer — and because an
+ * attacker who could make failures free would simply induce failures.
+ */
+async function markAttemptOutcome(
+  supabase: SupabaseClient,
+  attemptId: string,
+  outcome: "answered" | "failed",
+): Promise<void> {
+  const { error } = await supabase
+    .from("address_verification_attempts")
+    .update({ outcome })
+    .eq("id", attemptId);
+  if (error) console.error("verify-address: failed to record attempt outcome", error);
+}
+
+// There is deliberately NO recordThrottled() here. The decline audit row is written by the RPC
+// itself, bounded to at most one per user per daily window under the same advisory lock that
+// makes the count atomic. An earlier revision wrote it from here on every declined request, which
+// Codex correctly flagged P1: once a caller is throttled they can keep calling forever, so the
+// audit path was an unbounded INSERT — a storage and query-degradation DoS inside the very
+// endpoint meant to bound abuse. Do not reintroduce a decline write on this side; a bounded
+// decision and an unbounded recorder cannot live in the same feature.
+
 const handler = async (req: Request): Promise<Response> => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders(req) });
@@ -119,6 +228,18 @@ const handler = async (req: Request): Promise<Response> => {
   const apiKey = Deno.env.get("GOOGLE_MAPS_SERVER_API_KEY");
   if (!apiKey) {
     console.error("verify-address: GOOGLE_MAPS_SERVER_API_KEY is not set — refusing to operate");
+    return json(req, 503, { error: "Address verification is temporarily unavailable" });
+  }
+
+  // Refuse outright rather than silently dropping the IP throttle dimension, matching
+  // verify-phone's `start` path. Weighed against the alternative — degrade to user-only
+  // throttling and log loudly — and rejected it: this codebase has repeatedly recorded that a
+  // loud log is not a control (three rounds went into improving a Workspace alert nobody read,
+  // and the alert turned out never to have been delivered at all). A refusal gets noticed; a
+  // console.error does not. The salt is already provisioned, so this costs nothing in practice,
+  // and it means the only way to weaken the throttle is to take the feature down visibly.
+  if (!Deno.env.get("PHONE_VERIFY_IP_SALT")) {
+    console.error("verify-address: PHONE_VERIFY_IP_SALT is not set — refusing to operate");
     return json(req, 503, { error: "Address verification is temporarily unavailable" });
   }
 
@@ -215,6 +336,46 @@ const handler = async (req: Request): Promise<Response> => {
     return json(req, 200, { verified: false, reason: plan.reason });
   }
 
+  // Reserve a slot HERE — after the plan is known to be geocodable, immediately before the
+  // billed request. Placement is a decision, not an accident:
+  //   * Reserving earlier (right after auth) would charge quota to callers who turn out to have
+  //     nothing to geocode — a creator who has not entered an address yet would burn their day's
+  //     allowance on the "nothing to verify" path and then be unable to verify once they filled
+  //     it in. That is the throttle blocking the exact user it exists to protect.
+  //   * Reserving later, after the fetch, would be no throttle at all.
+  // The paths skipped by reserving here (missing row, blank address, unauthorized org unit) cost
+  // database reads only, never a Google request, so nothing billable escapes the cap.
+  const ipHash = await hashIp(req);
+  const reservation = await reserveAddressVerification(supabase, user.id, ipHash, role);
+
+  if (!reservation) {
+    // The RPC itself failed. Fail closed — see reserveAddressVerification's header.
+    return json(req, 503, { error: "Address verification is temporarily unavailable" });
+  }
+
+  if (!reservation.reserved) {
+    // No write here — the RPC already recorded a bounded decline row. See the note above.
+    // The reason is returned so the client can say something true rather than generic: a burst
+    // decline clears in a minute, a daily one does not, and telling a user "try again shortly"
+    // when they must wait until tomorrow is the kind of small lie that generates support load.
+    // No stamp is touched on this path — a throttled caller keeps whatever verification they
+    // already had.
+    console.warn("verify-address: throttled", { role, reason: reservation.reason });
+    // The TRUE reason stays in the log; the RESPONSE collapses 'ip_daily' into 'user_daily'.
+    // Returning 'ip_daily' would tell the caller that OTHER accounts sharing their NAT or office
+    // IP have consumed the shared bucket — no identity and no count, but still a fact about
+    // strangers' activity that this caller has no business learning. The two already produce the
+    // identical human-readable string, so collapsing the machine-readable field costs the client
+    // nothing: both mean "wait until tomorrow", and only 'user_burst' means "wait a minute".
+    const publicReason = reservation.reason === "user_burst" ? "user_burst" : "user_daily";
+    return json(req, 429, {
+      error: publicReason === "user_burst"
+        ? "Too many address checks just now. Try again in a minute."
+        : "Too many address checks today. Try again tomorrow.",
+      reason: publicReason,
+    });
+  }
+
   let geocoded: GeocodeApiResponse;
   try {
     // URLSearchParams, not manual string interpolation — correctness (proper escaping),
@@ -223,6 +384,7 @@ const handler = async (req: Request): Promise<Response> => {
     const resp = await fetch(`${GEOCODE_BASE}?${params.toString()}`);
     if (!resp.ok) {
       console.error("verify-address: Google Geocoding request failed", resp.status);
+      await markAttemptOutcome(supabase, reservation.attempt_id, "failed");
       return json(req, 502, { error: "Could not verify address. Please try again." });
     }
     geocoded = (await resp.json()) as GeocodeApiResponse;
@@ -245,8 +407,10 @@ const handler = async (req: Request): Promise<Response> => {
       // `status` is a fixed Google enum, never caller data, so it is safe to log; the
       // address and key are still never logged (see the note below).
       console.error("verify-address: Google Geocoding returned a non-answer status", geocoded.status);
+      await markAttemptOutcome(supabase, reservation.attempt_id, "failed");
       return json(req, 502, { error: "Could not verify address. Please try again." });
     }
+    await markAttemptOutcome(supabase, reservation.attempt_id, "answered");
   } catch (err) {
     // Do NOT log `err` (or any string built from the request) here. Deno's fetch
     // failure messages, and `err.cause`, embed the full request URL — which carries
@@ -255,6 +419,11 @@ const handler = async (req: Request): Promise<Response> => {
     // both a secret and someone's home address into staff-readable function logs.
     // Match the resp.status-only log above: log only the error's name/class.
     console.error("verify-address: Google Geocoding request threw", err instanceof Error ? err.name : "unknown");
+    // A throw can happen before or after Google received the request — a connection reset on the
+    // response is indistinguishable here from one on the request. Count it, because the
+    // cheap-to-be-wrong direction is over-counting a slot the caller may not have spent, and the
+    // expensive one is handing back a slot that was billed.
+    await markAttemptOutcome(supabase, reservation.attempt_id, "failed");
     return json(req, 502, { error: "Could not verify address. Please try again." });
   }
 
