@@ -76,12 +76,17 @@ paid campaign in under 60 seconds.
 
 ## 4. Current State
 
-Pre-revenue by choice. ~30 organic users, $0 paying customers, **~$572/mo
+Pre-revenue by choice. **45 organic users** (read off prod 2026-08-24 — `select count(*)
+from profiles`; this line said "~30" and the investor model had copied that figure and
+tagged it MEASURED, so a number wrong by a third was vouched for by its own provenance
+tag), $0 paying customers (also confirmed against prod the same day), **~$569/mo
 operating cost** (as of 2026-08-23: Lovable $50, Anthropic $200, **Outstand.so $249**,
-Supabase $45, OpenAI $25), Stripe in test mode. This line read **~$390/mo** with
-Outstand at **$67** until 2026-08-23 — Outstand raised its price and nothing re-checks
-a cost figure, so it was wrong by ~$182 for an unknown stretch. Vendor pricing goes
-stale silently; re-read the invoices before quoting this anywhere. Production launch date TBD. The content
+Supabase $45, OpenAI $25 — sums to $569; this line briefly stated $572, which did not
+reconcile with these same five components, until corrected the same day, and the $3
+gap is unresolved pending an invoice check), Stripe in test mode. This line read
+**~$390/mo** with Outstand at **$67** until 2026-08-23 — Outstand raised its price and
+nothing re-checks a cost figure, so it was wrong by ~$182 for an unknown stretch.
+Vendor pricing goes stale silently; re-read the invoices before quoting this anywhere. Production launch date TBD. The content
 delivery system stabilization that gated launch landed in late May 2026;
 remaining blockers are final bug resolution and payment-flow hardening.
 
@@ -107,6 +112,30 @@ holds no Toast credentials. See §6.
 
 ### In flight
 
+- **The investor deck, rebuilt on the model** — Plan B of the investor-deck spec. Fifteen slides in
+  the advisor's order (the ask lands at slide 7), every figure read from `src/pitch/model/` so the
+  deck, the generated diligence document and the interactive Assumptions Ledger cannot disagree.
+  Three primitives replace three habits: a glossed term renders with its plain-English gloss and a
+  test renders every slide to enforce it; provenance is on every figure; a founder input renders as
+  its answer or as a **marked hole**, with no third branch. **The confidential half is absent, not
+  hidden** — and it took two mechanisms: `import.meta.env.VITE_X` does NOT fold when X is unset
+  (which is exactly the public build, so every budget line shipped behind a false runtime
+  condition), and folding the branch cleaned the JavaScript but **not the sourcemap**, which carried
+  the whole budget in a deployed `.map`. `npm run pitch:verify-public` asserts it over `dist/`, with
+  controls in both directions. **Four Codex findings across three rounds, all real, clean at round
+  4** — the two worth carrying: **a provenance tag applied to a COPY is worse than no tag** (two
+  rows read `MEASURED` while their own notes said nobody had checked; registered users were
+  **30 → 45**, an investor-facing count understated by a third), and **two consumers of one register
+  will disagree if each does its own arithmetic** (the deck sized the runway buffer on the FIRST
+  month's burn — before either engineer starts — quoting a raise $305K below the document's). Also:
+  a text assertion proves a string is present, never that a human can read it; the ask slide's gloss
+  rendered as invisible text while its test passed. Delivery is the **PDF**, not the URL —
+  `PITCH_NOTES=1` adds facing speaker notes under a different filename, deliberately opt-in, because
+  the coaching written for Joe must never reach an investor. **Pending:** merge #506 then #509; the
+  five §8 founder inputs (SAFE terms, team bios, Uncle Rocco's status, Adrian's consent, a Hoboken
+  restaurant count), each marked on its slide and printed by the exporter; and note the corrected
+  raise of **$1,462,568** sits inside the $500K–$1.5M band by $37K.
+  → `docs/wiki/concepts/investor-pitch-deck.md` · `docs/wiki/concepts/build-time-confidentiality.md` · #506, #509
 - **Social login (Google/Apple/Facebook) — shipped dark, and a one-line fix that would have
   switched off the email gate** — two blockers first: an OAuth user would have been told to
   verify an email nothing ever sends (`profiles.email_verified` defaults false, the trigger
@@ -1618,7 +1647,11 @@ boundaries (see `.claude/handoffs/`).
 - City-by-city density: one metro first (20–30 creators, 5–10 restaurants),
   then replication scorecard for metro 2.
 - Fine-tuning Donny on proprietary data once 1,000–5,000 campaigns
-  accumulate (LoRA on open-source models).
+  accumulate (LoRA on open-source models). **The unit is labelled examples, not
+  campaigns** (restated 2026-08-24): one campaign is a chain yielding a brief, a
+  preference pair, a quality label and an outcome, so a few thousand campaigns produce
+  tens of thousands of labelled rows — which is why the threshold is not as small as it
+  reads. Quote the multiplier when the number is challenged.
 - **Toast integration partnership — APPLICATION FULLY SUBMITTED 2026-08-23.** All three steps
   done in one session: the API Documentation License Agreement (accepted as Dragon Candy LLC),
   Toast's confirmation email, and the **Integration Request Application** itself. Toast's
@@ -1759,7 +1792,7 @@ Apply to every recommendation, every prompt, every PR:
 **Frontend**: React 18 / TypeScript (strict), Vite, Tailwind CSS, shadcn/ui,
 Framer Motion, Vercel (prod hosting + per-PR staging previews), Lovable.dev (optional
 AI-edit surface via GitHub sync; no longer the host), GitHub.
-**Backend**: Supabase (70+ tables, 98 Deno Edge Functions, RLS, realtime),
+**Backend**: Supabase (70+ tables, 104 Deno Edge Functions, RLS, realtime),
 Stripe Connect (test mode).
 **AI**: Claude Sonnet 4 + Haiku for generation (cost routing via edge
 functions, backend only); OpenAI for embeddings (RAG/matching). Model routing

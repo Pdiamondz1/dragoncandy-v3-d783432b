@@ -53,8 +53,16 @@ plan says "raise capital to pull that same lean team forward by ~18 months."
 
 ### 2.1 Today (grounded)
 
-Current burn **~$390/mo**: Lovable $50, Anthropic $200, Outstand $67, Supabase $45, OpenAI $25
-(`docs/PROJECT_CONTEXT.md` §4). The Capacity Report's baseline is **$295/mo** excluding Outstand
+Current burn **~$569/mo** (as of 2026-08-23): Lovable $50, Anthropic $200, **Outstand $249**,
+Supabase $45, OpenAI $25 — sums to $569. This line, and `docs/PROJECT_CONTEXT.md` §4, briefly
+stated **$572**, which did not reconcile with these same five components; both were corrected the
+same day, and the $3 gap is unresolved pending an invoice check. Before that this line read
+**~$390/mo** until 2026-08-23 — Outstand raised its price from $67 and nothing re-checks a cost
+figure, so it was wrong by ~$182 for an unknown stretch. The live figure is now
+`OPERATING.burnMonthly` in `src/pitch/model/assumptions.ts`, where a test fails if it goes 90 days
+unread.
+
+The Capacity Report's baseline is **$295/mo** excluding Outstand
 (`docs/DragonCandy_Infrastructure_Capacity_Report.md`). DB upgrade **MICRO→SMALL (+$49/mo)** is
 required before 75 users.
 
@@ -115,6 +123,17 @@ trajectory points at an increasingly autonomous, AGI-adjacent super-agent.
 Trigger: once **1,000–5,000 campaigns** accumulate (`docs/PROJECT_CONTEXT.md` §6, "On the
 Horizon"). LoRA/QLoRA on an open model trained on DragonCandy's proprietary brief→match→outcome
 data. 2026 economics make this almost a rounding error:
+
+> **The unit is labelled examples, not campaigns — restated 2026-08-24.** An investor with
+> an AI background will challenge "1,000–5,000" as a suspiciously round threshold, and they
+> are right to: stated as *campaigns* it invites the reading that a campaign is one training
+> example, which would make the number look far too small. It is not. One campaign is a
+> causal chain that yields several labelled rows — a brief (intent), N applicants resolving
+> to one hire (a preference pair), an approve-or-reject (a quality label), and a performance
+> record (an outcome). A few thousand campaigns therefore produce **tens of thousands of
+> labelled preference pairs**, which is the regime LoRA is sample-efficient in and what the
+> run costs below are priced against. The campaign count stays as the trigger because it is
+> the thing we can count in our own schema; the defence is the multiplier.
 
 - A LoRA training run: **$50–$300**; QLoRA on a single H100, 8–12 hrs: **$10–$16**; hosted LoRA
   fine-tune (Together/Fireworks) **$0.48–$0.75/M tokens** (Llama-70B on 30M tokens ≈ **$43.50**)

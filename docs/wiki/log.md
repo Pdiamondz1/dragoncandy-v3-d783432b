@@ -1,5 +1,22 @@
 # Wiki Log
 
+## [2026-08-24] ingest | The investor deck, rebuilt on the model
+
+**Created** [[Build-Time Confidentiality]] (`concepts/build-time-confidentiality.md`) and
+`docs/wiki/raw/sessions/2026-08-24-investor-deck-plan-b.md`. **Updated** [[Investor Pitch Deck &
+Capital Raise]] (rebuild section; the ~$3M priced-seed framing marked superseded), `index.md`,
+`docs/SHIPPED_LOG.md`, `docs/PROJECT_CONTEXT.md` §4 (registered users 30 → 45, read off prod) and
+§5.
+
+Plan A landed as PR #506; Plan B (the deck) as PR #509, stacked. Fifteen slides in the advisor's
+order, every figure read from `src/pitch/model/`, and three primitives — glossary, provenance,
+pending-input — enforced by tests rather than by memory. Four Codex findings across three rounds,
+all real; clean at round 4. The two that generalise: **a provenance tag applied to a copy is worse
+than no tag** (two rows read MEASURED while their own notes said nobody had checked — registered
+users were wrong by a third), and **two consumers of one register will disagree if each does its
+own arithmetic** (the deck and the diligence document quoted raises $305K apart). Plus: a text
+assertion proves a string is present, never that a human can read it — the ask slide's gloss
+rendered as invisible text while its test passed.
 ## [2026-08-24] ingest | Instagram: the first real connection, and three things between deployed and usable
 
 **Created** `raw/sessions/2026-08-24-instagram-first-connection.md`. **Updated**

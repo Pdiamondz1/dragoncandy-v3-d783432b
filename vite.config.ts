@@ -14,6 +14,23 @@ export default defineConfig(({ mode }) => ({
     host: "127.0.0.1",
     port: 8080,
   },
+  define: {
+    /**
+     * The investor deck's confidential gate, as a literal `true`/`false` in the output.
+     *
+     * The spec assumed `import.meta.env.VITE_PITCH_CONFIDENTIAL` would fold on its own.
+     * It does not when the variable is UNSET — which is precisely the default public
+     * build. Vite leaves an unknown key as a runtime property lookup on `import.meta.env`,
+     * so `undefined === '1'` is evaluated at runtime, neither branch is dead, and Rollup
+     * keeps the confidential module. `npm run pitch:verify-public` caught exactly that:
+     * every budget line label and the use-of-funds buckets were sitting in the public
+     * bundle, hidden behind a false condition rather than absent.
+     *
+     * A `define` is substituted unconditionally, so the ternary folds and the import goes
+     * with it. The assertion over dist/ is what proves it, not this comment.
+     */
+    __PITCH_CONFIDENTIAL__: JSON.stringify(process.env.VITE_PITCH_CONFIDENTIAL === '1'),
+  },
   plugins: [
     mdx({ remarkPlugins: [remarkFrontmatter, remarkGfm] }),
     react(),
@@ -31,6 +48,29 @@ export default defineConfig(({ mode }) => ({
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
+      /**
+       * The investor deck's confidential figures, resolved to a stub unless the build
+       * asks for them.
+       *
+       * Dead-code elimination alone was not enough, and the difference is worth keeping.
+       * With `__PITCH_CONFIDENTIAL__` folded to `false`, Rollup did drop the branch and
+       * the numbers really were absent from the emitted JavaScript — but the module was
+       * still in the graph, so `sourcesContent` in `PitchDeck-*.js.map` carried the
+       * entire budget, every salary line included. Sourcemaps are deployed and fetchable;
+       * that is a leak, and only `npm run pitch:verify-public` (which scans `.map` as
+       * well as `.js`) would ever have said so.
+       *
+       * Swapping the module at resolution means it does not enter the graph at all, so
+       * there is nothing for a sourcemap to embed. The gate is now two independent
+       * mechanisms — the alias and the folded constant — and the assertion checks both
+       * at once.
+       */
+      "@pitch/confidential": path.resolve(
+        __dirname,
+        process.env.VITE_PITCH_CONFIDENTIAL === '1'
+          ? "./src/pitch/model/confidential.ts"
+          : "./src/pitch/model/confidential.stub.ts",
+      ),
     },
   },
   optimizeDeps: {
