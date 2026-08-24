@@ -18,15 +18,18 @@
 import type {
   BudgetLine,
   FundsBucket,
+  PreSeedRaise,
   RaiseInput,
   UseOfFundsSplit,
 } from './confidential';
 
-export type { BudgetLine, FundsBucket, RaiseInput, UseOfFundsSplit };
+export type { BudgetLine, FundsBucket, PreSeedRaise, RaiseInput, UseOfFundsSplit };
 
 export const PRE_SEED_BUDGET: readonly BudgetLine[] = [];
 
 export const PRE_SEED_HORIZON_MONTHS = 0;
+
+export const PRE_SEED_BUFFER_MONTHS = 0;
 
 export const USE_OF_FUNDS_SPLIT: UseOfFundsSplit = { engineering: 0, gtm: 0, gna: 0 };
 
@@ -43,4 +46,8 @@ export function requiredRaise(_input: RaiseInput): number {
 
 export function buildFundsAllocation(_raise: number, _split: UseOfFundsSplit): FundsBucket[] {
   return [];
+}
+
+export function preSeedRaise(): PreSeedRaise {
+  return { operatingNeed: 0, endingMonthlyBurn: 0, bufferMonths: 0, buffer: 0, raise: 0 };
 }

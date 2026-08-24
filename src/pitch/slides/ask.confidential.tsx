@@ -34,12 +34,10 @@
  * an investor until the site gate (#482) is merged and switched on.
  */
 import {
-  PRE_SEED_BUDGET,
   PRE_SEED_HORIZON_MONTHS,
   USE_OF_FUNDS_SPLIT,
-  budgetTotal,
   buildFundsAllocation,
-  requiredRaise,
+  preSeedRaise,
 } from '@pitch/confidential';
 import { OPERATING } from '../model/assumptions';
 import { Source, Tag } from '../deck/components';
@@ -73,12 +71,11 @@ function PublicShape() {
 }
 
 function ConfidentialShape() {
-  const operatingNeed = budgetTotal(PRE_SEED_BUDGET, PRE_SEED_HORIZON_MONTHS);
-  const raise = requiredRaise({
-    operatingNeed,
-    bufferMonths: 3,
-    endingMonthlyBurn: budgetTotal(PRE_SEED_BUDGET, 1),
-  });
+  // Shared with the generated diligence document. This slide used to compute the raise
+  // itself, with a first-month burn and a three-month buffer where the document used an
+  // ending burn and six — so the deck and the diligence pack answered "how much are you
+  // raising" with two different numbers. See preSeedRaise()'s header.
+  const { raise, bufferMonths } = preSeedRaise();
   const buckets = buildFundsAllocation(raise, USE_OF_FUNDS_SPLIT);
 
   return (
@@ -88,7 +85,7 @@ function ConfidentialShape() {
           <p className="text-6xl font-extrabold text-white">{money(raise)}</p>
           <p className="mt-1 text-lg text-white/60">
             derived bottom-up from a Hoboken-only budget over {PRE_SEED_HORIZON_MONTHS} months,
-            plus a three-month buffer
+            plus a {bufferMonths}-month buffer at the burn we end on
           </p>
         </div>
         <div className="flex flex-1 gap-4">

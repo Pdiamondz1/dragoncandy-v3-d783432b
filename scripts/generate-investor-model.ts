@@ -30,7 +30,7 @@ import {
   PRE_SEED_BUDGET,
   PRE_SEED_HORIZON_MONTHS,
   budgetTotal,
-  requiredRaise,
+  preSeedRaise,
   buildFundsAllocation,
   USE_OF_FUNDS_SPLIT,
 } from '../src/pitch/model/confidential';
@@ -236,9 +236,9 @@ lines.push('prose summary.');
 lines.push('');
 
 if (confidential) {
-  const need = budgetTotal(PRE_SEED_BUDGET, PRE_SEED_HORIZON_MONTHS);
-  const endingBurn = PRE_SEED_BUDGET.reduce((s, l) => s + (l.endMonth >= PRE_SEED_HORIZON_MONTHS ? l.monthlyCost : 0), 0);
-  const raise = requiredRaise({ operatingNeed: need, bufferMonths: 6, endingMonthlyBurn: endingBurn });
+  // Shared with the deck slide — see preSeedRaise()'s header for what went wrong when
+  // each consumer computed this for itself.
+  const { operatingNeed: need, endingMonthlyBurn: endingBurn, bufferMonths, raise } = preSeedRaise();
 
   lines.push('## The round');
   lines.push('');
@@ -246,7 +246,7 @@ if (confidential) {
   lines.push('');
   lines.push(`- ${PRE_SEED_HORIZON_MONTHS}-month operating need: **${usd(need)}**`);
   lines.push(`- Monthly burn at month ${PRE_SEED_HORIZON_MONTHS}: **${usd(endingBurn)}**`);
-  lines.push(`- Six-month buffer: **${usd(raise - need)}**`);
+  lines.push(`- ${bufferMonths}-month buffer: **${usd(raise - need)}**`);
   lines.push(`- **Required raise: ${usd(raise)}**`);
   lines.push('- Committed to date: **$0**');
   lines.push('');

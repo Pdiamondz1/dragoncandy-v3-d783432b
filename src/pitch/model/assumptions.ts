@@ -83,7 +83,7 @@ export const OPERATING = {
   }),
   edgeFunctions: measured({ value: 111, unit: 'functions', label: 'Edge functions', source: "ls -d supabase/functions/*/ | grep -v _shared | wc -l", asOf: '2026-08-24' }),
   sourceFiles: measured({
-    value: 1229,
+    value: 1230,
     unit: 'files',
     label: 'TypeScript source files',
     source: "find src -type f \\( -name '*.ts' -o -name '*.tsx' \\) | wc -l",
@@ -96,17 +96,17 @@ export const OPERATING = {
   }),
   migrations: measured({ value: 406, unit: 'files', label: 'Database migrations', source: 'ls supabase/migrations/*.sql | wc -l', asOf: '2026-08-24' }),
   tests: measured({
-    value: 3223,
+    value: 3228,
     unit: 'tests',
     label: 'Passing tests',
     source: 'npx vitest run',
     asOf: '2026-08-24',
     note: 'Re-read 2026-08-24 at the end of the deck build — was 2923 before it. All green ' +
-      '(290 files). Includes this model\'s own test suite, which grows as the deck does, so re-run ' +
+      '(291 files). Includes this model\'s own test suite, which grows as the deck does, so re-run ' +
       'at the end of a work session rather than trusting the 90-day window.',
   }),
   testFiles: measured({
-    value: 290,
+    value: 291,
     unit: 'files',
     label: 'Test files',
     source: 'npx vitest run',

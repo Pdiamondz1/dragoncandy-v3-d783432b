@@ -23,9 +23,9 @@ asked.
 | React hooks | 277 | `MEASURED` | find src/hooks -name 'use*.ts' -o -name 'use*.tsx' \| wc -l, read 2026-08-24 |
 | Edge functions | 111 | `MEASURED` | ls -d supabase/functions/*/ \| grep -v _shared \| wc -l, read 2026-08-24 |
 | Database migrations | 406 | `MEASURED` | ls supabase/migrations/*.sql \| wc -l, read 2026-08-24 |
-| TypeScript source files | 1,229 | `MEASURED` | find src -type f \( -name '*.ts' -o -name '*.tsx' \) \| wc -l, read 2026-08-24 |
-| Passing tests | 3,223 | `MEASURED` | npx vitest run, read 2026-08-24 |
-| Test files | 290 | `MEASURED` | npx vitest run, read 2026-08-24 |
+| TypeScript source files | 1,230 | `MEASURED` | find src -type f \( -name '*.ts' -o -name '*.tsx' \) \| wc -l, read 2026-08-24 |
+| Passing tests | 3,228 | `MEASURED` | npx vitest run, read 2026-08-24 |
+| Test files | 291 | `MEASURED` | npx vitest run, read 2026-08-24 |
 | Monthly operating cost | $569 | `MEASURED` | vendor invoices \| Lovable 50 + Anthropic 200 + Outstand 249 + Supabase 45 + OpenAI 25, read 2026-08-23 |
 
 **"How do you know?"** — each of those is a shell command in the register, re-runnable
