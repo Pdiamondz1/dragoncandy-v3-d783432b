@@ -269,15 +269,16 @@ export const VERIFY_ADDRESS_WAIT_MS = 6000;
 
 /**
  * Resolves when `work` resolves, or when the limit elapses — whichever is first, and
- * never rejects. The abandoned work keeps running; it writes server-side and the next
- * refetch picks it up.
+ * never rejects. Returns true when the LIMIT ended the wait rather than the work, which
+ * the caller needs: the abandoned work keeps running and still writes server-side, so
+ * something has to notice when it lands.
  */
-export async function withTimeLimit(work: Promise<unknown>, ms: number): Promise<void> {
+export async function withTimeLimit(work: Promise<unknown>, ms: number): Promise<boolean> {
   let timer: ReturnType<typeof setTimeout> | undefined;
   try {
-    await Promise.race([
-      work.catch(() => undefined),
-      new Promise<void>((resolve) => { timer = setTimeout(resolve, ms); }),
+    return await Promise.race([
+      work.catch(() => undefined).then(() => false),
+      new Promise<boolean>((resolve) => { timer = setTimeout(() => resolve(true), ms); }),
     ]);
   } finally {
     if (timer !== undefined) clearTimeout(timer);
@@ -378,20 +379,32 @@ export function useUpdateOrgUnit() {
         // still leaves the address saved, still returns the unit, and still reports
         // success. The bound below is about the CLOCK, not about failure — an invoke with
         // no timeout of its own could otherwise hold the modal open indefinitely.
-        await withTimeLimit(
-          requestBusinessAddressVerification({ orgUnitId: unit.id, address: updates.address }),
-          VERIFY_ADDRESS_WAIT_MS,
-        );
-        // Re-read rather than trusting the row written above: the stamp is server-written
-        // and therefore is not in that statement's RETURNING clause. Failure here is not
-        // worth surfacing — the caller already has a saved unit, and the invalidated query
-        // will collect the stamp on its own.
-        const { data: reread } = await supabase
-          .from('org_units')
-          .select('address_verified_at')
-          .eq('id', unit.id)
-          .maybeSingle();
-        if (reread) unit.address_verified_at = reread.address_verified_at;
+        const verification = requestBusinessAddressVerification({
+          orgUnitId: unit.id, address: updates.address,
+        });
+        const timedOut = await withTimeLimit(verification, VERIFY_ADDRESS_WAIT_MS);
+
+        if (timedOut) {
+          // The WAIT ended, not the work. The request is still running and will still
+          // write the stamp, and `onSuccess` is about to invalidate a units query that
+          // cannot yet see it — so without this the badge would sit on "needs confirming"
+          // for a verification that succeeded, until something unrelated happened to
+          // refetch. The user is looking at the page right now; nothing else is coming.
+          void verification.finally(() => {
+            queryClient.invalidateQueries({ queryKey: KEYS.orgUnits(unit.org_id) });
+          });
+        } else {
+          // Re-read rather than trusting the row written above: the stamp is
+          // server-written and therefore is not in that statement's RETURNING clause.
+          // Failure here is not worth surfacing — the caller already has a saved unit,
+          // and the invalidated query will collect the stamp on its own.
+          const { data: reread } = await supabase
+            .from('org_units')
+            .select('address_verified_at')
+            .eq('id', unit.id)
+            .maybeSingle();
+          if (reread) unit.address_verified_at = reread.address_verified_at;
+        }
       }
 
       return unit;

@@ -4,8 +4,18 @@ import { withTimeLimit, VERIFY_ADDRESS_WAIT_MS } from './useOrgData';
 describe('withTimeLimit', () => {
   it('resolves as soon as the work resolves, without waiting out the limit', async () => {
     const start = Date.now();
-    await withTimeLimit(Promise.resolve('done'), 5_000);
+    await expect(withTimeLimit(Promise.resolve('done'), 5_000)).resolves.toBe(false);
     expect(Date.now() - start).toBeLessThan(1_000);
+  });
+
+  /**
+   * The caller branches on this. Reporting "the work finished" for a wait the clock
+   * ended would drop the follow-up invalidation, and a verification that succeeded a
+   * second late would leave the badge saying "needs confirming" indefinitely.
+   */
+  it('reports WHICH of the two ended the wait, not merely that it ended', async () => {
+    await expect(withTimeLimit(new Promise<void>(() => undefined), 10)).resolves.toBe(true);
+    await expect(withTimeLimit(Promise.resolve(), 5_000)).resolves.toBe(false);
   });
 
   /**
@@ -14,7 +24,7 @@ describe('withTimeLimit', () => {
    */
   it('resolves on the limit when the work never settles', async () => {
     const never = new Promise<void>(() => undefined);
-    await expect(withTimeLimit(never, 10)).resolves.toBeUndefined();
+    await expect(withTimeLimit(never, 10)).resolves.toBe(true);
   });
 
   /**
@@ -23,7 +33,7 @@ describe('withTimeLimit', () => {
    */
   it('resolves rather than rejecting when the work rejects', async () => {
     await expect(withTimeLimit(Promise.reject(new Error('geocode down')), 5_000))
-      .resolves.toBeUndefined();
+      .resolves.toBe(false);
   });
 
   it('clears its timer so a resolved wait leaves nothing pending', async () => {
