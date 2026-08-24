@@ -330,19 +330,58 @@ same token/font system, unaffected; `/internal` stays dark.
   `100dvh` `main` hands short pages the same dead scroll one container down — so `DashboardLayout` tracks
   the shell. Pinned by `src/layoutViewportHeight.test.ts`, as a text assertion, because jsdom has no layout
   engine to evaluate a CSS length. See `docs/wiki/concepts/mobile-viewport-fixed-positioning.md` (§9).
-* **Size `/logo.webp` by HEIGHT (`h-12 w-auto lg:h-14`), never by width — it is taller than it is
-  wide.** The asset is a stacked badge, **280 x 326** intrinsic (aspect **0.859**), so a width
-  class does not cap it, it *multiplies* it: `w-[140px] h-auto` rendered **163px tall** against the
-  landing header's **56**, and inflated `PublicPageHeader` to a 195px bar. That header is shared by
-  every public page except the landing — `/how-it-works`, `/terms`, `/privacy`, `/help`,
-  `/pricing`, 404 and the public profiles — so one wrong axis was visibly wrong on seven surfaces
-  at once, and the landing (which sizes by height) was the only one that looked right.
-  Founder-reported 2026-08-23. Both headers now use the identical `h-12 w-auto lg:h-14`;
-  `PublicPageHeader.test.tsx` pins it and asserts the two files stay in step.
-  **The `width`/`height` attributes must be the asset's REAL intrinsic size** (280/326, not the
-  140/47 they carried). They exist to reserve the box before the image loads; at the wrong aspect
-  they reserve the wrong shape and cause the layout shift they are meant to prevent. Re-read the
-  real dimensions if the asset is ever replaced rather than copying the numbers.
+* **A page with nothing to scroll can still be DRAGGED, and the gutter it opens is white** —
+  `html, body { overscroll-behavior-y: none }` in `src/index.css`, plus a canvas colour for any
+  dark surface. Closing the scrollable gap (`h-[100dvh]`, above) fixed the screen *jumping*; it did
+  nothing about the rubber-band, which is a separate mechanism on both iOS Safari and a macOS
+  trackpad. The elastic strip sits **outside the body box**, so nothing inside `#root` can paint
+  it: the canvas takes its background from `<html>`, falling back to `<body>` only when the root is
+  transparent, and `body` is `bg-background` — white. Reported with screenshots from a real phone
+  on 2026-08-24, after the 100dvh fix shipped: a white band above the header and below the footer
+  of the one dark cinematic screen.
+  **The Y axis only.** The shorthand takes X with it, and X is where iOS Safari's edge-swipe-back
+  gesture lives; there is no horizontal scrolling to suppress anyway. **Known cost, accepted:** this
+  also disables pull-to-refresh on Android Chrome.
+  **Colour the gutter as well as closing it — the two guards fail differently.** `LandingPage`
+  adds `landing-surface` to `documentElement` for its lifetime (`html.landing-surface { @apply
+  bg-landing-grape }`), and removes it on unmount so it cannot tint the white page the visitor
+  opens next. That covers what the CSS property cannot reach: Safari before 16, and the Capacitor
+  WKWebView, whose bounce is a native scroll-view setting. Any future full-bleed dark surface needs
+  the same treatment — this is a per-surface concern, not a global one.
+  **Measured in the simulator, which is the only instrument that answers the WKWebView half:**
+  a throwaway build with a computed-style readout showed `overscroll-behavior-y: none` on both
+  elements *inside WKWebView* (so WebKit does apply the property), `html` background
+  `rgb(36, 19, 50)`, `innerHeight === documentElement.clientHeight` (874, so the `contentInset:
+  'never'` invariant still holds) and body overflow 0. What that does **not** prove is the native
+  scroll view refusing to bounce — that needs a real drag, by hand, in the simulator or on a phone.
+  Pinned by `src/documentOverscroll.test.ts`, as text assertions, because jsdom has neither a
+  layout engine nor a rubber-band.
+* **The logo has ONE size, and it lives in `src/lib/brandLogo.ts` — never type a size into a
+  header.** `HEADER_LOGO_CLASS` (`h-12 w-auto lg:h-14`) is imported by every header: the landing,
+  `PublicPageHeader`, `AuthPage`, `MobileTopNav` and `DashboardLayout`'s sidebar. The one
+  documented exception is the collapsed 56px sidebar rail, which uses `RAIL_LOGO_CLASS` (`h-8`).
+  `/internal` is deliberately outside this system — an internal tool with its own denser chrome.
+  **Size by HEIGHT, never by width — both assets are taller than they are wide.** `/logo.webp` is
+  **280 x 326** (aspect **0.859**) and `src/assets/Transparent_DragonCandy_logo.webp` is
+  **400 x 465** (aspect **0.860**), so a width class does not cap the height, it *multiplies* it —
+  and because the two aspects agree to within 0.001, one height class renders an identical size no
+  matter which file a surface imports. `w-[140px] h-auto` rendered **163px tall** against the
+  landing header's **56**, and inflated `PublicPageHeader` to a 195px bar (founder-reported
+  2026-08-23, seven public surfaces at once).
+  **The constant exists because the first fix kept two files in step BY HAND, and that is exactly
+  how the other three drifted.** A day later the founder reported the same defect again on the
+  surfaces the first pass never enumerated: auth at 116/140/**163px**, the post-login mobile bar at
+  **74px**, the desktop sidebar at **116px** — three sizes that had been wrong the whole time while
+  a test asserted the two *fixed* files matched each other. A guard that watches the pair you
+  already repaired cannot see the four you did not. `src/lib/brandLogo.test.ts` now re-derives the
+  header list and fails if any of them hardcodes a size; `PublicPageHeader.test.tsx` keeps the
+  render-level check for that header (48x56 on screen, real intrinsic attributes) and asserts it
+  takes its size from the constant rather than from a copy of the class string.
+  **The `width`/`height` attributes must be the asset's REAL intrinsic size** (280/326 or 400/465,
+  not the 140/47 `PublicPageHeader` carried). They exist to reserve the box before the image loads;
+  at the wrong aspect they reserve the wrong shape and cause the layout shift they are meant to
+  prevent. Re-read the real dimensions if either asset is ever replaced rather than copying the
+  numbers.
 * **A public page may not promise a dashboard.** `/help` is linked from the landing footer and is
   reachable with no session, and it told every visitor "Back to Dashboard" — including people who
   have never had one (founder-reported 2026-08-23, same pass as the logo). The *destination* was

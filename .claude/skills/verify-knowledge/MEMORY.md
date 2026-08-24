@@ -70,6 +70,35 @@
 
 ## Run log (newest first — add each new entry at the TOP; never edit/delete past entries)
 
+### [2026-08-24] `worktree-DC-landing-page-fix3` — page-drag + logo-size knowledge sync
+
+**Output:** verdict block emitted in-session — `done:false`, with (a) and (c) `met:true` and
+(b) RAG-freshness `met:false`.
+
+**Happened:** ran the three checks against a branch whose own wiki pages are not yet merged, so
+per the contract the (b) probe targeted the newest **in-scope revision on `origin/main`** — #500
+(onboarding), not this session's work. `NO_CAPTURE_FLOW` and `REQUIREMENT_STEP`, both added by
+that revision, returned **0 rows**; `donny_knowledge` holds 444 rows, so the table is not empty.
+
+**Worked:** ran the probe through the **read-only Supabase MCP** rather than a REST call —
+`supabase/scripts/.env.sync.local` does not exist in this worktree, so the documented curl needs a
+key that is not present, and the MCP answers the same question with no secret handling. Worth
+keeping: the key file is per-checkout, so a worktree can be structurally unable to run the
+documented command while still being able to answer the question.
+
+**Failed:** nothing, but the first reading was almost accepted on a **negative control only** — a
+nonsense token also returned 0, which proves nothing about whether the query can ever match.
+Added positive controls (`contentInset` → 5 rows, `dismissed_requirements` → 3) before trusting
+the zeros. Same rule as the wiki's own "when a probe returns zero, prove it could have returned
+non-zero", applied to a content probe rather than a scroll probe.
+
+**Remember:** a `met:false` on (b) is frequently **not this session's fault** — the RAG tracks
+`origin/main`, so a PR merged an hour ago by someone else fails the check for you. Say whose
+content is missing in the prose, or the caller will re-sync work that was never the problem. And
+the remediation may be unavailable to the running session: the post-merge hook fires on the
+**main checkout**, which a worktree cannot touch.
+
+
 ### [2026-08-19] Tech department scope session (`feat/tech-department-scope`, PR #451, pre-merge)
 
 - **Output:** the verdict block emitted in-session — `done:false`, with (a) and (c) `met:true` and

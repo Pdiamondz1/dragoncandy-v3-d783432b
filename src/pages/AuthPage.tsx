@@ -11,6 +11,7 @@ import { BRAND_ROLE_ENABLED } from "@/lib/featureConfig";
 import { AuthShell } from "@/components/auth/AuthShell";
 import { Eyebrow } from "@/components/landing/Eyebrow";
 import { ALLOWED_REDIRECT_ORIGINS } from "@/lib/allowedOrigins";
+import { HEADER_LOGO_CLASS, PUBLIC_LOGO_INTRINSIC } from "@/lib/brandLogo";
 
 type SignupStep = "role-selection" | "signup-form";
 
@@ -250,7 +251,11 @@ const AuthPage = () => {
 
   return (
     <AuthShell>
-      <div className="relative z-10 flex flex-1 flex-col min-h-screen">
+      {/* min-h-[100dvh], not min-h-screen: on iOS Safari 100vh is the URL-bar-COLLAPSED height,
+          so this stands ~60-90px taller than the visible area and hands the sign-in screen that
+          much dead scroll inside `main` — the same defect AppShell and DashboardLayout already
+          fixed one container up. This is the page the landing's only CTA leads to. */}
+      <div className="relative z-10 flex flex-1 flex-col min-h-[100dvh]">
       <SEO
         title="Sign In or Sign Up - DragonCandy"
         description="Log in to DragonCandy or create a brand, restaurant, or creator account in under a minute."
@@ -259,7 +264,16 @@ const AuthPage = () => {
       {/* Top nav — logo left, hamburger right */}
       <div className="flex items-center px-5 pt-6 pb-2">
         <Link to="/">
-          <img src="/logo.webp" alt="DragonCandy" className="w-[100px] md:w-[120px] lg:w-[140px] h-auto" />
+          {/* Was `w-[100px] md:w-[120px] lg:w-[140px] h-auto`, which rendered 116 / 140 / 163px
+              TALL — the asset is taller than it is wide, so a width class multiplies the height
+              instead of capping it. Same size as the landing header now, from one constant. */}
+          <img
+            src="/logo.webp"
+            alt="DragonCandy"
+            width={PUBLIC_LOGO_INTRINSIC.width}
+            height={PUBLIC_LOGO_INTRINSIC.height}
+            className={HEADER_LOGO_CLASS}
+          />
         </Link>
       </div>
 

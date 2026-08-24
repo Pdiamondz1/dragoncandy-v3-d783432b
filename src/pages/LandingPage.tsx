@@ -18,6 +18,23 @@ export default function LandingPage() {
     }
   }, [user, loading, navigate]);
 
+  // Paint the overscroll gutter grape for this route's lifetime. The elastic strip a rubber-band
+  // opens sits OUTSIDE the body box, so no element inside #root can colour it — the canvas reads
+  // its background off <html>. Without this, dragging the page exposed white above the header and
+  // below the footer (reported with screenshots from a real phone, 2026-08-24). `index.css` also
+  // sets `overscroll-behavior-y: none`, which should mean there is nothing to see here; this is
+  // the guard for where that property cannot reach — Safari before 16, and the Capacitor
+  // WKWebView, whose bounce is a native setting.
+  //
+  // Removed on unmount rather than left on: it would otherwise tint the gutter of every white
+  // page the visitor navigates to next. Mirrors InternalLayout's <html> class toggle, which is
+  // the only other place this app touches documentElement.
+  useEffect(() => {
+    const root = document.documentElement;
+    root.classList.add("landing-surface");
+    return () => root.classList.remove("landing-surface");
+  }, []);
+
   return (
     // bg-landing-grape (not bg-white) — the backdrop is dark video, so a white page background
     // would flash behind it before the first frame paints.
