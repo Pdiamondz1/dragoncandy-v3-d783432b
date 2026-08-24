@@ -95,6 +95,42 @@ export class XReconnectRequiredError extends XError {
 }
 
 /**
+ * A skew so large that `claim_x_token_refresh` can never answer `fresh`.
+ *
+ * Reads oddly and is exactly right. The parameter means "how much life must a
+ * token have left to be worth keeping", so an enormous value says "nothing I
+ * currently hold is good enough" — which is the truth after X has answered 401
+ * on a token whose recorded expiry still looks fine.
+ *
+ * Expressed through the existing parameter rather than a new `p_force` argument
+ * because that would mean a second migration to change a function signature, for
+ * a behaviour the signature already expresses.
+ */
+const FORCE_REFRESH_SKEW_SECONDS = 30 * 24 * 60 * 60;
+
+/**
+ * Mark a connection as needing the user to reconnect.
+ *
+ * Best-effort: the caller is already on an error path and a failure to record
+ * the status must not replace the real error with a storage one. Logged, because
+ * silently failing here is what leaves a card saying "Connected" over a dead
+ * grant.
+ */
+export async function markNeedsReconnect(
+  supabase: SupabaseClient,
+  userId: string,
+  message: string,
+): Promise<void> {
+  const { error } = await supabase
+    .from(TABLE)
+    .update({ status: 'needs_reconnect', last_error: message.slice(0, 500) })
+    .eq('user_id', userId);
+  if (error) {
+    console.error('[x-connection] could not mark needs_reconnect:', error.message);
+  }
+}
+
+/**
  * Return an access token good for the next request, refreshing if needed.
  *
  * Never calls X when someone else has already refreshed, which is the whole
@@ -103,12 +139,23 @@ export class XReconnectRequiredError extends XError {
 export async function getUsableAccessToken(
   supabase: SupabaseClient,
   conn: XConnection,
+  /**
+   * Refresh even though the stored expiry still looks fine.
+   *
+   * For the case the expiry cannot see: X can revoke a token at any moment — a
+   * user removing the app at x.com does exactly that — and the recorded expiry
+   * goes on looking healthy for up to two hours afterwards. Without this the
+   * connection is simply broken for that whole window, with no reconnect button
+   * offered, because nothing has noticed anything is wrong.
+   */
+  opts: { force?: boolean } = {},
 ): Promise<string> {
-  if (isFresh(conn.access_token_expires_at)) return conn.access_token;
+  const skew = opts.force ? FORCE_REFRESH_SKEW_SECONDS : REFRESH_SKEW_SECONDS;
+  if (!opts.force && isFresh(conn.access_token_expires_at)) return conn.access_token;
 
   const { data: claim, error: claimError } = await supabase.rpc('claim_x_token_refresh', {
     p_user_id: conn.user_id,
-    p_skew_seconds: REFRESH_SKEW_SECONDS,
+    p_skew_seconds: skew,
   });
 
   if (claimError) throw new XError('storage_failed', claimError.message, 500);
@@ -120,8 +167,19 @@ export async function getUsableAccessToken(
         // Someone else refreshed, or is refreshing right now. Re-read rather
         // than reusing our stale copy — and if it is still not fresh, say so
         // instead of calling X behind their back.
+        //
+        // Under `force` this is the good outcome: the token we were handed a 401
+        // for has already been replaced by another caller, so the right move is
+        // to use theirs rather than spend a second refresh token on the same
+        // problem. `!==` on the token, not `isFresh`, because under force the
+        // question is "is this a DIFFERENT token", not "does it look current".
         const latest = await loadConnection(supabase, conn.user_id);
-        if (latest && isFresh(latest.access_token_expires_at)) return latest.access_token;
+        if (opts.force && latest && latest.access_token !== conn.access_token) {
+          return latest.access_token;
+        }
+        if (latest && isFresh(latest.access_token_expires_at) && !opts.force) {
+          return latest.access_token;
+        }
         throw new XError(
           'refresh_in_progress',
           'This connection is being refreshed. Please try again in a moment.',

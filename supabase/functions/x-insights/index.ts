@@ -20,6 +20,7 @@ import {
   INSIGHTS_CACHE_SECONDS,
   isCacheUsable,
   loadConnection,
+  markNeedsReconnect,
   TABLE,
   XReconnectRequiredError,
 } from '../_shared/x-connection.ts';
@@ -84,8 +85,41 @@ serve(async (req: Request) => {
       });
     }
 
-    const accessToken = await getUsableAccessToken(supabase, conn);
-    const insights = await fetchInsights(accessToken, conn.x_user_id);
+    // THE STORED EXPIRY CANNOT SEE A REVOKED TOKEN. X invalidates immediately
+    // when a user removes the app at x.com, while `access_token_expires_at` goes
+    // on looking healthy for up to two hours. Passing that 401 straight through
+    // would leave the connection broken for the whole window with no reconnect
+    // button offered, because nothing had noticed anything was wrong.
+    //
+    // So a 401 buys exactly one retry with a forced refresh. If the grant is
+    // genuinely gone the refresh raises XReconnectRequiredError, which the
+    // catch below turns into the 409 that shows the button. If it survives the
+    // refresh and still 401s, the grant is dead in a way a refresh cannot fix
+    // and we say so rather than looping.
+    let insights;
+    try {
+      const accessToken = await getUsableAccessToken(supabase, conn);
+      insights = await fetchInsights(accessToken, conn.x_user_id);
+    } catch (e) {
+      if (!(e instanceof XError) || e.code !== 'unauthorized') throw e;
+
+      const refreshed = await getUsableAccessToken(supabase, conn, { force: true });
+      try {
+        insights = await fetchInsights(refreshed, conn.x_user_id);
+      } catch (retryError) {
+        if (retryError instanceof XError && retryError.code === 'unauthorized') {
+          await markNeedsReconnect(
+            supabase,
+            user.id,
+            'X rejected the connection even after refreshing it.',
+          );
+          throw new XReconnectRequiredError(
+            'X has ended this connection. Reconnect your account to keep seeing analytics.',
+          );
+        }
+        throw retryError;
+      }
+    }
 
     // Store the snapshot AND the account figures it carries, so the status card
     // has a current follower count without a second billed read.

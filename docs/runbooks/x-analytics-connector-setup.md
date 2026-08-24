@@ -42,6 +42,19 @@ Until this is changed, consent fails with a redirect mismatch. That fails
 Where: `console.x.com` → the DragonCandy app (`33346014`) → **User authentication
 settings** → Callback URI / Redirect URL.
 
+> **It is `.com`, not `.io`, and the stale copy in the repo will tell you
+> otherwise.** The Codex review of this branch filed a P1 saying to register
+> `https://dragoncandy.io/x/callback`, citing `AGENTS.md` — which is an outdated
+> duplicate of `CLAUDE.md` and still says prod is `.io`. Checked 2026-08-24:
+> `dragoncandy.com` answers **200**, `dragoncandy.io` answers **308** to it, and
+> `origins.ts` sets `DEFAULT_ORIGIN` to `.com`.
+>
+> Taking that advice would have caused the exact failure it warned about. We
+> **send** a `redirect_uri` derived from the origin the user is actually on, so a
+> user on `.com` sends `.com`; registering `.io` would fail X's exact-match check
+> on every authorization. The 308 does not help — X compares what we send against
+> what is registered, and never follows a redirect to do it.
+
 > **Console quirk, already paid for once:** typing into `console.x.com` fields
 > silently strips spaces. Not an issue for a URL, but do not trust what you typed
 > — reload the page and read the saved value back.

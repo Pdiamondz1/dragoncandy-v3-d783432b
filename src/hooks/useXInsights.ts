@@ -136,6 +136,17 @@ export function useRefreshXInsights() {
         body: { force: true },
       });
       if (error) {
+        // The SAME code handling as the query above, and it has to be here too.
+        // A forced refresh is the most likely place to discover a dead grant —
+        // it is what a user presses when the numbers look wrong — and the server
+        // has already written `needs_reconnect` to the row by the time we see
+        // this. Without the invalidate, the card goes on saying "Connected" and
+        // keeps hiding the one button that fixes it, which is the whole defect
+        // this pattern exists to prevent.
+        const code = await codeFromInvokeError(error, '');
+        if (RECONNECT_CODES.has(code)) {
+          void queryClient.invalidateQueries({ queryKey: ['x-connection', user?.id] });
+        }
         throw new Error(await messageFromInvokeError(error, 'Could not refresh X analytics'));
       }
       if (!data) throw new Error('Could not refresh X analytics');
