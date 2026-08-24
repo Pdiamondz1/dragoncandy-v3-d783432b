@@ -143,7 +143,11 @@ async function xGet(path: string, accessToken: string): Promise<Record<string, u
     );
   }
   if (!res.ok) {
-    throw new XError('x_error', `X returned ${res.status}: ${text.slice(0, 200)}`, 502);
+    // The UPSTREAM status, not a flat 502. A caller deciding whether a retry
+    // could possibly help needs to know what X actually said — flattening every
+    // failure into one code is how a 5xx outage ends up being treated as a
+    // permission problem and retried for money.
+    throw new XError('x_error', `X returned ${res.status}: ${text.slice(0, 200)}`, res.status);
   }
 
   try {
@@ -191,7 +195,21 @@ export async function fetchPosts(
     // refused outright on some accounts. Retrying WITHOUT it yields a smaller
     // but honest card, which beats failing the whole read — and the caller is
     // told coverage is partial rather than being handed silent nulls.
-    if (e instanceof XError && (e.code === 'x_error' || e.status === 403)) {
+    //
+    // NARROW ON PURPOSE, and it was not always. This used to retry on the
+    // catch-all `x_error`, which `xGet` threw for EVERY non-401/429 failure — so
+    // an X 5xx outage bought a second billed timeline read that could not
+    // possibly succeed, on a connector where every read is money. A retry is
+    // only worth paying for when the thing being removed is the thing that
+    // failed.
+    //
+    // 403 is the permission refusal. The message check covers X answering 400
+    // for an unsupported field combination, which it does for some accounts.
+    const permissionRefusal =
+      e instanceof XError &&
+      (e.status === 403 || (e.status === 400 && /organic|metric/i.test(e.message)));
+
+    if (permissionRefusal) {
       const fallback = new URLSearchParams({
         max_results: String(MAX_POSTS),
         start_time: startTime,
