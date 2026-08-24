@@ -129,9 +129,42 @@ DECLARE
   v_uid uuid := auth.uid();
   v_name text;
   v_account_type text;
+  v_created_at timestamptz;
+  v_provider text;
 BEGIN
   IF v_uid IS NULL THEN
     RAISE EXCEPTION 'forbidden: authentication required';
+  END IF;
+
+  -- "Nothing completed and no organization" is NOT sufficient on its own, and the
+  -- gap is a real one: an account that signed up by password weeks ago and never
+  -- finished onboarding matches both conditions. If that person later presses
+  -- "Sign up with Google" with the same address, Supabase signs them INTO the
+  -- existing account rather than creating a new one — and without the two checks
+  -- below this function would happily convert their creator account to a business
+  -- and provision an organization they never asked for.
+  --
+  -- Two independent conditions, because either alone is defeatable:
+  --
+  -- AGE. A claim runs on the OAuth redirect return, seconds after the account is
+  -- created. Fifteen minutes is generous for a slow consent flow and excludes
+  -- every account that existed before this sign-in.
+  --
+  -- PROVIDER. `raw_app_meta_data->>'provider'` records the identity that CREATED
+  -- the account and does not change when another identity is later linked — so a
+  -- password account that just linked Google still reads 'email' here and is
+  -- refused, which is exactly the case age alone would let through if someone
+  -- signed up and linked within the window.
+  SELECT u.created_at, COALESCE(u.raw_app_meta_data->>'provider', 'email')
+    INTO v_created_at, v_provider
+    FROM auth.users u WHERE u.id = v_uid;
+
+  IF v_provider NOT IN ('google', 'apple', 'facebook') THEN
+    RETURN jsonb_build_object('claimed', false, 'reason', 'not_an_oauth_account');
+  END IF;
+
+  IF v_created_at IS NULL OR v_created_at < now() - interval '15 minutes' THEN
+    RETURN jsonb_build_object('claimed', false, 'reason', 'account_not_new');
   END IF;
 
   SELECT full_name INTO v_name FROM public.profiles WHERE id = v_uid;

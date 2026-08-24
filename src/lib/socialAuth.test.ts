@@ -2,12 +2,18 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
+const supa = vi.hoisted(() => ({ signInWithOAuth: vi.fn() }));
+vi.mock('@/integrations/supabase/client', () => ({
+  supabase: { auth: { signInWithOAuth: supa.signInWithOAuth }, rpc: vi.fn() },
+}));
+
 import {
   SOCIAL_PROVIDERS,
   PROVIDER_LABELS,
   isAccountRole,
   stashPendingRole,
   takePendingRole,
+  startSocialSignIn,
 } from './socialAuth';
 
 describe('isAccountRole', () => {
@@ -143,5 +149,67 @@ describe('the RPC this calls actually exists', () => {
     const code = sql.split('\n').filter((l) => !l.trimStart().startsWith('--')).join('\n');
     expect(code).toContain('v_email_verified := v_provider IN');
     expect(code).not.toContain('email_confirmed_at');
+  });
+});
+
+describe('startSocialSignIn', () => {
+  beforeEach(() => {
+    sessionStorage.clear();
+    supa.signInWithOAuth.mockReset();
+  });
+
+  it('stashes the role before handing over to the provider', async () => {
+    supa.signInWithOAuth.mockResolvedValue({ error: null });
+    const result = await startSocialSignIn('google', 'brand');
+    expect(result.ok).toBe(true);
+    expect(takePendingRole()).toBe('brand');
+  });
+
+  /**
+   * The redirect never happened, so the role is left waiting for whatever sign-in
+   * comes next in this tab. A password login into an unrelated, still-incomplete
+   * account would then consume it and be reclassified by a choice its owner never
+   * made — the same corruption the RPC's own guards refuse, arriving by a
+   * different route.
+   */
+  it('drops the stashed role when the provider call returns an error', async () => {
+    supa.signInWithOAuth.mockResolvedValue({ error: { message: 'Unsupported provider' } });
+    const result = await startSocialSignIn('google', 'business_client');
+    expect(result.ok).toBe(false);
+    expect(takePendingRole()).toBeNull();
+  });
+
+  it('drops the stashed role when the provider call throws', async () => {
+    supa.signInWithOAuth.mockRejectedValue(new Error('network down'));
+    const result = await startSocialSignIn('apple', 'business_client');
+    expect(result.ok).toBe(false);
+    expect(takePendingRole()).toBeNull();
+  });
+
+  it('names the provider in the failure message rather than echoing the raw error', async () => {
+    supa.signInWithOAuth.mockResolvedValue({ error: { message: 'Unsupported provider' } });
+    const result = await startSocialSignIn('facebook', null);
+    expect(result.message).toMatch(/Facebook/);
+    expect(result.message).not.toMatch(/Unsupported provider/);
+  });
+});
+
+describe('claim_initial_role guards against an existing account', () => {
+  /**
+   * Proven on prod in a rolled-back transaction, and the control matters: with
+   * both guards removed, an incomplete password account from 30 days ago WAS
+   * converted to a business and given an organization. "Nothing completed and no
+   * org" describes an abandoned signup as accurately as a brand-new one.
+   */
+  it('checks both the creating provider and the account age', () => {
+    const sql = readFileSync(
+      join(process.cwd(), 'supabase/migrations/20260825140000_social_login_support.sql'),
+      'utf8',
+    );
+    const body = sql.slice(sql.indexOf('function public.claim_initial_role'));
+    const code = body.split('\n').filter((l) => !l.trimStart().startsWith('--')).join('\n');
+    expect(code).toContain("'not_an_oauth_account'");
+    expect(code).toContain("'account_not_new'");
+    expect(code).toMatch(/created_at < now\(\) - interval/);
   });
 });

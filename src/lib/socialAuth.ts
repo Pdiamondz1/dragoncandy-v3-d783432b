@@ -96,11 +96,17 @@ export async function startSocialSignIn(
       // not configured in Supabase, which reads as "Unsupported provider". Say
       // something true rather than echoing that at a signed-out stranger.
       console.error(`Social sign-in failed for ${provider}:`, error);
+      // Drop the stash. The redirect never happened, so the role is now a value
+      // waiting to be picked up by whatever sign-in comes next in this tab — a
+      // password login into an unrelated account included, which would then be
+      // reclassified by a choice its owner never made.
+      takePendingRole();
       return { ok: false, message: `${PROVIDER_LABELS[provider]} sign-in is not available right now.` };
     }
     return { ok: true };
   } catch (err) {
     console.error(`Social sign-in threw for ${provider}:`, err);
+    takePendingRole();
     return { ok: false, message: `${PROVIDER_LABELS[provider]} sign-in is not available right now.` };
   }
 }
