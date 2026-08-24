@@ -37,7 +37,7 @@ describe('analytics connector coverage', () => {
     ]);
   });
 
-  it.each(['InstagramInsightsCard', 'YouTubeAnalyticsCard'])(
+  it.each(['InstagramInsightsCard', 'YouTubeAnalyticsCard', 'FacebookPageInsightsCard'])(
     'renders %s on every surface that offers Outstand',
     (card) => {
       const missing = outstandSurfaces
