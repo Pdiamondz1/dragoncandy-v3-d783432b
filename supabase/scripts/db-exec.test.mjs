@@ -116,6 +116,46 @@ describe('db:apply (default)', () => {
     expect(body).toContain('insert into supabase_migrations.schema_migrations');
   });
 
+  // The pre-check and the apply are separated by however long someone takes to type "yes". More
+  // than one session runs against this project at a time, so that window is real.
+  it('lets the ledger primary key abort a version recorded during the confirmation window', async () => {
+    stubFetch([NOT_YET_RECORDED, { ok: true, rows: [] }, NOW_RECORDED]);
+
+    await cmdApply(TOKEN, REF, [migrationPath]);
+
+    const body = calls[1].body;
+    expect(body).toContain('insert into supabase_migrations.schema_migrations');
+    // No conflict clause: a duplicate must raise 23505 and roll the migration back with it,
+    // rather than being swallowed while a non-idempotent migration applies a second time.
+    expect(body).not.toContain('on conflict');
+  });
+
+  it('says nothing was applied when the ledger row collides', async () => {
+    stubFetch([
+      NOT_YET_RECORDED,
+      { ok: false, message: 'duplicate key value violates unique constraint "schema_migrations_pkey"' },
+    ]);
+    const exit = vi.spyOn(process, 'exit').mockImplementation(() => {
+      throw new Error('__exit__');
+    });
+
+    await expect(cmdApply(TOKEN, REF, [migrationPath])).rejects.toThrow('__exit__');
+
+    const said = console.error.mock.calls.flat().join('\n');
+    expect(said).toContain('NOTHING WAS APPLIED');
+    expect(said).toContain(VERSION);
+    // The opposite message would send an operator hunting for a schema change that never landed.
+    expect(said).not.toContain('APPLIED BUT NOT RECORDED');
+  });
+
+  it('tolerates the conflict under --force, where the row is expected to exist', async () => {
+    stubFetch([NOW_RECORDED, { ok: true, rows: [] }, NOW_RECORDED]);
+
+    await cmdApply(TOKEN, REF, [migrationPath, '--force']);
+
+    expect(calls[1].body).toContain('on conflict (version) do nothing');
+  });
+
   it('refuses a version the ledger already records', async () => {
     stubFetch([NOW_RECORDED]);
     const exit = vi.spyOn(process, 'exit').mockImplementation(() => {

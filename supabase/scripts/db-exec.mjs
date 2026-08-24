@@ -345,7 +345,26 @@ export async function cmdApply(token, ref, args) {
     }
   }
 
-  const ledger = `insert into supabase_migrations.schema_migrations (version, name) values ('${version}', '${name.replace(/'/g, "''")}') on conflict (version) do nothing;`;
+  // The pre-check above is a check-then-act, and the gap between it and the apply is however long
+  // someone takes to type "yes" — 30+ worktrees here and more than one session runs at a time. If
+  // another operator records this version in that window, `on conflict do nothing` would swallow
+  // the collision and let a non-idempotent migration run a SECOND time and commit.
+  //
+  // So the wrapped path inserts WITHOUT a conflict clause on purpose: a duplicate raises 23505,
+  // which aborts the transaction and takes the migration with it. The race turns into a rollback
+  // instead of a double-apply — the ledger's primary key becomes the lock, which is the only
+  // thing here that can be one.
+  //
+  // --force means "this version is already recorded and I have read the file", so there the
+  // conflict is the expected state rather than a collision, and it is tolerated.
+  //
+  // --no-transaction has no wrapper to roll back, so it cannot make this promise at all; it
+  // tolerates the conflict and leans on the read-back below to confirm the row exists.
+  const tolerateConflict = noTx || args.includes('--force');
+  const ledger =
+    `insert into supabase_migrations.schema_migrations (version, name) ` +
+    `values ('${version}', '${name.replace(/'/g, "''")}')` +
+    `${tolerateConflict ? ' on conflict (version) do nothing' : ''};`;
 
   console.error('');
   console.error(`  project : ${ref}`);
@@ -371,7 +390,20 @@ export async function cmdApply(token, ref, args) {
       );
     }
   } else {
-    result = await runSql(token, ref, `begin;\n${sql}\n${ledger}\ncommit;`);
+    try {
+      result = await runSql(token, ref, `begin;\n${sql}\n${ledger}\ncommit;`, { rethrow: true });
+    } catch (err) {
+      // Translate the collision, because "duplicate key value violates unique constraint" does
+      // not tell an operator the good news: nothing was applied.
+      if (/duplicate key|23505/i.test(err.message)) {
+        die(
+          `Version ${version} was recorded by someone else while this was waiting for confirmation.\n` +
+          '  NOTHING WAS APPLIED — the duplicate ledger row aborted the transaction and rolled the\n' +
+          '  migration back with it. Check what the other run did before trying again.',
+        );
+      }
+      die(err.message);
+    }
   }
   console.error('db-exec: applied.');
   printRows(result);
