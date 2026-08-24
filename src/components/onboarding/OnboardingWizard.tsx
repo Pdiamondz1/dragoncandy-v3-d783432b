@@ -16,20 +16,17 @@ import { TapGrid } from './TapGrid';
 import { CUISINE_ITEMS } from '@/lib/cuisines';
 import { IdentityStep } from './steps/IdentityStep';
 import { BioStep } from './steps/BioStep';
-import { WelcomeStep } from './steps/WelcomeStep';
+import { PhoneStep } from './steps/PhoneStep';
+import { AddressStep } from './steps/AddressStep';
+import { PaymentsStep } from './steps/PaymentsStep';
+import { ReadyStep } from './steps/ReadyStep';
+import { ROLE_STEPS, STEP_PHASE, lastCollectStep } from './steps';
+import { useOrgFromProfile, useOrgUnits, useUpdateOrgUnit } from '@/hooks/useOrgData';
 import type { Database } from '@/integrations/supabase/types';
 
 type UserRole = 'business_client' | 'content_creator' | 'brand';
 type CreatorSkill = Database['public']['Enums']['creator_skill'];
 type IndustryType = Database['public']['Enums']['industry_type'];
-
-type StepId = 'identity' | 'industry' | 'cuisine' | 'skills' | 'bio' | 'welcome';
-
-const ROLE_STEPS: Record<UserRole, StepId[]> = {
-  business_client: ['identity', 'cuisine', 'welcome'],
-  content_creator: ['identity', 'skills', 'bio', 'welcome'],
-  brand: ['identity', 'industry', 'welcome'],
-};
 
 const INDUSTRY_ITEMS = [
   { value: 'food', label: 'Food & Dining', icon: '🍕' },
@@ -88,7 +85,7 @@ export function OnboardingWizard() {
 
   const role = (user?.user_metadata?.role as UserRole) ?? 'content_creator';
   const steps = ROLE_STEPS[role];
-  const inputSteps = steps.filter(s => s !== 'welcome');
+  const inputSteps = steps.filter(s => s !== 'ready');
   const accentColor = role === 'content_creator' ? 'teal' as const : 'pink' as const;
 
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -107,8 +104,32 @@ export function OnboardingWizard() {
   // a visible choice, not a silent database default. Nothing back-fills existing creators.
   const [showInFeed, setShowInFeed] = useState(true);
 
+  // Service-slide state. `coreSaved` is the gate: everything after the last collect
+  // slide needs the profile rows to exist.
+  const [coreSaved, setCoreSaved] = useState(false);
+  const [phoneVerified, setPhoneVerified] = useState(false);
+  const [address, setAddress] = useState('');
+  const [addressSaving, setAddressSaving] = useState(false);
+  const [addressSaved, setAddressSaved] = useState(false);
+
+  const { data: orgFromProfile } = useOrgFromProfile();
+  const { data: orgUnits = [] } = useOrgUnits(orgFromProfile?.org?.id);
+  const updateOrgUnit = useUpdateOrgUnit();
+  const primaryUnit = orgUnits.find(u => u.is_primary) ?? orgUnits[0];
+
   const currentStep = steps[currentIndex];
-  const isWelcome = currentStep === 'welcome';
+  const isReady = currentStep === 'ready';
+  // True when the current slide is a service slide whose work is not done, so the
+  // forward button is honestly a skip rather than a completion.
+  // `payments` is deliberately absent: Stripe's status lives inside StripeConnectSetup
+  // and reading it again here would be a second answer to "is this account payable".
+  // Since the wizard cannot tell, its button stays the neutral "Continue" — calling it
+  // "Skip for now" would be false for a user who just finished Connect.
+  const stepDone =
+    currentStep === 'phone' ? phoneVerified :
+    currentStep === 'address' ? !!primaryUnit?.address_verified_at :
+    true;
+  const isSkippable = STEP_PHASE[currentStep] === 'service' && !stepDone;
   const isFirstInput = currentIndex === 0;
 
   const isStepValid = useCallback(() => {
@@ -118,12 +139,29 @@ export function OnboardingWizard() {
       case 'cuisine': return cuisines.length > 0;
       case 'skills': return skills.length > 0;
       case 'bio': return bio.trim().length > 0;
-      case 'welcome': return true;
+      // Service slides never block. Each calls a live service, and a user who cannot
+      // finish one — no signal, a Stripe outage, a number they would rather not give —
+      // must still reach a working dashboard. The readiness engine records them as
+      // unmet, which is the honest outcome; a locked door is not.
+      case 'phone':
+      case 'address':
+      case 'payments':
+      case 'ready': return true;
       default: return false;
     }
   }, [currentStep, name, industry, cuisines, skills, bio]);
 
-  const goNext = () => {
+  const goNext = async () => {
+    // The core save runs when the LAST COLLECT slide is left, not at the end of the
+    // wizard. Every slide after it acts on rows that must already exist: verify-address
+    // reads the stored address back rather than trusting the client, and Stripe Connect
+    // needs a profile to attach an account to. It also fixes an abandonment bug — a user
+    // who quits on the payments slide now has a complete profile and a working
+    // dashboard instead of an account that captured nothing.
+    if (currentStep === lastCollectStep(role) && !coreSaved) {
+      const ok = await saveCore();
+      if (!ok) return;
+    }
     if (currentIndex < steps.length - 1) {
       setDirection(1);
       setCurrentIndex(prev => prev + 1);
@@ -161,8 +199,8 @@ export function OnboardingWizard() {
     );
   };
 
-  const handleSubmit = async () => {
-    if (!user) return;
+  const saveCore = async (): Promise<boolean> => {
+    if (!user) return false;
     setLoading(true);
 
     try {
@@ -284,15 +322,38 @@ export function OnboardingWizard() {
       // navigate to next would read a stale null profile and hang on their
       // loading state until a full page reload.
       await refreshProfile();
-
-      toast.success('Profile created!');
-      navigate(DASHBOARD_ROUTES[role]);
+      setCoreSaved(true);
+      return true;
     } catch (err) {
       console.error(err);
       toast.error('Something went wrong. Please try again.');
+      return false;
+    } finally {
       setLoading(false);
     }
   };
+
+  /** The address slide writes through the same mutation the settings UI uses, so the
+   *  re-verification rules in useUpdateOrgUnit (which fire verify-address only when the
+   *  stored address actually changed) apply here too rather than being re-derived. */
+  const handleAddressSave = async () => {
+    if (!primaryUnit) {
+      toast.error('We could not find your location yet — you can add it in settings.');
+      return;
+    }
+    setAddressSaving(true);
+    try {
+      await updateOrgUnit.mutateAsync({ id: primaryUnit.id, address: address.trim() });
+      setAddressSaved(true);
+    } catch (err) {
+      console.error(err);
+      toast.error('Could not save that address. Please try again.');
+    } finally {
+      setAddressSaving(false);
+    }
+  };
+
+  const handleFinish = () => navigate(DASHBOARD_ROUTES[role]);
 
   const stepTitle = () => {
     switch (currentStep) {
@@ -302,6 +363,9 @@ export function OnboardingWizard() {
         return "What kind of food do you serve?";
       case 'skills': return "What do you create?";
       case 'bio': return "Describe yourself";
+      case 'phone': return "What's your number?";
+      case 'address': return "Where are you based?";
+      case 'payments': return "Set up payments";
       default: return '';
     }
   };
@@ -312,6 +376,9 @@ export function OnboardingWizard() {
       case 'cuisine': return 'Pick all that apply';
       case 'skills': return 'Pick all that apply';
       case 'bio': return 'One catchy line about you';
+      case 'phone': return 'We text a code to confirm it';
+      case 'address': return 'Your main location';
+      case 'payments': return 'Takes about a minute with Stripe';
       default: return '';
     }
   };
@@ -372,12 +439,30 @@ export function OnboardingWizard() {
           />
         );
 
-      case 'welcome':
+      case 'phone':
+        return <PhoneStep verified={phoneVerified} onVerified={() => setPhoneVerified(true)} />;
+
+      case 'address':
         return (
-          <WelcomeStep
+          <AddressStep
+            address={address}
+            onAddressChange={setAddress}
+            onSave={handleAddressSave}
+            saving={addressSaving}
+            verified={!!primaryUnit?.address_verified_at}
+            pending={addressSaved}
+          />
+        );
+
+      case 'payments':
+        return <PaymentsStep role={role} />;
+
+      case 'ready':
+        return (
+          <ReadyStep
             name={name}
             role={role}
-            onContinue={handleSubmit}
+            onContinue={handleFinish}
             loading={loading}
           />
         );
@@ -392,7 +477,7 @@ export function OnboardingWizard() {
       <div className="w-full md:max-w-lg md:bg-white md:border-2 md:border-landing-line md:rounded-3xl md:shadow-[0_14px_30px_rgba(36,19,50,0.08)] md:my-8">
       <div className="flex flex-col min-h-[100dvh] md:min-h-[580px] max-w-md mx-auto px-5 py-6 md:py-8">
         {/* Header */}
-        {!isWelcome && (
+        {!isReady && (
           <motion.div
             initial={{ opacity: 0, y: -8 }}
             animate={{ opacity: 1, y: 0 }}
@@ -422,7 +507,7 @@ export function OnboardingWizard() {
         )}
 
         {/* Step title */}
-        {!isWelcome && currentStep !== 'identity' && (
+        {!isReady && currentStep !== 'identity' && (
           <div className="text-center mb-5">
             <AnimatePresence mode="wait">
               <motion.div
@@ -474,7 +559,7 @@ export function OnboardingWizard() {
         </div>
 
         {/* Auto-detected location badge */}
-        {!isWelcome && !autoDetect.loading && (autoDetect.city || autoDetect.country) && (
+        {!isReady && !autoDetect.loading && (autoDetect.city || autoDetect.country) && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -491,7 +576,7 @@ export function OnboardingWizard() {
         )}
 
         {/* Next button */}
-        {!isWelcome && (
+        {!isReady && (
           <motion.div
             initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
@@ -504,7 +589,10 @@ export function OnboardingWizard() {
               className="w-full h-14 text-base disabled:opacity-60"
             >
               <span className="flex items-center gap-2">
-                Continue
+                {/* A service slide the user has not completed is a SKIP, and says so.
+                    Labelling it "Continue" would imply the step had been done — the
+                    same class of lie as reporting a saved address as a verified one. */}
+                {isSkippable ? 'Skip for now' : 'Continue'}
                 <ArrowRight className="w-4 h-4" />
               </span>
             </LandingButton>
@@ -514,6 +602,9 @@ export function OnboardingWizard() {
               {currentStep === 'cuisine' && 'This helps us match you with the right creators'}
               {currentStep === 'skills' && 'Brands filter by these to find you'}
               {currentStep === 'bio' && 'Keep it short — you can edit anytime'}
+              {currentStep === 'phone' && 'Optional — it is how we reach you about live work'}
+              {currentStep === 'address' && 'You can add more locations later'}
+              {currentStep === 'payments' && 'You can do this later, but you cannot be paid until it is done'}
             </p>
           </motion.div>
         )}
