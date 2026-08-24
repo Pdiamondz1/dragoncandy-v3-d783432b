@@ -14,6 +14,8 @@ import {
   stashPendingRole,
   takePendingRole,
   startSocialSignIn,
+  readRoleParam,
+  ROLE_PARAM,
 } from './socialAuth';
 
 describe('isAccountRole', () => {
@@ -212,4 +214,50 @@ describe('claim_initial_role guards against an existing account', () => {
     expect(code).toContain("'account_not_new'");
     expect(code).toMatch(/created_at < now\(\) - interval/);
   });
+});
+
+describe('the role survives an origin change', () => {
+  beforeEach(() => {
+    sessionStorage.clear();
+    supa.signInWithOAuth.mockReset();
+  });
+
+  /**
+   * `sessionStorage` is scoped to an ORIGIN, and this round trip can change one:
+   * the Capacitor shell runs on `capacitor://localhost` while `publicOrigin()` is
+   * `https://dragoncandy.com`. Even on the web, a private-mode browser can refuse
+   * storage outright. The URL copy is what survives both.
+   */
+  it('puts the role in the redirect URL, not only in storage', async () => {
+    supa.signInWithOAuth.mockResolvedValue({ error: null });
+    await startSocialSignIn('google', 'business_client');
+    const opts = supa.signInWithOAuth.mock.calls[0][0];
+    const url = new URL(opts.options.redirectTo);
+    expect(url.pathname).toBe('/auth');
+    expect(url.searchParams.get(ROLE_PARAM)).toBe('business_client');
+  });
+
+  it('sends no role parameter when there is no role to send', async () => {
+    supa.signInWithOAuth.mockResolvedValue({ error: null });
+    await startSocialSignIn('google', null);
+    const url = new URL(supa.signInWithOAuth.mock.calls[0][0].options.redirectTo);
+    expect(url.searchParams.has(ROLE_PARAM)).toBe(false);
+  });
+
+  it('reads a valid role back out of a query string', () => {
+    expect(readRoleParam('?oauth_role=brand')).toBe('brand');
+    expect(readRoleParam('?other=1&oauth_role=content_creator')).toBe('content_creator');
+  });
+
+  /**
+   * The parameter is user-editable, so it is validated on the way in for the same
+   * reason the stash is. Neither is what protects the account — `claim_initial_role`
+   * is — but neither gets to hand an arbitrary string to an RPC either.
+   */
+  it.each(['?oauth_role=admin', '?oauth_role=', '?nothing=1', ''])(
+    'refuses %s',
+    (search) => {
+      expect(readRoleParam(search)).toBeNull();
+    },
+  );
 });

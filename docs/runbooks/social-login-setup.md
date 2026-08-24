@@ -88,6 +88,18 @@ root with the session dropped — which looks like "it did nothing".
 
 Add preview origins too if social login should work on Vercel previews.
 
+**The redirect carries a query parameter** (`?oauth_role=...`), which is how the chosen
+role survives the round trip. Supabase matches redirect URLs against this list, so if
+sign-ins come back with the session dropped, widen the entry to `https://dragoncandy.com/auth**`
+— a pattern that permits the query string.
+
+**Social login does not render in the iOS shell**, and that is deliberate rather than an
+oversight: `signInWithOAuth` must redirect to a real https origin, which in the Capacitor
+webview walks the user out of the app into Safari and finishes them on the web app.
+Native needs a custom-scheme redirect (`com.dragoncandy.app://`) opened through
+Capacitor's Browser plugin, with that scheme registered in all three provider consoles.
+Until that exists the native shell shows the email form alone.
+
 ## 5. Flip the flag
 
 ```sql
@@ -120,8 +132,10 @@ where id = '<the id above>';
 - `role` must be the role you selected before pressing the button, **not**
   `content_creator` — unless creator is what you picked. Getting `content_creator` when
   you picked business means `claim_initial_role` refused; its reasons are
-  `no_profile`, `onboarding_complete` and `organization_exists`, and it logs to the
-  browser console.
+  `no_profile`, `onboarding_complete`, `organization_exists`, `not_an_oauth_account`
+  and `account_not_new`, and it logs to the browser console. The last two are the
+  guards against converting an account that already existed, so seeing them is
+  correct behaviour, not a bug.
 
 Then check the opposite case, because this is the one that costs something if it is
 wrong: **create a password account and confirm `email_verified` is FALSE** and that the

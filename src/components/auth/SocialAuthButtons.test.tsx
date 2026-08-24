@@ -5,12 +5,15 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
   enabled: false,
+  native: false,
   start: vi.fn().mockResolvedValue({ ok: true }),
 }));
 
 vi.mock('@/hooks/useFeatureFlag', () => ({
   useFeatureFlag: () => mocks.enabled,
 }));
+
+vi.mock('@/lib/platform', () => ({ isNativeApp: () => mocks.native }));
 
 vi.mock('@/lib/socialAuth', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/lib/socialAuth')>();
@@ -23,6 +26,7 @@ import { SOCIAL_PROVIDERS } from '@/lib/socialAuth';
 describe('SocialAuthButtons', () => {
   beforeEach(() => {
     mocks.enabled = false;
+    mocks.native = false;
     mocks.start.mockClear().mockResolvedValue({ ok: true });
   });
 
@@ -33,6 +37,19 @@ describe('SocialAuthButtons', () => {
    * than a promise.
    */
   it('renders nothing at all while the flag is off', () => {
+    const { container } = render(<SocialAuthButtons mode="signup" role={null} onError={vi.fn()} />);
+    expect(container).toBeEmptyDOMElement();
+  });
+
+  /**
+   * Web only, and that is a missing capability rather than a preference: the
+   * provider must redirect to a real https origin, which in the Capacitor shell
+   * ejects the user out of the app into Safari mid-signup and finishes them on the
+   * web app. Native needs a custom-scheme redirect, which does not exist yet.
+   */
+  it('renders nothing in the native shell even with the flag on', () => {
+    mocks.enabled = true;
+    mocks.native = true;
     const { container } = render(<SocialAuthButtons mode="signup" role={null} onError={vi.fn()} />);
     expect(container).toBeEmptyDOMElement();
   });

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Loader2 } from 'lucide-react';
 import { useFeatureFlag } from '@/hooks/useFeatureFlag';
+import { isNativeApp } from '@/lib/platform';
 import {
   SOCIAL_PROVIDERS,
   PROVIDER_LABELS,
@@ -61,6 +62,22 @@ export function SocialAuthButtons({ mode, role, onError }: Props) {
   const [pending, setPending] = useState<SocialProvider | null>(null);
 
   if (!enabled) return null;
+
+  // WEB ONLY, and this is a missing capability rather than a preference.
+  //
+  // `signInWithOAuth` sends the browser to the provider and the provider back to
+  // `redirectTo`, which must be a real https origin no matter where the app is
+  // running. In the Capacitor shell that ejects the user out of the app and into
+  // Safari mid-signup, where they finish on the WEB app and never return — and the
+  // role stashed under `capacitor://localhost` is on the far side of an origin
+  // boundary from the page that would apply it.
+  //
+  // Doing this properly means a custom-scheme redirect (`com.dragoncandy.app://`)
+  // opened through Capacitor's Browser plugin, plus that scheme registered in all
+  // three provider consoles. That is its own piece of work, so until it exists the
+  // native shell shows the email form alone rather than a button that walks people
+  // out of the app.
+  if (isNativeApp()) return null;
 
   const handle = async (provider: SocialProvider) => {
     onError(null);

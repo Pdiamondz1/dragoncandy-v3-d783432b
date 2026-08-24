@@ -29,6 +29,23 @@ export const SOCIAL_LOGIN_FLAG = 'SOCIAL_LOGIN_ENABLED';
 const ROLE_KEY = 'dc_oauth_pending_role';
 
 /**
+ * The same role, carried in the redirect URL as well as in storage.
+ *
+ * `sessionStorage` is scoped to an ORIGIN, and this round trip can change origins:
+ * `publicOrigin()` is `https://dragoncandy.com` while the Capacitor shell runs on
+ * `capacitor://localhost`, and even on the web a private-mode browser may refuse
+ * storage entirely. A query parameter survives both.
+ *
+ * Not a trust problem. It is user-visible and user-editable, but so is
+ * sessionStorage — anything running in the origin can write it — and neither is
+ * what protects the account. `claim_initial_role` does: OAuth-created, under
+ * fifteen minutes old, nothing completed, no organization. Editing this
+ * parameter lets someone set the account type of their own brand-new account,
+ * which is exactly what the button they just pressed does anyway.
+ */
+export const ROLE_PARAM = 'oauth_role';
+
+/**
  * The role a signup chose, held across the provider round trip.
  *
  * `signInWithOAuth` cannot carry user metadata, so `handle_new_user` has nothing
@@ -68,6 +85,16 @@ export function isAccountRole(value: unknown): value is AccountRole {
   return value === 'business_client' || value === 'content_creator' || value === 'brand';
 }
 
+/** Reads and validates the role parameter from a query string. */
+export function readRoleParam(search: string): AccountRole | null {
+  try {
+    const value = new URLSearchParams(search).get(ROLE_PARAM);
+    return isAccountRole(value) ? value : null;
+  } catch {
+    return null;
+  }
+}
+
 export interface StartResult {
   ok: boolean;
   message?: string;
@@ -87,9 +114,11 @@ export async function startSocialSignIn(
 ): Promise<StartResult> {
   if (role) stashPendingRole(role);
   try {
+    const redirect = new URL('/auth', publicOrigin());
+    if (role) redirect.searchParams.set(ROLE_PARAM, role);
     const { error } = await supabase.auth.signInWithOAuth({
       provider,
-      options: { redirectTo: `${publicOrigin()}/auth` },
+      options: { redirectTo: redirect.toString() },
     });
     if (error) {
       // The likeliest cause by far is that the provider is enabled in this app but
@@ -120,8 +149,14 @@ export async function startSocialSignIn(
  * one. The RPC refuses by returning `claimed: false` with a reason rather than
  * raising, so a refusal is not an error either.
  */
-export async function applyPendingRole(): Promise<AccountRole | null> {
-  const role = takePendingRole();
+export async function applyPendingRole(search?: string): Promise<AccountRole | null> {
+  // The URL first: it is the copy that survives an origin change, and it is the
+  // one present when storage was unavailable or belongs to a different origin.
+  // `takePendingRole` still runs either way, so a stale stash never outlives this
+  // call and cannot be consumed by a later, unrelated sign-in.
+  const stashed = takePendingRole();
+  const fromUrl = readRoleParam(search ?? (typeof window === 'undefined' ? '' : window.location.search));
+  const role = fromUrl ?? stashed;
   if (!role) return null;
   try {
     const { data, error } = await supabase.rpc('claim_initial_role', { p_role: role });
