@@ -133,7 +133,10 @@ export type FounderInputKey = keyof typeof FOUNDER_INPUTS;
  * is none of the three. Tagging one `MEASURED` because it came from a person who would
  * know is precisely the failure the Codex second review caught on the registered-user
  * count: a provenance tag applied to a copy vouches for it. So these carry their own
- * source and date in the type, and every consumer prints them.
+ * source and date in the type, and every consumer prints provenance — at minimum that a
+ * founder said it and when, which is what distinguishes these from the MEASURED and MODELED
+ * rows standing next to them. The slides do that inline for want of vertical space; the Q&A
+ * document, which is where diligence happens, prints the full attribution.
  */
 /**
  * One launch event. `venue: null` means a city is decided and its room is not — which is a

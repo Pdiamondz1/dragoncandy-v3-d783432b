@@ -37,7 +37,7 @@ import {
 } from '../model/derive';
 import { Gloss, PendingMark, Source, Tag } from '../deck/components';
 import { count, money, moneyShort, pct } from '../deck/format';
-import { FOUNDER_INPUTS, LAUNCH_EVENTS } from '../deck/pending';
+import { FOUNDER_FACTS, FOUNDER_INPUTS, LAUNCH_EVENTS } from '../deck/pending';
 import { AskFigures } from './ask.confidential';
 
 /**
@@ -762,6 +762,15 @@ export function SlideScale({ index, total }: SlideProps) {
               )}
             </span>
           ))}
+          {/* Provenance rides at the END of the list, not on its own row: this slide has
+              about 20px of slack and a second row spends all of it. It is here at all
+              because `pending.ts` says every consumer of a founder fact prints where it
+              came from, and a slide that renders the cities unqualified reads exactly like
+              the MEASURED rows in the table above it. The full attribution is in the Q&A
+              document; what the slide owes the reader is that a person said this, and when. */}
+          <span className="whitespace-nowrap text-sm font-normal text-dc-text-muted">
+            founder-stated {FOUNDER_FACTS.launchEvents.asOf}
+          </span>
         </p>
       </div>
       <div className="mt-1.5">

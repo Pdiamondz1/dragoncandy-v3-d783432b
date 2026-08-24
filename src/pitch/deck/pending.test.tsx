@@ -11,7 +11,14 @@
 import { render, cleanup, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it } from 'vitest';
 
-import { FOUNDER_INPUTS, LAUNCH_EVENTS, OUTSTANDING, isPending, outstandingReport } from './pending';
+import {
+  FOUNDER_FACTS,
+  FOUNDER_INPUTS,
+  LAUNCH_EVENTS,
+  OUTSTANDING,
+  isPending,
+  outstandingReport,
+} from './pending';
 import { PendingMark } from './components';
 import { deck } from '../slides';
 import { SlideLiquidity, SlideScale } from '../slides/slides';
@@ -90,6 +97,12 @@ describe('founder inputs', () => {
     // A city with no room is a different state from no event, and must read as one.
     expect(text).toContain('venue to be chosen');
     expect(container.querySelector('[data-pending="launchEventPlan"]')).toBeTruthy();
+
+    // A founder fact rendered unqualified reads like the MEASURED rows in the table above
+    // it. The slide must say a person said this, and when — derived from the fact, so the
+    // date cannot drift from the one the Q&A document prints.
+    expect(text).toContain('founder-stated');
+    expect(text).toContain(FOUNDER_FACTS.launchEvents.asOf);
   });
 
   /**
