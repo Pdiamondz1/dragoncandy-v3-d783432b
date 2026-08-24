@@ -120,6 +120,7 @@ export function OnboardingWizard() {
     name, industry, cuisines, skills, bio, showInFeed, avatarFile,
   });
   const uploadedAvatar = useRef<{ file: File; path: string } | null>(null);
+  const advancing = useRef(false);
 
   const queryClient = useQueryClient();
   const { data: orgFromProfile } = useOrgFromProfile();
@@ -168,13 +169,31 @@ export function OnboardingWizard() {
     // needs a profile to attach an account to. It also fixes an abandonment bug — a user
     // who quits on the payments slide now has a complete profile and a working
     // dashboard instead of an account that captured nothing.
-    if (currentStep === lastCollectStep(role) && currentFingerprint !== savedFingerprint) {
-      const ok = await saveCore();
-      if (!ok) return;
-    }
-    if (currentIndex < steps.length - 1) {
-      setDirection(1);
-      setCurrentIndex(prev => prev + 1);
+    // `goNext` became async the moment the core save moved into it, so a second call
+    // arriving during that await runs a second save AND a second
+    // `setCurrentIndex(prev => prev + 1)` — advancing TWO slides, so a double-tap skips
+    // phone verification without ever showing it, and uploads the avatar twice.
+    //
+    // Two controls, and the test proves the PAIR, not each half: disabling the button
+    // while `loading` is true is what actually stops a double click (removing the ref
+    // alone leaves the test green), and this ref is the backstop for the paths a disabled
+    // attribute does not cover — a programmatic call, or a repeat arriving before React
+    // has re-rendered. A ref rather than state, because state set in this tick is not
+    // visible to the call that arrives in it. Do not remove either half on the grounds
+    // that the suite still passes.
+    if (advancing.current) return;
+    advancing.current = true;
+    try {
+      if (currentStep === lastCollectStep(role) && currentFingerprint !== savedFingerprint) {
+        const ok = await saveCore();
+        if (!ok) return;
+      }
+      if (currentIndex < steps.length - 1) {
+        setDirection(1);
+        setCurrentIndex(prev => prev + 1);
+      }
+    } finally {
+      advancing.current = false;
     }
   };
 
@@ -617,7 +636,7 @@ export function OnboardingWizard() {
           >
             <LandingButton
               onClick={goNext}
-              disabled={!isStepValid()}
+              disabled={!isStepValid() || loading}
               variant="pink"
               className="w-full h-14 text-base disabled:opacity-60"
             >

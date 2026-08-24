@@ -138,3 +138,32 @@ describe('OnboardingWizard — the core save runs when it needs to', () => {
     await waitFor(() => expect(mocks.upsert.mock.calls.length).toBe(firstRun));
   });
 });
+
+describe('OnboardingWizard — a double tap cannot skip a slide', () => {
+  beforeEach(() => { mocks.upsert.mockClear(); });
+
+  /**
+   * `goNext` became async when the core save moved into it. Unguarded, a second click
+   * during that await ran a second save AND a second `setCurrentIndex(prev => prev + 1)`,
+   * so the wizard advanced two slides and phone verification was skipped without ever
+   * being shown.
+   *
+   * Forced control: this fails with BOTH guards removed and passes with either one, so it
+   * pins the pair rather than a specific mechanism. The disabled button is what stops the
+   * click here; the re-entry ref covers paths a disabled attribute does not.
+   */
+  it('advances one slide and saves once when Continue is pressed twice', async () => {
+    renderWizard();
+    fireEvent.change(screen.getByPlaceholderText(/Taco Bell/i), { target: { value: "Tony's Pizza" } });
+    fireEvent.click(screen.getByRole('button', { name: /Continue/i }));
+    await screen.findByRole('heading', { name: /What kind of food do you serve\?/i });
+    fireEvent.click(screen.getByRole('button', { name: /Italian/i }));
+
+    const cont = screen.getByRole('button', { name: /Continue/i });
+    fireEvent.click(cont);
+    fireEvent.click(cont);
+
+    // The slide immediately after the last collect step, not the one after that.
+    expect(await screen.findByRole('heading', { name: /What's your number\?/i })).toBeInTheDocument();
+  });
+});
