@@ -107,7 +107,20 @@ export const FACEBOOK_SCOPES = [
   'read_insights',
 ] as const;
 
-export const INSIGHTS_PERMISSION = 'read_insights';
+/**
+ * The permissions an insights read actually needs.
+ *
+ * A subset of `FACEBOOK_SCOPES`: `pages_show_list` is only needed to enumerate
+ * Pages during connect, so a user who declines it has no Pages to store and
+ * never reaches a state worth describing. These two are different — Meta's
+ * consent screen lets a user untick them individually, and without them a Page
+ * stores perfectly and then fails every read.
+ */
+export const INSIGHTS_PERMISSIONS = ['pages_read_engagement', 'read_insights'] as const;
+
+export function hasInsightsPermissions(granted: readonly string[]): boolean {
+  return INSIGHTS_PERMISSIONS.every((p) => granted.includes(p));
+}
 
 export class FacebookError extends Error {
   constructor(public code: string, message: string, public status = 502) {

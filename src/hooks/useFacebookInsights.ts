@@ -34,7 +34,7 @@ import { codeFromInvokeError, messageFromInvokeError } from '@/lib/invokeError';
  * user on the platform to reconnect during one bad hour — the defect the YouTube
  * connector shipped and had to correct.
  */
-const RECONNECT_CODES = new Set(['auth_failed', 'missing_task']);
+const RECONNECT_CODES = new Set(['auth_failed', 'missing_task', 'missing_permission']);
 
 export interface FacebookDailyPoint {
   date: string;

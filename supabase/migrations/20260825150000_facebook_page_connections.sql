@@ -143,8 +143,20 @@ as $$
     c.connected_at,
     c.last_synced_at,
     -- Derived here rather than in the client so one definition serves every
-    -- caller. ANALYZE is the Page task Meta requires for insights.
-    ('ANALYZE' = any (c.tasks)) as can_read_insights
+    -- caller — and it takes BOTH gates, not just the Page task.
+    --
+    -- Meta requires a token from someone who can ANALYZE the Page, AND the two
+    -- permissions the insights endpoint needs. A user can untick a permission on
+    -- the consent screen while still holding ANALYZE, and an earlier version
+    -- checked only the task: the Page stored as active, the card said
+    -- "Connected", and the first read failed. Reading the granted permissions
+    -- and then not using them was worse than not reading them, because the row
+    -- looked checked.
+    (
+      'ANALYZE' = any (c.tasks)
+      and 'read_insights' = any (c.permissions)
+      and 'pages_read_engagement' = any (c.permissions)
+    ) as can_read_insights
   from public.facebook_page_connections c
   where c.user_id = auth.uid()
   order by c.connected_at asc;

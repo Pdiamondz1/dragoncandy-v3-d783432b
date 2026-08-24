@@ -99,6 +99,20 @@ function metric(value: number | undefined): string {
   return typeof value === 'number' ? value.toLocaleString() : '—';
 }
 
+/**
+ * The two permissions an insights read needs, mirrored from the edge function's
+ * `INSIGHTS_PERMISSIONS`.
+ *
+ * Only used to choose WORDING — the server decides `can_read_insights`, and this
+ * never overrides it. A client-side copy that could grant access would be a
+ * second source of truth; one that only picks a sentence cannot.
+ */
+const INSIGHTS_PERMISSIONS = ['pages_read_engagement', 'read_insights'];
+
+function missingPermission(connection: FacebookPageConnection): boolean {
+  return !INSIGHTS_PERMISSIONS.every((p) => connection.permissions?.includes(p));
+}
+
 function PageSummary({ connection }: { connection: FacebookPageConnection }) {
   const { data, isLoading, error } = useFacebookPageInsights(connection.page_id, SUMMARY_DAYS, {
     enabled: connection.status === 'active' && connection.can_read_insights,
@@ -232,8 +246,12 @@ function PageRow({
         )}
         {!connection.can_read_insights && (
           <p className="mt-1 max-w-md text-xs text-dc-text-muted">
-            This Page did not grant analytics access. Reconnect with an account that has the
-            Analyze permission on the Page.
+            {/* Two different causes needing two different actions. Telling
+                someone to change their Page role when they simply unticked a
+                box sends them to an admin screen they do not need. */}
+            {missingPermission(connection)
+              ? 'Analytics access was not granted. Reconnect and leave every permission ticked on the Facebook screen.'
+              : 'This Page did not grant analytics access. Reconnect with an account that has the Analyze permission on the Page.'}
           </p>
         )}
       </div>

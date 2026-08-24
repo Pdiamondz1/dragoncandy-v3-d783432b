@@ -15,6 +15,8 @@ import {
   loadConnection,
   markNeedsReconnect,
   markSynced,
+  missingInsightsReason,
+  MISSING_PERMISSION_MESSAGE,
   MISSING_TASK_MESSAGE,
 } from '../_shared/facebook-connection.ts';
 
@@ -78,9 +80,16 @@ serve(async (req: Request) => {
     connectionId = conn.id;
 
     if (!canReadInsights(conn)) {
-      // Known at connect time and re-checked here, because the Page role can be
+      // Known at connect time and re-checked here, because a Page role can be
       // changed on Facebook's side after we stored it.
-      return json(req, { error: 'missing_task', message: MISSING_TASK_MESSAGE }, 403);
+      //
+      // The two causes need different things from the user — re-consent with
+      // every box ticked, versus an account that can Analyze the Page — so they
+      // are reported as different codes rather than one generic refusal.
+      const reason = missingInsightsReason(conn);
+      return reason === 'permission'
+        ? json(req, { error: 'missing_permission', message: MISSING_PERMISSION_MESSAGE }, 403)
+        : json(req, { error: 'missing_task', message: MISSING_TASK_MESSAGE }, 403);
     }
 
     const summary = await fetchPageInsights({

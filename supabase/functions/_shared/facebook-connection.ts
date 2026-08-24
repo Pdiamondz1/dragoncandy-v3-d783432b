@@ -14,6 +14,8 @@
 
 // deno-lint-ignore-file no-explicit-any
 
+import { INSIGHTS_PERMISSIONS } from './facebook-pages.ts';
+
 export const TABLE = 'facebook_page_connections';
 
 export interface StoredConnection {
@@ -121,13 +123,47 @@ export function canRevoke(conn: Pick<StoredConnection, 'user_token_expires_at'>)
 
 export const INSIGHTS_TASK = 'ANALYZE';
 
-export function canReadInsights(conn: Pick<StoredConnection, 'tasks'>): boolean {
-  return Array.isArray(conn.tasks) && conn.tasks.includes(INSIGHTS_TASK);
+/**
+ * Can this connection actually serve insights?
+ *
+ * TWO independent gates, and an earlier version checked only the first — which
+ * meant a user who unticked `read_insights` on Meta's consent screen got a Page
+ * stored as `active`, a card reading "Connected", and a failure on the very
+ * first read (Codex, round 2).
+ *
+ *  - The PAGE TASK: Meta requires a token from someone who can ANALYZE the Page.
+ *    A user can hold a Page role without it.
+ *  - The GRANTED PERMISSIONS: read back from Meta at connect time precisely so
+ *    we would not claim something we do not hold. Reading them and then not
+ *    using them was worse than not reading them, because the row looked checked.
+ */
+export function canReadInsights(conn: Pick<StoredConnection, 'tasks' | 'permissions'>): boolean {
+  const tasks = Array.isArray(conn.tasks) ? conn.tasks : [];
+  const permissions = Array.isArray(conn.permissions) ? conn.permissions : [];
+  return (
+    tasks.includes(INSIGHTS_TASK) &&
+    INSIGHTS_PERMISSIONS.every((p) => permissions.includes(p))
+  );
+}
+
+/** Which gate failed. The two need different things from the user. */
+export function missingInsightsReason(
+  conn: Pick<StoredConnection, 'tasks' | 'permissions'>,
+): 'task' | 'permission' | null {
+  const permissions = Array.isArray(conn.permissions) ? conn.permissions : [];
+  if (!INSIGHTS_PERMISSIONS.every((p) => permissions.includes(p))) return 'permission';
+  const tasks = Array.isArray(conn.tasks) ? conn.tasks : [];
+  if (!tasks.includes(INSIGHTS_TASK)) return 'task';
+  return null;
 }
 
 export const MISSING_TASK_MESSAGE =
   'This Facebook Page did not grant analytics access. Reconnect and make sure the ' +
   'account you use has the Analyze permission on the Page.';
+
+export const MISSING_PERMISSION_MESSAGE =
+  'Analytics access was not granted for this Page. Reconnect and leave every permission ' +
+  'ticked on the Facebook screen.';
 
 /**
  * How many stored Pages share this Facebook grant.
