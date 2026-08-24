@@ -104,7 +104,7 @@ export const FOUNDER_INPUTS = {
   launchEventPlan: {
     key: 'launchEventPlan',
     question:
-      'For the three launch events (Hoboken / Palm Beach / Montauk): what dates, are the venues BOOKED or intended, and what is the budget for the three together?',
+      'For the three launch events: what dates, are the venues booked or only intended, and what is the budget for all three?',
     blocks: 'Hoboken \u2192 NYC',
     // Deliberately vague about the money, and that is not squeamishness: this module is in
     // the public bundle's graph, so its strings AND its comments ship — a comment would ride
@@ -135,6 +135,40 @@ export type FounderInputKey = keyof typeof FOUNDER_INPUTS;
  * count: a provenance tag applied to a copy vouches for it. So these carry their own
  * source and date in the type, and every consumer prints them.
  */
+/**
+ * One launch event. `venue: null` means a city is decided and its room is not — which is a
+ * different state from "no event here", and the deck renders it as such.
+ */
+export interface LaunchEvent {
+  readonly city: string;
+  readonly venue: string | null;
+}
+
+export const LAUNCH_EVENTS: readonly LaunchEvent[] = [
+  { city: 'Hoboken, NJ', venue: 'Antique Lofts' },
+  { city: 'Palm Beach, FL', venue: 'The Colony Hotel' },
+  { city: 'Montauk, NY', venue: null },
+];
+
+/**
+ * The prose form, derived rather than typed out again.
+ *
+ * The slide renders the list and the Q&A document renders this sentence; written twice they
+ * would eventually disagree about a venue, and the one an investor read would be whichever
+ * they happened to open.
+ */
+export function describeLaunchEvents(events: readonly LaunchEvent[] = LAUNCH_EVENTS): string {
+  const parts = events.map((e) =>
+    e.venue === null ? `${e.city} at a venue not yet chosen` : `${e.city} at ${e.venue}`,
+  );
+  // Spelled, because this lands mid-sentence in a document a human reads aloud: "3 launch
+  // events are planned" is the register of a status board, not of a founder talking.
+  const WORDS = ['no', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine'];
+  const n = WORDS[parts.length] ?? String(parts.length);
+  const verb = parts.length === 1 ? 'event is' : 'events are';
+  return `${n} launch ${verb} planned: ${parts.join('; ')}.`;
+}
+
 export interface FounderFact {
   readonly statement: string;
   /** Who said it, in what setting. Never a document that quotes them. */
@@ -167,8 +201,7 @@ export const FOUNDER_FACTS = {
    * that creator-side lag is what kills local marketplaces.
    */
   launchEvents: {
-    statement:
-      'Three launch events are planned: Hoboken, NJ at Antique Lofts; Palm Beach, FL at the Colony Hotel; and Montauk, NY at a venue not yet chosen.',
+    statement: describeLaunchEvents(),
     source: 'founder statement, Damon Williams (CTO), in session',
     asOf: '2026-08-24',
   },

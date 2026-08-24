@@ -37,7 +37,7 @@ import {
 } from '../model/derive';
 import { Gloss, PendingMark, Source, Tag } from '../deck/components';
 import { count, money, moneyShort, pct } from '../deck/format';
-import { FOUNDER_INPUTS } from '../deck/pending';
+import { FOUNDER_INPUTS, LAUNCH_EVENTS } from '../deck/pending';
 import { AskFigures } from './ask.confidential';
 
 /**
@@ -740,11 +740,31 @@ export function SlideScale({ index, total }: SlideProps) {
       </div>
 
       {/* The events sit on THIS slide, not on the ask, because what an investor is buying
-          here is the route between the three sizes in the table above. They move the ask
-          all the same — the raise is computed from the budget — which is why the mark asks
-          for a number and not only for dates. */}
-      <div className="mt-6 flex items-baseline gap-3">
-        <p className="shrink-0 text-lg text-dc-text-muted">Launch events:</p>
+          here is the route between the three sizes in the table above. They move the ask all
+          the same — the raise is computed from the budget — which is why the mark asks for a
+          number and not only for dates.
+
+          The cities render BESIDE the mark rather than behind it. A `PendingMark` alone shows
+          only the question, so a slide carrying one and nothing else says "we have not decided
+          anything" — when in fact three cities and two rooms are settled, which is the half an
+          investor wants. Codex caught the deck hiding its own good news. */}
+      <div className="mt-4 flex items-baseline gap-3">
+        <p className="shrink-0 text-base text-dc-text-muted">Launch events:</p>
+        <p className="text-base font-semibold text-dc-text">
+          {LAUNCH_EVENTS.map((e) => (
+            <span key={e.city} className="mr-4 inline-block">
+              {e.city}
+              {' · '}
+              {e.venue === null ? (
+                <span className="font-normal text-dc-text-muted">venue to be chosen</span>
+              ) : (
+                e.venue
+              )}
+            </span>
+          ))}
+        </p>
+      </div>
+      <div className="mt-1.5">
         <PendingMark input={FOUNDER_INPUTS.launchEventPlan} />
       </div>
 

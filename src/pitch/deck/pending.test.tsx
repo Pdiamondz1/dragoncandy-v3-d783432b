@@ -11,10 +11,10 @@
 import { render, cleanup, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it } from 'vitest';
 
-import { FOUNDER_INPUTS, OUTSTANDING, isPending, outstandingReport } from './pending';
+import { FOUNDER_INPUTS, LAUNCH_EVENTS, OUTSTANDING, isPending, outstandingReport } from './pending';
 import { PendingMark } from './components';
 import { deck } from '../slides';
-import { SlideLiquidity } from '../slides/slides';
+import { SlideLiquidity, SlideScale } from '../slides/slides';
 
 afterEach(cleanup);
 
@@ -69,6 +69,27 @@ describe('founder inputs', () => {
     expect(label?.textContent).toContain('town-wide');
 
     expect(FOUNDER_INPUTS.hobokenRestaurantCount.question).toMatch(/IN TOTAL|town-wide/);
+  });
+
+  /**
+   * A mark hides the half that IS settled, unless the slide shows it.
+   *
+   * `PendingMark` renders the question when the value is null, so a slide carrying one and
+   * nothing else reads as "we have not decided anything" — while three cities and two rooms
+   * were in fact decided. Codex caught the deck hiding its own good news. This pins the
+   * settled half onto the slide, derived from `LAUNCH_EVENTS` rather than retyped.
+   */
+  it('shows the decided cities and venues beside the mark, not instead of it', () => {
+    const { container } = render(<SlideScale index={0} total={deck.length} />);
+    const text = container.textContent ?? '';
+
+    for (const e of LAUNCH_EVENTS) {
+      expect(text).toContain(e.city);
+      if (e.venue !== null) expect(text).toContain(e.venue);
+    }
+    // A city with no room is a different state from no event, and must read as one.
+    expect(text).toContain('venue to be chosen');
+    expect(container.querySelector('[data-pending="launchEventPlan"]')).toBeTruthy();
   });
 
   /**
