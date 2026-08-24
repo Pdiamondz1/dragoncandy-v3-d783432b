@@ -319,6 +319,13 @@ about the surface: this is not iOS-only.
 
 ## 10. A page with nothing to scroll can still be DRAGGED, and the gutter is white (2026-08-24)
 
+> **This section diagnosed the report below WRONGLY, and shipped a fix that did not resolve it.**
+> The guards it describes are real, are still in the tree, and are worth keeping — but the cause of
+> the white band was **§11**, a height-unit mismatch, not the rubber-band. Read §11 first. This
+> section is kept rather than rewritten because the reasoning here is exactly what a plausible
+> wrong answer looks like: it explained every observation available at the time, and every
+> observation available at the time came from an instrument that could not see the real cause.
+
 The day after §9 shipped, the same reviewer reported from the same phone: *"you can still move the
 page on mobile, looks buggy and would not be good when you add a wrapper."* Two screenshots, one
 showing white **above** the header, one white **below** the footer. The founder saw it on desktop
@@ -372,6 +379,66 @@ Shipped alongside: `AuthPage` and `AuthShell` moved off `min-h-screen`, the §9 
 on the page the landing's only CTA leads to. The other 113 `h-screen`/`min-h-screen` usages in
 `src/` are untouched — a sweep is a different change.
 
+## 11. `body` must be sized in the SAME UNIT as the shell — the real cause (2026-08-24)
+
+**CONFIRMED FIXED on a real phone**, which matters because nothing in this repo's toolchain could
+confirm it. Three consecutive diagnoses of one report; the first two were confident and wrong.
+
+`src/index.css` pinned `html, body { height: 100% }`. A percentage resolves against the **initial
+containing block**, which on iOS Safari is the **small** viewport (toolbars showing). `100dvh` is
+the **current** dynamic viewport, and it **grows** as Safari collapses or compacts its toolbars —
+aggressively so in landscape.
+
+So with `AppShell` at `h-[100dvh]` and body pinned to the small height, the shell outgrows body's
+box the moment the toolbar moves, body scrolls by exactly that difference, and the strip below the
+shell paints body's own background: **white**.
+
+**This page already held the measurement that proves it, in §9, and nobody read it that way:**
+body `clientHeight` **753** against `100vh` **833**. §9 correctly identified that the two elements
+disagreed, changed the **shell's** unit from `vh` to `dvh`, and left the other side of the
+comparison on `%`. That closed the always-80px case and left a gap that opens and shuts with the
+toolbar.
+
+> **A height comparison has two sides, and fixing one of them is not fixing it.**
+
+**Fix:** `html` and `body` are `height: 100dvh`, the same unit as the shell, so both move together.
+A `height: 100%` fallback stays declared **before** it — `documentOverscroll.test.ts` asserts the
+declaration order, because if the fallback came last it would win and the bug would be back with
+the guard still green.
+
+**Second guard, deliberately independent:** while the landing is mounted,
+`html.landing-surface, html.landing-surface body { overflow: hidden }`. The landing is one screen
+by definition, so the document has nowhere to scroll — a guard that does not depend on any unit
+comparison coming out right, and the standard way to stop the iOS rubber-band, which cannot fire on
+a document with no scrollable overflow. **`#main-content` is NOT locked**: if content ever
+genuinely does not fit, `main` can still scroll, so the only CTA can never become unreachable.
+Clipping "Get started" is a worse failure than a scrollbar.
+
+**Landscape had a second, real problem** the lock alone would have clipped. Measured: the hero's
+natural content is **277px** at landscape width plus a **78px** footer = **355px**, against roughly
+**310px** a phone leaves with toolbars showing. Closed with a **height** breakpoint — `short:`
+(`max-height: 430px`) — because no width breakpoint can see that a phone is held sideways. Content
+drops to **195px**.
+
+### How three wrong-then-right diagnoses happened, which is the part worth keeping
+
+1. **"The content overflows."** Refuted by measuring: zero overflow at every viewport Chrome could
+   produce.
+2. **"It is the rubber-band."** Plausible, shipped (§10), and did not fix it. The simulator even
+   confirmed WebKit *applies* `overscroll-behavior` — a true fact that answered a question nobody
+   had asked, since *applied* was never the same claim as *suppressed*.
+3. **The screenshot settled it.** The white sat **below the app shell**, with a scroll indicator.
+   That single observation rules out every mechanism *inside* the page at once — no element under
+   `#root` can paint outside the body box.
+
+**The instrument was the whole problem.** Chrome, device emulation and the Capacitor WebView all
+report this family of defects absent, for one shared reason: none has a collapsing toolbar, so
+ICB `===` dvh and the gap is structurally zero. That is now **three** defects (§8, §9, §11) with
+exactly that blind spot. When a report comes from a real phone and every local instrument says the
+page is fine, the instrument is the thing to distrust — and the fastest way out is a screenshot
+that shows *where* the artefact sits relative to known elements, because position rules out whole
+classes of cause in one step.
+
 ## Key Decisions
 
 - **Delete the trap, don't patch victims:** removing the transform un-traps all ~14
@@ -388,7 +455,15 @@ on the page the landing's only CTA leads to. The other 113 `h-screen`/`min-h-scr
   the colour guard cannot stop the movement.
 - **Record what the instrument could not see.** The simulator proved WebKit *applies*
   `overscroll-behavior`; it could not prove the native scroll view stops bouncing. Writing the
-  second sentence down is what stops the first being read as the whole answer.
+  second sentence down is what stops the first being read as the whole answer. §11 shows the cost
+  of not doing it: that true-but-irrelevant fact was read as confirmation of a wrong diagnosis.
+- **A height comparison has two sides (§11).** §9 measured body at 753 against a shell at 833,
+  fixed the shell's unit, and left body's. Whenever a fix changes one operand of a comparison, ask
+  what the other operand is measured in.
+- **Position rules out cause faster than any probe.** Three diagnoses of one report were settled by
+  a screenshot showing the white *below* the app shell — which eliminates every mechanism inside
+  the page at once, because nothing under `#root` can paint outside the body box. Ask where the
+  artefact sits relative to known elements before asking why it is there.
 
 ## See Also
 

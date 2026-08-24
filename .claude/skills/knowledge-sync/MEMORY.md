@@ -142,6 +142,17 @@
   stamp, never a *status* signal, and pre-2026-08-07 rows are unreliable in **both** directions
   (`== created_at` means "no explicit writer touched it", not "never modified"). See
   [[Updated-At Trigger Drift]].
+- **[superseded-diagnosis] When a follow-up corrects an earlier session's EXPLANATION, retract in
+  place — and keep the wrong reasoning.** On 2026-08-24 a page-drag fix shipped with a confident
+  wrong cause (the rubber-band) written into the wiki as settled; the real cause was a height-unit
+  mismatch one element up. Deleting the wrong section would erase the evidence that the guidance
+  was ever given, and a reader who acted on it needs to see it *withdrawn*; rewriting it silently
+  would hide the more useful artefact, which is what a plausible wrong answer looks like. Banner at
+  the top of the old section naming the correct one, dated, plus the new section stating what the
+  old one could not see. Sibling of `[doc-documents-the-bug]`: that one is about a page recommending
+  the defect, this one is about a page explaining it wrongly. **Corollary:** answer the earlier
+  session's `**Pending:**` clause explicitly in §5 — it is always loaded, and a clause can be
+  falsified within hours of being written.
 - **[core-doc-markers] A core doc can be load-bearing for a TEST, so run the full suite after
   editing one — not just a read-through.** On 2026-08-24 rewriting the logo rule in
   `DESIGN_SYSTEM.md` deleted the string `PublicPageHeader.test.tsx`, and
@@ -257,6 +268,34 @@
   reading the diff**, and prefer a stamp that is not a round hour.
 
 ## Run log (newest first — add each new entry at the TOP; never edit/delete past entries)
+
+### [2026-08-24] The fix that did not fix it — a height comparison has two sides (`worktree-DC-landing-page-fix3`)
+
+**Output:** `docs/wiki/raw/sessions/2026-08-24-body-height-unit-mismatch.md` →
+[[Mobile Viewport & Fixed Positioning]] §11, with **§10 marked in place as a wrong diagnosis that
+shipped** · `log.md` entry *"A height comparison has two sides"* · `SHIPPED_LOG.md` prepended ·
+`PROJECT_CONTEXT.md` §5 and `DESIGN_SYSTEM.md` corrected in place.
+
+**Happened:** a knowledge-sync for a PR whose *predecessor's* knowledge was wrong, not merely
+incomplete. The previous session's §10 confidently named the rubber-band as the cause and shipped
+a fix that did not resolve the report.
+
+**Worked:** kept the wrong section rather than rewriting it, with a banner at the top pointing at
+§11 — the same `[doc-documents-the-bug]` discipline, applied to a wrong *diagnosis* rather than a
+wrong recommendation. §10's reasoning is worth preserving precisely because it is what a plausible
+wrong answer looks like: it explained every observation available, and every observation available
+came from an instrument that could not see the real cause.
+
+**Failed:** nothing this run, but the run exists because **#504 merged without its knowledge
+sync** — the code and `DESIGN_SYSTEM.md` shipped while the wiki, `SHIPPED_LOG.md` and §5 still
+described the superseded cause as the answer. That is the `[sync-before-blocked-gate]` gap in a new
+shape: not a blocked gate, just a hotfix merged under pressure with the docs deferred.
+
+**Remember:** see the new `[superseded-diagnosis]` Lesson. When a follow-up PR corrects an earlier
+PR's *explanation*, the knowledge edit is a retraction with a date, not an append — and §5's
+`**Pending:**` clause from the earlier session must be answered explicitly, because it is always
+loaded and this one was falsified within hours of being written.
+
 
 ### [2026-08-24] The page could still be dragged, and the logo had five sizes (`worktree-DC-landing-page-fix3`)
 
