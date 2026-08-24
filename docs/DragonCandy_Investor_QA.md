@@ -15,6 +15,12 @@ built platform are real and measured; the volumes they are multiplied by are mod
 Every table below says which is which, and saying it first is stronger than being
 asked.
 
+**"So how many restaurants do you actually have?"** — Two restaurants are committed to launch: Antique Bar & Bakery (the CEO's own) and Uncle Rocco's.
+That is a different number from the **45 registered accounts** and from the
+**0 paying customers**, and the three must not be substituted for each other in the
+room. Source: founder statement, Damon Williams (CTO), in session, 2026-08-24 — a founder
+statement, which is why it is not in the assumptions register and carries no provenance tag.
+
 ## Slide 6 — what is actually built
 
 | Figure | In the deck | Provenance | How we know |
@@ -138,5 +144,5 @@ settled yet", not a number invented in the room.
 
 - **The ask** — What are the SAFE terms — target size within $500K–$1.5M, valuation cap, discount, MFN?
 - **Team & board** — What are the three founders' real track records, in the form an investor reads — "Ex-product at X", "Founding engineer at Y"?
-- **Hoboken liquidity** — How many restaurants are there in Hoboken — a countable number, with its source?
+- **Hoboken liquidity** — How many restaurants operate in Hoboken IN TOTAL — the town-wide denominator, with its source? (Our own count is not this number: that is two.)
 

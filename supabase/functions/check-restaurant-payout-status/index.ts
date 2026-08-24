@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@18.5.0";
 import { createClient } from "npm:@supabase/supabase-js@2.57.2";
+import { mirrorIdentitySignals } from "../_shared/identity-mirror.ts";
 import { corsHeaders } from "../_shared/cors.ts";
 import { flushPendingBalance } from "../_shared/flush-pending-balance.ts";
 import { STRIPE_IDENTITY_RESET } from "../_shared/stripe-identity-reset.ts";
@@ -166,6 +167,7 @@ serve(async (req) => {
 
     const onboardingComplete = account.charges_enabled && account.payouts_enabled;
 
+
     // Write onboarding status back to the source table
     if (org_unit_id) {
       if (resolvedFromFallback) {
@@ -201,6 +203,22 @@ serve(async (req) => {
       if (updateError) {
         logStep("Warning: Failed to update onboarding status in business_profiles", { error: updateError.message });
       }
+    }
+
+    // Mirror Stripe's identity signals — AFTER the write-back above, and the order is
+    // load-bearing rather than tidy. On the fallback path (`org_unit_id` given, that row
+    // carrying no account yet) the block above is what copies `stripe_account_id` onto the
+    // org unit. This mirror matches rows BY that column, so running it first meant the very
+    // request that links a location left that location's identity columns null — the row
+    // self-healed its account id and not its identity, and readiness stayed stale until some
+    // later request happened to run. Found by the Codex second review and confirmed against
+    // the file; see _shared/identity-mirror.ts for why the match is by account rather than
+    // by caller.
+    const mirror = await mirrorIdentitySignals(supabaseClient, account, !!onboardingComplete);
+    if (mirror.errors.length > 0) {
+      logStep("Warning: identity mirror had write failures", { errors: mirror.errors });
+    } else {
+      logStep("Mirrored identity signals", { stamped: mirror.stamped });
     }
 
     // Onboarding-return backstop: if payout-ready, release any held pending_balance.

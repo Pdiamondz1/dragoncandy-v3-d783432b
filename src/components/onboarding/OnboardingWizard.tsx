@@ -8,10 +8,10 @@ import { supabase } from '@/integrations/supabase/client';
 import { uploadProfileAsset } from '@/lib/storage/uploadProfileAsset';
 import { requestCreatorAddressVerification } from '@/lib/verifyAddress';
 import { toast } from 'sonner';
-import { AuthShell } from '@/components/auth/AuthShell';
-import { LandingButton } from '@/components/landing/LandingButton';
+import { Button } from '@/components/ui/button';
 import { AvatarCropModal } from '@/components/settings/AvatarCropModal';
 import { ArrowLeft, ArrowRight, MapPin } from 'lucide-react';
+import { AppCard } from '@/components/app/AppCard';
 import { OnboardingProgress } from './OnboardingProgress';
 import { TapGrid } from './TapGrid';
 import { CUISINE_ITEMS } from '@/lib/cuisines';
@@ -585,9 +585,36 @@ export function OnboardingWizard() {
   };
 
   return (
-    <AuthShell className="flex items-center justify-center">
-      <div className="w-full md:max-w-lg md:bg-white md:border-2 md:border-landing-line md:rounded-3xl md:shadow-[0_14px_30px_rgba(36,19,50,0.08)] md:my-8">
-      <div className="flex flex-col min-h-[100dvh] md:min-h-[580px] max-w-md mx-auto px-5 py-6 md:py-8">
+    /*
+     * The wizard renders on the AUTHENTICATED app's surface, not on `AuthShell`.
+     *
+     * `AuthShell` carries the marketing/entry identity — white paper, Instrument Sans,
+     * a soft grape/pink/mint glow — which login, signup and the four password/invite
+     * pages still use and which this deliberately no longer shares. Onboarding sits one
+     * step from the dashboard, so it takes the dashboard's look: plain white, Outfit,
+     * `dc-*` tokens, an `AppCard` panel on desktop.
+     *
+     * `min-h-[100dvh]`, never `vh` — see DESIGN_SYSTEM's shell rule. `100vh` is the
+     * URL-bar-collapsed height on iOS Safari, which overhangs the body box and makes the
+     * page scroll a gap that resizes mid-gesture.
+     */
+    <div className="min-h-[100dvh] w-full overflow-x-hidden bg-white text-dc-text flex items-center justify-center">
+      <AppCard className="w-full md:max-w-lg md:my-8 border-0 shadow-none md:border md:shadow-dc-sm md:rounded-3xl p-0">
+      {/*
+        `pt-[calc(1.5rem+env(safe-area-inset-top))]` — the progress bar is the topmost
+        thing on this screen, and `index.html` sets `viewport-fit=cover`, so the layout
+        viewport runs UNDER the status bar and Dynamic Island. Without paying the inset
+        back, the bar and its "Step N of M" label are drawn behind the island and simply
+        are not there for the user. `md:` resets it: the desktop card is centred in the
+        page and never touches the top of the viewport, so an inset there is just a gap.
+
+        Found on an iPhone 17 Pro simulator, and it is only findable there — mobile
+        Safari's URL bar occupies exactly this space, so the web is structurally incapable
+        of showing it. Confirmed PRE-EXISTING by building the previous commit against the
+        same shell: it clips identically, so this is not fallout from moving off AuthShell.
+        Same class as the `MobileTopNav` / landing-header fixes in DESIGN_SYSTEM.md.
+      */}
+      <div className="flex flex-col min-h-[100dvh] md:min-h-[580px] max-w-md mx-auto px-5 pt-[calc(1.5rem+env(safe-area-inset-top))] pb-6 md:pt-8 md:pb-8">
         {/* Header */}
         {!isReady && (
           <motion.div
@@ -601,7 +628,7 @@ export function OnboardingWizard() {
                 onClick={goBack}
                 aria-label="Go back"
                 whileTap={{ scale: 0.9 }}
-                className="w-10 h-10 rounded-full bg-white border border-landing-line flex items-center justify-center text-landing-ink-soft hover:bg-landing-lilac transition-colors"
+                className="w-10 h-10 rounded-full bg-white border border-dc-teal/15 flex items-center justify-center text-dc-text-muted hover:bg-dc-teal/[0.04] transition-colors"
               >
                 <ArrowLeft className="w-4 h-4" />
               </motion.button>
@@ -630,8 +657,8 @@ export function OnboardingWizard() {
                 exit={{ opacity: 0, y: -8 }}
                 transition={{ duration: 0.2 }}
               >
-                <h2 className="font-display text-xl font-bold text-landing-ink">{stepTitle()}</h2>
-                <p className="text-sm text-landing-ink-soft mt-0.5">{stepSubtitle()}</p>
+                <h2 className="text-xl font-bold text-dc-text">{stepTitle()}</h2>
+                <p className="text-sm text-dc-text-muted mt-0.5">{stepSubtitle()}</p>
               </motion.div>
             </AnimatePresence>
           </div>
@@ -644,10 +671,10 @@ export function OnboardingWizard() {
               initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
             >
-              <h2 className="font-display text-xl font-bold text-landing-ink">
+              <h2 className="text-xl font-bold text-dc-text">
                 {role === 'content_creator' ? "What should we call you?" : role === 'brand' ? "What's your brand?" : "What's your restaurant called?"}
               </h2>
-              <p className="text-sm text-landing-ink-soft mt-0.5">
+              <p className="text-sm text-dc-text-muted mt-0.5">
                 {role === 'content_creator' ? "Your creative name or real name" : "This is how others will find you"}
               </p>
             </motion.div>
@@ -679,8 +706,8 @@ export function OnboardingWizard() {
             transition={{ delay: 0.5 }}
             className={`rounded-full px-4 py-2 mb-4 text-xs flex items-center justify-center gap-1.5 ${
               accentColor === 'teal'
-                ? 'bg-landing-mint-soft text-landing-mint-ink'
-                : 'bg-landing-pink-soft text-landing-pink-ink'
+                ? 'bg-dc-teal/12 text-dc-teal-btn'
+                : 'bg-dc-pink/25 text-dc-pink-accent-btn'
             }`}
           >
             <MapPin className="w-3 h-3" />
@@ -695,10 +722,10 @@ export function OnboardingWizard() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.3 }}
           >
-            <LandingButton
+            <Button
               onClick={goNext}
               disabled={!isStepValid() || loading}
-              variant="pink"
+              variant="dc-primary"
               className="w-full h-14 text-base disabled:opacity-60"
             >
               <span className="flex items-center gap-2">
@@ -708,8 +735,8 @@ export function OnboardingWizard() {
                 {isSkippable ? 'Skip for now' : 'Continue'}
                 <ArrowRight className="w-4 h-4" />
               </span>
-            </LandingButton>
-            <p className="text-center text-xs text-landing-ink-soft mt-3">
+            </Button>
+            <p className="text-center text-xs text-dc-text-muted mt-3">
               {currentStep === 'identity' && 'You can change this later in settings'}
               {currentStep === 'industry' && 'This helps us match you with the right people'}
               {currentStep === 'cuisine' && 'This helps us match you with the right creators'}
@@ -733,7 +760,7 @@ export function OnboardingWizard() {
           onCancel={() => setCropSrc(null)}
         />
       )}
-      </div>
-    </AuthShell>
+      </AppCard>
+    </div>
   );
 }

@@ -41,11 +41,11 @@ export function BioStep({ bio, onBioChange, showInFeed, onShowInFeedChange }: Bi
           }}
           onFocus={() => { if (!bio) setShowSuggestions(true); }}
           placeholder="I create viral food content for restaurants"
-          className="text-center text-lg font-medium h-14 rounded-2xl border-2 border-landing-line bg-white text-landing-ink focus-visible:ring-2 focus-visible:ring-landing-mint placeholder:text-landing-ink-soft"
+          className="text-center text-lg font-medium h-14 rounded-2xl border-2 border-dc-teal/15 bg-white text-dc-text focus-visible:ring-2 focus-visible:ring-dc-teal-btn placeholder:text-dc-text-muted"
           maxLength={120}
           autoFocus
         />
-        <p className="text-xs text-landing-ink-soft text-center mt-2">
+        <p className="text-xs text-dc-text-muted text-center mt-2">
           {bio.length}/120
         </p>
       </motion.div>
@@ -57,7 +57,7 @@ export function BioStep({ bio, onBioChange, showInFeed, onShowInFeedChange }: Bi
           transition={{ delay: 0.2 }}
           className="w-full space-y-2"
         >
-          <div className="flex items-center justify-center gap-1.5 text-xs text-landing-ink-soft">
+          <div className="flex items-center justify-center gap-1.5 text-xs text-dc-text-muted">
             <Sparkles className="w-3 h-3" />
             <span>Tap one to get started</span>
           </div>
@@ -73,7 +73,7 @@ export function BioStep({ bio, onBioChange, showInFeed, onShowInFeedChange }: Bi
               animate={{ opacity: 1, x: 0 }}
               transition={{ delay: 0.25 + i * 0.06 }}
               whileTap={{ scale: 0.97 }}
-              className="w-full text-left px-4 py-3 rounded-xl border border-landing-line bg-white text-sm text-landing-ink-soft hover:border-landing-mint hover:bg-landing-mint-soft transition-colors"
+              className="w-full text-left px-4 py-3 rounded-xl border border-dc-teal/15 bg-white text-sm text-dc-text-muted hover:border-dc-teal hover:bg-dc-teal/12 transition-colors"
             >
               "{suggestion}"
             </motion.button>
@@ -88,13 +88,13 @@ export function BioStep({ bio, onBioChange, showInFeed, onShowInFeedChange }: Bi
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.35 }}
-        className="flex w-full items-center justify-between gap-4 rounded-2xl border border-landing-line bg-white px-4 py-3"
+        className="flex w-full items-center justify-between gap-4 rounded-2xl border border-dc-teal/15 bg-white px-4 py-3"
       >
         <div className="min-w-0">
-          <Label htmlFor="show-in-feed" className="text-sm font-semibold text-landing-ink">
+          <Label htmlFor="show-in-feed" className="text-sm font-semibold text-dc-text">
             Show my work in the Dragon Feed
           </Label>
-          <p className="mt-0.5 text-xs text-landing-ink-soft">
+          <p className="mt-0.5 text-xs text-dc-text-muted">
             This is how businesses discover you. You can change it anytime in Settings.
           </p>
         </div>
