@@ -36,6 +36,7 @@
 
 import {
   b64url,
+  b64urlDecode,
   OAuthStateError,
   type OAuthState,
   safeReturnOrigin as sharedSafeReturnOrigin,
@@ -200,6 +201,37 @@ export async function deriveCodeVerifier(nonce: string): Promise<string> {
   );
   const sig = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(`pkce:${nonce}`));
   return b64url(new Uint8Array(sig));
+}
+
+/**
+ * Read the nonce back out of a state we just minted.
+ *
+ * `signState` generates the nonce internally and returns only the encoded
+ * artefact, so this reads it from that artefact rather than having `signState`
+ * hand it back separately. That is deliberate: with one source there is exactly
+ * one nonce, and the verifier can never be derived from a value the state does
+ * not actually carry.
+ *
+ * UNVERIFIED BY DESIGN, and safe only because of where it is called. In
+ * `x-oauth-start` the input is a string this process created microseconds ago.
+ * In `x-oauth-callback` the signature and the caller are checked FIRST, by
+ * `verifyState`, and only then is the nonce read. Calling this on an unverified
+ * state from elsewhere would let an attacker choose the nonce and therefore the
+ * verifier — so it must never be the first thing that touches a state.
+ */
+export function nonceFromState(state: string): string {
+  const dot = state.lastIndexOf('.');
+  if (dot < 0) throw new XError('bad_state', 'Malformed state', 403);
+  let payload: { nonce?: unknown };
+  try {
+    payload = JSON.parse(new TextDecoder().decode(b64urlDecode(state.slice(0, dot))));
+  } catch {
+    throw new XError('bad_state', 'Malformed state', 403);
+  }
+  if (typeof payload.nonce !== 'string' || !payload.nonce) {
+    throw new XError('bad_state', 'State carries no nonce', 403);
+  }
+  return payload.nonce;
 }
 
 /** S256, never `plain` — X allows both, and `plain` puts the secret on the wire. */
