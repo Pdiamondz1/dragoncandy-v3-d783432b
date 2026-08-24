@@ -3,6 +3,7 @@ import { Link, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import dragonCandyLogo from '@/assets/Transparent_DragonCandy_logo.webp';
+import { APP_LOGO_INTRINSIC, HEADER_LOGO_CLASS, RAIL_LOGO_CLASS } from '@/lib/brandLogo';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -75,10 +76,15 @@ const AppSidebar: React.FC<AppSidebarProps> = ({ userRole }) => {
       <SidebarHeader className="bg-sidebar">
         <div className="flex items-center justify-center px-2 py-3">
           <Link to="/" className="transition-transform duration-200 hover:scale-105">
+            {/* Expanded: the app's one header size (was `w-[100px] h-auto` = 116px tall, since
+                the asset is taller than it is wide). Collapsed: the rail is only 56px wide
+                including padding, so it keeps its own smaller step. */}
             <img
               src={dragonCandyLogo}
               alt="DragonCandy"
-              className={collapsed ? 'h-8' : 'w-[100px] h-auto'}
+              width={APP_LOGO_INTRINSIC.width}
+              height={APP_LOGO_INTRINSIC.height}
+              className={collapsed ? RAIL_LOGO_CLASS : HEADER_LOGO_CLASS}
             />
           </Link>
         </div>

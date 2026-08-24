@@ -56,17 +56,22 @@ describe("PublicPageHeader logo", () => {
     expect(logo.className).not.toMatch(/\bh-auto\b/);
   });
 
-  it("stays in step with the landing header", () => {
-    // Both headers render the same asset and must agree on its size. Compared as source text
-    // because the two components are structurally different and only the sizing has to match.
+  it("stays in step with the landing header by SHARING the size, not by copying it", () => {
+    // This used to assert that both files contained the same literal class string — two copies
+    // kept in step by hand. That is precisely how the other three headers (auth, mobile top nav,
+    // desktop sidebar) drifted to 163px, 74px and 116px without anything failing. The size now
+    // lives in @/lib/brandLogo and both files import it; brandLogo.test.ts holds the same check
+    // for all five headers at once.
     const read = (p: string) => readFileSync(join(process.cwd(), p), "utf8");
     const landing = read("src/components/landing/Header.tsx");
     const publicHeader = read("src/components/PublicPageHeader.tsx");
 
-    const sizing = /className="([^"]*\bh-12\b[^"]*)"/;
-    expect(landing).toMatch(/h-12 w-auto lg:h-14/);
-    expect(publicHeader).toMatch(/h-12 w-auto lg:h-14/);
-    expect(sizing.test(landing)).toBe(true);
+    for (const src of [landing, publicHeader]) {
+      expect(src).toMatch(/from ["']@\/lib\/brandLogo["']/);
+      expect(src).toContain("HEADER_LOGO_CLASS");
+      // No local copy of the size to drift away from the constant.
+      expect(src).not.toMatch(/className="[^"]*\bh-12\b[^"]*"/);
+    }
   });
 
   it("reserves the box at the asset's REAL aspect so it cannot cause a layout shift", async () => {

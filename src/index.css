@@ -5,10 +5,28 @@
 /* ── DragonCandy Design System ─────────────────────────────────────────────── */
 
 @layer base {
+  /* `overscroll-behavior-y: none` on both elements is what stops the page being DRAGGED.
+     Sizing AppShell to 100dvh removed the scrollable gap that made the screen jump; it did not
+     stop the rubber-band, because a scroll container with nothing to scroll still bounces — on
+     iOS Safari and on a macOS trackpad alike — and the elastic gutter that opens is painted by
+     the canvas, i.e. white. Reported from a real phone on 2026-08-24, with screenshots, after
+     the 100dvh fix shipped: a white band above the header and below the footer of a page whose
+     entire premise is one dark cinematic screen.
+
+     The Y AXIS ONLY, deliberately. The shorthand would take X with it, and X is where iOS
+     Safari's edge-swipe-back gesture lives; there is also no horizontal scrolling here to
+     suppress, since `overflow-x: hidden` is already set on both elements. It is set on html AND
+     body because body is this document's scroll container (height:100% + overflow-x:hidden
+     computes overflow-y to `auto`) while the value governing the viewport is read off the root.
+
+     Known cost, accepted: this also disables pull-to-refresh on Android Chrome. For an app that
+     ships inside a native wrapper, a page that cannot be dragged is the intent, not a
+     regression. See docs/DESIGN_SYSTEM.md. */
   html {
     height: 100%;
     max-width: 100%;
     overflow-x: hidden;
+    overscroll-behavior-y: none;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     touch-action: manipulation;
@@ -19,9 +37,25 @@
     height: 100%;
     max-width: 100%;
     overflow-x: hidden;
+    overscroll-behavior-y: none;
     position: relative;
     font-family: 'Outfit', sans-serif;
     font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  }
+
+  /* The second, independent guard: colour the gutter instead of only trying to close it.
+     The overscroll area is OUTSIDE the body box, so nothing inside #root can paint it — the
+     canvas takes its colour from <html>, falling back to <body> only when the root is
+     transparent. `body` is `bg-background` (white), which is right for the app and wrong for the
+     landing. LandingPage adds this class to documentElement for its lifetime and removes it on
+     unmount.
+
+     This is not redundant with the rule above. It covers exactly the cases that rule cannot
+     reach: a Safari older than 16, and the Capacitor WKWebView, whose bounce is a native
+     scroll-view setting that no CSS property can switch off. There, the user sees brand colour
+     rather than a white band that reads as a broken page. */
+  html.landing-surface {
+    @apply bg-landing-grape;
   }
 
   /* Prevent any element from exceeding viewport width on mobile */
