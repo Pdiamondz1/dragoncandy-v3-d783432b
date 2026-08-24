@@ -113,6 +113,22 @@ two concurrent disconnects both read "2 remaining", both skip the revoke, and th
 with no token left to revoke it. On `is_last` the RPC deliberately leaves the row and its token in
 place for the revoke. Same shape as `reserve_phone_verification_send` and `record_crew_activity`.
 
+**And the first version got the lock right and the read wrong (`20260825160000`).** It read the
+target row *before* taking the lock, so the lock serialised the count but not the row the count was
+about. Two disconnects of the **same** Page — a double tap, or a retry after a dropped response,
+both anticipated in the function's own comments — could have the second re-count after the first
+committed its delete, see 1 remaining, and return `is_last=true` carrying the **deleted row's stale
+token**; the revoke then withdrew the user-level grant and killed the *other* Page, whose row
+survived still reading "Connected". Fixed by narrowing the unlocked read to `fb_user_id` (needed
+only for the lock key) and re-reading the row inside the lock, with a `40001` raise mapped to a
+**409 retry** for the one case an xact lock cannot cover.
+
+**Found by the Codex second review — of the prose, not the code.** The race survived the build, an
+internal review and a first Codex pass over the diff, and surfaced only once the behaviour was
+written down as a claim. *A guarantee stated in prose is a testable assertion about the code.* It is
+the clearest argument yet for running the knowledge layer through review rather than waving it
+through as documentation.
+
 ### What the 503 -> 401 transition proves, and what it does not
 
 Both Meta callbacks answered `503 not_configured` before `FACEBOOK_APP_SECRET` was set and answer

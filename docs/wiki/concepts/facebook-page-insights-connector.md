@@ -101,6 +101,47 @@ The RPC either deletes this row (others remain, nothing to revoke) or reports `i
 [[Identity & Address Verification]]'s `reserve_phone_verification_send` and [[Creator Groups
 (Crews)]]'s `record_crew_activity`.
 
+### The lock was in the right place and the read was not (`20260825160000`)
+
+**The first version of this paragraph claimed the RPC was concurrency-safe, and it was not.** Found
+by the Codex second review — reviewing the *prose*, and refuting it against the code it described.
+
+`20260825150000` read the target row and *then* took the lock, so the lock serialised the **count**
+but not the row the count was about. Two disconnects of the **same** Page — a double tap, or a
+retry after a dropped response, both of which the function's own comments anticipate — interleave
+badly when two Pages share a grant:
+
+| | R1 | R2 |
+|---|---|---|
+| 1 | reads Page A | reads Page A (R1 uncommitted, so READ COMMITTED still sees it) |
+| 2 | takes the lock | blocks |
+| 3 | counts 2 → not last | |
+| 4 | deletes A, commits, releases | |
+| 5 | | takes the lock, counts **1** → "last one" |
+| 6 | | returns `is_last=true` with **A's stale token** |
+
+The caller then revokes, `DELETE /me/permissions` withdraws the **user-level** grant, and **Page B
+dies** — its row surviving, still showing "Connected", over a token that can no longer read
+anything. Exactly the outcome the lock exists to prevent, arriving through the door it did not
+cover.
+
+Fixed by narrowing the unlocked read to a single value — `fb_user_id`, needed only to compute the
+lock key — and re-reading the row **inside** the lock, so every decision comes from a row nobody
+can have invalidated. R2 above now finds A gone and returns `found=false`, which the caller already
+treats as the idempotent "already gone" success it is.
+
+One edge remains and is handled rather than hidden: the grant itself could be replaced between the
+key read and the lock (a disconnect *and* a full reconnect landing in that window), leaving us
+holding the wrong lock. An advisory xact lock cannot be released mid-transaction, so the function
+raises `40001` and `facebook-disconnect` maps it to a **409 with a retry message** — never a 500,
+because the correct user action is to tap again and a 500 says something is broken.
+
+**The durable part is where the finding came from.** The race had survived the build, the internal
+review, and a first Codex pass over the code. It was caught only when the behaviour was written
+down as a claim — *a guarantee stated in prose is a testable assertion about the code, and writing
+it down is what makes it checkable.* This is the argument for the knowledge layer being reviewed
+like code rather than waved through as documentation.
+
 ## What the 503 → 401 transition proves — and what it does not
 
 Both Meta callbacks answered `503 not_configured` before `FACEBOOK_APP_SECRET` was set, and now

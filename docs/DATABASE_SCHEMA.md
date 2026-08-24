@@ -821,6 +821,20 @@ the token models do. Read the notes under the table before assuming a pattern ca
 > and its token in place** so the caller can revoke first — deleting first would abandon a live
 > grant, the same rule [[YouTube Analytics Connector]] follows and Instagram structurally cannot.
 >
+> **`20260825150000` put the lock in the right place and the READ in the wrong one; corrected by
+> `20260825160000`.** The original read the target row *before* taking the lock, so the lock
+> serialised the count but not the row the count was about. Two disconnects of the **same** Page
+> (a double tap, or a retry after a dropped response) could have the second one re-count after the
+> first committed its delete, see 1 remaining, and return `is_last=true` carrying the **deleted
+> row's stale token** — whereupon the revoke killed the *other* Page's token while its row survived
+> reading "Connected". The fix narrows the unlocked read to `fb_user_id` alone (needed only for the
+> lock key) and re-reads the row **inside** the lock; a row that vanished returns `found=false`,
+> which the caller already treats as the idempotent "already gone" success. A grant replaced
+> between the key read and the lock raises `40001`, which `facebook-disconnect` maps to a **409
+> retry**, because an advisory xact lock cannot be swapped mid-transaction and a rare honest
+> failure beats a silent wrong answer. **Found by the Codex second review reading the wiki prose
+> that claimed the function was safe** — the claim is what made the code checkable.
+>
 > **All three tables are service-role-only by construction, and verified so rather than assumed.**
 > RLS enabled with **zero policies for any role**, PLUS the ambient grants revoked at TABLE level
 > (a column-level `REVOKE` is a documented no-op against Supabase's table-wide `GRANT` — the same
