@@ -162,6 +162,42 @@
 > the opposite default from the readiness engine's "`unknown` never blocks", because here the risk of
 > a false "allow" is our own carrier bill, not a user's blocked action.
 >
+> **`address_verification_attempts`** (`20260825100000`) — the same shape one function over, for
+> `verify-address` (`id`, `user_id` FK `auth.users` ON DELETE CASCADE, `ip_hash`, `role` ∈
+> `creator`/`business`, `outcome` ∈ `reserved`/`answered`/`failed`/`throttled`, `created_at`), with
+> the identical lockdown (RLS on, `service_role`-only policy, table-level `revoke all … from public,
+> anon, authenticated` — never a column-level revoke, which is a no-op against the ambient
+> table-wide grant). Written only via `reserve_address_verification` below, plus two service-role
+> writes in `verify-address` that record how a reserved slot was spent.
+>
+> **Why this table exists at all:** every `verify-address` call is a billed Google Geocoding request
+> (~$5/1,000) and **Google offers no daily quota cap for Maps Platform** — the console shows *v3
+> requests per day* as Unlimited with editing disabled ("Quota is not adjustable") and refuses to
+> attach an alert to it. So this is not defence in depth; it is the only bound that exists. See
+> [[Identity & Address Verification]].
+>
+> **`reserve_address_verification(p_user_id uuid, p_ip_hash text, p_role text, p_user_limit int,
+> p_user_window_seconds int, p_burst_limit int, p_burst_window_seconds int, p_ip_limit int) returns
+> jsonb`** (`20260825100000`, SECURITY DEFINER, `search_path=public`, revoked from `public, anon,
+> authenticated`, granted to `service_role`) — same atomic count-and-reserve pattern as the phone RPC
+> below, same fixed lock order (user key then ip key, so callers sharing an IP queue rather than
+> deadlock), reserving the row **before** the caller issues the billed request. Returns
+> `{reserved, reason}` plus `attempt_id` on success; `reason` distinguishes `user_daily` /
+> `user_burst` / `ip_daily` so the client can say something true about how long the wait is. A null
+> or errored result refuses with a 503.
+>
+> **Three differences from the phone RPC, each deliberate:** no cooldown (a geocode is ~1/1000th the
+> unit cost of an SMS, so volume caps matter and spacing does not — and a cooldown would penalise a
+> business saving several locations in one sitting, each save firing its own verification); **two**
+> user windows rather than one (a daily cap alone lets a loop spend the day in seconds, a burst cap
+> alone lets a slow drip run all day); and the counting predicate is an **exclusion**
+> (`outcome <> 'throttled'`) rather than an inclusion list. That last one is the one to preserve: an
+> inclusion list silently stops counting a newly-added outcome (under-throttles, costs money), an
+> exclusion list counts it (over-throttles, annoys one user). `'throttled'` is the only outcome that
+> provably issued no request. Limits live in `supabase/functions/verify-address/rateLimit.ts` and are
+> passed in as parameters; a CI test asserts the call site actually reads them, since a constant
+> nothing reads is not a control.
+>
 > **`reserve_phone_verification_send(p_user_id uuid, p_ip_hash text, p_limit int, p_window_seconds
 > int, p_cooldown_seconds int) returns jsonb`** (`20260824160000`, SECURITY DEFINER,
 > `search_path=public`, `revoke execute … from public, anon, authenticated` + `grant … to
@@ -200,6 +236,35 @@
 > (not just active) members — who may CALL it and which rows it SHOWS are deliberately different
 > questions.
 >
+> **Social login — `handle_new_user` changed, plus two RPCs (`20260825140000`, NOT APPLIED).**
+> See [[Social Login]].
+>
+> `handle_new_user` now sets `profiles.email_verified` from the **creating provider**
+> (`raw_app_meta_data->>'provider'` against an allowlist of `google`/`apple`/`facebook`),
+> never from `email_confirmed_at`. That distinction is load-bearing: Supabase's built-in
+> confirmation is **disabled** on this project — 45 of 45 users have `email_confirmed_at`
+> set, 44 within ONE SECOND of `created_at` (min 6ms) — so mirroring it would auto-verify
+> every password signup and switch the app's own verification email gate off for everyone.
+> The `ON CONFLICT` branch ORs rather than overwrites, so a re-provision cannot erase a
+> `true` someone earned by clicking a link.
+>
+> **`claim_initial_role(p_role user_role)`** (SECURITY DEFINER, `search_path=public`, revoked
+> from `public, anon`, granted `authenticated`) — `signInWithOAuth` cannot carry user
+> metadata, so the trigger defaults every social signup to `content_creator`, and
+> `authenticated` has INSERT but not UPDATE on `profiles.role`. Identity from `auth.uid()`
+> with **no id parameter**. Returns `{claimed, reason}`; refuses with `onboarding_complete`,
+> `organization_exists`, `not_an_oauth_account` or `account_not_new`. **The last two are not
+> redundant with each other**: provider refuses a password account that later linked Google
+> (that column records the CREATING identity and does not change on linking), age refuses an
+> account genuinely created by Google months ago. Also sets the leftover
+> `creator_profiles.profile_visibility` to `private` when a business claims, because that
+> column **defaults to `public`** and the row exists only because of the trigger's default.
+>
+> **`sync_oauth_email_verification()`** (same lockdown, no parameters) — `handle_new_user`
+> fires on INSERT, so it never sees a password account whose owner later signs in with
+> Google: GoTrue links the identity to the existing row. Keyed on `auth.identities`, which
+> GoTrue writes and no client can. Sets `email_verified` true and **never false**.
+
 > **Two `profiles` PII lockdowns — write and read are separate problems, closed separately.**
 > 1. **Write** (`20260824100000` + `20260824101000` + `20260824170000`): `revoke update, insert on
 >    public.profiles from authenticated, anon`, then `grant update (<cols>)` / `grant insert (<5 cols>)`
@@ -709,6 +774,46 @@ predicate. See `docs/wiki/concepts/synthetic-weight-engine.md`.
 > rewritten to exclude synthetic (actor-OR-parent). The extended `handle_new_user` **preserves** the
 > `account_scope='internal'` guard + `ON CONFLICT DO UPDATE` refresh (a corrective migration restored
 > these after the initial spine migration reverted them — caught by the Codex second review).
+
+## Direct platform connectors (analytics only)
+
+Per-user OAuth links to a platform's own API, under the 2026-08-23 scope decision: **Outstand
+publishes, direct APIs measure**. Neither table was documented here before 2026-08-24 — the
+YouTube one had been live since 2026-08-23.
+
+| Table | Purpose |
+|-|-|
+| `youtube_channel_connections` | One row per linked YouTube channel (`20260823170000`). `channel_id`, `channel_title`, `google_email`, `scopes`, `refresh_token` (NOT NULL — Google's refresh token is a separate, long-lived credential), `access_token` + `access_token_expires_at`, `status`, `last_error`, `connected_at`, `last_synced_at`. |
+| `instagram_account_connections` | One row per linked Instagram account (`20260825120000`, applied 2026-08-24). `ig_user_id`, `username`, `account_type`, `followers_count`, `permissions`, `access_token` (NOT NULL), `token_issued_at`, `token_expires_at`, `status`, `last_error`, `connected_at`, `last_synced_at`. |
+
+> **The column sets differ for a reason that is the whole design.** Instagram has **no refresh
+> token**: the 60-day access token *is* the credential, and `ig_refresh_token` extends that same
+> token rather than minting a new one. So `token_expires_at` is user-facing information here (a
+> connection genuinely ends on a date) where YouTube's expiry is an implementation detail, and a
+> connection nobody reads **dies** — Meta only extends a token that is still valid, so
+> refresh-on-expiry, which is correct for Google, is guaranteed to fail here. Hence proactive
+> refresh at 15 days remaining plus a daily sweep (`instagram-refresh-sweep`, cron migration
+> `20260825130000`). See [[Instagram Insights Connector]].
+>
+> **Both tables are service-role-only by construction, and verified so rather than assumed.**
+> RLS enabled with **zero policies for any role**, PLUS the ambient grants revoked at TABLE level
+> (a column-level `REVOKE` is a documented no-op against Supabase's table-wide `GRANT` — the same
+> lesson `20260804174854` / `20260805163247` record). Grants and RLS are independent gates, so a
+> future migration that re-grants the table still hits RLS-with-no-policy. Checked on prod
+> 2026-08-24 for `instagram_account_connections`: grants are exactly `postgres` + `service_role`,
+> `relrowsecurity` is true, and `pg_policies` returns 0 rows.
+>
+> **The UI never reads either table.** It calls `instagram_connection_status()` /
+> `youtube_connection_status()` — `SECURITY DEFINER`, `search_path=public`, taking **no arguments**
+> so identity can only come from `auth.uid()` (the `dre_my_standing` pattern), EXECUTE granted to
+> `authenticated` + `service_role` and revoked from `PUBLIC`/`anon`, and returning **no token
+> column**. A bare `REVOKE ... FROM PUBLIC` does not lock down a definer function against
+> Supabase's default privileges; `anon` must be named.
+>
+> **Version stamps are not free-form.** `20260825120000` began life as `20260825100000` and was
+> renumbered because `feat/verify-address-throttle` had already recorded that version in prod's
+> ledger. `supabase/migrations.test.ts` now fails CI on any new collision — see
+> [[Instagram Insights Connector]].
 
 ## Social & Outstand Integration
 

@@ -142,6 +142,26 @@
   stamp, never a *status* signal, and pre-2026-08-07 rows are unreliable in **both** directions
   (`== created_at` means "no explicit writer touched it", not "never modified"). See
   [[Updated-At Trigger Drift]].
+- **[superseded-diagnosis] When a follow-up corrects an earlier session's EXPLANATION, retract in
+  place — and keep the wrong reasoning.** On 2026-08-24 a page-drag fix shipped with a confident
+  wrong cause (the rubber-band) written into the wiki as settled; the real cause was a height-unit
+  mismatch one element up. Deleting the wrong section would erase the evidence that the guidance
+  was ever given, and a reader who acted on it needs to see it *withdrawn*; rewriting it silently
+  would hide the more useful artefact, which is what a plausible wrong answer looks like. Banner at
+  the top of the old section naming the correct one, dated, plus the new section stating what the
+  old one could not see. Sibling of `[doc-documents-the-bug]`: that one is about a page recommending
+  the defect, this one is about a page explaining it wrongly. **Corollary:** answer the earlier
+  session's `**Pending:**` clause explicitly in §5 — it is always loaded, and a clause can be
+  falsified within hours of being written.
+- **[core-doc-markers] A core doc can be load-bearing for a TEST, so run the full suite after
+  editing one — not just a read-through.** On 2026-08-24 rewriting the logo rule in
+  `DESIGN_SYSTEM.md` deleted the string `PublicPageHeader.test.tsx`, and
+  `supabase/functions/_shared/chunk-doc.test.ts` went red: it uses that filename as a **marker**
+  that must survive chunking past the old 24,000-char cut, i.e. it asserts a specific token exists
+  in the doc *and* sits past that offset. Rewriting prose is not a docs-only change when a test
+  greps the prose. The fix was also the better doc — name both tests, since the render-level check
+  still lives in the old one. Corollary: markers are single unbroken tokens on purpose, so
+  reflowing a paragraph is safe but renaming or deleting a filename is not.
 - **[context-tax] Session detail goes to `docs/SHIPPED_LOG.md`, NOT `PROJECT_CONTEXT.md` §5.**
   §5 is now a one-line-per-entry index with three subsections — `### In flight`, `### Built —
   awaiting founder go-live` (these carry a `**Pending:**` clause), `### Shipped` — because §5 is
@@ -225,7 +245,116 @@
   [[Domain Migration (.io → .com)]] rule *change instrument when a probe cannot distinguish true
   from false*; here the instrument never addressed the question at all.
 
+- **[handover-shell] When you hand a command to a human, own the directory AND the shell.** On
+  2026-08-24 the same two prod commands failed twice for two different environment reasons, and both
+  times came back as "ran fine". First they ran in the **main checkout**, where a worktree branch's
+  files do not exist — and `supabase functions deploy` reads `supabase/config.toml` from the
+  **current directory**, so a path-resolving version of that mistake would have deployed three
+  anonymous functions at the default `verify_jwt=true` and made Meta's callbacks 401 before their
+  signature check ever ran. Then the corrected commands carried this harness's `!` run-this prefix
+  into a plain zsh shell, where `!` is **pipeline negation**: `! cd X && cmd` parses as
+  `(! cd X) && cmd`, so the `cd` ran, succeeded, `!` inverted it, `&&` short-circuited, and the
+  terminal showed a changed prompt and no output — indistinguishable from success without checking
+  the target. **Prefix handover commands with an absolute `cd`, never with `!`, and name the exact
+  line that proves success** (e.g. `db-exec: ledger row confirmed for <version>`). Then verify
+  against the system, not the report. Same family as `[status-correction]`: the report is not the
+  fact.
+- **[version-collision] Migration versions collide between concurrent branches, and only the merge
+  reveals it.** Two branches open at once both chose `20260825100000`; the ledger is keyed on the
+  version alone, so the second to apply is refused as already recorded, and forcing past that
+  manufactures `recorded != actual`. `supabase/migrations.test.ts` now fails CI on any new collision
+  and found **seven** pre-existing ones — frozen rather than renumbered, since none is in prod's
+  ledger. **When merging `main` into a branch that adds a migration, check the version before
+  reading the diff**, and prefer a stamp that is not a round hour.
+
 ## Run log (newest first — add each new entry at the TOP; never edit/delete past entries)
+
+### [2026-08-24] The fix that did not fix it — a height comparison has two sides (`worktree-DC-landing-page-fix3`)
+
+**Output:** `docs/wiki/raw/sessions/2026-08-24-body-height-unit-mismatch.md` →
+[[Mobile Viewport & Fixed Positioning]] §11, with **§10 marked in place as a wrong diagnosis that
+shipped** · `log.md` entry *"A height comparison has two sides"* · `SHIPPED_LOG.md` prepended ·
+`PROJECT_CONTEXT.md` §5 and `DESIGN_SYSTEM.md` corrected in place.
+
+**Happened:** a knowledge-sync for a PR whose *predecessor's* knowledge was wrong, not merely
+incomplete. The previous session's §10 confidently named the rubber-band as the cause and shipped
+a fix that did not resolve the report.
+
+**Worked:** kept the wrong section rather than rewriting it, with a banner at the top pointing at
+§11 — the same `[doc-documents-the-bug]` discipline, applied to a wrong *diagnosis* rather than a
+wrong recommendation. §10's reasoning is worth preserving precisely because it is what a plausible
+wrong answer looks like: it explained every observation available, and every observation available
+came from an instrument that could not see the real cause.
+
+**Failed:** nothing this run, but the run exists because **#504 merged without its knowledge
+sync** — the code and `DESIGN_SYSTEM.md` shipped while the wiki, `SHIPPED_LOG.md` and §5 still
+described the superseded cause as the answer. That is the `[sync-before-blocked-gate]` gap in a new
+shape: not a blocked gate, just a hotfix merged under pressure with the docs deferred.
+
+**Remember:** see the new `[superseded-diagnosis]` Lesson. When a follow-up PR corrects an earlier
+PR's *explanation*, the knowledge edit is a retraction with a date, not an append — and §5's
+`**Pending:**` clause from the earlier session must be answered explicitly, because it is always
+loaded and this one was falsified within hours of being written.
+
+
+### [2026-08-24] The page could still be dragged, and the logo had five sizes (`worktree-DC-landing-page-fix3`)
+
+**Output:** `docs/wiki/raw/sessions/2026-08-24-page-drag-and-logo-size.md` → new
+[[Brand Logo Sizing]] + [[Mobile Viewport & Fixed Positioning]] §10 (and §9's "still open" clause
+edited **in place**, since §10 is what closed it) · `log.md` entry *"The page could still be
+dragged, and the logo had five sizes"* · `SHIPPED_LOG.md` prepended · `PROJECT_CONTEXT.md` §5's
+landing entry edited **in place** · `DESIGN_SYSTEM.md` gained the overscroll rule and had its logo
+rule rewritten around the shared constant.
+
+**Happened:** two founder/Adrian reports against a landing already "fixed" once. Compounded the
+overscroll half onto the existing viewport page (§10 — same lineage as §9, whose own prediction
+this session confirmed and partly corrected) and gave the logo half its own page, since the
+durable lesson there is about *guard construction*, not about the landing.
+
+**Worked:** the `[scope-paths]` check earned its place again — `git log HEAD..origin/main -- <my
+dirs>` surfaced #500 (onboarding) landing mid-session on `src/components`/`src/pages`; checking by
+**path** showed no file overlap, so a rebase was enough and no work was duplicated. Editing §9's
+stale clause in place rather than appending §10 silently kept the page from carrying a prediction
+and its own answer as two unrelated claims.
+
+**Failed:** rewriting the `DESIGN_SYSTEM.md` logo rule **deleted the string
+`PublicPageHeader.test.tsx`**, and `supabase/functions/_shared/chunk-doc.test.ts` went red — it
+uses that filename as a marker that must survive chunking past the old 24,000-char cut. Caught by
+the full suite, not by reading. Also ran the mandatory Codex gate once with `--base main` before
+noticing #499 had changed the rule to `--base origin/main` that morning; re-run correctly, and the
+first run happened to be equivalent because the branch was cut from that same tip — equivalent by
+luck, not by construction.
+
+**Remember:** core docs are load-bearing for tests, not just for readers — see the new
+`[core-doc-markers]` Lesson. And read `CLAUDE.md`'s gate commands from the CURRENT tree before
+running them; the rules change under a long session.
+
+
+### [2026-08-24] Instagram connector merged, applied, deployed (PR #489, `docs/instagram-connector-live`)
+
+**Output:** `docs/wiki/raw/sessions/2026-08-24-instagram-connector-live.md` →
+[[Instagram Insights Connector]] (deploy status + a "two branches, one migration version" section)
+· `log.md` entry *"Two branches, one migration version — and a shell that lied twice"* ·
+`DATABASE_SCHEMA.md` gained a **Direct platform connectors** section documenting BOTH connector
+tables (neither had ever been documented — YouTube's included) · `PROJECT_CONTEXT.md` §5 edited
+**in place** + §4's codebase-scale line corrected (100 → 111 edge functions; it also still called
+`verify-phone`/`verify-address` undeployed a day after they shipped).
+
+**Happened:** continued a merged-worktree branch from a second worktree. Merging `main` exposed a
+duplicate migration version against `feat/verify-address-throttle`; renumbered and added
+`supabase/migrations.test.ts`. CI cleared (the standing Lighthouse red was variance, not the
+branch), Codex clean, three `edge-function-reviewer` passes returned deploy-ordering findings only.
+Migration applied and seven functions deployed by the founder, then verified and merged.
+
+**Worked:** probing prod rather than believing "it ran fine" — twice, with controls that could have
+failed (`to_regclass` vs an invented name; 404-for-absent vs 401-for-deployed). Also investigating
+the red Lighthouse gate *before* fixing it: a re-run was the cheap discriminator, where "optimise
+the landing page" would have been days of work on a non-problem.
+
+**Failed:** two handovers cost a round trip each because the commands didn't account for the
+directory or the shell they'd run in.
+
+**Remember:** `[handover-shell]` and `[version-collision]`, added to Lessons this run.
 
 ### [2026-08-23] site access lockdown (private preview)
 - Output: `docs/wiki/raw/sessions/2026-08-23-site-access-lockdown.md` →

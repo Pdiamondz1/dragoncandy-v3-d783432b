@@ -12,6 +12,31 @@ export type Database = {
   __InternalSupabase: {
     PostgrestVersion: "14.5"
   }
+  graphql_public: {
+    Tables: {
+      [_ in never]: never
+    }
+    Views: {
+      [_ in never]: never
+    }
+    Functions: {
+      graphql: {
+        Args: {
+          extensions?: Json
+          operationName?: string
+          query?: string
+          variables?: Json
+        }
+        Returns: Json
+      }
+    }
+    Enums: {
+      [_ in never]: never
+    }
+    CompositeTypes: {
+      [_ in never]: never
+    }
+  }
   public: {
     Tables: {
       account_deletion_requests: {
@@ -379,6 +404,7 @@ export type Database = {
           event_data: Json | null
           event_type: string
           id: string
+          is_synthetic: boolean | null
           org_unit_id: string | null
           page_url: string | null
           session_id: string | null
@@ -391,6 +417,7 @@ export type Database = {
           event_data?: Json | null
           event_type: string
           id?: string
+          is_synthetic?: boolean | null
           org_unit_id?: string | null
           page_url?: string | null
           session_id?: string | null
@@ -403,6 +430,7 @@ export type Database = {
           event_data?: Json | null
           event_type?: string
           id?: string
+          is_synthetic?: boolean | null
           org_unit_id?: string | null
           page_url?: string | null
           session_id?: string | null
@@ -642,9 +670,11 @@ export type Database = {
           outstand_social_account_id: string
           platform: string
           platform_handle: string | null
+          provider: string
           status: string
           updated_at: string
           user_id: string
+          zernio_profile_id: string | null
         }
         Insert: {
           business_id?: string | null
@@ -656,9 +686,11 @@ export type Database = {
           outstand_social_account_id: string
           platform: string
           platform_handle?: string | null
+          provider?: string
           status?: string
           updated_at?: string
           user_id: string
+          zernio_profile_id?: string | null
         }
         Update: {
           business_id?: string | null
@@ -670,9 +702,11 @@ export type Database = {
           outstand_social_account_id?: string
           platform?: string
           platform_handle?: string | null
+          provider?: string
           status?: string
           updated_at?: string
           user_id?: string
+          zernio_profile_id?: string | null
         }
         Relationships: [
           {
@@ -760,7 +794,7 @@ export type Database = {
           company_size?: string | null
           country?: string | null
           created_at?: string | null
-          cuisines?: string[] | null
+          cuisines?: string[]
           description?: string | null
           disconnected_stripe_account_id?: string | null
           employee_count_range?: string | null
@@ -809,7 +843,7 @@ export type Database = {
           company_size?: string | null
           country?: string | null
           created_at?: string | null
-          cuisines?: string[] | null
+          cuisines?: string[]
           description?: string | null
           disconnected_stripe_account_id?: string | null
           employee_count_range?: string | null
@@ -1012,11 +1046,14 @@ export type Database = {
           dispute_reason: string | null
           id: string
           milestones: Json | null
+          payout_executed_at: string | null
           review_extended: boolean | null
           review_status: string | null
           revision_count: number | null
           revision_feedback: Json | null
           status: Database["public"]["Enums"]["collaboration_status"]
+          status_changed_at: string | null
+          stripe_transfer_id: string | null
           submitted_at: string | null
           updated_at: string
         }
@@ -1038,11 +1075,14 @@ export type Database = {
           dispute_reason?: string | null
           id?: string
           milestones?: Json | null
+          payout_executed_at?: string | null
           review_extended?: boolean | null
           review_status?: string | null
           revision_count?: number | null
           revision_feedback?: Json | null
           status?: Database["public"]["Enums"]["collaboration_status"]
+          status_changed_at?: string | null
+          stripe_transfer_id?: string | null
           submitted_at?: string | null
           updated_at?: string
         }
@@ -1064,11 +1104,14 @@ export type Database = {
           dispute_reason?: string | null
           id?: string
           milestones?: Json | null
+          payout_executed_at?: string | null
           review_extended?: boolean | null
           review_status?: string | null
           revision_count?: number | null
           revision_feedback?: Json | null
           status?: Database["public"]["Enums"]["collaboration_status"]
+          status_changed_at?: string | null
+          stripe_transfer_id?: string | null
           submitted_at?: string | null
           updated_at?: string
         }
@@ -1692,8 +1735,10 @@ export type Database = {
           ai_preview_status: string | null
           budget_max: number | null
           budget_min: number | null
+          budget_spent: number | null
           campaign_deliverables: Json | null
           campaign_media: Json | null
+          completed_at: string | null
           content_source: string | null
           created_at: string
           deadline: string | null
@@ -1706,6 +1751,7 @@ export type Database = {
           escrow_checkout_session_id: string | null
           escrow_payment_intent_id: string | null
           escrow_status: string | null
+          escrow_status_changed_at: string | null
           estimated_creation_minutes: number | null
           fixed_price: number | null
           goals: string | null
@@ -1731,8 +1777,10 @@ export type Database = {
           ai_preview_status?: string | null
           budget_max?: number | null
           budget_min?: number | null
+          budget_spent?: number | null
           campaign_deliverables?: Json | null
           campaign_media?: Json | null
+          completed_at?: string | null
           content_source?: string | null
           created_at?: string
           deadline?: string | null
@@ -1745,6 +1793,7 @@ export type Database = {
           escrow_checkout_session_id?: string | null
           escrow_payment_intent_id?: string | null
           escrow_status?: string | null
+          escrow_status_changed_at?: string | null
           estimated_creation_minutes?: number | null
           fixed_price?: number | null
           goals?: string | null
@@ -1770,8 +1819,10 @@ export type Database = {
           ai_preview_status?: string | null
           budget_max?: number | null
           budget_min?: number | null
+          budget_spent?: number | null
           campaign_deliverables?: Json | null
           campaign_media?: Json | null
+          completed_at?: string | null
           content_source?: string | null
           created_at?: string
           deadline?: string | null
@@ -1784,6 +1835,7 @@ export type Database = {
           escrow_checkout_session_id?: string | null
           escrow_payment_intent_id?: string | null
           escrow_status?: string | null
+          escrow_status_changed_at?: string | null
           estimated_creation_minutes?: number | null
           fixed_price?: number | null
           goals?: string | null
@@ -1920,12 +1972,102 @@ export type Database = {
           },
         ]
       }
+      content_disputes: {
+        Row: {
+          collaboration_id: string
+          created_at: string
+          id: string
+          initiated_by: string
+          notes: string | null
+          outcome: string | null
+          reason: string
+          resolved_at: string | null
+          resolved_by: string | null
+          status: string
+        }
+        Insert: {
+          collaboration_id: string
+          created_at?: string
+          id?: string
+          initiated_by: string
+          notes?: string | null
+          outcome?: string | null
+          reason: string
+          resolved_at?: string | null
+          resolved_by?: string | null
+          status?: string
+        }
+        Update: {
+          collaboration_id?: string
+          created_at?: string
+          id?: string
+          initiated_by?: string
+          notes?: string | null
+          outcome?: string | null
+          reason?: string
+          resolved_at?: string | null
+          resolved_by?: string | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "content_disputes_collaboration_id_fkey"
+            columns: ["collaboration_id"]
+            isOneToOne: false
+            referencedRelation: "campaign_collaborations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "content_disputes_initiated_by_fkey"
+            columns: ["initiated_by"]
+            isOneToOne: false
+            referencedRelation: "message_participant_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "content_disputes_initiated_by_fkey"
+            columns: ["initiated_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "content_disputes_initiated_by_fkey"
+            columns: ["initiated_by"]
+            isOneToOne: false
+            referencedRelation: "safe_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "content_disputes_resolved_by_fkey"
+            columns: ["resolved_by"]
+            isOneToOne: false
+            referencedRelation: "message_participant_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "content_disputes_resolved_by_fkey"
+            columns: ["resolved_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "content_disputes_resolved_by_fkey"
+            columns: ["resolved_by"]
+            isOneToOne: false
+            referencedRelation: "safe_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       content_performance: {
         Row: {
           campaign_id: string | null
           captured_at: string
           comments: number | null
           engagement_rate: number | null
+          format: string | null
           id: string
           is_settled: boolean
           likes: number | null
@@ -1947,6 +2089,7 @@ export type Database = {
           captured_at?: string
           comments?: number | null
           engagement_rate?: number | null
+          format?: string | null
           id?: string
           is_settled?: boolean
           likes?: number | null
@@ -1968,6 +2111,7 @@ export type Database = {
           captured_at?: string
           comments?: number | null
           engagement_rate?: number | null
+          format?: string | null
           id?: string
           is_settled?: boolean
           likes?: number | null
@@ -2274,6 +2418,71 @@ export type Database = {
             columns: ["owner_id"]
             isOneToOne: false
             referencedRelation: "safe_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      creator_packages: {
+        Row: {
+          billing_mode: string
+          created_at: string
+          creator_id: string
+          description: string | null
+          id: string
+          intake_schema: Json
+          intake_schema_version: number
+          price: number
+          scope: Json
+          slug: string
+          sort_order: number
+          status: string
+          template_id: string | null
+          title: string
+          turnaround_days: number
+          updated_at: string
+        }
+        Insert: {
+          billing_mode?: string
+          created_at?: string
+          creator_id: string
+          description?: string | null
+          id?: string
+          intake_schema?: Json
+          intake_schema_version?: number
+          price: number
+          scope?: Json
+          slug: string
+          sort_order?: number
+          status?: string
+          template_id?: string | null
+          title: string
+          turnaround_days?: number
+          updated_at?: string
+        }
+        Update: {
+          billing_mode?: string
+          created_at?: string
+          creator_id?: string
+          description?: string | null
+          id?: string
+          intake_schema?: Json
+          intake_schema_version?: number
+          price?: number
+          scope?: Json
+          slug?: string
+          sort_order?: number
+          status?: string
+          template_id?: string | null
+          title?: string
+          turnaround_days?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "creator_packages_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "package_templates"
             referencedColumns: ["id"]
           },
         ]
@@ -2793,6 +3002,7 @@ export type Database = {
           fallback: boolean
           id: string
           input_tokens: number
+          is_synthetic: boolean | null
           model: string
           output_tokens: number
           tier: string
@@ -2805,6 +3015,7 @@ export type Database = {
           fallback?: boolean
           id?: string
           input_tokens?: number
+          is_synthetic?: boolean | null
           model: string
           output_tokens?: number
           tier: string
@@ -2817,6 +3028,7 @@ export type Database = {
           fallback?: boolean
           id?: string
           input_tokens?: number
+          is_synthetic?: boolean | null
           model?: string
           output_tokens?: number
           tier?: string
@@ -2922,6 +3134,7 @@ export type Database = {
       }
       donny_messages: {
         Row: {
+          attachments: Json | null
           content: string | null
           conversation_id: string
           created_at: string
@@ -2939,6 +3152,7 @@ export type Database = {
           user_id: string | null
         }
         Insert: {
+          attachments?: Json | null
           content?: string | null
           conversation_id: string
           created_at?: string
@@ -2956,6 +3170,7 @@ export type Database = {
           user_id?: string | null
         }
         Update: {
+          attachments?: Json | null
           content?: string | null
           conversation_id?: string
           created_at?: string
@@ -3562,6 +3777,7 @@ export type Database = {
           created_at: string
           event_type: string
           id: string
+          is_synthetic: boolean | null
           payload: Json | null
           post_id: string | null
         }
@@ -3572,6 +3788,7 @@ export type Database = {
           created_at?: string
           event_type: string
           id?: string
+          is_synthetic?: boolean | null
           payload?: Json | null
           post_id?: string | null
         }
@@ -3582,6 +3799,7 @@ export type Database = {
           created_at?: string
           event_type?: string
           id?: string
+          is_synthetic?: boolean | null
           payload?: Json | null
           post_id?: string | null
         }
@@ -4403,6 +4621,7 @@ export type Database = {
           id: string
           roles: string[]
           search_terms: string[] | null
+          search_vector: unknown
           slug: string
           title: string
           updated_at: string
@@ -4413,6 +4632,7 @@ export type Database = {
           id?: string
           roles?: string[]
           search_terms?: string[] | null
+          search_vector?: unknown
           slug: string
           title: string
           updated_at?: string
@@ -4423,6 +4643,7 @@ export type Database = {
           id?: string
           roles?: string[]
           search_terms?: string[] | null
+          search_vector?: unknown
           slug?: string
           title?: string
           updated_at?: string
@@ -5048,6 +5269,66 @@ export type Database = {
         }
         Relationships: []
       }
+      outstand_media_ownership: {
+        Row: {
+          confirmed_at: string | null
+          content_type: string | null
+          created_at: string
+          expires_at: string | null
+          filename: string | null
+          media_created_at: string | null
+          outstand_media_id: string
+          size: number | null
+          status: string | null
+          url: string | null
+          user_id: string
+        }
+        Insert: {
+          confirmed_at?: string | null
+          content_type?: string | null
+          created_at?: string
+          expires_at?: string | null
+          filename?: string | null
+          media_created_at?: string | null
+          outstand_media_id: string
+          size?: number | null
+          status?: string | null
+          url?: string | null
+          user_id: string
+        }
+        Update: {
+          confirmed_at?: string | null
+          content_type?: string | null
+          created_at?: string
+          expires_at?: string | null
+          filename?: string | null
+          media_created_at?: string | null
+          outstand_media_id?: string
+          size?: number | null
+          status?: string | null
+          url?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      outstand_post_ownership: {
+        Row: {
+          created_at: string
+          outstand_post_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          outstand_post_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          outstand_post_id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       outstand_webhook_events: {
         Row: {
           account_id: string | null
@@ -5075,6 +5356,223 @@ export type Database = {
         }
         Relationships: []
       }
+      package_order_intake: {
+        Row: {
+          address: string | null
+          answers: Json
+          created_at: string
+          order_id: string
+          schema_version: number
+          shoot_date: string | null
+        }
+        Insert: {
+          address?: string | null
+          answers?: Json
+          created_at?: string
+          order_id: string
+          schema_version?: number
+          shoot_date?: string | null
+        }
+        Update: {
+          address?: string | null
+          answers?: Json
+          created_at?: string
+          order_id?: string
+          schema_version?: number
+          shoot_date?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "package_order_intake_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: true
+            referencedRelation: "package_orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      package_orders: {
+        Row: {
+          buyer_completion_status: string | null
+          buyer_email: string | null
+          buyer_guest_token: string | null
+          buyer_org_id: string | null
+          buyer_user_id: string | null
+          checkout_locked_at: string | null
+          completed_at: string | null
+          content_status: string | null
+          content_submitted_at: string | null
+          created_at: string
+          creator_completion_status: string | null
+          creator_id: string
+          deliverables: Json
+          delivery_note: string | null
+          escrow_checkout_session_id: string | null
+          escrow_payment_intent_id: string | null
+          escrow_status: string
+          id: string
+          order_status: string
+          package_id: string
+          payout_executed_at: string | null
+          platform_fee_snapshot: number
+          price_snapshot: number
+          revision_count: number
+          revision_note: string | null
+          scope_snapshot: Json
+          stripe_transfer_id: string | null
+          turnaround_days_snapshot: number | null
+          updated_at: string
+        }
+        Insert: {
+          buyer_completion_status?: string | null
+          buyer_email?: string | null
+          buyer_guest_token?: string | null
+          buyer_org_id?: string | null
+          buyer_user_id?: string | null
+          checkout_locked_at?: string | null
+          completed_at?: string | null
+          content_status?: string | null
+          content_submitted_at?: string | null
+          created_at?: string
+          creator_completion_status?: string | null
+          creator_id: string
+          deliverables?: Json
+          delivery_note?: string | null
+          escrow_checkout_session_id?: string | null
+          escrow_payment_intent_id?: string | null
+          escrow_status?: string
+          id?: string
+          order_status?: string
+          package_id: string
+          payout_executed_at?: string | null
+          platform_fee_snapshot?: number
+          price_snapshot: number
+          revision_count?: number
+          revision_note?: string | null
+          scope_snapshot?: Json
+          stripe_transfer_id?: string | null
+          turnaround_days_snapshot?: number | null
+          updated_at?: string
+        }
+        Update: {
+          buyer_completion_status?: string | null
+          buyer_email?: string | null
+          buyer_guest_token?: string | null
+          buyer_org_id?: string | null
+          buyer_user_id?: string | null
+          checkout_locked_at?: string | null
+          completed_at?: string | null
+          content_status?: string | null
+          content_submitted_at?: string | null
+          created_at?: string
+          creator_completion_status?: string | null
+          creator_id?: string
+          deliverables?: Json
+          delivery_note?: string | null
+          escrow_checkout_session_id?: string | null
+          escrow_payment_intent_id?: string | null
+          escrow_status?: string
+          id?: string
+          order_status?: string
+          package_id?: string
+          payout_executed_at?: string | null
+          platform_fee_snapshot?: number
+          price_snapshot?: number
+          revision_count?: number
+          revision_note?: string | null
+          scope_snapshot?: Json
+          stripe_transfer_id?: string | null
+          turnaround_days_snapshot?: number | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "package_orders_buyer_org_id_fkey"
+            columns: ["buyer_org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "package_orders_buyer_org_id_fkey"
+            columns: ["buyer_org_id"]
+            isOneToOne: false
+            referencedRelation: "public_organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "package_orders_package_id_fkey"
+            columns: ["package_id"]
+            isOneToOne: false
+            referencedRelation: "creator_packages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "package_orders_package_id_fkey"
+            columns: ["package_id"]
+            isOneToOne: false
+            referencedRelation: "public_creator_packages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      package_templates: {
+        Row: {
+          category: string
+          created_at: string
+          default_scope: Json
+          description: string | null
+          id: string
+          intake_schema: Json
+          intake_schema_version: number
+          is_active: boolean
+          slug: string
+          sort_order: number
+          suggested_price_high: number | null
+          suggested_price_low: number | null
+          suggested_turnaround_days: number
+          tier: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          category?: string
+          created_at?: string
+          default_scope?: Json
+          description?: string | null
+          id?: string
+          intake_schema?: Json
+          intake_schema_version?: number
+          is_active?: boolean
+          slug: string
+          sort_order?: number
+          suggested_price_high?: number | null
+          suggested_price_low?: number | null
+          suggested_turnaround_days?: number
+          tier?: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          default_scope?: Json
+          description?: string | null
+          id?: string
+          intake_schema?: Json
+          intake_schema_version?: number
+          is_active?: boolean
+          slug?: string
+          sort_order?: number
+          suggested_price_high?: number | null
+          suggested_price_low?: number | null
+          suggested_turnaround_days?: number
+          tier?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       payment_events: {
         Row: {
           actor_id: string | null
@@ -5087,6 +5585,7 @@ export type Database = {
           entity_type: string
           event_type: string
           id: string
+          is_synthetic: boolean | null
           metadata: Json | null
           stripe_id: string | null
         }
@@ -5101,6 +5600,7 @@ export type Database = {
           entity_type: string
           event_type: string
           id?: string
+          is_synthetic?: boolean | null
           metadata?: Json | null
           stripe_id?: string | null
         }
@@ -5115,6 +5615,7 @@ export type Database = {
           entity_type?: string
           event_type?: string
           id?: string
+          is_synthetic?: boolean | null
           metadata?: Json | null
           stripe_id?: string | null
         }
@@ -5148,6 +5649,78 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      pending_balance_flushes: {
+        Row: {
+          amount_cents: number
+          attempts: number
+          created_at: string
+          id: string
+          last_error: string | null
+          profile_type: string
+          source: string
+          status: string
+          stripe_account_id: string
+          stripe_transfer_id: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          amount_cents: number
+          attempts?: number
+          created_at?: string
+          id?: string
+          last_error?: string | null
+          profile_type: string
+          source: string
+          status?: string
+          stripe_account_id: string
+          stripe_transfer_id?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          amount_cents?: number
+          attempts?: number
+          created_at?: string
+          id?: string
+          last_error?: string | null
+          profile_type?: string
+          source?: string
+          status?: string
+          stripe_account_id?: string
+          stripe_transfer_id?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      phone_verification_attempts: {
+        Row: {
+          action: string
+          created_at: string
+          id: string
+          ip_hash: string | null
+          outcome: string
+          user_id: string | null
+        }
+        Insert: {
+          action: string
+          created_at?: string
+          id?: string
+          ip_hash?: string | null
+          outcome: string
+          user_id?: string | null
+        }
+        Update: {
+          action?: string
+          created_at?: string
+          id?: string
+          ip_hash?: string | null
+          outcome?: string
+          user_id?: string | null
+        }
+        Relationships: []
       }
       platform_weight: {
         Row: {
@@ -5189,6 +5762,7 @@ export type Database = {
           current_tier: string
           feature_key: string
           id: string
+          is_synthetic: boolean | null
           org_id: string | null
           required_tier: string
           user_id: string | null
@@ -5199,6 +5773,7 @@ export type Database = {
           current_tier: string
           feature_key: string
           id?: string
+          is_synthetic?: boolean | null
           org_id?: string | null
           required_tier: string
           user_id?: string | null
@@ -5209,6 +5784,7 @@ export type Database = {
           current_tier?: string
           feature_key?: string
           id?: string
+          is_synthetic?: boolean | null
           org_id?: string | null
           required_tier?: string
           user_id?: string | null
@@ -5274,6 +5850,7 @@ export type Database = {
           first_run_missions: Json | null
           full_name: string | null
           id: string
+          onboarding_completed_at: string | null
           org_id: string | null
           phone: string | null
           phone_verified_at: string | null
@@ -5293,6 +5870,7 @@ export type Database = {
           first_run_missions?: Json | null
           full_name?: string | null
           id: string
+          onboarding_completed_at?: string | null
           org_id?: string | null
           phone?: string | null
           phone_verified_at?: string | null
@@ -5312,6 +5890,7 @@ export type Database = {
           first_run_missions?: Json | null
           full_name?: string | null
           id?: string
+          onboarding_completed_at?: string | null
           org_id?: string | null
           phone?: string | null
           phone_verified_at?: string | null
@@ -5801,36 +6380,57 @@ export type Database = {
       social_post_log: {
         Row: {
           campaign_id: string | null
+          caption: string | null
           created_at: string | null
+          creator_id: string | null
           dragonshare_post_id: string | null
+          format: string | null
+          hashtags: string[] | null
           id: string
           outstand_post_id: string
           platform: string
           post_type: string
+          published_at: string | null
+          scheduled_at: string | null
           source_brief_id: string | null
           user_id: string
+          verified_at: string | null
         }
         Insert: {
           campaign_id?: string | null
+          caption?: string | null
           created_at?: string | null
+          creator_id?: string | null
           dragonshare_post_id?: string | null
+          format?: string | null
+          hashtags?: string[] | null
           id?: string
           outstand_post_id: string
           platform: string
           post_type: string
+          published_at?: string | null
+          scheduled_at?: string | null
           source_brief_id?: string | null
           user_id: string
+          verified_at?: string | null
         }
         Update: {
           campaign_id?: string | null
+          caption?: string | null
           created_at?: string | null
+          creator_id?: string | null
           dragonshare_post_id?: string | null
+          format?: string | null
+          hashtags?: string[] | null
           id?: string
           outstand_post_id?: string
           platform?: string
           post_type?: string
+          published_at?: string | null
+          scheduled_at?: string | null
           source_brief_id?: string | null
           user_id?: string
+          verified_at?: string | null
         }
         Relationships: [
           {
@@ -5877,6 +6477,27 @@ export type Database = {
           event_type?: string
           processed_at?: string
           status?: string
+        }
+        Relationships: []
+      }
+      synthetic_users: {
+        Row: {
+          cohort: string | null
+          created_at: string
+          persona: string | null
+          user_id: string
+        }
+        Insert: {
+          cohort?: string | null
+          created_at?: string
+          persona?: string | null
+          user_id: string
+        }
+        Update: {
+          cohort?: string | null
+          created_at?: string
+          persona?: string | null
+          user_id?: string
         }
         Relationships: []
       }
@@ -6147,6 +6768,79 @@ export type Database = {
         }
         Relationships: []
       }
+      youtube_channel_connections: {
+        Row: {
+          access_token: string | null
+          access_token_expires_at: string | null
+          channel_id: string
+          channel_title: string | null
+          connected_at: string
+          google_email: string | null
+          id: string
+          last_error: string | null
+          last_synced_at: string | null
+          refresh_token: string
+          scopes: string[]
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          access_token?: string | null
+          access_token_expires_at?: string | null
+          channel_id: string
+          channel_title?: string | null
+          connected_at?: string
+          google_email?: string | null
+          id?: string
+          last_error?: string | null
+          last_synced_at?: string | null
+          refresh_token: string
+          scopes?: string[]
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          access_token?: string | null
+          access_token_expires_at?: string | null
+          channel_id?: string
+          channel_title?: string | null
+          connected_at?: string
+          google_email?: string | null
+          id?: string
+          last_error?: string | null
+          last_synced_at?: string | null
+          refresh_token?: string
+          scopes?: string[]
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "youtube_channel_connections_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "message_participant_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "youtube_channel_connections_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "youtube_channel_connections_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "safe_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       message_participant_profiles: {
@@ -6397,6 +7091,71 @@ export type Database = {
           youtube_url?: string | null
         }
         Relationships: []
+      }
+      public_creator_packages: {
+        Row: {
+          billing_mode: string | null
+          created_at: string | null
+          creator_id: string | null
+          description: string | null
+          id: string | null
+          intake_schema: Json | null
+          intake_schema_version: number | null
+          price: number | null
+          scope: Json | null
+          slug: string | null
+          sort_order: number | null
+          status: string | null
+          template_id: string | null
+          title: string | null
+          turnaround_days: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          billing_mode?: string | null
+          created_at?: string | null
+          creator_id?: string | null
+          description?: string | null
+          id?: string | null
+          intake_schema?: Json | null
+          intake_schema_version?: number | null
+          price?: number | null
+          scope?: Json | null
+          slug?: string | null
+          sort_order?: number | null
+          status?: string | null
+          template_id?: string | null
+          title?: string | null
+          turnaround_days?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          billing_mode?: string | null
+          created_at?: string | null
+          creator_id?: string | null
+          description?: string | null
+          id?: string | null
+          intake_schema?: Json | null
+          intake_schema_version?: number | null
+          price?: number | null
+          scope?: Json | null
+          slug?: string | null
+          sort_order?: number | null
+          status?: string | null
+          template_id?: string | null
+          title?: string | null
+          turnaround_days?: number | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "creator_packages_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "package_templates"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       public_creator_profiles: {
         Row: {
@@ -6662,9 +7421,11 @@ export type Database = {
         Returns: Json
       }
       aios_cost_stats: { Args: never; Returns: Json }
+      aios_db_health: { Args: never; Returns: Json }
       aios_metrics_snapshot: { Args: never; Returns: Json }
       aios_platform_stats: { Args: never; Returns: Json }
       aios_revenue_stats: { Args: never; Returns: Json }
+      aios_stakeholder_burn: { Args: never; Returns: Json }
       apply_to_campaign: {
         Args: {
           p_campaign_id: string
@@ -6678,14 +7439,44 @@ export type Database = {
         Returns: Json
       }
       block_user: { Args: { p_blocked_id: string }; Returns: undefined }
+      bump_flush_attempt: {
+        Args: { p_cap: number; p_error: string; p_flush_id: string }
+        Returns: string
+      }
       can_create_application: {
         Args: { p_campaign_id: string; p_creator_id: string }
         Returns: boolean
       }
+      can_notify_user: {
+        Args: { p_actor: string; p_recipient: string }
+        Returns: boolean
+      }
       capture_platform_weight: { Args: never; Returns: undefined }
+      capture_sim_load_snapshot: {
+        Args: { p_error_rate?: number; p_notes?: Json; p_run_label: string }
+        Returns: string
+      }
       chat_resolve_admin: { Args: { p_email: string }; Returns: string }
       check_prerequisite_status: { Args: { p_user_id: string }; Returns: Json }
+      claim_pending_balance_flush: {
+        Args: {
+          p_amount_cents: number
+          p_profile_type: string
+          p_source: string
+          p_stripe_account_id: string
+          p_user_id: string
+        }
+        Returns: string
+      }
       cleanup_expired_verification_tokens: { Args: never; Returns: undefined }
+      complete_posting_schedule_if_done: {
+        Args: { p_campaign_id: string; p_user_id: string }
+        Returns: boolean
+      }
+      confirm_pending_balance_flush: {
+        Args: { p_flush_id: string; p_transfer_id: string }
+        Returns: boolean
+      }
       create_boost: {
         Args: {
           p_amount_cents: number
@@ -6710,6 +7501,28 @@ export type Database = {
         Args: { p_org_unit_id?: string; user1_uuid: string; user2_uuid: string }
         Returns: string
       }
+      create_package_order: {
+        Args: {
+          p_buyer_email?: string
+          p_buyer_org_id?: string
+          p_buyer_user_id?: string
+          p_intake?: Json
+          p_package_id: string
+        }
+        Returns: Json
+      }
+      credit_pending_balance_for_order: {
+        Args: { p_amount: number; p_order_id: string; p_user_id: string }
+        Returns: string
+      }
+      credit_pending_balance_for_payout: {
+        Args: {
+          p_amount: number
+          p_collaboration_id: string
+          p_user_id: string
+        }
+        Returns: string
+      }
       cron_hard_purge_expired: { Args: never; Returns: number }
       debug_user_upload_permissions: {
         Args: never
@@ -6724,6 +7537,10 @@ export type Database = {
         Args: { p_post_id: string }
         Returns: undefined
       }
+      decrement_budget_spent: {
+        Args: { p_amount: number; p_campaign_id: string }
+        Returns: number
+      }
       dedup_candidate_pairs: {
         Args: { p_threshold?: number }
         Returns: {
@@ -6737,6 +7554,17 @@ export type Database = {
       delete_promotion_cascade: {
         Args: { p_promotion_id: string }
         Returns: undefined
+      }
+      dre_my_standing: {
+        Args: never
+        Returns: {
+          avg_rating: number
+          balance: number
+          campaigns_completed: number
+          last_activity_at: string
+          role: string
+          tier: string
+        }[]
       }
       dre_pending_events: {
         Args: never
@@ -6758,6 +7586,10 @@ export type Database = {
           role: string
           user_id: string
         }[]
+      }
+      fail_pending_balance_flush: {
+        Args: { p_error: string; p_flush_id: string; p_restore: boolean }
+        Returns: undefined
       }
       flag_dragonshare_post: { Args: { p_post_id: string }; Returns: undefined }
       force_gdpr_erasure: { Args: { p_user_id: string }; Returns: undefined }
@@ -6830,11 +7662,29 @@ export type Database = {
         }[]
       }
       get_dashboard_summary: { Args: { p_user_id: string }; Returns: Json }
+      get_guest_order_by_token: { Args: { p_token: string }; Returns: Json }
       get_org_connected_platforms: {
         Args: { p_org_id: string }
         Returns: {
           platform: string
           platform_handle: string
+        }[]
+      }
+      get_org_members_roster: {
+        Args: { p_org_id: string }
+        Returns: {
+          avatar_url: string
+          email: string
+          full_name: string
+          id: string
+          invitation_status: string
+          invited_at: string
+          invited_by: string
+          joined_at: string
+          last_active_at: string
+          org_id: string
+          role: string
+          user_id: string
         }[]
       }
       get_org_unit_financials: {
@@ -6843,6 +7693,22 @@ export type Database = {
           pending_balance: number
           stripe_account_id: string
           stripe_onboarding_complete: boolean
+        }[]
+      }
+      get_public_social_proof: {
+        Args: { p_user_id: string }
+        Returns: {
+          connected_count: number
+          followers: number
+          platform: string
+        }[]
+      }
+      get_public_social_proof_bulk: {
+        Args: { p_user_ids: string[] }
+        Returns: {
+          followers: number
+          platform: string
+          user_id: string
         }[]
       }
       get_recipient_email: {
@@ -6862,6 +7728,10 @@ export type Database = {
           name: string
           org_type: string
         }[]
+      }
+      get_sim_load_matrix_summary: {
+        Args: { p_run_label: string }
+        Returns: Json
       }
       get_simulation_stats: { Args: never; Returns: Json }
       get_unavailable_campaign_ids: {
@@ -6914,6 +7784,10 @@ export type Database = {
         }
         Returns: boolean
       }
+      increment_budget_spent: {
+        Args: { p_amount: number; p_campaign_id: string }
+        Returns: number
+      }
       increment_pending_balance: {
         Args: { p_amount: number; p_profile_type: string; p_user_id: string }
         Returns: number
@@ -6957,6 +7831,12 @@ export type Database = {
       is_internal_user: { Args: never; Returns: boolean }
       is_org_owner_or_admin: { Args: { p_org_id: string }; Returns: boolean }
       is_platform_admin: { Args: never; Returns: boolean }
+      is_synthetic: { Args: { p_user_id: string }; Returns: boolean }
+      is_synthetic_campaign: {
+        Args: { p_campaign_id: string }
+        Returns: boolean
+      }
+      is_synthetic_org: { Args: { p_org_id: string }; Returns: boolean }
       is_user_blocked: { Args: { p_other_id: string }; Returns: boolean }
       list_restaurant_cuisines: {
         Args: never
@@ -6978,6 +7858,9 @@ export type Database = {
         }[]
       }
       purge_stale_analytics_events: { Args: never; Returns: undefined }
+      purge_synthetic_data: { Args: never; Returns: Json }
+      purge_synthetic_load_cohort: { Args: never; Returns: Json }
+      purge_synthetic_marketplace_cohort: { Args: never; Returns: Json }
       recompute_profile_rating: { Args: { p_user: string }; Returns: undefined }
       record_crew_activity: {
         Args: {
@@ -6996,6 +7879,20 @@ export type Database = {
         Returns: undefined
       }
       request_org_deletion: { Args: { p_org_id: string }; Returns: undefined }
+      request_package_revision: {
+        Args: { p_guest_token?: string; p_note: string; p_order_id: string }
+        Returns: Json
+      }
+      reserve_phone_verification_send: {
+        Args: {
+          p_cooldown_seconds: number
+          p_ip_hash: string
+          p_limit: number
+          p_user_id: string
+          p_window_seconds: number
+        }
+        Returns: Json
+      }
       resolve_dragonshare_orgs: {
         Args: { p_org_ids: string[] }
         Returns: {
@@ -7027,7 +7924,35 @@ export type Database = {
           total_reviews: number
         }[]
       }
+      seed_synthetic_cohort: {
+        Args: { p_cohort: string; p_creator_split?: number; p_n: number }
+        Returns: Json
+      }
+      seed_synthetic_content: {
+        Args: { p_campaigns: number; p_creator_split?: number; p_posts: number }
+        Returns: Json
+      }
+      seed_synthetic_marketplace_depth: {
+        Args: { p_businesses: number; p_creators: number; p_seed?: number }
+        Returns: Json
+      }
       set_user_offline: { Args: { p_user_id: string }; Returns: undefined }
+      submit_package_deliverables: {
+        Args: { p_deliverables: Json; p_note?: string; p_order_id: string }
+        Returns: Json
+      }
+      transition_content_status: {
+        Args: {
+          p_actor_id?: string
+          p_collaboration_id: string
+          p_new_status: string
+          p_reason?: string
+        }
+        Returns: {
+          new_status: string
+          old_status: string
+        }[]
+      }
       unblock_user: { Args: { p_blocked_id: string }; Returns: undefined }
       user_in_conversation: {
         Args: { conversation_uuid: string; user_uuid: string }
@@ -7041,6 +7966,7 @@ export type Database = {
         }
         Returns: undefined
       }
+      youtube_connection_status: { Args: never; Returns: Json }
     }
     Enums: {
       app_role: "admin" | "moderator" | "stakeholder"
@@ -7210,6 +8136,9 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
+  graphql_public: {
+    Enums: {},
+  },
   public: {
     Enums: {
       app_role: ["admin", "moderator", "stakeholder"],

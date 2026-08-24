@@ -1,0 +1,252 @@
+import { supabase } from '@/integrations/supabase/client';
+import { publicOrigin } from '@/lib/publicOrigin';
+import type { AccountRole } from '@/lib/accountReadiness/types';
+
+/**
+ * The providers this app is prepared to accept, and nothing else.
+ *
+ * Kept in step with the allowlist inside `handle_new_user` (migration
+ * `20260825140000`), which is what decides whether an account arriving from a
+ * provider counts as email-verified. A provider added on one side only is the
+ * failure to avoid: added here alone, its users are told to verify an email that
+ * will never be sent; added there alone, it does nothing.
+ *
+ * Apple is listed because **Apple requires Sign in with Apple** in any iOS app
+ * that offers another social login, and this app ships in a Capacitor shell.
+ */
+export const SOCIAL_PROVIDERS = ['google', 'apple', 'facebook'] as const;
+export type SocialProvider = (typeof SOCIAL_PROVIDERS)[number];
+
+export const PROVIDER_LABELS: Record<SocialProvider, string> = {
+  google: 'Google',
+  apple: 'Apple',
+  facebook: 'Facebook',
+};
+
+/** The flag the founder flips once the provider consoles are configured. */
+export const SOCIAL_LOGIN_FLAG = 'SOCIAL_LOGIN_ENABLED';
+
+const ROLE_KEY = 'dc_oauth_pending_role';
+
+/**
+ * The same role, carried in the redirect URL as well as in storage.
+ *
+ * `sessionStorage` is scoped to an ORIGIN, and this round trip can change origins:
+ * `publicOrigin()` is `https://dragoncandy.com` while the Capacitor shell runs on
+ * `capacitor://localhost`, and even on the web a private-mode browser may refuse
+ * storage entirely. A query parameter survives both.
+ *
+ * Not a trust problem. It is user-visible and user-editable, but so is
+ * sessionStorage — anything running in the origin can write it — and neither is
+ * what protects the account. `claim_initial_role` does: OAuth-created, under
+ * fifteen minutes old, nothing completed, no organization. Editing this
+ * parameter lets someone set the account type of their own brand-new account,
+ * which is exactly what the button they just pressed does anyway.
+ */
+export const ROLE_PARAM = 'oauth_role';
+
+/**
+ * Where to send the user afterwards, carried for the same reason as the role and
+ * with the same problem: a route guard puts the intended destination in React
+ * Router's `location.state`, which a full-page provider round trip destroys. A
+ * password login honours it; without this an OAuth login would silently drop
+ * people on their dashboard instead of the page they asked for.
+ *
+ * Deliberately NOT the existing `returnTo` parameter, which `handleOAuthReturn`
+ * treats as an ABSOLUTE url and redirects to via `window.location.href` after
+ * checking it against an origin allowlist. That one is the external-handoff path;
+ * this one is an in-app route and must never be able to become an origin.
+ */
+export const RETURN_PARAM = 'oauth_return';
+
+/**
+ * A path we are willing to navigate to after sign-in.
+ *
+ * Same-origin PATHS only, and the exclusions are the point: `//evil.com` is a
+ * protocol-relative URL that a browser resolves to another origin, and a
+ * backslash is treated as a slash by some parsers. Anything absolute, anything
+ * that could name a host, and `/auth` itself (which would loop) are refused.
+ */
+export function readReturnPath(search: string): string | null {
+  try {
+    const value = new URLSearchParams(search).get(RETURN_PARAM);
+    return isSafeReturnPath(value) ? value : null;
+  } catch {
+    return null;
+  }
+}
+
+export function isSafeReturnPath(value: unknown): value is string {
+  if (typeof value !== 'string' || value.length === 0) return false;
+  if (!value.startsWith('/')) return false;
+  if (value.startsWith('//') || value.startsWith('/\\')) return false;
+  if (value.includes('\\')) return false;
+  const path = value.split(/[?#]/)[0];
+  return path !== '/auth';
+}
+
+/**
+ * The role a signup chose, held across the provider round trip.
+ *
+ * `signInWithOAuth` cannot carry user metadata, so `handle_new_user` has nothing
+ * to read and defaults every social signup to `content_creator`. This is how the
+ * choice survives long enough for `claim_initial_role` to apply it.
+ *
+ * `sessionStorage`, not `localStorage`: the value is meaningful for exactly one
+ * round trip, and a stale role left in a shared browser would silently re-file
+ * the NEXT person's account. It is cleared as soon as it is read.
+ */
+export function stashPendingRole(role: AccountRole): void {
+  try {
+    sessionStorage.setItem(ROLE_KEY, role);
+  } catch {
+    // Private mode, or storage disabled. The user keeps the default role, which
+    // is a worse outcome than remembering — and a better one than not signing in.
+  }
+}
+
+export function takePendingRole(): AccountRole | null {
+  try {
+    const value = sessionStorage.getItem(ROLE_KEY);
+    sessionStorage.removeItem(ROLE_KEY);
+    return isAccountRole(value) ? value : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Validated rather than cast. The value comes back from storage, which anything
+ * running in this origin can write, and it is about to be handed to an RPC that
+ * sets an account type — so a value that is not one of the three is dropped, not
+ * trusted.
+ */
+export function isAccountRole(value: unknown): value is AccountRole {
+  return value === 'business_client' || value === 'content_creator' || value === 'brand';
+}
+
+/** Reads and validates the role parameter from a query string. */
+export function readRoleParam(search: string): AccountRole | null {
+  try {
+    const value = new URLSearchParams(search).get(ROLE_PARAM);
+    return isAccountRole(value) ? value : null;
+  } catch {
+    return null;
+  }
+}
+
+export interface StartResult {
+  ok: boolean;
+  message?: string;
+}
+
+/**
+ * Sends the browser to the provider. On success this call does not return in any
+ * useful sense — the page navigates away.
+ *
+ * `redirectTo` uses `publicOrigin()` for the same reason every other auth link
+ * does: in the Capacitor shell `window.location.origin` is `capacitor://localhost`,
+ * which no provider console will ever accept as a redirect URI.
+ */
+export async function startSocialSignIn(
+  provider: SocialProvider,
+  role: AccountRole | null,
+  returnPath?: string | null,
+): Promise<StartResult> {
+  // Set it, or clear it — never leave it. A signup that reached the provider and
+  // was cancelled there leaves its role behind with no redirect to consume it, and
+  // a later LOGIN in the same tab carries no role of its own to overwrite it. The
+  // stale value would then be applied to whatever account that login creates.
+  // Writing on every attempt means the stash always describes the attempt in
+  // progress rather than some earlier one.
+  if (role) stashPendingRole(role);
+  else takePendingRole();
+  try {
+    const redirect = new URL('/auth', publicOrigin());
+    if (role) redirect.searchParams.set(ROLE_PARAM, role);
+    if (isSafeReturnPath(returnPath)) redirect.searchParams.set(RETURN_PARAM, returnPath);
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider,
+      options: { redirectTo: redirect.toString() },
+    });
+    if (error) {
+      // The likeliest cause by far is that the provider is enabled in this app but
+      // not configured in Supabase, which reads as "Unsupported provider". Say
+      // something true rather than echoing that at a signed-out stranger.
+      console.error(`Social sign-in failed for ${provider}:`, error);
+      // Drop the stash. The redirect never happened, so the role is now a value
+      // waiting to be picked up by whatever sign-in comes next in this tab — a
+      // password login into an unrelated account included, which would then be
+      // reclassified by a choice its owner never made.
+      takePendingRole();
+      return { ok: false, message: `${PROVIDER_LABELS[provider]} sign-in is not available right now.` };
+    }
+    return { ok: true };
+  } catch (err) {
+    console.error(`Social sign-in threw for ${provider}:`, err);
+    takePendingRole();
+    return { ok: false, message: `${PROVIDER_LABELS[provider]} sign-in is not available right now.` };
+  }
+}
+
+/**
+ * Applies the role chosen before the redirect, once, via `claim_initial_role`.
+ *
+ * Every failure is swallowed on purpose. The account already exists and works;
+ * the only thing at stake is whether it is filed as a creator or a business, and
+ * blocking a successful sign-in over that would trade a small wrong for a total
+ * one. The RPC refuses by returning `claimed: false` with a reason rather than
+ * raising, so a refusal is not an error either.
+ */
+/**
+ * Marks the caller verified when a provider has authenticated their address.
+ *
+ * `handle_new_user` only fires on INSERT, so it covers accounts OAuth CREATES and
+ * not the other realistic path: a password account that never verified, whose
+ * owner later signs in with Google using the same address. Supabase links the
+ * identity to the existing row, no insert happens, and the app's gate rejects a
+ * sign-in a provider just completed.
+ *
+ * Swallows failures for the same reason the role claim does — the session is
+ * valid either way, and the honest fallback is the verification screen the user
+ * would have seen anyway.
+ */
+export async function syncOauthVerification(): Promise<void> {
+  try {
+    const { error } = await supabase.rpc('sync_oauth_email_verification');
+    if (error) console.error('sync_oauth_email_verification failed:', error);
+  } catch (err) {
+    console.error('sync_oauth_email_verification threw:', err);
+  }
+}
+
+export async function applyPendingRole(search?: string): Promise<AccountRole | null> {
+  // The URL first: it is the copy that survives an origin change, and it is the
+  // one present when storage was unavailable or belongs to a different origin.
+  // `takePendingRole` still runs either way, so a stale stash never outlives this
+  // call and cannot be consumed by a later, unrelated sign-in.
+  const stashed = takePendingRole();
+  const fromUrl = readRoleParam(search ?? (typeof window === 'undefined' ? '' : window.location.search));
+  const role = fromUrl ?? stashed;
+  if (!role) return null;
+  try {
+    const { data, error } = await supabase.rpc('claim_initial_role', { p_role: role });
+    if (error) {
+      console.error('claim_initial_role failed:', error);
+      return null;
+    }
+    const result = data as { claimed?: boolean; reason?: string } | null;
+    if (!result?.claimed) {
+      // A refusal is not an error, but it IS a wrong role from here on, and the
+      // only symptom is a business account behaving like a creator. Losing the
+      // reason would make that unexplainable; every reason the RPC returns names
+      // a specific condition, so this is the one line worth having in the console.
+      console.error(`claim_initial_role refused the role "${role}": ${result?.reason ?? 'unknown'}`);
+      return null;
+    }
+    return role;
+  } catch (err) {
+    console.error('claim_initial_role threw:', err);
+    return null;
+  }
+}

@@ -1,5 +1,283 @@
 # Wiki Log
 
+## [2026-08-24] ingest | Social login, and a one-line fix that would have switched off the email gate
+
+**Created** [[Social Login]] and `raw/sessions/2026-08-24-social-login.md`. **Updated**
+`docs/wiki/index.md`, `docs/SHIPPED_LOG.md`, `docs/PROJECT_CONTEXT.md` §5 and
+`docs/DATABASE_SCHEMA.md` (the two new RPCs and the changed trigger).
+
+The finding worth carrying is the one that came from prod rather than the code: mirroring
+`email_confirmed_at` into `email_verified` is the obvious fix and would have auto-verified
+every password signup, because Supabase's built-in confirmation is disabled on this project
+— 45 of 45 users confirmed, 44 within one second of creation, minimum 6ms. A column that
+looks like a verification signal is only one if something verifies; check what writes it.
+
+Seven Codex rounds, seven findings, all real, and two of them the same shape one level
+apart: a trigger that fires on INSERT cannot see an account that already existed. That is
+why the migration ships three objects rather than two.
+
+## [2026-08-24] update | A height comparison has two sides
+
+**Created** `docs/wiki/raw/sessions/2026-08-24-body-height-unit-mismatch.md`.
+**Updated** [[Mobile Viewport & Fixed Positioning]] — new §11 (the real cause), and §10 marked in
+place as a **wrong diagnosis that shipped**, kept rather than rewritten because it is exactly what
+a plausible wrong answer looks like. Also `docs/DESIGN_SYSTEM.md`, `docs/SHIPPED_LOG.md` and
+`docs/PROJECT_CONTEXT.md` §5, whose `**Pending:** the drag on a real phone` clause was answered the
+same day it was written.
+
+The landing kept scrolling after #501, with white below the footer. Three diagnoses: content
+overflow (refuted by measurement), the rubber-band (plausible, shipped, did not fix it), and
+finally the real one — `html, body { height: 100% }` resolves against the initial containing block,
+which on iOS Safari is the SMALL viewport, while the shell's `100dvh` is the CURRENT one and grows
+as Safari collapses its toolbars. The shell outgrew body's box, body scrolled by the difference,
+and the strip below painted body's white.
+
+**§9 had already measured the disagreement** — body `clientHeight` 753 against `100vh` 833 — fixed
+the *shell's* unit and left the other side on `%`. A height comparison has two sides, and fixing
+one of them is not fixing it.
+
+Two lessons beyond the CSS. **Position rules out cause faster than any probe:** the white sitting
+*below the app shell* eliminated every mechanism inside the page at once, because nothing under
+`#root` can paint outside the body box. And **a true fact can confirm a false diagnosis** — the
+simulator's proof that WebKit *applies* `overscroll-behavior` answered a question nobody had asked,
+since applied was never the same claim as suppressed, and it was read as support for the wrong
+answer anyway.
+
+Confirmed working on a real phone, the only instrument that could: Chrome, device emulation and the
+Capacitor WebView all lack a collapsing toolbar, so this family of defects is structurally
+invisible there. Third such defect (§8, §9, §11).
+
+
+## [2026-08-24] ingest | The page could still be dragged, and the logo had five sizes
+
+**Created** [[Brand Logo Sizing]] (`concepts/brand-logo-sizing.md`) and
+`docs/wiki/raw/sessions/2026-08-24-page-drag-and-logo-size.md`.
+**Updated** [[Mobile Viewport & Fixed Positioning]] (new §10; §9's "still open" clause edited in
+place, since §10 is what closed it), `docs/DESIGN_SYSTEM.md`, `docs/wiki/index.md`,
+`docs/SHIPPED_LOG.md` and `docs/PROJECT_CONTEXT.md` §5.
+
+Two reports the day after #459's follow-up shipped. **The page could still be dragged**: sizing
+`AppShell` to `100dvh` removed the scrollable gap that made the screen *jump*, but rubber-band
+overscroll is a separate mechanism — a container with nothing to scroll still bounces, on a macOS
+trackpad as well as iOS, which is why this one was reported on both viewports. The white band is
+structural: the elastic strip sits **outside the body box**, so the canvas paints it from `<html>`,
+falling back to `<body>` — white. Closed with `overscroll-behavior-y: none` on html and body (Y
+axis only; X carries iOS edge-swipe-back) **plus** the landing painting the canvas grape for its
+lifetime, which covers what the property cannot reach: Safari before 16, and the WKWebView, whose
+bounce is a native scroll-view setting.
+
+The **iOS simulator** was the right instrument and settled exactly one thing: a throwaway
+computed-style readout showed WebKit applying `overscroll-behavior` inside a WKWebView, with
+`innerHeight === documentElement.clientHeight` confirming §8's `contentInset` invariant still
+holds. It did **not** show the native scroll view refusing to bounce — *applied* and *suppressed*
+are different claims — and that gap is recorded rather than glossed, since no drag could be
+synthesised without Accessibility permission.
+
+**The logo had five sizes** because a width class on a taller-than-wide asset multiplies the
+height rather than capping it (auth 163px, mobile bar 74px, sidebar 116px, against 56px). The
+durable half is the guard: the 2026-08-23 pass fixed two files and pinned them **to each other by
+hand**, and that test stayed green for a full day while three headers it never enumerated were
+wrong. A guard that watches the pair you already repaired cannot see the four you did not — so the
+new test derives the header list instead of listing it.
+
+## [2026-08-24] ingest | Onboarding slices 3 and 4 — the wizard, and the depth dimensions
+
+**Created** [[Onboarding Wizard & Depth]] and `docs/wiki/raw/sessions/2026-08-24-onboarding-wizard-and-depth.md`.
+**Updated** [[Account Completeness Engine]] (the wizard now reads its registry; the declared
+`NO_CAPTURE_FLOW` exemption; the two brand requirements no brand could satisfy), `docs/wiki/index.md`,
+`docs/SHIPPED_LOG.md` and `docs/PROJECT_CONTEXT.md` §5.
+
+Slice 3 rebuilt the wizard as registry-driven slides and moved the core save to the collect/service
+boundary; slice 4 gave locations, team and social surfaces that can satisfy them. Two requirements no
+brand could ever clear were found by checking the registry against production — `address` (the spec
+excluded it and slice 2 silently reversed that) and `stripe` (no brand Connect path exists at all).
+The registry has now drifted from its spec twice in the same direction, so the decisions are pinned
+by tests rather than comments. Ten Codex rounds, twelve findings, all real, nearly all consequences
+of an earlier change in the same session.
+## [2026-08-24] ingest | Two branches, one migration version — and a shell that lied twice
+
+**Updated** [[Instagram Insights Connector]] (deploy status + the collision), `docs/PROJECT_CONTEXT.md`
+§5, `docs/DATABASE_SCHEMA.md` (the two direct-connector token tables, neither previously documented)
+and the index. **Source:** `raw/sessions/2026-08-24-instagram-connector-live.md`.
+
+PR #489 merged and live on prod: migration `20260825120000` applied, seven edge functions deployed
+and boot-verified. The connector still cannot connect anything — its three secrets are unprovisioned
+— so this is a deploy, not a launch.
+
+**The finding came from the merge, not the code.** `feat/verify-address-throttle` shipped
+`20260825100000_reserve_address_verification` while this branch sat in review, and this branch's
+table carried the same stamp. The ledger is keyed on the version alone, so the second file to apply
+is refused as already recorded, and forcing past that refusal is precisely how `recorded != actual`
+is manufactured. Renumbered — but the durable half is `supabase/migrations.test.ts`, which found
+**seven** collisions already in the tree. Those are **frozen rather than fixed**: none is in prod's
+ledger at all, so renumbering fourteen files would tell us nothing about prod. **A version is a
+timestamp a human types, so two branches open on one day will collide eventually — the check is
+worth more than the fix.**
+
+**A failing gate was investigated before it was fixed.** The PR's Lighthouse check had been red at
+desktop performance 0.73 against a 0.90 gate. Every other PR that day passed it, the config was
+byte-identical between the merge base and `main`, and the branch's only frontend addition is a lazy
+route — so a re-run was the cheap discriminator, and it came back green. Recorded as variance, not
+as something fixed.
+
+**"It ran fine" was false twice, and prod said so both times.** The two prod commands were handed
+over to be run by hand. First they ran in the main checkout, where the branch's files do not exist —
+which would have mattered even more had the paths resolved, since `supabase functions deploy` reads
+`config.toml` from the current directory and the main checkout has no `instagram-*` entries, so the
+three anonymous functions would have deployed with `verify_jwt=true` and Meta's callbacks would 401
+before the signature check ever ran. Then the corrected commands, prefixed with `!` for the Claude
+Code prompt but typed into plain zsh, parsed as `(! cd X) && cmd` — the `cd` succeeded, `!` inverted
+it, and `&&` short-circuited, so the directory changed and nothing else happened. Both were caught
+by the same probes: ledger row absent, `to_regclass` null against a control that returns a name, and
+`POST /functions/v1/instagram-oauth-start` returning **404** where a deployed function returns 401.
+**A shell that prints nothing has not necessarily done nothing, and one that prints success has not
+necessarily done anything — check the target, not the report.**
+
+**One claim deliberately withheld.** The two Meta callbacks answer `503 not_configured` because
+`INSTAGRAM_APP_SECRET` is unset. That is the correct fail-closed path, and it means the request never
+reaches the signature check — so the forgery-rejection path is proven by its 8 unit tests and **not**
+by any live probe.
+
+Pages updated: [[Instagram Insights Connector]]
+
+## [2026-08-23] ingest | Ask each platform what it tells you, not only what it lets you do
+
+**Created** [[Instagram Insights Connector]] (`concepts/instagram-insights-connector.md`) — the
+second direct platform API under the analytics-not-publishing scope decision, built on
+[[YouTube Analytics Connector]] and worth a page almost entirely for the three places where
+copying that connector would have been **wrong**.
+
+**No refresh token** (the 60-day access token IS the credential), therefore **a connection nobody
+reads dies** — Meta only extends a token that is still valid, so refresh-on-expiry is guaranteed
+to fail and an expired token is recoverable only by re-consent — and **no revoke endpoint**, so
+`youtube-disconnect`'s revoke-first ordering would have made disconnect permanently impossible.
+
+**The console gave back what the docs took away.** Business login settings has a *deauthorize
+callback*: Meta will not let us withdraw a grant, but it will tell us when the user does. Instagram
+is weaker than YouTube at revoking and stronger at reporting, which is the transferable lesson for
+TikTok and X.
+
+**Two failures of my own worth keeping.** The tests caught a fabricated zero in the first draft of
+`summarize`: `Number.isFinite(Number(x))` admits `null`, because `Number(null)` is 0 and 0 is
+finite, so a day Instagram reported nothing for became a day with zero reach — totals still added
+up, and only the day count betrayed it. **A defensive-looking default is the most likely place to
+fabricate data.** And I told the founder this repo has no `supabase/config.toml`; it does, and the
+claim came from a stale shell working directory left by an earlier `cd` — a wrong answer produced
+by a correct-looking command run from the wrong place.
+
+**Codex found two P1s, both deployment rather than logic**: three anonymous functions relying on a
+comment asking the deployer to remember `--no-verify-jwt`, and a refresh sweep with no cron — a
+guard protecting exactly the population it was built for and nobody else. Both closed.
+
+**Updated** `docs/PROJECT_CONTEXT.md` §5 and the index.
+
+## [2026-08-23] update | A remedy nobody opened the console to confirm
+
+**Updated** [[Identity & Address Verification]], `docs/DATABASE_SCHEMA.md` and
+`docs/PROJECT_CONTEXT.md` §5 for the `verify-address` throttle
+(`feat/verify-address-throttle`) — and to delete a claim this project made twice.
+
+`verify-address` shipped with no throttle, recorded as acceptable because a compensating control
+existed: *set a daily quota cap on Geocoding in the Google Cloud console.* Written into two files,
+each time as "the only bound on that spend". **It does not exist.** The console shows *v3 requests
+per day* as **Unlimited**, its edit control disabled — *"Quota is not adjustable"* — and it refuses
+to attach an alert either. Google removed per-day caps for Maps Platform; only a per-minute limit
+(3,000) remains, which bounds burst rate, not daily spend. What was actually bounding spend is the
+**$300 free trial** on `forward-deck-506417-g9` — real, chosen by nobody, and gone on *Activate*.
+
+Two durable points: **a compensating control is not a control until someone has performed it**, and
+**the remedy must be checked in the same pass as the defect** — reviewing the code but assuming the
+mitigation leaves a finding *closed on paper*, which is worse than open, because an open finding
+still attracts attention.
+
+Closed by mirroring `verify-phone`: `reserve_address_verification` (`20260825100000`), atomic
+count-and-reserve under advisory locks, called immediately before the billed request. Three
+divergences argued rather than copied — no cooldown (a geocode is ~1/1000th an SMS, and a cooldown
+would punish a business saving several locations in a sitting), two user windows, and a counting
+predicate that is an **exclusion** so a future outcome counts by default.
+
+**Codex P1, and the irony was exact:** the first revision recorded a decline row on every throttled
+request, so the audit path of a spend control was itself an unbounded write — a storage and
+query-degradation DoS inside the endpoint meant to bound abuse. Now capped at one row per user per
+day, decided inside the same lock. Also recorded: **two over-broad test assertions caught
+themselves** here — one forbade the `console.warn` that legitimately carries the true decline
+reason, the other tripped on the comment warning people not to reintroduce the deleted function.
+*Assert the thing you mean, not the string it contains.*
+
+Pages updated: [[Identity & Address Verification]]
+
+## [2026-08-23] update | The staging route we did not need to build
+
+Checked, before building it, the requirement that made a demo-video staging route look
+necessary — and it does not exist. `PROJECT_CONTEXT.md` said Google "requires the unverified-app
+screen to appear in [the demo video] and forbids recording against production traffic".
+**Google's demo-video page requires neither**, and its verification-requirements page says
+nothing about the environment. The video is recordable against production today, with nothing
+new built.
+
+**Created** `docs/runbooks/google-oauth-demo-video.md` — the four real requirements with their
+sources, and the take itself.
+
+**Its first draft opened with a mandatory revoke, and the Codex second review refuted that against
+the code.** The runbook was faithfully following [[YouTube Analytics Connector]], which claimed
+Google's second consent screen is "skipped when the account already holds those scopes".
+`buildAuthUrl` sends `prompt=consent` unconditionally, and Google's OAuth docs say that value
+prompts for consent regardless of prior grants — the "only the first time" behaviour is what you
+get when `prompt` is **omitted**. So screen 2 appears on every connect; it went unseen because
+nobody looked past screen 1. **The claim had already been through a same-day correction pass and
+read as settled, so nothing internal was going to re-open it** — a correction inherits every claim
+it does not explicitly re-examine. Fixed in the concept page, `PROJECT_CONTEXT.md`, the index and
+the runbook; the withdrawn "Google does not re-ask for a grant it still holds" was also cited as
+independent confirmation that a revoke had succeeded, and is not evidence of anything.
+
+**Found while writing it, and connected nowhere before now:** Google requires the homepage and
+privacy policy reachable by an anonymous reviewer, and `gate/decide.ts` allowlists exactly
+`/robots.txt` and `/favicon.ico`. Switching the private preview on 401s both — failing this
+verification, and TikTok's, Meta's and X's, each of which needs a public privacy-policy URL.
+Prod is not gated today (apex 200), so it is a sequencing constraint rather than a live defect,
+and allowlisting `/privacy` is not the fix: it is an SPA route, and the gate's own header records
+that allowlisting a path with no backing file serves the whole bundle.
+
+**Updated** [[YouTube Analytics Connector]] with that section, plus two claims today's own merges
+made stale — publishing status (Testing → In production, including why the recommended build →
+verify → publish order was deliberately inverted) and declared scopes (none → both). **Updated**
+`docs/PROJECT_CONTEXT.md` §5 with the correction and the gate conflict.
+
+Five claims about this one console corrected in a single day. Four were not checkable from inside
+the repository and each read as verified because it was specific. The fifth was checkable here all
+along — sixteen characters of `youtube.ts` — and needed an outside reviewer anyway.
+## [2026-08-23] update | The identity slice went live, and the reviewer's best finding was wrong
+
+**Updated** [[Identity & Address Verification]] and `docs/PROJECT_CONTEXT.md` §5 after slice 2 merged
+(#484), its migrations were confirmed applied, and all five edge functions were deployed and
+boot-verified.
+
+**Two new sections, both about how a claim gets established rather than about identity.** The
+mandatory pre-deploy `edge-function-reviewer` pass filed a **high-severity** finding — the identity
+columns are not applied, so `stripe-webhook` will hard-throw on its first Connect webhook. Sound
+reasoning, false premise: the reviewer had no database access and read a `**Pending:**` clause in
+`PROJECT_CONTEXT.md` that was hours stale. Refuted against prod with controls that could have said
+no (an invented column name returns 42703; all 16 real ones answer). **Stale prose in an auto-loaded
+context file does not merely fail to help — it manufactures confident, well-argued, wrong findings,
+and a reviewing agent is the reader least able to know the expiry date has passed.**
+
+The other section sharpens *when a probe returns zero, prove it could have returned non-zero*. A
+no-argument call to the 5-parameter throttle RPC returned PGRST202 "not found" — the same answer an
+invented name gives — because PostgREST resolves overloads by argument name and a zero-arg call can
+never match. Re-probed with the real signature it returned 42501, and the invented name still
+returned PGRST202. **A negative result is informative only if the probe could have produced a
+positive one for the thing being asked about**; "returns the not-found error" and "is not there" are
+different claims. Sibling: the SMTP `RCPT TO` probe in [[Domain Migration .io → .com]].
+
+Also recorded: two of the reviewer's four findings were real. The **automatic** Stripe-detach path
+checked no errors on either `STRIPE_IDENTITY_RESET` write, so the eraser could fail while the
+function returned 200 saying "no account" and the row kept `identity_verified_at` pointing at a
+deleted Stripe account — this slice's own thesis, made silent one level up. And
+`disconnect-stripe-account` had no `config.toml` entry at all, so its `verify_jwt` was an inherited
+default rather than a decision.
+
+Pages updated: [[Identity & Address Verification]]
+
 ## [2026-08-23] ingest | A password cannot stop a signup
 
 Ingested `raw/sessions/2026-08-23-site-access-lockdown.md`. **Created**

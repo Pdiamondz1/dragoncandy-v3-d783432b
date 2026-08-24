@@ -23,7 +23,10 @@ export function AuthShell({ children, className }: AuthShellProps) {
   return (
     <div
       className={cn(
-        "min-h-screen w-full overflow-x-hidden bg-white text-landing-ink font-instrument relative isolate",
+        // min-h-[100dvh], not min-h-screen — see the note in AuthPage. 100vh on iOS Safari is the
+        // URL-bar-collapsed height, which makes every auth and onboarding screen ~60-90px taller
+        // than the visible area and gives it dead scroll it should not have.
+        "min-h-[100dvh] w-full overflow-x-hidden bg-white text-landing-ink font-instrument relative isolate",
         className
       )}
     >

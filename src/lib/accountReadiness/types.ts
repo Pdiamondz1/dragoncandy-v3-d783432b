@@ -66,6 +66,12 @@ export interface ReadinessContext {
   dismissed: readonly string[];
   orgUnits: readonly OrgUnitFacts[] | undefined;
   orgMemberCount: number | undefined;
+  /**
+   * Members who have been invited and have not answered. Separate from the count above,
+   * which is active members only — an invitation is a thing the owner has done and is
+   * waiting on someone else for, which is exactly what `pending` means.
+   */
+  orgInvitedCount: number | undefined;
   stripe: StripeFacts | undefined;
   socialActiveCount: number | undefined;
   creator: CreatorFacts | undefined;

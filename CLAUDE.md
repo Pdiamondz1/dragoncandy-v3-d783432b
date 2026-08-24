@@ -30,7 +30,45 @@ npm run lint         # ESLint (flat config, eslint.config.js)
 npm run test         # Run tests once (vitest run)
 npm run test:watch   # Run tests in watch mode (vitest)
 npm run preview      # Preview production build locally
+
+npm run db:query -- "select ..."          # Run SQL against the project in supabase/config.toml
+npm run db:query -- --file probe.sql      # ...or from a file
+npm run db:apply -- supabase/migrations/<file>.sql   # Apply ONE migration + its ledger row
 ```
+
+**Running SQL — read this before reaching for anything else.** `supabase db push` is **banned**
+here. Measured 2026-08-24: of 396 distinct migration versions on disk, **227 are not in the
+ledger** — a push re-runs all 227 against prod, and **one of them truncates 24 tables**.
+`supabase/migrations/20260517100000_reset_transactional_data.sql` is an unrecorded 2026-05-17 data
+reset: 24 `TRUNCATE`, 14 of them `CASCADE`, across `campaigns`, `conversations`, `payment_events`,
+`file_uploads` and 20 more — and the last time it ran a CASCADE reached `profiles`, whose rows had
+to be rebuilt by hand from `auth.users`. Neutralised in #496, so the ban now has a backstop; read
+the ban as guarding against **that**, not against bookkeeping. It diverges the other way too:
+**190 recorded versions have no file** (was 229 — #496 recovered the 39 that existed nowhere else
+into `supabase/migrations-recovered/`, deliberately outside the replay path, because prod's version
+stamps do not interleave with the repo's own and would re-run later fixes backwards). Little is
+truly lost, though: the ledger stores each migration's SQL in `statements`, which is where
+`can_notify_user` was read back from. The CLI
+has no `db execute` and psql is not installed. (The Supabase MCP works again as of 2026-08-24:
+`.mcp.json` runs the **local stdio** server on the same PAT, `--read-only`, so it can read prod but
+not write it. Only the **hosted** server is broken — its OAuth uses dynamic client registration and
+answers `{"message":"Unrecognized client_id"}`.) `db:query` / `db:apply` (`supabase/scripts/db-exec.mjs`) go
+through the Management API instead — the same path the dashboard SQL editor uses. They need a
+Supabase **Personal Access Token** (`SUPABASE_ACCESS_TOKEN`, an *account*-scoped credential, not a
+project key) in the gitignored `supabase/scripts/.env.sync.local`; see that file's `.example`.
+
+`db:apply` is not `db push`: it applies exactly the file you name, wraps it in a transaction with
+its ledger row so **applied** and **recorded** cannot diverge, refuses a version already recorded
+(most migrations are not idempotent), requires a typed `yes`, and reads the ledger back afterwards.
+**It still does not prove the objects exist** — verify those yourself, with a control that could
+have failed. This project has three recorded cases of `recorded ≠ actual`.
+
+Two refusals are deliberate, so don't work around them: it rejects a migration that issues its own
+`BEGIN`/`COMMIT`/`END`/`ABORT` (an inner commit ends the wrapper, so the ledger row lands outside
+it — remove the transaction control, `db:apply` supplies it), and a concurrent ledger write aborts
+the whole transaction rather than being swallowed. `--no-transaction` is for DDL Postgres won't run
+inside a transaction (`CREATE INDEX CONCURRENTLY`); the file must then hold exactly one such
+statement, and that mode cannot offer the atomicity guarantee.
 
 **Workflow:** One change → `npm run build` → verify → push. Always build before pushing to main.
 
@@ -137,12 +175,22 @@ finishing a development branch / opening a PR, run an independent Codex pass and
 on its findings:
 
 ```bash
-codex review --base main --title "<short title>"   # run from the worktree
+git fetch origin
+codex review --base origin/main --title "<short title>"   # run from the worktree
 ```
 
+**`origin/main`, never `main`.** `--base main` resolves the **local** ref, which in a worktree is
+frozen at creation time and updated by nothing — the same drift this file warns about under the
+worktree workflow. On PR #498 it was two commits stale, so Codex diffed against a tree where the
+previous PR had never merged, re-reviewed shipped work as new, and filed a confident finding about a
+line that was in the file all along. A stale base weakens the gate in the direction that matters
+(attention spread over already-merged code) and its findings are coherent enough to survive a skim,
+so **check any finding against the file before acting on it**.
+
 (Other modes: `--uncommitted` for staged/unstaged/untracked changes, `--commit <sha>`
-for a single commit.) If Codex flags real issues, Claude fixes them and Codex is
-re-run until clean. Relay Codex's summary verdict to the user. Codex's sandbox may
+for a single commit.) Confirm the range is non-empty first (`git diff origin/main...HEAD --stat`) — a
+clean verdict over an empty diff is false assurance on an unreviewed branch. If Codex flags real
+issues, Claude fixes them and Codex is re-run until clean. Relay Codex's summary verdict to the user. Codex's sandbox may
 reject some of its own shell commands ("blocked by policy") — it still completes a
 full diff pass; that is expected, not a failure. This complements, never replaces,
 Claude's own reviews — the point is two independent models. (Distinct from
