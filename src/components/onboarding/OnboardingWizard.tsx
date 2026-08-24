@@ -123,7 +123,7 @@ export function OnboardingWizard() {
 
   const queryClient = useQueryClient();
   const { data: orgFromProfile } = useOrgFromProfile();
-  const { data: orgUnits = [] } = useOrgUnits(orgFromProfile?.org?.id);
+  const { data: orgUnits = [], isLoading: orgUnitsLoading } = useOrgUnits(orgFromProfile?.org?.id);
   const updateOrgUnit = useUpdateOrgUnit();
   const primaryUnit = orgUnits.find(u => u.is_primary) ?? orgUnits[0];
 
@@ -364,6 +364,11 @@ export function OnboardingWizard() {
    *  stored address actually changed) apply here too rather than being re-derived. */
   const handleAddressSave = async () => {
     if (!primaryUnit) {
+      // Reached only when the units query has SETTLED with nothing. While it is still in
+      // flight the button is disabled instead (see `locationLoading` below), because for
+      // a brand-new business the location is created by a trigger during the core save
+      // and is genuinely a moment behind — telling someone their location does not exist
+      // while it is on its way would be false, and it is the common case, not the rare one.
       toast.error('We could not find your location yet — you can add it in settings.');
       return;
     }
@@ -475,6 +480,7 @@ export function OnboardingWizard() {
             onAddressChange={setAddress}
             onSave={handleAddressSave}
             saving={addressSaving}
+            locationLoading={orgUnitsLoading || !orgFromProfile?.org?.id}
             verified={!!primaryUnit?.address_verified_at}
             pending={addressSaved}
           />

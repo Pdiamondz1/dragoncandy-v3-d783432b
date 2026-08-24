@@ -17,10 +17,18 @@ interface AddressStepProps {
   verified: boolean;
   /** Set when the save landed but verification has not come back yet. */
   pending: boolean;
+  /**
+   * True while the location this address will be written to is still being fetched. For
+   * a brand-new business that row is created by a trigger during the core save, so it is
+   * legitimately a moment behind — and someone who taps through the phone slide quickly
+   * can arrive here first. Disabling beats letting the save fail with "we could not find
+   * your location" for a location that exists.
+   */
+  locationLoading?: boolean;
 }
 
 export function AddressStep({
-  address, onAddressChange, onSave, saving, verified, pending,
+  address, onAddressChange, onSave, saving, verified, pending, locationLoading = false,
 }: AddressStepProps) {
   const [touched, setTouched] = useState(false);
 
@@ -61,11 +69,17 @@ export function AddressStep({
       <LandingButton
         type="button"
         onClick={onSave}
-        disabled={address.trim().length < 6 || saving}
+        disabled={address.trim().length < 6 || saving || locationLoading}
         className="w-full"
       >
-        {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Confirm address'}
+        {saving || locationLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Confirm address'}
       </LandingButton>
+
+      {locationLoading && (
+        <p role="status" className="text-sm text-center text-landing-ink-soft">
+          Setting up your location — one moment.
+        </p>
+      )}
 
       {/*
         Saved-but-unverified is its own state and says so. Reporting it as done would be
