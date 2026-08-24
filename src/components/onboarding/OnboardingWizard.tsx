@@ -123,8 +123,9 @@ export function OnboardingWizard() {
   const advancing = useRef(false);
 
   const queryClient = useQueryClient();
-  const { data: orgFromProfile } = useOrgFromProfile();
-  const { data: orgUnits = [], isLoading: orgUnitsLoading } = useOrgUnits(orgFromProfile?.org?.id);
+  const { data: orgFromProfile, isError: orgError } = useOrgFromProfile();
+  const { data: orgUnits = [], isLoading: orgUnitsLoading, isError: orgUnitsError } =
+    useOrgUnits(orgFromProfile?.org?.id);
   const updateOrgUnit = useUpdateOrgUnit();
   const primaryUnit = orgUnits.find(u => u.is_primary) ?? orgUnits[0];
 
@@ -499,7 +500,11 @@ export function OnboardingWizard() {
             onAddressChange={setAddress}
             onSave={handleAddressSave}
             saving={addressSaving}
-            locationLoading={orgUnitsLoading || !orgFromProfile?.org?.id}
+            // Loading and failed are different answers and must not be folded together:
+            // a failed query is not "still setting up", and reporting it as such leaves the
+            // button disabled forever under a message about progress that is not happening.
+            locationLoading={!orgError && !orgUnitsError && (orgUnitsLoading || !orgFromProfile?.org?.id)}
+            locationError={orgError || orgUnitsError}
             verified={!!primaryUnit?.address_verified_at}
             pending={addressSaved}
           />

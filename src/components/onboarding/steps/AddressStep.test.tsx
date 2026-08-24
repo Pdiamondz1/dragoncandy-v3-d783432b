@@ -31,6 +31,27 @@ describe('AddressStep', () => {
     expect(screen.getByRole('status')).toHaveTextContent(/setting up your location/i);
   });
 
+  /**
+   * A failed lookup is not a slow one. Folded together, the button stayed disabled
+   * forever under "Setting up your location" while nothing was in fact happening.
+   */
+  it('says the lookup failed rather than claiming it is still setting up', () => {
+    render(<AddressStep {...base} locationError />);
+    expect(screen.getByRole('alert')).toHaveTextContent(/could not load your location/i);
+    expect(screen.queryByText(/setting up your location/i)).not.toBeInTheDocument();
+  });
+
+  it('names the way out, since this slide is skippable', () => {
+    render(<AddressStep {...base} locationError />);
+    expect(screen.getByRole('alert')).toHaveTextContent(/skip/i);
+  });
+
+  it('prefers the failure message when both flags somehow arrive together', () => {
+    render(<AddressStep {...base} locationLoading locationError />);
+    expect(screen.getByRole('alert')).toBeInTheDocument();
+    expect(screen.queryByText(/setting up your location/i)).not.toBeInTheDocument();
+  });
+
   it('still refuses an address too short to be one', () => {
     render(<AddressStep {...base} address="12" />);
     expect(screen.getByRole('button', { name: /confirm address/i })).toBeDisabled();

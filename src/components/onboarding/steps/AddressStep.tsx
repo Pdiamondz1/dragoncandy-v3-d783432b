@@ -25,10 +25,17 @@ interface AddressStepProps {
    * your location" for a location that exists.
    */
   locationLoading?: boolean;
+  /**
+   * True when the lookup FAILED, which is a different answer from "still loading" and
+   * has to read differently. Folded together, a failed query leaves the button disabled
+   * under a message about progress that is not happening — forever.
+   */
+  locationError?: boolean;
 }
 
 export function AddressStep({
   address, onAddressChange, onSave, saving, verified, pending, locationLoading = false,
+  locationError = false,
 }: AddressStepProps) {
   const [touched, setTouched] = useState(false);
 
@@ -69,15 +76,24 @@ export function AddressStep({
       <LandingButton
         type="button"
         onClick={onSave}
-        disabled={address.trim().length < 6 || saving || locationLoading}
+        disabled={address.trim().length < 6 || saving || locationLoading || locationError}
         className="w-full"
       >
         {saving || locationLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Confirm address'}
       </LandingButton>
 
-      {locationLoading && (
+      {locationLoading && !locationError && (
         <p role="status" className="text-sm text-center text-landing-ink-soft">
           Setting up your location — one moment.
+        </p>
+      )}
+
+      {/* Names the exit, because this slide is skippable and the address can be added in
+          settings later. A dead button with no explanation is the failure being avoided. */}
+      {locationError && (
+        <p role="alert" className="text-sm text-center text-landing-ink-soft">
+          We could not load your location just now. Skip this for now and add your address
+          in settings — nothing else you have entered is affected.
         </p>
       )}
 
