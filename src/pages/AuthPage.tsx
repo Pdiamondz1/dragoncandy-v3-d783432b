@@ -12,7 +12,7 @@ import { AuthShell } from "@/components/auth/AuthShell";
 import { Eyebrow } from "@/components/landing/Eyebrow";
 import { ALLOWED_REDIRECT_ORIGINS } from "@/lib/allowedOrigins";
 import { SocialAuthButtons } from "@/components/auth/SocialAuthButtons";
-import { applyPendingRole, syncOauthVerification } from "@/lib/socialAuth";
+import { applyPendingRole, syncOauthVerification, readReturnPath } from "@/lib/socialAuth";
 
 type SignupStep = "role-selection" | "signup-form";
 
@@ -43,7 +43,16 @@ const AuthPage = () => {
   const location = useLocation();
   const { user, isAuthenticated, migrateCampaignData } = useAuth();
 
-  const returnTo = (location.state as { from?: { pathname: string; search: string } })?.from;
+  const routerReturnTo = (location.state as { from?: { pathname: string; search: string } })?.from;
+  // A full-page OAuth round trip destroys `location.state`, so the destination a
+  // route guard recorded comes back in the URL instead. Router state wins when both
+  // exist: it is the one this navigation actually carried.
+  const returnTo = routerReturnTo ?? (() => {
+    const path = readReturnPath(location.search);
+    if (!path) return undefined;
+    const [pathname, search] = path.split(/(?=\?)/);
+    return { pathname, search: search ?? '' };
+  })();
 
   // Update mode when URL params change
   useEffect(() => {
@@ -291,7 +300,12 @@ const AuthPage = () => {
 
           {/* Role is null on login: the account already has one, and `claim_initial_role`
               refuses anything but a fresh account anyway. */}
-          <SocialAuthButtons mode="login" role={null} onError={setError} />
+          <SocialAuthButtons
+            mode="login"
+            role={null}
+            returnPath={returnTo ? returnTo.pathname + (returnTo.search || '') : null}
+            onError={setError}
+          />
 
           {error === 'verify_email' ? (
             <div className="bg-red-50 border border-red-200 px-4 py-3 rounded-xl mt-3 max-w-sm md:max-w-md mx-auto text-center space-y-2">
@@ -349,7 +363,12 @@ const AuthPage = () => {
             onChangeRole={handleChangeRole}
           />
 
-          <SocialAuthButtons mode="signup" role={selectedRole} onError={setError} />
+          <SocialAuthButtons
+            mode="signup"
+            role={selectedRole}
+            returnPath={returnTo ? returnTo.pathname + (returnTo.search || '') : null}
+            onError={setError}
+          />
 
           {error === 'verify_email' ? (
             <div className="bg-red-50 border border-red-200 px-4 py-3 rounded-xl mt-3 max-w-sm md:max-w-md mx-auto text-center space-y-2">

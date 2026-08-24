@@ -15,6 +15,8 @@ interface Props {
   mode: 'login' | 'signup';
   /** The role chosen before the redirect. Null on login, where role already exists. */
   role: AccountRole | null;
+  /** Where a route guard wanted the user to end up, carried across the round trip. */
+  returnPath?: string | null;
   onError: (message: string | null) => void;
 }
 
@@ -57,7 +59,7 @@ const MARKS: Record<SocialProvider, JSX.Element> = {
  * `claim_initial_role` and the verification decision belongs to
  * `handle_new_user`; this component only starts the redirect.
  */
-export function SocialAuthButtons({ mode, role, onError }: Props) {
+export function SocialAuthButtons({ mode, role, returnPath = null, onError }: Props) {
   const enabled = useFeatureFlag(SOCIAL_LOGIN_FLAG);
   const [pending, setPending] = useState<SocialProvider | null>(null);
 
@@ -82,7 +84,7 @@ export function SocialAuthButtons({ mode, role, onError }: Props) {
   const handle = async (provider: SocialProvider) => {
     onError(null);
     setPending(provider);
-    const result = await startSocialSignIn(provider, role);
+    const result = await startSocialSignIn(provider, role, returnPath);
     if (!result.ok) {
       onError(result.message ?? 'That sign-in is not available right now.');
       setPending(null);

@@ -16,6 +16,9 @@ import {
   startSocialSignIn,
   readRoleParam,
   ROLE_PARAM,
+  RETURN_PARAM,
+  readReturnPath,
+  isSafeReturnPath,
 } from './socialAuth';
 
 describe('isAccountRole', () => {
@@ -342,5 +345,55 @@ describe('a refused role claim is reported, not discarded', () => {
       'utf8',
     );
     expect(sql).toMatch(/NOT a deadline on the consent screen/);
+  });
+});
+
+describe('the guarded route survives the round trip', () => {
+  beforeEach(() => {
+    sessionStorage.clear();
+    supa.signInWithOAuth.mockReset().mockResolvedValue({ error: null });
+  });
+
+  /**
+   * A route guard records the destination in React Router's `location.state`,
+   * which a full-page provider round trip destroys. A password login honours it;
+   * without this an OAuth login drops people on their dashboard instead.
+   */
+  it('carries a guarded destination in the redirect URL', async () => {
+    await startSocialSignIn('google', null, '/dashboard/business/campaigns?tab=live');
+    const url = new URL(supa.signInWithOAuth.mock.calls[0][0].options.redirectTo);
+    expect(url.searchParams.get(RETURN_PARAM)).toBe('/dashboard/business/campaigns?tab=live');
+  });
+
+  it('reads it back', () => {
+    expect(readReturnPath('?oauth_return=%2Fdashboard%2Fcreator')).toBe('/dashboard/creator');
+  });
+
+  /**
+   * The exclusions are the point. `//evil.com` is a protocol-relative URL a
+   * browser resolves to another origin, and a backslash is read as a slash by
+   * some parsers — either would turn an in-app navigation into an open redirect.
+   */
+  it.each([
+    ['//evil.com', 'protocol-relative'],
+    ['/\\\\evil.com', 'backslash-escaped'],
+    ['https://evil.com', 'absolute'],
+    ['dashboard', 'relative with no leading slash'],
+    ['/auth', 'itself, which would loop'],
+    ['/auth?mode=login', 'itself with a query'],
+    ['', 'empty'],
+  ])('refuses %s (%s)', (value) => {
+    expect(isSafeReturnPath(value)).toBe(false);
+  });
+
+  it('accepts an ordinary in-app path', () => {
+    expect(isSafeReturnPath('/dashboard/business')).toBe(true);
+    expect(isSafeReturnPath('/campaigns/123?from=email')).toBe(true);
+  });
+
+  it('sends no parameter when the destination is not safe', async () => {
+    await startSocialSignIn('google', null, '//evil.com');
+    const url = new URL(supa.signInWithOAuth.mock.calls[0][0].options.redirectTo);
+    expect(url.searchParams.has(RETURN_PARAM)).toBe(false);
   });
 });

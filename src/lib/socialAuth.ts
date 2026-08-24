@@ -46,6 +46,46 @@ const ROLE_KEY = 'dc_oauth_pending_role';
 export const ROLE_PARAM = 'oauth_role';
 
 /**
+ * Where to send the user afterwards, carried for the same reason as the role and
+ * with the same problem: a route guard puts the intended destination in React
+ * Router's `location.state`, which a full-page provider round trip destroys. A
+ * password login honours it; without this an OAuth login would silently drop
+ * people on their dashboard instead of the page they asked for.
+ *
+ * Deliberately NOT the existing `returnTo` parameter, which `handleOAuthReturn`
+ * treats as an ABSOLUTE url and redirects to via `window.location.href` after
+ * checking it against an origin allowlist. That one is the external-handoff path;
+ * this one is an in-app route and must never be able to become an origin.
+ */
+export const RETURN_PARAM = 'oauth_return';
+
+/**
+ * A path we are willing to navigate to after sign-in.
+ *
+ * Same-origin PATHS only, and the exclusions are the point: `//evil.com` is a
+ * protocol-relative URL that a browser resolves to another origin, and a
+ * backslash is treated as a slash by some parsers. Anything absolute, anything
+ * that could name a host, and `/auth` itself (which would loop) are refused.
+ */
+export function readReturnPath(search: string): string | null {
+  try {
+    const value = new URLSearchParams(search).get(RETURN_PARAM);
+    return isSafeReturnPath(value) ? value : null;
+  } catch {
+    return null;
+  }
+}
+
+export function isSafeReturnPath(value: unknown): value is string {
+  if (typeof value !== 'string' || value.length === 0) return false;
+  if (!value.startsWith('/')) return false;
+  if (value.startsWith('//') || value.startsWith('/\\')) return false;
+  if (value.includes('\\')) return false;
+  const path = value.split(/[?#]/)[0];
+  return path !== '/auth';
+}
+
+/**
  * The role a signup chose, held across the provider round trip.
  *
  * `signInWithOAuth` cannot carry user metadata, so `handle_new_user` has nothing
@@ -111,6 +151,7 @@ export interface StartResult {
 export async function startSocialSignIn(
   provider: SocialProvider,
   role: AccountRole | null,
+  returnPath?: string | null,
 ): Promise<StartResult> {
   // Set it, or clear it — never leave it. A signup that reached the provider and
   // was cancelled there leaves its role behind with no redirect to consume it, and
@@ -123,6 +164,7 @@ export async function startSocialSignIn(
   try {
     const redirect = new URL('/auth', publicOrigin());
     if (role) redirect.searchParams.set(ROLE_PARAM, role);
+    if (isSafeReturnPath(returnPath)) redirect.searchParams.set(RETURN_PARAM, returnPath);
     const { error } = await supabase.auth.signInWithOAuth({
       provider,
       options: { redirectTo: redirect.toString() },
