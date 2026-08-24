@@ -599,13 +599,41 @@ holds no Toast credentials. See §6.
   **not `anon`**. Boot-verified too — every function answers with OUR JSON body rather than the
   gateway's, the public anon key gets through none of them, and an absent function name returns
   **404** where these return 401/503.
-  **It still cannot connect anything, so this is a deploy and not a launch** — the three secrets
-  remain unprovisioned (`INSTAGRAM_APP_ID`, `INSTAGRAM_APP_SECRET`, a new
+  **WORKING END TO END — first real account connected 2026-08-24 18:20 UTC.** This line read "it
+  still cannot connect anything, so this is a deploy and not a launch" until the same evening. All
+  three secrets are set (`INSTAGRAM_APP_ID`, `INSTAGRAM_APP_SECRET`, and
   `INSTAGRAM_OAUTH_STATE_SECRET` kept separate from Google's so one leaked key does not compromise
-  both flows), and every function fails closed without them. **One claim is deliberately withheld:**
-  the two Meta callbacks answer `503 not_configured`, which is the correct fail-closed path and
-  means the request never reaches the signature check — so the forgery-rejection path is proven by
-  its 8 unit tests and **not** by any live probe.
+  both flows — **verified by digest, and it does differ from `GOOGLE_OAUTH_STATE_SECRET`'s**).
+  `@areyouaman` (`17841400763893777`, BUSINESS) is stored with exactly the two read scopes and
+  **nothing that can post**, `status=active`, `last_error=null`, a 60-day token expiring
+  2026-10-23, and `last_synced_at` stamped **11 seconds after** `connected_at` — which is the
+  evidence that matters, since a row can be written without the API ever being called and that
+  timestamp cannot. The card reads **Reach 1, Views —, Interactions —**; the em dashes are
+  [[Honest Analytics]] holding, because three tidy zeros would have been the suspicious result.
+  **The withheld claim is now made:** the two Meta callbacks previously answered `503
+  not_configured` and returned *before* the signature check, so forgery rejection rested on 8 unit
+  tests. With the secret set, a forged `signed_request` returns **401** on both, where an invented
+  function name returns **404** — the control that separates "our code rejected this" from a
+  gateway artifact. **The 503 → 401 transition is itself the proof the secret is wired in.**
+  **Three defects sat between *deployed* and *usable*, and none was in the connector's code.**
+  (1) The founder connected through the live app and the consent screen said **"Outstand-IG"** —
+  `LocationSettingsSections` rendered the Outstand list and neither analytics card, so the only
+  Instagram button on the page a multi-location business actually lands on belonged to the other
+  integration. The two look alike and do opposite jobs, and **a page that offers one and hides the
+  other does not present a choice, it misroutes**; fixed in #502, guarded by a test that *derives*
+  the surfaces rendering `ConnectedAccountsList` rather than naming them — naming them is exactly
+  how the logo work the day before reported green while three unenumerated headers stayed wrong.
+  (2) **"Insufficient Developer Role"**: an Unpublished Meta app can only be authorized by accounts
+  holding a role on it, so the account had to be added as an **Instagram Tester** — an invite that
+  is not in the mobile app and not under "Apps and websites", but at
+  `instagram.com/accounts/manage_access/`. (3) Meta's **App settings → Basic returns its own
+  `{"success":true}` and then discards a multi-field write** — four fields changed, saved, and all
+  four reverted on reload; saving one field per click persisted every time. **A vendor's success
+  flag is not evidence the value stuck** — the same shape as this project's `recorded != actual`
+  cases, one layer out. Privacy policy, Terms and Category `Business and pages` landed that way;
+  `app_details_user_data_deletion` still refuses after four attempts, and on the failing ones **no
+  request carrying the value was sent at all**, so the form is not submitting that field rather
+  than the server rejecting it.
   **"It ran fine" was false twice, and prod said so both times.** The deploy commands ran first in
   the main checkout, where this branch's files do not exist — which would have mattered more had
   the paths resolved, since `supabase functions deploy` reads `config.toml` from the **current
@@ -684,14 +712,18 @@ holds no Toast credentials. See §6.
   0.73 against the 0.90 gate on 2026-08-23 while every other PR that day passed, and a re-run after
   merging main — with no change to any landing-page file — came back green. Codex clean at round 1
   on the merge.
-  **Pending (2026-08-24):** the three secrets; the Vault secret `instagram_refresh_sweep_url`
-  (confirmed absent — 12 vault rows, none of them this one) **and then** the cron migration
-  `20260825130000`, which is deliberately NOT applied yet, since a schedule whose url resolves to
-  NULL fails quietly in `cron.job_run_details` rather than anywhere anyone looks; registering the
-  deauthorize + data-deletion URLs (the endpoints had to exist first, and now do); App Review,
-  which needs a demo video — and note the site-gate
-  conflict in `docs/runbooks/google-oauth-demo-video.md` applies to Meta's review too, since it
-  also requires an anonymously reachable privacy policy.
+  **Four items this clause listed are DONE and were verified by object, not by memory
+  (2026-08-24):** the three secrets are set; the Vault secret `instagram_refresh_sweep_url` exists
+  (this line read "confirmed absent — 12 vault rows, none of them this one"); the cron migration
+  `20260825130000` is applied, with `cron.job` showing `instagram-refresh-sweep` at `0 4 * * *`
+  and `active=true`; and both the deauthorize and data-deletion URLs are registered in Business
+  login settings, re-read after a full page reload because that panel stages edits.
+  **Pending (2026-08-24):** the sweep has **never fired** — `cron.job_run_details` holds **0 runs**
+  for it, so the schedule is proven to exist and not proven to work (first fire 04:00 UTC);
+  `app_details_user_data_deletion` in Meta's App settings → Basic, still
+  `https://www.facebook.com/` after four attempts; and App Review, which needs a demo video — note
+  the site-gate conflict in `docs/runbooks/google-oauth-demo-video.md` applies to Meta's review
+  too, since it also requires an anonymously reachable privacy policy.
   → `docs/wiki/concepts/instagram-insights-connector.md`
 - **Content delivery system stabilization** — bug-fixing the creator→business content
   handoff and payment flow; gates production launch. → `docs/SHIPPED_LOG.md`

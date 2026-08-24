@@ -1,5 +1,18 @@
 # Wiki Log
 
+## [2026-08-24] ingest | Instagram: the first real connection, and three things between deployed and usable
+
+**Created** `raw/sessions/2026-08-24-instagram-first-connection.md`. **Updated**
+[[Instagram Insights Connector]] (first connection; the forgery path now proven live rather
+than by unit tests; the two now-false Known Issues retracted in place),
+`docs/PROJECT_CONTEXT.md` §5 and `docs/SHIPPED_LOG.md`.
+
+The connector was deployed and unusable, and the gap held three defects, none in its own
+code: the only Instagram button on the location settings page belonged to Outstand, so the
+founder granted the account to the other integration; an Unpublished Meta app can only be
+authorized by accounts holding a role on it; and Meta's App settings → Basic returns its own
+`{"success":true}` and then discards a multi-field write.
+
 ## [2026-08-24] ingest | Social login, and a one-line fix that would have switched off the email gate
 
 **Created** [[Social Login]] and `raw/sessions/2026-08-24-social-login.md`. **Updated**
