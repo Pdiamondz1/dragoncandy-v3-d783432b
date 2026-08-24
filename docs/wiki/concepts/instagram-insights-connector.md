@@ -201,7 +201,7 @@ user's own JWT, and `verifyState` requires the state to name that caller.
   synchronous so there is no pending state to show, but a page that acknowledged
   the confirmation code by name would be better and does not exist.
 - ~~The refresh sweep has no cron schedule.~~ **Closed by the Codex second
-  review** — migration `20260825110000` schedules it daily at 04:00 UTC. It needs
+  review** — migration `20260825130000` schedules it daily at 04:00 UTC. It needs
   the Vault secret `instagram_refresh_sweep_url` per environment; absent that,
   `net.http_post` is called with a NULL url and the job fails quietly in
   `cron.job_run_details` rather than anywhere anyone looks.

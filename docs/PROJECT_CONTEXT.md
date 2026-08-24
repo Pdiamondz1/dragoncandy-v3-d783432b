@@ -532,7 +532,7 @@ holds no Toast credentials. See §6.
   seven declared in `supabase/config.toml`, four true and three false — **and my claim that this
   repo has no `config.toml` was wrong, produced by a stale shell working directory**), and the
   refresh sweep had **no cron**, i.e. a guard protecting exactly the population it was built for
-  and nobody else (now migration `20260825110000`, daily 04:00 UTC).
+  and nobody else (now migration `20260825130000`, daily 04:00 UTC).
   **Meta console work DONE in the browser 2026-08-23:** redirect URI
   `https://dragoncandy.com/instagram/callback` saved, and `instagram_business_content_publish`
   **removed** — verified after a page **reload**, with the control that the other two permissions

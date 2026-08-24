@@ -22,7 +22,7 @@
 // Runs with `verify_jwt = false` (declared in `supabase/config.toml`) and checks
 // the ingest bearer itself, the same shape as `auto-approve-content` and
 // `reconcile-pending-flushes`. Scheduled daily at 04:00 UTC by migration
-// 20260825110000 — the schedule is part of the feature, since a sweep that never
+// 20260825130000 — the schedule is part of the feature, since a sweep that never
 // runs protects exactly the population it was built for and nobody else.
 //
 // ENV: SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, AIOS_INGEST_SECRET,
