@@ -32,6 +32,62 @@ import { join } from 'node:path';
  */
 const read = (p: string) => readFileSync(join(process.cwd(), p), 'utf8');
 
+describe('document height unit', () => {
+  /**
+   * The third defect in this family, and the one the previous two fixes set up.
+   *
+   * `AppShell` is `h-[100dvh]`. If `body` is `height: 100%`, the two are measured in DIFFERENT
+   * units: a percentage resolves against the initial containing block, which on iOS Safari is the
+   * SMALL viewport, while `100dvh` is the CURRENT dynamic viewport and GROWS as Safari collapses
+   * its toolbars. The shell then outgrows body's fixed box, body scrolls by the difference, and
+   * the strip below the shell paints body's white background.
+   *
+   * This repo had already measured the disagreement without connecting it — the fix for the
+   * "screen jumps" report recorded body `clientHeight` 753 against `100vh` 833, changed the
+   * SHELL's unit, and left the other side of the comparison on `%`.
+   *
+   * Both sides must move together. Not checkable by rendering: jsdom has no layout engine, no
+   * toolbar and no ICB distinction — which is also why Chrome, device emulation and the Capacitor
+   * WebView all report this defect absent.
+   */
+  it('sizes html and body in dvh, the same unit as the shell', () => {
+    const css = read('src/index.css');
+    const htmlBlock = css.match(/\bhtml\s*\{[^}]*\}/)?.[0] ?? '';
+    const bodyBlock = css.match(/\bbody\s*\{[^}]*\}/)?.[0] ?? '';
+
+    for (const block of [htmlBlock, bodyBlock]) {
+      expect(block).toMatch(/height:\s*100dvh/);
+      // A bare `height: 100%` may remain ONLY as a fallback declared BEFORE the dvh one, where a
+      // dvh-capable engine overrides it. If it came last it would win, and the bug is back.
+      const pctAt = block.indexOf('height: 100%');
+      const dvhAt = block.indexOf('height: 100dvh');
+      if (pctAt !== -1) expect(pctAt).toBeLessThan(dvhAt);
+    }
+  });
+
+  it('locks the document while the landing is mounted', () => {
+    const css = read('src/index.css');
+    // The guard that does not depend on a unit comparison coming out right — and the standard way
+    // to stop the iOS rubber-band, which cannot fire on a document with no scrollable overflow.
+    expect(css).toMatch(/html\.landing-surface,\s*\n?\s*html\.landing-surface body\s*\{[^}]*overflow:\s*hidden/);
+
+    // main stays scrollable ON PURPOSE: if the landing's content ever does not fit, the CTA must
+    // still be reachable. Clipping the only call to action is worse than a scrollbar.
+    expect(css).not.toMatch(/#main-content\s*\{[^}]*overflow:\s*hidden/);
+  });
+
+  it('scales the landing down on short viewports so landscape does not need to scroll', () => {
+    // A height query, because the constraint in landscape is vertical and no width breakpoint can
+    // see it. The hero's natural content is ~277px at landscape width plus a ~78px footer, against
+    // roughly 310px a phone leaves once Safari's toolbars show.
+    expect(read('tailwind.config.ts')).toMatch(/short:\s*\{\s*raw:\s*'\(max-height:\s*430px\)'\s*\}/);
+    const hero = read('src/components/landing/LandingHero.tsx');
+    expect(hero).toContain('short:text-2xl');
+    expect(hero).toContain('short:py-2.5');
+    expect(read('src/pages/LandingPage.tsx')).toContain('short:py-2');
+  });
+});
+
 describe('document overscroll', () => {
   it('blocks the vertical rubber-band on both scroll containers of the document', () => {
     const css = read('src/index.css');

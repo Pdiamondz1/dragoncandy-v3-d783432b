@@ -17,6 +17,15 @@ export default {
 			}
 		},
 		extend: {
+			screens: {
+				// HEIGHT-based, not width-based — the landing is one fixed screen, and the thing
+				// that runs out in landscape is vertical space, which no `sm:`/`lg:` breakpoint
+				// can see. A phone held sideways is ~390px tall MINUS Safari's toolbars, while the
+				// hero's natural content plus the footer needs ~355px at that width: it does not
+				// fit, and the page scrolls. `short:` steps the type and spacing down so it does.
+				// Measured, not guessed — see docs/DESIGN_SYSTEM.md.
+				short: { raw: '(max-height: 430px)' },
+			},
 			fontFamily: {
 				sans: ['Outfit', ...defaultTheme.fontFamily.sans],
 				script: ['Pacifico', 'cursive'],
