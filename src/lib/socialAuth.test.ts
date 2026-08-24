@@ -316,3 +316,31 @@ describe('sync_oauth_email_verification', () => {
     expect(sql()).toContain('function public.sync_oauth_email_verification()');
   });
 });
+
+describe('a refused role claim is reported, not discarded', () => {
+  /**
+   * The symptom of a silent refusal is a business account that behaves like a
+   * creator, with nothing anywhere saying why. Every refusal names a condition, so
+   * the reason is the one thing worth keeping.
+   */
+  it('logs the reason the RPC gave', () => {
+    const src = readFileSync(join(process.cwd(), 'src/lib/socialAuth.ts'), 'utf8');
+    const applyBody = src.slice(src.indexOf('export async function applyPendingRole'));
+    expect(applyBody).toMatch(/console\.error\([^)]*result\?\.reason/);
+  });
+
+  /**
+   * The age check is not a deadline on the consent screen — `auth.users.created_at`
+   * is stamped when GoTrue processes the callback, so a slow consent screen delays
+   * account CREATION rather than ageing the account. The comment says so, because a
+   * reader who assumes otherwise would widen the window and reopen the case it
+   * exists to close.
+   */
+  it('records why the window is measured from account creation', () => {
+    const sql = readFileSync(
+      join(process.cwd(), 'supabase/migrations/20260825140000_social_login_support.sql'),
+      'utf8',
+    );
+    expect(sql).toMatch(/NOT a deadline on the consent screen/);
+  });
+});

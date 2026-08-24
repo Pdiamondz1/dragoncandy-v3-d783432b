@@ -146,9 +146,20 @@ BEGIN
   --
   -- Two independent conditions, because either alone is defeatable:
   --
-  -- AGE. A claim runs on the OAuth redirect return, seconds after the account is
-  -- created. Fifteen minutes is generous for a slow consent flow and excludes
-  -- every account that existed before this sign-in.
+  -- AGE. This is NOT a deadline on the consent screen, and that distinction is the
+  -- whole reason fifteen minutes is safe. `auth.users.created_at` is stamped when
+  -- GoTrue processes the provider's callback — AFTER consent — so someone who
+  -- leaves the Google screen open for an hour creates their account at the end of
+  -- that hour, not the start. The window covers only the gap between the redirect
+  -- landing and this call on the very next page load, which is seconds.
+  --
+  -- It is also not redundant with the provider check below. That one refuses a
+  -- password account which later linked Google; this one refuses an account
+  -- GENUINELY created by Google months ago, whose owner has now pressed "Sign up
+  -- with Google" and chosen a different role. Provider alone would convert it.
+  --
+  -- The cost of being wrong is a silent wrong role, so the caller logs the reason
+  -- rather than discarding it — see `applyPendingRole`.
   --
   -- PROVIDER. `raw_app_meta_data->>'provider'` records the identity that CREATED
   -- the account and does not change when another identity is later linked — so a

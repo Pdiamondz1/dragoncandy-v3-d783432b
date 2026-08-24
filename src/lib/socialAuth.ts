@@ -193,8 +193,16 @@ export async function applyPendingRole(search?: string): Promise<AccountRole | n
       console.error('claim_initial_role failed:', error);
       return null;
     }
-    const result = data as { claimed?: boolean } | null;
-    return result?.claimed ? role : null;
+    const result = data as { claimed?: boolean; reason?: string } | null;
+    if (!result?.claimed) {
+      // A refusal is not an error, but it IS a wrong role from here on, and the
+      // only symptom is a business account behaving like a creator. Losing the
+      // reason would make that unexplainable; every reason the RPC returns names
+      // a specific condition, so this is the one line worth having in the console.
+      console.error(`claim_initial_role refused the role "${role}": ${result?.reason ?? 'unknown'}`);
+      return null;
+    }
+    return role;
   } catch (err) {
     console.error('claim_initial_role threw:', err);
     return null;
