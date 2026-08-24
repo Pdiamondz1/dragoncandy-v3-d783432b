@@ -10,7 +10,7 @@ tags: [youtube, oauth, analytics, social, security, google]
 # YouTube Analytics Connector
 
 A per-user, **read-only** link to a creator's or business's YouTube channel, supplying the
-analytics [[Outstand Social Media Integration]] never shipped. Outstand keeps publishing;
+analytics [[Outstand]] never shipped. Outstand keeps publishing;
 this reads. Nothing in it can post, and the granted scopes could not if it tried.
 
 **State as of 2026-08-23: merged (#477), applied, deployed, and WORKING END TO END.** The
@@ -403,7 +403,7 @@ it; do not paraphrase it from memory into a document that will be planned agains
 
 - [[Honest Analytics]] — the sample-size and no-fabricated-zeros rules this follows.
 - [[Social Measurement Spine]] — the same "ownership must be server-established" lesson.
-- [[Anon Key Is Not Authorization]] — the sibling case of a platform default mistaken for a
+- [[verify_jwt Is Not Authorization]] — the sibling case of a platform default mistaken for a
   guarantee; `verify_jwt = false` here was the same error in a new costume.
 - [[Content Delivery State Machine]] — where CHECK vocabulary with no writer was first paid for.
 - [[Toast Partner Integration]] — the other integration built against an auth model that did

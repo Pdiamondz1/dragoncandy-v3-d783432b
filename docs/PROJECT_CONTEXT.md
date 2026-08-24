@@ -158,10 +158,17 @@ holds no Toast credentials. See §6.
   redirect. Seven Codex rounds, seven findings, all real, clean at 7. Proven on prod in
   rolled-back transactions where **the controls did real work** — removing the guards
   reproduced "an existing account was converted", and widening the identity allowlist made a
-  password-only account verify itself. **Pending: the migration is NOT applied and the flag
-  is off, so none of it is live**; no provider console is configured, so nobody has completed
-  a real round trip; and Facebook/Google review both need a public privacy-policy URL, which
-  the site gate would break. → `docs/wiki/concepts/social-login.md` ·
+  password-only account verify itself. **The migration IS applied — this line said it was not,
+  and prod disagrees (2026-08-24).** `20260825140000` is in the ledger and, checked by object
+  rather than by the ledger, `claim_initial_role` and `sync_oauth_email_verification` both
+  exist on prod (an invented function name returned nothing, so the probe could have failed).
+  The frontend is on `origin/main` too. **Pending: the flag row does not exist**, so the
+  buttons render nowhere — `SOCIAL_LOGIN_ENABLED` is a `feature_flags` row and `feature_flags`
+  holds no row matching it, which is *off* by absence rather than by a `false`; no provider
+  console is configured, so nobody has completed a real round trip; and Facebook/Google review
+  both need a public privacy-policy URL, which the site gate would break. **Do not create the
+  flag row before the provider consoles exist** — the order is consoles first, flag last, or
+  the buttons appear and fail. → `docs/wiki/concepts/social-login.md` ·
   `docs/runbooks/social-login-setup.md` · `feat/social-login`
 - **Onboarding slices 3 and 4 — a wizard that reads the registry, and two requirements no brand
   could satisfy** — the wizard is now declarative slides driven by the slice-1 requirement registry
@@ -660,9 +667,15 @@ holds no Toast credentials. See §6.
   four reverted on reload; saving one field per click persisted every time. **A vendor's success
   flag is not evidence the value stuck** — the same shape as this project's `recorded != actual`
   cases, one layer out. Privacy policy, Terms and Category `Business and pages` landed that way;
-  `app_details_user_data_deletion` still refuses after four attempts, and on the failing ones **no
+  `app_details_user_data_deletion` refused four attempts, and on the failing ones **no
   request carrying the value was sent at all**, so the form is not submitting that field rather
-  than the server rejecting it.
+  than the server rejecting it. **That field is now SET (2026-08-24), and nothing was ever typed
+  into it** — saving **Data Deletion Request URL** on Facebook Login for Business → Settings wrote
+  it, because the two controls are one underlying field behind two forms and only one of the forms
+  works. **When a vendor console refuses to persist a field, look for another page that writes the
+  same field before concluding the value cannot be set** — a broken form is a property of the form,
+  not of the setting. Note the multi-field discard did **not** reproduce on the Login settings page
+  (a two-field write persisted through a reload), so that bug is specific to App settings → Basic.
   **"It ran fine" was false twice, and prod said so both times.** The deploy commands ran first in
   the main checkout, where this branch's files do not exist — which would have mattered more had
   the paths resolved, since `supabase functions deploy` reads `config.toml` from the **current
@@ -749,11 +762,62 @@ holds no Toast credentials. See §6.
   login settings, re-read after a full page reload because that panel stages edits.
   **Pending (2026-08-24):** the sweep has **never fired** — `cron.job_run_details` holds **0 runs**
   for it, so the schedule is proven to exist and not proven to work (first fire 04:00 UTC);
-  `app_details_user_data_deletion` in Meta's App settings → Basic, still
-  `https://www.facebook.com/` after four attempts; and App Review, which needs a demo video — note
+  and App Review, which needs a demo video — note
   the site-gate conflict in `docs/runbooks/google-oauth-demo-video.md` applies to Meta's review
   too, since it also requires an anonymously reachable privacy policy.
   → `docs/wiki/concepts/instagram-insights-connector.md`
+- **Facebook Page Insights connector — deployed, and the app secret is present but not yet PROVEN
+  correct** — the third direct platform API under the 2026-08-23 scope decision (Outstand
+  publishes; direct APIs measure). Per-user OAuth on `pages_show_list` + `pages_read_engagement` +
+  `read_insights` and nothing that can post. **MERGED (#510, #512), MIGRATION APPLIED AND ALL SIX
+  FUNCTIONS DEPLOYED 2026-08-24.** Verified by OBJECT: `facebook_page_connections` exists (an
+  invented table name returns null as the control), RLS on with **zero policies**, grants exactly
+  `postgres` + `service_role`, `facebook_connection_status` is `SECURITY DEFINER` granted to
+  `authenticated` but **not `anon`**, and `claim_facebook_page_disconnect` is service-role only —
+  neither ACL carrying the bare `=X/postgres` entry that would mean PUBLIC.
+  **The defect worth carrying is that this project made the SAME ordering mistake twice in two
+  days.** Instagram's rule was written down as *ship the schema before the UI that reads it*, and
+  this branch merged the frontend at **20:11 UTC** against a migration applied at **~21:20 UTC** —
+  a **~70-minute** window in which `useFacebookConnection` does `if (error) throw error` on a
+  `facebook_connection_status()` that did not exist, so the card's red error branch rendered on
+  **three** surfaces (Creator, Business and Location settings), not one. Instagram's equivalent
+  window was ~20 minutes. **A rule recorded after an incident is not a control; nothing enforced
+  it, so it was simply not followed the next time.**
+  **What the 503 → 401 transition does and does not prove.** Both Meta callbacks answered `503
+  not_configured` before `FACEBOOK_APP_SECRET` was set and answer **401 with OUR JSON body** to a
+  forged `signed_request` now, with an invented function name returning **404** as the control —
+  which proves the secret is present and readable, the modules loaded, and `verify_jwt=false` took
+  effect on exactly those two (the other four return the GATEWAY's body unauthenticated, and our
+  own body to the public anon key, so the anon-key-is-not-authorization rule holds). **It does not
+  prove the VALUE is right**: a mistyped secret also yields 401, because a wrong key and a forged
+  signature fail identically. Correctness is proven only by the first real connect, whose token
+  exchange uses the secret — the same standard applied to YouTube and Instagram.
+  **The connect flow was driven end to end on prod and stops at a wall that is not ours: there is
+  no Facebook Page to connect.** Everything upstream is proven against the LIVE deployment —
+  `facebook-oauth-start` accepted a real user JWT and returned an authorize URL carrying
+  `config_id=1076329731508037` and **no `scope`**, so #512's fix is live in the deployed bundle;
+  the signed state decodes to the calling user's own id, which is the account-linking CSRF fix
+  doing its job; Meta rendered the dialog rather than **URL Blocked**, which proves the registered
+  redirect URI in the real flow and is stronger evidence than the Redirect URI Validator; and there
+  was **no "Insufficient Developer Role"**, the Unpublished-app wall Instagram had to clear with a
+  Tester invite. Then Meta's Page-selection step reported *"You don't have any Pages"* with
+  **Continue disabled**, and the Business portfolio's own Pages settings independently reports
+  **"No Pages added"** — two sources, so it is not a Page merely unassigned to the personal
+  profile. The card's copy had already said so (*"You'll need a Facebook Page; a personal profile
+  can't provide insights"*), which is the warning earning its place. Note Meta **defaults** that
+  step to *all current and future Pages*; the narrower *current Pages only* was selected.
+  **So the app secret's correctness remains UNPROVEN** — the token exchange is the first thing that
+  would use it, and the flow never reaches it.
+  **Pending (2026-08-24):** a Facebook Page has to exist before any of this can be exercised — a
+  founder decision, since creating one is public, outward-facing content; nobody has connected a
+  Page, so this is a deploy and not a launch;
+  removing `business_management` from the Pages use case before App Review (shared with the
+  Instagram use case, so it has blast radius); Tech Provider verification, which gates App Review
+  for data from other businesses and applies to Instagram equally; and note only the **apex**
+  redirect URI is registered while `safeReturnOrigin` accepts **eight** origins — with Strict Mode
+  on, a connect from a Lovable preview or `internal.` is refused at consent, which fails CLOSED and
+  is deliberate rather than an oversight.
+  → `docs/wiki/concepts/facebook-page-insights-connector.md` · #510, #512
 - **Content delivery system stabilization** — bug-fixing the creator→business content
   handoff and payment flow; gates production launch. → `docs/SHIPPED_LOG.md`
 - **Outstand social media integration** — IG/TikTok/YouTube linking + delegated posting;

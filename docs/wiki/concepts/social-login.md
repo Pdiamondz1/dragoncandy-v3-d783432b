@@ -157,4 +157,4 @@ migration, and fails against a one-character change.
   exactly the migration this shipped.
 - [[Account Completeness Engine]] — the registry whose `AccountRole` this reuses.
 - [[Internal-Only Users]] — the other `handle_new_user` branch, and why it returns early.
-- [[Anon Key Is Not Authorization]] — same shape: a check that looks like a gate but is not.
+- [[verify_jwt Is Not Authorization]] — same shape: a check that looks like a gate but is not.

@@ -158,6 +158,6 @@ saying why. Comments beside the entry did not hold. Tests do.
   surfaces that let the depth dimensions be satisfied.
 - [[Identity & Address Verification]] — slice 2; gives `phone_verified`/`identity_verified`/`address`
   real writers and corrects the gate-inertness understatement above.
-- [[Anon Key Is Not Authorization]] — same lesson shape: a check that looks like a gate but is not one.
+- [[verify_jwt Is Not Authorization]] — same lesson shape: a check that looks like a gate but is not one.
 - [[Updated-At Trigger Drift]] — the "recorded ≠ actual" class this engine removes for readiness.
 - [[Honest Analytics]] — sample-size gating; the same refusal to assert on unreachable data.

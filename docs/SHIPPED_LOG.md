@@ -32,6 +32,150 @@
 >
 > **Adding an entry:** prepend it (newest first). See `knowledge-sync` step 4.
 
+## [2026-08-24] Facebook Page Insights connector — deployed, and stopped by the absence of a Page
+
+**PRs #510 (`07f9e0d5`, 20:11 UTC) and #512 (`b1309505`, 20:52 UTC). Migration
+`20260825150000` applied ~21:20 UTC. Six edge functions deployed and boot-verified.**
+
+The third direct platform connector under the 2026-08-23 scope decision — Outstand publishes,
+direct APIs measure. Per-user OAuth on `pages_show_list` + `pages_read_engagement` +
+`read_insights`, and nothing here can post. Ships `facebook_page_connections`,
+`facebook_connection_status()`, `claim_facebook_page_disconnect()`, six functions
+(`facebook-oauth-start`, `-callback`, `-insights`, `-disconnect` at `verify_jwt = true`;
+`facebook-deauthorize` and `-data-deletion` at `false`, because Meta calls them with no session),
+and the card on three settings surfaces.
+
+**It is a deploy, not a launch.** Nobody has connected a Page, because the account has none.
+
+### The defect worth carrying: the same ordering mistake, twice in two days
+
+The frontend merged at **20:11 UTC** against a migration applied at **~21:20 UTC** — a
+**~70-minute** window in which `useFacebookConnection` ran `if (error) throw error` against a
+`facebook_connection_status()` that did not exist, so the card's red error branch rendered on
+**three** surfaces (Creator, Business, Location) for everyone who opened Settings. Instagram's
+equivalent window, two days earlier, was ~20 minutes on one surface.
+
+Instagram's lesson had been written down in as many words — *ship the schema before the UI that
+reads it*. **A rule recorded after an incident is not a control.** Nothing enforced it, so it was
+simply not followed the next time.
+
+### `config_id`, not `scope`
+
+The connector shipped sending `scope` and was corrected the same evening. This Meta app uses
+**Facebook Login for Business**, where Meta states plainly that `config_id` has replaced `scope`
+and scope "should not be used" — the two models are mutually exclusive. The defect came from
+inferring the request shape from the Instagram and Google flows instead of checking which login
+product this app actually has.
+
+The failure mode is the reason it is worth remembering: sending `scope` to a for-Business app opens
+a dialog requesting **nothing** and returns a token with no Page permissions, which surfaces as
+*"the user declined"* — **the worst possible shape, because it invites blaming the user for our
+bug.**
+
+Two companions went with it. **`override_default_response_type=true`**, because `response_type=code`
+alone is not enough — the saved configuration's own default wins, and a configuration defaulting to
+a token would redirect with a fragment while `/facebook/callback` waited for a code, killing every
+connect at the moment the user believes it worked. And **failing closed** on a missing
+`FACEBOOK_LOGIN_CONFIG_ID` (503), because a fallback to `scope` would produce a consent screen that
+succeeds while granting nothing, and the connector would store a useless token and call itself
+connected. Pinned by `_shared/facebook-auth-url.test.ts` as a text assertion against the source,
+since `buildAuthUrl` reads `Deno.env` and the suite runs under Node.
+
+### Where copying Instagram would have been wrong
+
+**Two tokens with opposite lifetimes.** `page_access_token` reads insights and **does not expire**.
+`user_access_token` exists for exactly one purpose — revoking on disconnect — and lasts ~60 days.
+So there is no expiry-driven refresh, no proactive refresh and no dormancy sweep; Instagram needs
+all three because its single 60-day token *is* the credential and a connection nobody reads dies.
+Here that machinery would guard a failure that cannot happen.
+
+**The revoke credential expires and the read credential does not.** Genuinely awkward, recorded
+rather than hidden: after ~60 days insights still work forever while disconnect can no longer
+revoke. `user_token_expires_at` exists so the disconnect path can say *which* of those two happened
+instead of reporting a generic failure. It is **not** a health signal and nothing marks a
+connection stale from it.
+
+**Many rows per user** — one consent returns every Page the user administers, and a restaurant
+group legitimately has several. Unique on `(user_id, page_id)`, never `user_id`.
+
+**Facebook has a revoke endpoint and Instagram does not**, so the YouTube ordering returns: revoke
+BEFORE deleting the row, because the row holds our only copy of the token.
+
+### One grant, many Pages — and why the count is made in SQL
+
+`DELETE /me/permissions` withdraws the **user-level** grant, invalidating every Page token minted
+from it, so revoking while disconnecting one of several Pages would silently kill the rest. The
+grant is handed back only when the **last** Page on it goes.
+
+That decision lives in `claim_facebook_page_disconnect`, under `pg_advisory_xact_lock` on
+`fb_user_id`, not in the edge function — counting there and acting on the count is check-then-act:
+two concurrent disconnects both read "2 remaining", both skip the revoke, and the grant is stranded
+with no token left to revoke it. On `is_last` the RPC deliberately leaves the row and its token in
+place for the revoke. Same shape as `reserve_phone_verification_send` and `record_crew_activity`.
+
+### What the 503 -> 401 transition proves, and what it does not
+
+Both Meta callbacks answered `503 not_configured` before `FACEBOOK_APP_SECRET` was set and answer
+**401 with OUR JSON body** to a forged `signed_request` now, with an invented function name
+returning **404** as the control. That proves the secret is present and readable, the modules
+loaded, and `verify_jwt=false` took effect on exactly those two — the other four return the
+GATEWAY's body unauthenticated and our own body to the public anon key, so the
+anon-key-is-not-authorization rule holds.
+
+**It does not prove the VALUE is right.** A mistyped secret yields the same 401, because a wrong key
+and a forged signature fail identically. Correctness is proven only by a real token exchange.
+
+### Verified by object, never by the ledger
+
+`facebook_page_connections` exists (an invented table name returns null as the control), RLS on with
+**zero policies**, grants exactly `postgres` + `service_role`, `facebook_connection_status` is
+`SECURITY DEFINER` granted to `authenticated` but **not `anon`**, and
+`claim_facebook_page_disconnect` is service-role only — neither ACL carrying the bare `=X/postgres`
+entry that would mean PUBLIC.
+
+### The end-to-end run, and the wall
+
+Driven on prod against the live deployment. `facebook-oauth-start` accepted a real user JWT and
+returned an authorize URL carrying `config_id=1076329731508037` and **no `scope`**, so #512's fix is
+live in the deployed bundle rather than only in the repo. The signed state decodes to the calling
+user's own id — the account-linking CSRF fix doing its job, since an HMAC state proves the state is
+*ours* and never that the browser completing consent is the one that started the flow. Meta rendered
+the dialog rather than **URL Blocked**, which proves the registered redirect URI in the real flow and
+is stronger evidence than the Redirect URI Validator. And there was **no "Insufficient Developer
+Role"**, the Unpublished-app wall Instagram had to clear with a Tester invite.
+
+Then Meta's Page-selection step reported *"You don't have any Pages"* with **Continue disabled**, and
+the Business portfolio's own Pages settings independently reports **"No Pages added"** — two sources,
+so it is not a Page merely unassigned to the personal profile. The card's copy had already said so
+(*"You'll need a Facebook Page; a personal profile can't provide insights"*), which is the warning
+earning its place. Note Meta **defaults** that step to *all current and future Pages*; the narrower
+*current Pages only* was selected.
+
+### Meta console
+
+Closed a finding left open by the Instagram session: `app_details_user_data_deletion` had refused
+four attempts on App settings -> Basic, and the field **is** writable from Facebook Login for
+Business -> Settings, where saving *Data Deletion Request URL* writes it. The two controls are one
+underlying field behind two forms, and only one of the forms works. **When a vendor console refuses
+to persist a field, look for another page that writes the same field before concluding the value
+cannot be set** — a broken form is a property of the form, not of the setting. The multi-field
+discard did not reproduce on the Login settings page, so that bug is specific to Basic. Also: the
+consumer path `/fb-login/settings/` does not exist for a for-Business app and redirects to the
+Dashboard; the correct path is `/business-login/settings/`.
+
+### Pending at ship time
+
+A Facebook Page has to exist before any of this can be exercised — a founder decision, since
+creating one is public, outward-facing content. The app secret's correctness follows from that.
+`business_management` should come off the Pages use case before App Review (shared with the
+Instagram use case, so it has blast radius). Tech Provider verification gates App Review for data
+from other businesses and applies to Instagram equally. And only the **apex** redirect URI is
+registered while `safeReturnOrigin` accepts **eight** origins — with Strict Mode on, a connect from
+a Lovable preview or `internal.` is refused at consent, which fails CLOSED and is deliberate.
+
+-> `docs/wiki/concepts/facebook-page-insights-connector.md` · #510, #512
+
+
 ## [2026-08-24] The investor deck, rebuilt on the model — and the confidential half provably absent
 
 Branch `feat/investor-deck` (PR #509), stacked on `worktree-DC-pitchdeck` (PR #506). Plan B of

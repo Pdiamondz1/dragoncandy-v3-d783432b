@@ -778,13 +778,18 @@ predicate. See `docs/wiki/concepts/synthetic-weight-engine.md`.
 ## Direct platform connectors (analytics only)
 
 Per-user OAuth links to a platform's own API, under the 2026-08-23 scope decision: **Outstand
-publishes, direct APIs measure**. Neither table was documented here before 2026-08-24 — the
-YouTube one had been live since 2026-08-23.
+publishes, direct APIs measure**. None of these tables was documented here before 2026-08-24 —
+the YouTube one had been live since 2026-08-23.
+
+**They share a lockdown and almost nothing else.** Each platform was read from its own docs rather
+than inferred from the sibling that shipped the week before, and the column sets diverge because
+the token models do. Read the notes under the table before assuming a pattern carries.
 
 | Table | Purpose |
 |-|-|
 | `youtube_channel_connections` | One row per linked YouTube channel (`20260823170000`). `channel_id`, `channel_title`, `google_email`, `scopes`, `refresh_token` (NOT NULL — Google's refresh token is a separate, long-lived credential), `access_token` + `access_token_expires_at`, `status`, `last_error`, `connected_at`, `last_synced_at`. |
 | `instagram_account_connections` | One row per linked Instagram account (`20260825120000`, applied 2026-08-24). `ig_user_id`, `username`, `account_type`, `followers_count`, `permissions`, `access_token` (NOT NULL), `token_issued_at`, `token_expires_at`, `status`, `last_error`, `connected_at`, `last_synced_at`. |
+| `facebook_page_connections` | One row per linked Facebook **Page** — many per user, unique on `(user_id, page_id)` (`20260825150000`, applied 2026-08-24). `fb_user_id` (Meta's **app-scoped** user id; the deauthorize callback sends nothing else we hold), `page_id`, `page_name`, `category`, `followers_count`, **`page_access_token`** (NOT NULL, reads insights, never expires), **`user_access_token`** (NOT NULL, exists only to revoke, ~60 days), `user_token_expires_at`, `permissions`, `tasks`, `status`, `last_error`, `connected_at`, `last_synced_at`. |
 
 > **The column sets differ for a reason that is the whole design.** Instagram has **no refresh
 > token**: the 60-day access token *is* the credential, and `ig_refresh_token` extends that same
@@ -795,7 +800,28 @@ YouTube one had been live since 2026-08-23.
 > refresh at 15 days remaining plus a daily sweep (`instagram-refresh-sweep`, cron migration
 > `20260825130000`). See [[Instagram Insights Connector]].
 >
-> **Both tables are service-role-only by construction, and verified so rather than assumed.**
+> **Facebook differs again, and in the opposite direction — it carries TWO tokens with opposite
+> lifetimes.** `page_access_token` reads insights and **does not expire**; `user_access_token`
+> exists for exactly one purpose, revoking the grant on disconnect, and lasts ~60 days. So there
+> is no expiry-driven refresh, no proactive refresh and no dormancy sweep here — Instagram's
+> machinery would guard a failure that cannot happen. The awkward consequence is recorded rather
+> than hidden: after ~60 days insights still work forever while disconnect can no longer revoke,
+> which is why `user_token_expires_at` is stored at all. **It is not a health signal and nothing
+> should mark a connection stale from it.** `fb_user_id` is stored because Meta's deauthorize
+> callback identifies the person by that id and nothing else we hold — without it a user-side
+> removal would strand every row it should delete. See [[Facebook Page Insights Connector]].
+>
+> **One Facebook grant covers every Page on it**, so `DELETE /me/permissions` invalidates every
+> Page token minted from it at once. The grant is handed back only when the LAST Page goes, and
+> that decision is made in **`claim_facebook_page_disconnect`** (SECURITY DEFINER,
+> `search_path=public`, service-role only) under a `pg_advisory_xact_lock` on `fb_user_id` —
+> never in the edge function. Counting there and acting on the count is check-then-act: two
+> concurrent disconnects both read "2 remaining", both skip the revoke, and the grant is
+> stranded with no token left to revoke it. On `is_last` the RPC deliberately **leaves the row
+> and its token in place** so the caller can revoke first — deleting first would abandon a live
+> grant, the same rule [[YouTube Analytics Connector]] follows and Instagram structurally cannot.
+>
+> **All three tables are service-role-only by construction, and verified so rather than assumed.**
 > RLS enabled with **zero policies for any role**, PLUS the ambient grants revoked at TABLE level
 > (a column-level `REVOKE` is a documented no-op against Supabase's table-wide `GRANT` — the same
 > lesson `20260804174854` / `20260805163247` record). Grants and RLS are independent gates, so a
@@ -803,8 +829,8 @@ YouTube one had been live since 2026-08-23.
 > 2026-08-24 for `instagram_account_connections`: grants are exactly `postgres` + `service_role`,
 > `relrowsecurity` is true, and `pg_policies` returns 0 rows.
 >
-> **The UI never reads either table.** It calls `instagram_connection_status()` /
-> `youtube_connection_status()` — `SECURITY DEFINER`, `search_path=public`, taking **no arguments**
+> **The UI never reads any of these tables.** It calls `instagram_connection_status()` /
+> `youtube_connection_status()` / `facebook_connection_status()` — `SECURITY DEFINER`, `search_path=public`, taking **no arguments**
 > so identity can only come from `auth.uid()` (the `dre_my_standing` pattern), EXECUTE granted to
 > `authenticated` + `service_role` and revoked from `PUBLIC`/`anon`, and returning **no token
 > column**. A bare `REVOKE ... FROM PUBLIC` does not lock down a definer function against
