@@ -142,6 +142,15 @@
   stamp, never a *status* signal, and pre-2026-08-07 rows are unreliable in **both** directions
   (`== created_at` means "no explicit writer touched it", not "never modified"). See
   [[Updated-At Trigger Drift]].
+- **[core-doc-markers] A core doc can be load-bearing for a TEST, so run the full suite after
+  editing one — not just a read-through.** On 2026-08-24 rewriting the logo rule in
+  `DESIGN_SYSTEM.md` deleted the string `PublicPageHeader.test.tsx`, and
+  `supabase/functions/_shared/chunk-doc.test.ts` went red: it uses that filename as a **marker**
+  that must survive chunking past the old 24,000-char cut, i.e. it asserts a specific token exists
+  in the doc *and* sits past that offset. Rewriting prose is not a docs-only change when a test
+  greps the prose. The fix was also the better doc — name both tests, since the render-level check
+  still lives in the old one. Corollary: markers are single unbroken tokens on purpose, so
+  reflowing a paragraph is safe but renaming or deleting a filename is not.
 - **[context-tax] Session detail goes to `docs/SHIPPED_LOG.md`, NOT `PROJECT_CONTEXT.md` §5.**
   §5 is now a one-line-per-entry index with three subsections — `### In flight`, `### Built —
   awaiting founder go-live` (these carry a `**Pending:**` clause), `### Shipped` — because §5 is
@@ -248,6 +257,39 @@
   reading the diff**, and prefer a stamp that is not a round hour.
 
 ## Run log (newest first — add each new entry at the TOP; never edit/delete past entries)
+
+### [2026-08-24] The page could still be dragged, and the logo had five sizes (`worktree-DC-landing-page-fix3`)
+
+**Output:** `docs/wiki/raw/sessions/2026-08-24-page-drag-and-logo-size.md` → new
+[[Brand Logo Sizing]] + [[Mobile Viewport & Fixed Positioning]] §10 (and §9's "still open" clause
+edited **in place**, since §10 is what closed it) · `log.md` entry *"The page could still be
+dragged, and the logo had five sizes"* · `SHIPPED_LOG.md` prepended · `PROJECT_CONTEXT.md` §5's
+landing entry edited **in place** · `DESIGN_SYSTEM.md` gained the overscroll rule and had its logo
+rule rewritten around the shared constant.
+
+**Happened:** two founder/Adrian reports against a landing already "fixed" once. Compounded the
+overscroll half onto the existing viewport page (§10 — same lineage as §9, whose own prediction
+this session confirmed and partly corrected) and gave the logo half its own page, since the
+durable lesson there is about *guard construction*, not about the landing.
+
+**Worked:** the `[scope-paths]` check earned its place again — `git log HEAD..origin/main -- <my
+dirs>` surfaced #500 (onboarding) landing mid-session on `src/components`/`src/pages`; checking by
+**path** showed no file overlap, so a rebase was enough and no work was duplicated. Editing §9's
+stale clause in place rather than appending §10 silently kept the page from carrying a prediction
+and its own answer as two unrelated claims.
+
+**Failed:** rewriting the `DESIGN_SYSTEM.md` logo rule **deleted the string
+`PublicPageHeader.test.tsx`**, and `supabase/functions/_shared/chunk-doc.test.ts` went red — it
+uses that filename as a marker that must survive chunking past the old 24,000-char cut. Caught by
+the full suite, not by reading. Also ran the mandatory Codex gate once with `--base main` before
+noticing #499 had changed the rule to `--base origin/main` that morning; re-run correctly, and the
+first run happened to be equivalent because the branch was cut from that same tip — equivalent by
+luck, not by construction.
+
+**Remember:** core docs are load-bearing for tests, not just for readers — see the new
+`[core-doc-markers]` Lesson. And read `CLAUDE.md`'s gate commands from the CURRENT tree before
+running them; the rules change under a long session.
+
 
 ### [2026-08-24] Instagram connector merged, applied, deployed (PR #489, `docs/instagram-connector-live`)
 
