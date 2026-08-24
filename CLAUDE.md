@@ -30,7 +30,25 @@ npm run lint         # ESLint (flat config, eslint.config.js)
 npm run test         # Run tests once (vitest run)
 npm run test:watch   # Run tests in watch mode (vitest)
 npm run preview      # Preview production build locally
+
+npm run db:query -- "select ..."          # Run SQL against the project in supabase/config.toml
+npm run db:query -- --file probe.sql      # ...or from a file
+npm run db:apply -- supabase/migrations/<file>.sql   # Apply ONE migration + its ledger row
 ```
+
+**Running SQL — read this before reaching for anything else.** `supabase db push` is **banned**
+here: the migration ledger has diverged by 200+ files, so a push re-runs them against prod. The CLI
+has no `db execute`, psql is not installed, and the Supabase MCP's OAuth has been returning
+`{"message":"Unrecognized client_id"}`. `db:query` / `db:apply` (`supabase/scripts/db-exec.mjs`) go
+through the Management API instead — the same path the dashboard SQL editor uses. They need a
+Supabase **Personal Access Token** (`SUPABASE_ACCESS_TOKEN`, an *account*-scoped credential, not a
+project key) in the gitignored `supabase/scripts/.env.sync.local`; see that file's `.example`.
+
+`db:apply` is not `db push`: it applies exactly the file you name, wraps it in a transaction with
+its ledger row so **applied** and **recorded** cannot diverge, refuses a version already recorded
+(most migrations are not idempotent), requires a typed `yes`, and reads the ledger back afterwards.
+**It still does not prove the objects exist** — verify those yourself, with a control that could
+have failed. This project has three recorded cases of `recorded ≠ actual`.
 
 **Workflow:** One change → `npm run build` → verify → push. Always build before pushing to main.
 
