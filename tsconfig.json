@@ -1,7 +1,10 @@
 {
   "compilerOptions": {
     "allowJs": true,
-    "paths": { "@/*": ["./src/*"] },
+    "paths": {
+      "@/*": ["./src/*"],
+      "@pitch/confidential": ["./src/pitch/model/confidential.ts"]
+    },
     "skipLibCheck": true,
     "strictNullChecks": true
   },

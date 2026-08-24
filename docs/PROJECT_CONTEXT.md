@@ -76,12 +76,17 @@ paid campaign in under 60 seconds.
 
 ## 4. Current State
 
-Pre-revenue by choice. ~30 organic users, $0 paying customers, **~$572/mo
+Pre-revenue by choice. **45 organic users** (read off prod 2026-08-24 — `select count(*)
+from profiles`; this line said "~30" and the investor model had copied that figure and
+tagged it MEASURED, so a number wrong by a third was vouched for by its own provenance
+tag), $0 paying customers (also confirmed against prod the same day), **~$569/mo
 operating cost** (as of 2026-08-23: Lovable $50, Anthropic $200, **Outstand.so $249**,
-Supabase $45, OpenAI $25), Stripe in test mode. This line read **~$390/mo** with
-Outstand at **$67** until 2026-08-23 — Outstand raised its price and nothing re-checks
-a cost figure, so it was wrong by ~$182 for an unknown stretch. Vendor pricing goes
-stale silently; re-read the invoices before quoting this anywhere. Production launch date TBD. The content
+Supabase $45, OpenAI $25 — sums to $569; this line briefly stated $572, which did not
+reconcile with these same five components, until corrected the same day, and the $3
+gap is unresolved pending an invoice check), Stripe in test mode. This line read
+**~$390/mo** with Outstand at **$67** until 2026-08-23 — Outstand raised its price and
+nothing re-checks a cost figure, so it was wrong by ~$182 for an unknown stretch.
+Vendor pricing goes stale silently; re-read the invoices before quoting this anywhere. Production launch date TBD. The content
 delivery system stabilization that gated launch landed in late May 2026;
 remaining blockers are final bug resolution and payment-flow hardening.
 
@@ -107,6 +112,30 @@ holds no Toast credentials. See §6.
 
 ### In flight
 
+- **The investor deck, rebuilt on the model** — Plan B of the investor-deck spec. Fifteen slides in
+  the advisor's order (the ask lands at slide 7), every figure read from `src/pitch/model/` so the
+  deck, the generated diligence document and the interactive Assumptions Ledger cannot disagree.
+  Three primitives replace three habits: a glossed term renders with its plain-English gloss and a
+  test renders every slide to enforce it; provenance is on every figure; a founder input renders as
+  its answer or as a **marked hole**, with no third branch. **The confidential half is absent, not
+  hidden** — and it took two mechanisms: `import.meta.env.VITE_X` does NOT fold when X is unset
+  (which is exactly the public build, so every budget line shipped behind a false runtime
+  condition), and folding the branch cleaned the JavaScript but **not the sourcemap**, which carried
+  the whole budget in a deployed `.map`. `npm run pitch:verify-public` asserts it over `dist/`, with
+  controls in both directions. **Four Codex findings across three rounds, all real, clean at round
+  4** — the two worth carrying: **a provenance tag applied to a COPY is worse than no tag** (two
+  rows read `MEASURED` while their own notes said nobody had checked; registered users were
+  **30 → 45**, an investor-facing count understated by a third), and **two consumers of one register
+  will disagree if each does its own arithmetic** (the deck sized the runway buffer on the FIRST
+  month's burn — before either engineer starts — quoting a raise $305K below the document's). Also:
+  a text assertion proves a string is present, never that a human can read it; the ask slide's gloss
+  rendered as invisible text while its test passed. Delivery is the **PDF**, not the URL —
+  `PITCH_NOTES=1` adds facing speaker notes under a different filename, deliberately opt-in, because
+  the coaching written for Joe must never reach an investor. **Pending:** merge #506 then #509; the
+  five §8 founder inputs (SAFE terms, team bios, Uncle Rocco's status, Adrian's consent, a Hoboken
+  restaurant count), each marked on its slide and printed by the exporter; and note the corrected
+  raise of **$1,462,568** sits inside the $500K–$1.5M band by $37K.
+  → `docs/wiki/concepts/investor-pitch-deck.md` · `docs/wiki/concepts/build-time-confidentiality.md` · #506, #509
 - **Social login (Google/Apple/Facebook) — shipped dark, and a one-line fix that would have
   switched off the email gate** — two blockers first: an OAuth user would have been told to
   verify an email nothing ever sends (`profiles.email_verified` defaults false, the trigger
@@ -599,13 +628,41 @@ holds no Toast credentials. See §6.
   **not `anon`**. Boot-verified too — every function answers with OUR JSON body rather than the
   gateway's, the public anon key gets through none of them, and an absent function name returns
   **404** where these return 401/503.
-  **It still cannot connect anything, so this is a deploy and not a launch** — the three secrets
-  remain unprovisioned (`INSTAGRAM_APP_ID`, `INSTAGRAM_APP_SECRET`, a new
+  **WORKING END TO END — first real account connected 2026-08-24 18:20 UTC.** This line read "it
+  still cannot connect anything, so this is a deploy and not a launch" until the same evening. All
+  three secrets are set (`INSTAGRAM_APP_ID`, `INSTAGRAM_APP_SECRET`, and
   `INSTAGRAM_OAUTH_STATE_SECRET` kept separate from Google's so one leaked key does not compromise
-  both flows), and every function fails closed without them. **One claim is deliberately withheld:**
-  the two Meta callbacks answer `503 not_configured`, which is the correct fail-closed path and
-  means the request never reaches the signature check — so the forgery-rejection path is proven by
-  its 8 unit tests and **not** by any live probe.
+  both flows — **verified by digest, and it does differ from `GOOGLE_OAUTH_STATE_SECRET`'s**).
+  `@areyouaman` (`17841400763893777`, BUSINESS) is stored with exactly the two read scopes and
+  **nothing that can post**, `status=active`, `last_error=null`, a 60-day token expiring
+  2026-10-23, and `last_synced_at` stamped **11 seconds after** `connected_at` — which is the
+  evidence that matters, since a row can be written without the API ever being called and that
+  timestamp cannot. The card reads **Reach 1, Views —, Interactions —**; the em dashes are
+  [[Honest Analytics]] holding, because three tidy zeros would have been the suspicious result.
+  **The withheld claim is now made:** the two Meta callbacks previously answered `503
+  not_configured` and returned *before* the signature check, so forgery rejection rested on 8 unit
+  tests. With the secret set, a forged `signed_request` returns **401** on both, where an invented
+  function name returns **404** — the control that separates "our code rejected this" from a
+  gateway artifact. **The 503 → 401 transition is itself the proof the secret is wired in.**
+  **Three defects sat between *deployed* and *usable*, and none was in the connector's code.**
+  (1) The founder connected through the live app and the consent screen said **"Outstand-IG"** —
+  `LocationSettingsSections` rendered the Outstand list and neither analytics card, so the only
+  Instagram button on the page a multi-location business actually lands on belonged to the other
+  integration. The two look alike and do opposite jobs, and **a page that offers one and hides the
+  other does not present a choice, it misroutes**; fixed in #502, guarded by a test that *derives*
+  the surfaces rendering `ConnectedAccountsList` rather than naming them — naming them is exactly
+  how the logo work the day before reported green while three unenumerated headers stayed wrong.
+  (2) **"Insufficient Developer Role"**: an Unpublished Meta app can only be authorized by accounts
+  holding a role on it, so the account had to be added as an **Instagram Tester** — an invite that
+  is not in the mobile app and not under "Apps and websites", but at
+  `instagram.com/accounts/manage_access/`. (3) Meta's **App settings → Basic returns its own
+  `{"success":true}` and then discards a multi-field write** — four fields changed, saved, and all
+  four reverted on reload; saving one field per click persisted every time. **A vendor's success
+  flag is not evidence the value stuck** — the same shape as this project's `recorded != actual`
+  cases, one layer out. Privacy policy, Terms and Category `Business and pages` landed that way;
+  `app_details_user_data_deletion` still refuses after four attempts, and on the failing ones **no
+  request carrying the value was sent at all**, so the form is not submitting that field rather
+  than the server rejecting it.
   **"It ran fine" was false twice, and prod said so both times.** The deploy commands ran first in
   the main checkout, where this branch's files do not exist — which would have mattered more had
   the paths resolved, since `supabase functions deploy` reads `config.toml` from the **current
@@ -684,14 +741,18 @@ holds no Toast credentials. See §6.
   0.73 against the 0.90 gate on 2026-08-23 while every other PR that day passed, and a re-run after
   merging main — with no change to any landing-page file — came back green. Codex clean at round 1
   on the merge.
-  **Pending (2026-08-24):** the three secrets; the Vault secret `instagram_refresh_sweep_url`
-  (confirmed absent — 12 vault rows, none of them this one) **and then** the cron migration
-  `20260825130000`, which is deliberately NOT applied yet, since a schedule whose url resolves to
-  NULL fails quietly in `cron.job_run_details` rather than anywhere anyone looks; registering the
-  deauthorize + data-deletion URLs (the endpoints had to exist first, and now do); App Review,
-  which needs a demo video — and note the site-gate
-  conflict in `docs/runbooks/google-oauth-demo-video.md` applies to Meta's review too, since it
-  also requires an anonymously reachable privacy policy.
+  **Four items this clause listed are DONE and were verified by object, not by memory
+  (2026-08-24):** the three secrets are set; the Vault secret `instagram_refresh_sweep_url` exists
+  (this line read "confirmed absent — 12 vault rows, none of them this one"); the cron migration
+  `20260825130000` is applied, with `cron.job` showing `instagram-refresh-sweep` at `0 4 * * *`
+  and `active=true`; and both the deauthorize and data-deletion URLs are registered in Business
+  login settings, re-read after a full page reload because that panel stages edits.
+  **Pending (2026-08-24):** the sweep has **never fired** — `cron.job_run_details` holds **0 runs**
+  for it, so the schedule is proven to exist and not proven to work (first fire 04:00 UTC);
+  `app_details_user_data_deletion` in Meta's App settings → Basic, still
+  `https://www.facebook.com/` after four attempts; and App Review, which needs a demo video — note
+  the site-gate conflict in `docs/runbooks/google-oauth-demo-video.md` applies to Meta's review
+  too, since it also requires an anonymously reachable privacy policy.
   → `docs/wiki/concepts/instagram-insights-connector.md`
 - **Content delivery system stabilization** — bug-fixing the creator→business content
   handoff and payment flow; gates production launch. → `docs/SHIPPED_LOG.md`
@@ -1586,7 +1647,11 @@ boundaries (see `.claude/handoffs/`).
 - City-by-city density: one metro first (20–30 creators, 5–10 restaurants),
   then replication scorecard for metro 2.
 - Fine-tuning Donny on proprietary data once 1,000–5,000 campaigns
-  accumulate (LoRA on open-source models).
+  accumulate (LoRA on open-source models). **The unit is labelled examples, not
+  campaigns** (restated 2026-08-24): one campaign is a chain yielding a brief, a
+  preference pair, a quality label and an outcome, so a few thousand campaigns produce
+  tens of thousands of labelled rows — which is why the threshold is not as small as it
+  reads. Quote the multiplier when the number is challenged.
 - **Toast integration partnership — APPLICATION FULLY SUBMITTED 2026-08-23.** All three steps
   done in one session: the API Documentation License Agreement (accepted as Dragon Candy LLC),
   Toast's confirmation email, and the **Integration Request Application** itself. Toast's
@@ -1727,7 +1792,7 @@ Apply to every recommendation, every prompt, every PR:
 **Frontend**: React 18 / TypeScript (strict), Vite, Tailwind CSS, shadcn/ui,
 Framer Motion, Vercel (prod hosting + per-PR staging previews), Lovable.dev (optional
 AI-edit surface via GitHub sync; no longer the host), GitHub.
-**Backend**: Supabase (70+ tables, 98 Deno Edge Functions, RLS, realtime),
+**Backend**: Supabase (70+ tables, 104 Deno Edge Functions, RLS, realtime),
 Stripe Connect (test mode).
 **AI**: Claude Sonnet 4 + Haiku for generation (cost routing via edge
 functions, backend only); OpenAI for embeddings (RAG/matching). Model routing

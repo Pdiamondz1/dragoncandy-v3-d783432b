@@ -49,10 +49,21 @@ into `supabase/migrations-recovered/`, deliberately outside the replay path, bec
 stamps do not interleave with the repo's own and would re-run later fixes backwards). Little is
 truly lost, though: the ledger stores each migration's SQL in `statements`, which is where
 `can_notify_user` was read back from. The CLI
-has no `db execute` and psql is not installed. (The Supabase MCP works again as of 2026-08-24:
-`.mcp.json` runs the **local stdio** server on the same PAT, `--read-only`, so it can read prod but
-not write it. Only the **hosted** server is broken — its OAuth uses dynamic client registration and
-answers `{"message":"Unrecognized client_id"}`.) `db:query` / `db:apply` (`supabase/scripts/db-exec.mjs`) go
+has no `db execute` and psql is not installed. (The Supabase MCP works as of 2026-08-24, but
+**only when `SUPABASE_ACCESS_TOKEN` is in Claude Code's own environment** — `.mcp.json` runs the
+**local stdio** server on that PAT, `--read-only`, so it can read prod but not write it. Export it
+from your shell profile: `.mcp.json` expands the variable when it launches the server, so a PAT
+that exists only in `.env.sync.local` never reaches it, and the environment is read once at process
+start, so a running session cannot be fixed without a restart. **A connected server is not an
+authorized one** — without the token it still reports `✔ Connected` and only real calls fail, which
+is what hid this; `get_project_url` is worthless as a check because it answers from the
+`--project-ref` flag without ever calling the API. Probe with `list_migrations`, which returns an
+explicit *Unauthorized*. Only the **hosted** server is broken — its OAuth uses dynamic client
+registration and answers `{"message":"Unrecognized client_id"}`. It is redundant with the local
+one, so on this machine it is suppressed via `CLAUDE_CODE_SKIP_PLUGIN_MCP_SERVERS` + `..._EXCEPT`
+in `~/.claude/settings.json`; that skips plugin MCP servers only, leaving the Supabase plugin's
+**skills** loaded, so its absence from `claude mcp list` is deliberate.) `db:query` / `db:apply`
+(`supabase/scripts/db-exec.mjs`) go
 through the Management API instead — the same path the dashboard SQL editor uses. They need a
 Supabase **Personal Access Token** (`SUPABASE_ACCESS_TOKEN`, an *account*-scoped credential, not a
 project key) in the gitignored `supabase/scripts/.env.sync.local`; see that file's `.example`.

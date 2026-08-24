@@ -12,8 +12,10 @@ dist
 dist-ssr
 *.local
 
-# Generated investor deck export (regenerate via `npm run pitch:pdf`)
+# Generated investor deck exports (regenerate via `npm run pitch:pdf`).
+# The -notes copy carries Joe's speaker notes and must never be committed or sent.
 dragoncandy-pitch.pdf
+dragoncandy-pitch-notes.pdf
 
 # Environment variables
 .env
@@ -150,3 +152,6 @@ scripts/workspace/.clasp.json
 
 # Lighthouse CI writes reports here when lhci is run locally.
 .lighthouseci/
+
+# Generated bridge between the deck notes (TS) and the PDF exporter (Node).
+.pitch-notes.json

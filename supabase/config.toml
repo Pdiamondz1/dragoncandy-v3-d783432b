@@ -349,3 +349,52 @@ verify_jwt = false
 # reconcile-pending-flushes. It authorizes via _shared/ingest-auth.ts.
 [functions.instagram-refresh-sweep]
 verify_jwt = false
+
+# ---------------------------------------------------------------------------
+# Facebook Page Insights connector (read-only)
+#
+# All four require a JWT, and none is a Meta callback. That differs from the
+# Instagram set, where two functions are anonymous because Meta calls them
+# server-to-server with no session.
+#
+# facebook-deauthorize is the exception: Meta calls it with no session, so its
+# signed_request HMAC is the entire authorization.
+#
+# It exists as its own function because Facebook Login carries its OWN
+# Deauthorize Callback URL (Facebook Login -> Settings), separate from the one
+# under Instagram Business login settings. An earlier draft of this comment
+# assumed the callbacks were per-app and shared, which would have left every
+# Facebook row stranded on a user-side removal — the existing
+# instagram-deauthorize matches on ig_user_id and would find nothing.
+# ---------------------------------------------------------------------------
+[functions.facebook-oauth-start]
+verify_jwt = true
+
+# Called by the app's /facebook/callback PAGE, not by Meta. That is what makes a
+# JWT available, and requiring it is what closes OAuth account-linking CSRF: an
+# HMAC signature proves the state is ours, not that the browser finishing consent
+# is the one that started it. verifyState requires the state to name this caller.
+[functions.facebook-oauth-callback]
+verify_jwt = true
+
+[functions.facebook-insights]
+verify_jwt = true
+
+[functions.facebook-disconnect]
+verify_jwt = true
+
+# Anonymous by necessity: Meta POSTs with no session and no bearer we issued, so
+# the signed_request signature is the whole gate. Declared here rather than left
+# to a --no-verify-jwt deploy flag, because a comment asking the next person to
+# remember one is a hope, and the gateway would otherwise reject Meta before this
+# function ever ran. A missing FACEBOOK_APP_SECRET fails closed (503).
+[functions.facebook-deauthorize]
+verify_jwt = false
+
+# Same posture and same reason as facebook-deauthorize: Meta POSTs with no
+# session, so the signed_request signature is the entire gate. Its own function
+# rather than a shared one because instagram-data-deletion matches rows on
+# ig_user_id, which appears in no Facebook row — pointing Meta here at that
+# function would delete nothing and return a confirmation code saying otherwise.
+[functions.facebook-data-deletion]
+verify_jwt = false

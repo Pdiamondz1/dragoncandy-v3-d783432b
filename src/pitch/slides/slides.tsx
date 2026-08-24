@@ -1,33 +1,93 @@
+/**
+ * The fifteen slides, in the order §6 of the spec sets — the investor advisor's order,
+ * not the conventional one. The ask lands at slide 7, in the middle, while the room is
+ * still paying attention, and everything after it is the evidence for it.
+ *
+ * **A slide may not hardcode a figure.** Every number here is read from
+ * `src/pitch/model/` at render time, so the deck cannot drift from the document or the
+ * interactive model. If a number looks wrong, the register is where it is wrong.
+ *
+ * The confidential half of the ask lives in `ask.confidential.tsx` and is reachable only
+ * through a build-time flag — see the note there.
+ */
+import { QRCodeSVG } from 'qrcode.react';
+import type { ReactNode } from 'react';
 import {
-  Sparkles,
-  Rocket,
-  Share2,
-  Database,
-  Network,
-  Plug,
-  Scale,
-  ShieldCheck,
-  Tag,
-  Check,
   ArrowRight,
   Bot,
-  Brain,
-  Layers,
-} from "lucide-react";
-import type { ReactNode } from "react";
-import { SlideShell, GradientText, type SlideProps } from "./SlideShell";
+  Camera,
+  Check,
+  Database,
+  QrCode,
+  Store,
+  Users,
+  X,
+} from 'lucide-react';
 
-/* ---------- small shared primitives (1280x720 canvas) ---------- */
+import { SlideShell, GradientText, type SlideProps } from './SlideShell';
+import { MARKET, OPERATING, PRICING, TIER_TAKE_RATES, UNIT_ECONOMICS } from '../model/assumptions';
+import { REGISTERED_MIX, avgCampaignValue, projectMonth } from '../model/project';
+import {
+  LIQUIDITY_THRESHOLD,
+  businessStepTable,
+  isLiquid,
+  monthsToLiquidity,
+  threeYearTrajectory,
+  unitEconomics,
+} from '../model/derive';
+import { Gloss, PendingMark, Source, Tag } from '../deck/components';
+import { count, money, moneyShort, pct } from '../deck/format';
+import { FOUNDER_INPUTS } from '../deck/pending';
+import { AskFigures } from './ask.confidential';
 
-function Stat({ value, label, dark = false }: { value: ReactNode; label: string; dark?: boolean }) {
+/**
+ * Slide 2 exists in three forms, picked by this constant before an export (spec §6.1).
+ * The advisor's note was *"if Joe's investor is into data then add that flair"* — which is
+ * a variant, not a fifteenth slide. Change this, re-export, send the right deck.
+ */
+export const THESIS: 'marketplace' | 'data' | 'smb' = 'marketplace';
+
+const THESIS_COPY = {
+  marketplace: {
+    line: 'One marketplace where restaurants, creators and brands actually transact.',
+    usp: 'Every other marketplace hands you a list and walks away. We run the campaign end to end — brief, match, shoot, approve, post, measure — and take a cut of what moves through it.',
+  },
+  data: {
+    line: 'Every campaign we run teaches the model that runs the next one.',
+    usp: 'A brief, a set of applicants, a hiring decision, an approval and a performance record — that is a labeled chain per campaign, not a row. Nobody else holds this data because nobody else sits in the middle of the whole transaction.',
+  },
+  smb: {
+    line: 'A social media department for a restaurant that cannot hire one.',
+    usp: 'An agency costs $10K a month and will not take you. We are the first price point below that which is not just software you have to operate yourself.',
+  },
+} as const;
+
+/* ---------- shared primitives (1280x720 canvas) ---------- */
+
+function Stat({
+  value,
+  label,
+  dark = false,
+  sub,
+}: {
+  value: ReactNode;
+  label: ReactNode;
+  dark?: boolean;
+  sub?: ReactNode;
+}) {
   return (
     <div>
       <div className="text-5xl font-extrabold leading-none">
         <GradientText>{value}</GradientText>
       </div>
-      <div className={`mt-2 text-base font-medium ${dark ? "text-white/65" : "text-dc-text-muted"}`}>
+      <div className={`mt-2 text-base font-medium ${dark ? 'text-white/65' : 'text-dc-text-muted'}`}>
         {label}
       </div>
+      {sub && (
+        <div className={`mt-1 text-[13px] ${dark ? 'text-white/40' : 'text-dc-text-muted/70'}`}>
+          {sub}
+        </div>
+      )}
     </div>
   );
 }
@@ -35,7 +95,7 @@ function Stat({ value, label, dark = false }: { value: ReactNode; label: string;
 function Card({
   children,
   dark = false,
-  className = "",
+  className = '',
 }: {
   children: ReactNode;
   dark?: boolean;
@@ -43,10 +103,10 @@ function Card({
 }) {
   return (
     <div
-      className={`rounded-3xl p-8 ${
+      className={`rounded-3xl p-7 ${
         dark
-          ? "border border-white/10 bg-white/5"
-          : "border border-dc-teal/30 bg-white shadow-[0_10px_40px_-18px_rgba(15,118,110,0.35)]"
+          ? 'border border-white/10 bg-white/5'
+          : 'border border-dc-teal/30 bg-white shadow-[0_10px_40px_-18px_rgba(15,118,110,0.35)]'
       } ${className}`}
     >
       {children}
@@ -54,16 +114,22 @@ function Card({
   );
 }
 
-function IconBadge({ children, tone = "teal" }: { children: ReactNode; tone?: "teal" | "pink" }) {
+function IconBadge({ children, tone = 'teal' }: { children: ReactNode; tone?: 'teal' | 'pink' }) {
   return (
     <div
-      className={`flex h-14 w-14 items-center justify-center rounded-2xl ${
-        tone === "teal" ? "bg-dc-teal/15 text-dc-teal-btn" : "bg-dc-pink-accent/15 text-dc-pink-accent"
+      className={`flex h-12 w-12 items-center justify-center rounded-2xl ${
+        tone === 'teal'
+          ? 'bg-dc-teal/15 text-dc-teal-btn'
+          : 'bg-dc-pink-accent/15 text-dc-pink-accent'
       }`}
     >
       {children}
     </div>
   );
+}
+
+function H2({ children }: { children: ReactNode }) {
+  return <h2 className="text-5xl font-extrabold leading-[1.06] tracking-tight">{children}</h2>;
 }
 
 /* ---------- 01 · Cover ---------- */
@@ -79,18 +145,18 @@ export function SlideCover({ index, total }: SlideProps) {
             Investor Presentation
           </p>
           <h1 className="text-7xl font-extrabold leading-[1.02] tracking-tight">
-            The AI marketing
+            A social media
             <br />
-            command center for
+            department for every
             <br />
-            <GradientText>local restaurants.</GradientText>
+            <GradientText>local restaurant.</GradientText>
           </h1>
           <p className="mt-8 font-script text-4xl text-dc-pink">Less typing = more margin.</p>
         </div>
 
         <div className="flex items-center justify-between text-white/60">
           <span className="text-base font-medium">
-            AI-powered creator · restaurant · brand marketplace
+            Restaurants · creators · brands, in one marketplace
           </span>
           <span className="text-base font-semibold">Hoboken, NJ · Confidential</span>
         </div>
@@ -99,613 +165,801 @@ export function SlideCover({ index, total }: SlideProps) {
   );
 }
 
-/* ---------- 02 · Problem ---------- */
+/* ---------- 02 · What we're building ---------- */
+
+export function SlideWhatWeAreBuilding({ index, total }: SlideProps) {
+  const copy = THESIS_COPY[THESIS];
+  return (
+    <SlideShell index={index} total={total} eyebrow="What we're building">
+      <H2>{copy.line}</H2>
+      <p className="mt-8 max-w-4xl text-2xl leading-relaxed text-dc-text-muted">{copy.usp}</p>
+
+      <div className="mt-auto grid grid-cols-3 gap-5">
+        <Card>
+          <IconBadge>
+            <Store className="h-6 w-6" />
+          </IconBadge>
+          <p className="mt-4 text-xl font-bold">Restaurants</p>
+          <p className="mt-1.5 text-base text-dc-text-muted">
+            Get the content made and posted without hiring anyone.
+          </p>
+        </Card>
+        <Card>
+          <IconBadge tone="pink">
+            <Camera className="h-6 w-6" />
+          </IconBadge>
+          <p className="mt-4 text-xl font-bold">Creators</p>
+          <p className="mt-1.5 text-base text-dc-text-muted">
+            Paid work that finds them, and money that arrives on time.
+          </p>
+        </Card>
+        <Card>
+          <IconBadge>
+            <Bot className="h-6 w-6" />
+          </IconBadge>
+          <p className="mt-4 text-xl font-bold">Donny</p>
+          <p className="mt-1.5 text-base text-dc-text-muted">
+            Writes the brief, picks the creators, schedules the posts, reports what happened.
+          </p>
+        </Card>
+      </div>
+    </SlideShell>
+  );
+}
+
+/* ---------- 03 · The problem ---------- */
 
 export function SlideProblem({ index, total }: SlideProps) {
-  const cols = [
-    {
-      tone: "teal" as const,
-      title: "Restaurants",
-      body: "Spend $2,000–$4,000/mo across fragmented tools — social, photography, outreach — with no time and no clear ROI.",
-      stat: "Only 13% are satisfied with their tech stack.",
-    },
-    {
-      tone: "pink" as const,
-      title: "Creators",
-      body: "Talented local food creators have no reliable way to find paid work or get paid on time near where they live.",
-      stat: "Monetizing locally is ad-hoc and manual.",
-    },
-    {
-      tone: "teal" as const,
-      title: "Content",
-      body: "Producing on-brand, compliant content is slow, expensive, and disconnected from where it actually gets posted.",
-      stat: "Days of back-and-forth per campaign.",
-    },
-  ];
   return (
-    <SlideShell index={index} total={total} variant="light" eyebrow="The Problem">
-      <h2 className="max-w-4xl text-5xl font-extrabold leading-tight">
-        Local restaurants are flying blind on marketing.
-      </h2>
-      <p className="mt-4 max-w-3xl text-xl text-dc-text-muted">
-        The people, the content, and the channels live in three different places — and none of them talk to each other.
-      </p>
-      <div className="mt-10 grid flex-1 grid-cols-3 gap-6">
-        {cols.map((c) => (
-          <Card key={c.title} className="flex flex-col">
-            <h3 className={`text-2xl font-bold ${c.tone === "pink" ? "text-dc-pink-accent" : "text-dc-teal-btn"}`}>
-              {c.title}
-            </h3>
-            <p className="mt-3 flex-1 text-lg leading-relaxed text-dc-text-muted">{c.body}</p>
-            <p className="mt-5 border-t border-dc-teal/20 pt-4 text-base font-semibold text-dc-text">
-              {c.stat}
-            </p>
-          </Card>
-        ))}
-      </div>
-    </SlideShell>
-  );
-}
+    <SlideShell index={index} total={total} variant="dark" eyebrow="The problem">
+      <H2>
+        I own restaurants in Hoboken.
+        <br />
+        <GradientText>Social media nearly ate them.</GradientText>
+      </H2>
 
-/* ---------- 03 · Solution ---------- */
-
-export function SlideSolution({ index, total }: SlideProps) {
-  return (
-    <SlideShell index={index} total={total} variant="dark" eyebrow="The Solution">
-      <h2 className="max-w-4xl text-5xl font-extrabold leading-tight">
-        One marketplace. Three sides. <GradientText>One AI.</GradientText>
-      </h2>
-
-      <div className="mt-8 flex items-center justify-center gap-4 text-center">
-        {["Restaurants", "Creators", "Brands"].map((n, i) => (
-          <div key={n} className="flex items-center gap-4">
-            <div className="rounded-2xl border border-white/10 bg-white/5 px-8 py-5 text-xl font-bold">
-              {n}
-            </div>
-            {i < 2 && <ArrowRight className="h-6 w-6 text-dc-teal" />}
-          </div>
-        ))}
+      <div className="mt-8 grid max-w-5xl grid-cols-2 gap-x-12 gap-y-5 text-xl leading-relaxed text-white/80">
+        <p>
+          To compete, a restaurant has to live on social. So I found creators, briefed them,
+          chased them, approved the work, posted it, and paid premium rates for all of it.
+        </p>
+        <p>
+          It was slow, expensive and never finished. And every owner I knew in Hoboken was
+          fighting exactly the same fight.
+        </p>
+        <p>
+          Most of them do not have time to run campaigns. Frankly, they should not have to —
+          they should be running a restaurant.
+        </p>
+        <p className="font-semibold text-white">
+          So I stopped complaining about the wall and started building the thing that removes it.
+        </p>
       </div>
 
-      <div className="mt-10 grid flex-1 grid-cols-2 gap-6">
-        <Card dark className="flex flex-col">
-          <div className="flex items-center gap-3 text-dc-teal">
-            <Sparkles className="h-7 w-7" />
-            <h3 className="text-2xl font-bold text-white">Donny AI</h3>
-          </div>
-          <p className="mt-4 text-lg leading-relaxed text-white/70">
-            The intelligence layer — campaign generation, creator matching, scheduling, and analytics. Every brief and
-            outcome compounds into proprietary data.
-          </p>
-          <p className="mt-auto pt-5 text-base font-semibold text-dc-teal">The brain.</p>
-        </Card>
-        <Card dark className="flex flex-col">
-          <div className="flex items-center gap-3 text-dc-pink-accent">
-            <Rocket className="h-7 w-7" />
-            <h3 className="text-2xl font-bold text-white">DragonDash</h3>
-          </div>
-          <p className="mt-4 text-lg leading-relaxed text-white/70">
-            The profit engine — rush content delivery at premium margins. A service, not a commoditizable AI feature.
-          </p>
-          <p className="mt-auto pt-5 text-base font-semibold text-dc-pink-accent">The engine.</p>
-        </Card>
-      </div>
-
-      <p className="mt-7 text-center text-xl font-semibold text-white/80">
-        Donny powers DragonDash. <span className="text-dc-teal">DragonDash sells.</span>
+      <p className="mt-auto text-lg font-semibold text-dc-teal">
+        Joe Castelo · CEO · Antique Bar &amp; Bakery, Hoboken
       </p>
     </SlideShell>
   );
 }
 
-/* ---------- 04 · Why Now ---------- */
+/* ---------- 04 · Why this is different ---------- */
 
-export function SlideWhyNow({ index, total }: SlideProps) {
-  const points = [
-    {
-      stat: "25%",
-      title: "AI commoditized content",
-      body: "1 in 4 YC W25 startups shipped 95% AI-generated code. Features are cloned in days — durable value is data + service, not a wrapper.",
-    },
-    {
-      stat: "76% / 13%",
-      title: "Restaurants want tech",
-      body: "76% of operators see tech as a competitive edge; only 13% are satisfied today. The category is wide open.",
-    },
-    {
-      stat: "$2–4K",
-      title: "Marketing budgets exist",
-      body: "The average restaurant already spends $2–4K/mo on marketing — fragmented across vendors waiting to be consolidated.",
-    },
-    {
-      stat: "Now",
-      title: "Creator economy is local",
-      body: "Food creators are everywhere, but local monetization is unsolved. Whoever organizes hyperlocal supply wins the liquidity.",
-    },
-  ];
+const COMPETITORS = [
+  {
+    who: 'Creator marketplaces',
+    what: 'Hand you a list of names and take a fee for the introduction.',
+    gap: 'You still run the campaign.',
+  },
+  {
+    who: 'AI content tools',
+    what: 'Generate a caption about a pizza the model has never eaten.',
+    gap: 'No creator, no camera, no post.',
+  },
+  {
+    who: 'Agencies',
+    what: 'Do the whole job properly, from about $10K a month.',
+    gap: 'Will not take a single restaurant.',
+  },
+];
+
+export function SlideWhyDifferent({ index, total }: SlideProps) {
   return (
-    <SlideShell index={index} total={total} variant="light" eyebrow="Why Now">
-      <h2 className="max-w-4xl text-5xl font-extrabold leading-tight">
-        The window is open — briefly.
-      </h2>
-      <div className="mt-10 grid flex-1 grid-cols-2 gap-x-12 gap-y-8">
-        {points.map((p) => (
-          <div key={p.title} className="flex gap-6">
-            <div className="w-40 shrink-0 text-4xl font-extrabold leading-none">
-              <GradientText>{p.stat}</GradientText>
-            </div>
-            <div>
-              <h3 className="text-xl font-bold text-dc-text">{p.title}</h3>
-              <p className="mt-2 text-lg leading-relaxed text-dc-text-muted">{p.body}</p>
-            </div>
-          </div>
-        ))}
-      </div>
-    </SlideShell>
-  );
-}
-
-/* ---------- 05 · Product ---------- */
-
-export function SlideProduct({ index, total }: SlideProps) {
-  const features = [
-    {
-      icon: <Sparkles className="h-7 w-7" />,
-      tone: "teal" as const,
-      title: "Donny AI",
-      body: "Campaign-from-URL, AI-scored creator matching, and auto cross-scheduling across every connected channel.",
-    },
-    {
-      icon: <Rocket className="h-7 w-7" />,
-      tone: "pink" as const,
-      title: "DragonDash",
-      body: "Rush content delivery with platform-count surcharges — premium margins on the work restaurants need fast.",
-    },
-    {
-      icon: <Share2 className="h-7 w-7" />,
-      tone: "teal" as const,
-      title: "DragonShare",
-      body: "Creators post organic content; restaurants boost it cross-channel. Live, with an 80/20 creator-first split.",
-    },
-  ];
-  return (
-    <SlideShell index={index} total={total} variant="light" eyebrow="Product">
-      <h2 className="max-w-4xl text-5xl font-extrabold leading-tight">
-        From a URL to a paid campaign in <GradientText>under 60 seconds.</GradientText>
-      </h2>
-      <p className="mt-4 max-w-3xl text-xl text-dc-text-muted">
-        Surface priority: voice → camera → paste-URL → tap-a-chip → typing (last resort).
+    <SlideShell index={index} total={total} eyebrow="Why this is different">
+      <H2>
+        Content is a <GradientText>supply problem</GradientText>, not a software problem.
+      </H2>
+      <p className="mt-5 max-w-4xl text-xl text-dc-text-muted">
+        Everyone sells the restaurant a tool and leaves them to find the people. We supply the
+        people, and the software runs them.
       </p>
-      <div className="mt-10 grid flex-1 grid-cols-3 gap-6">
-        {features.map((f) => (
-          <Card key={f.title} className="flex flex-col">
-            <IconBadge tone={f.tone}>{f.icon}</IconBadge>
-            <h3 className="mt-5 text-2xl font-bold text-dc-text">{f.title}</h3>
-            <p className="mt-3 text-lg leading-relaxed text-dc-text-muted">{f.body}</p>
-          </Card>
-        ))}
-      </div>
-    </SlideShell>
-  );
-}
 
-/* ---------- 06 · Market ---------- */
-
-export function SlideMarket({ index, total }: SlideProps) {
-  const tiers = [
-    { label: "TAM", note: "U.S. restaurant marketing + creator economy", value: "$[verify]B" },
-    { label: "SAM", note: "SMB restaurants × food creators in target metros", value: "$[verify]B" },
-    { label: "SOM", note: "3-year reachable footprint (20+ metros)", value: "$[verify]M" },
-  ];
-  return (
-    <SlideShell index={index} total={total} variant="light" eyebrow="Market">
-      <h2 className="max-w-4xl text-5xl font-extrabold leading-tight">
-        A budget that already exists — newly consolidatable.
-      </h2>
-      <div className="mt-8 grid flex-1 grid-cols-2 gap-12">
-        <div className="flex flex-col justify-center gap-4">
-          {tiers.map((t, i) => (
-            <div
-              key={t.label}
-              className="flex items-center gap-6 rounded-3xl border border-dc-teal/30 bg-white p-5 shadow-[0_10px_40px_-18px_rgba(15,118,110,0.35)]"
-              style={{ marginRight: i * 56 }}
-            >
-              <div className="text-3xl font-extrabold text-dc-teal-btn">{t.label}</div>
-              <div className="flex-1">
-                <div className="text-2xl font-extrabold">
-                  <GradientText>{t.value}</GradientText>
-                </div>
-                <div className="text-base text-dc-text-muted">{t.note}</div>
-              </div>
-            </div>
-          ))}
-        </div>
-        <div className="flex flex-col justify-center">
-          <h3 className="text-2xl font-bold text-dc-text">Bottom-up wedge</h3>
-          <p className="mt-3 text-lg leading-relaxed text-dc-text-muted">
-            The average restaurant spends <span className="font-semibold text-dc-text">$2,000–$4,000/mo</span> on
-            marketing across disconnected vendors. DragonCandy consolidates that spend into one platform at a blended
-            ARPU of <span className="font-semibold text-dc-text">$350–$500/mo</span> — before take-rate and rush.
-          </p>
-          <p className="mt-3 text-lg leading-relaxed text-dc-text-muted">
-            <span className="font-semibold text-dc-pink-accent">Brands</span> are the high-LTV third side —
-            ~$800/mo plus sponsor campaigns, a <span className="font-semibold text-dc-text">$24K–$72K</span> LTV
-            at a 3–5 month payback.
-          </p>
-          <p className="mt-3 rounded-2xl bg-dc-pink-bg/60 px-5 py-3 text-base font-medium text-dc-text">
-            Dollar TAM/SAM/SOM figures pending sourced market data.
-          </p>
-        </div>
-      </div>
-    </SlideShell>
-  );
-}
-
-/* ---------- 07 · Business Model ---------- */
-
-export function SlideModel({ index, total }: SlideProps) {
-  const streams = [
-    { name: "Subscription", detail: "Free / $149 / $449 / $899 / Enterprise", margin: "80–90%" },
-    { name: "Marketplace take-rate", detail: "Tiered 10% → 2% on creator & brand deals", margin: "65–80%" },
-    { name: "Donny AI credits", detail: "$0.10–0.25 per call overage", margin: "70–90%" },
-    { name: "DragonDash rush", detail: "$25–75 delivery + platform surcharges", margin: "high" },
-  ];
-  return (
-    <SlideShell index={index} total={total} variant="dark" eyebrow="Business Model">
-      <h2 className="max-w-4xl text-5xl font-extrabold leading-tight">
-        Four revenue streams. <GradientText>One customer.</GradientText>
-      </h2>
-      <div className="mt-9 grid flex-1 grid-cols-2 gap-5">
-        {streams.map((s, i) => (
-          <Card key={s.name} dark className="flex items-center gap-5">
-            <div className="text-3xl font-extrabold text-dc-teal/60 tabular-nums">{i + 1}</div>
-            <div className="flex-1">
-              <div className="text-xl font-bold text-white">{s.name}</div>
-              <div className="text-base text-white/65">{s.detail}</div>
-            </div>
-            <div className="rounded-full bg-dc-teal/15 px-4 py-1.5 text-sm font-bold text-dc-teal">
-              {s.margin} margin
-            </div>
-          </Card>
-        ))}
-      </div>
-      <p className="mt-7 text-center text-lg font-medium text-white/75">
-        Restaurants subscribe; <span className="font-semibold text-dc-pink-accent">brands</span> sponsor at the
-        high end. The take-rate ladder discounts as spend scales — we grow with the customer.
-      </p>
-    </SlideShell>
-  );
-}
-
-/* ---------- 08 · Traction ---------- */
-
-export function SlideTraction({ index, total }: SlideProps) {
-  const shipped = [
-    "DragonShare amplification — live on web (Stripe Connect, 80/20 split)",
-    "DragonCandy AIOS — internal ops dashboard + Google Workspace",
-    "Outstand social integration — Instagram, TikTok, YouTube",
-    "Capacitor iOS shell — App Store path, Phase 1 shipped",
-  ];
-  return (
-    <SlideShell index={index} total={total} variant="light" eyebrow="Traction">
-      <h2 className="max-w-4xl text-5xl font-extrabold leading-tight">
-        Pre-revenue by design — and already shipping.
-      </h2>
-      <div className="mt-9 grid grid-cols-4 gap-8">
-        <Stat value="~30" label="organic users, $0 spent" />
-        <Stat value="73" label="edge functions in prod" />
-        <Stat value="60+" label="pages · 183 hooks" />
-        <Stat value="Day 1" label="data flywheel logging" />
-      </div>
-      <div className="mt-9 grid flex-1 grid-cols-2 gap-x-10 gap-y-4 content-center">
-        {shipped.map((s) => (
-          <div key={s} className="flex items-start gap-3">
-            <Check className="mt-1 h-5 w-5 shrink-0 text-dc-teal-btn" />
-            <span className="text-lg text-dc-text">{s}</span>
-          </div>
-        ))}
-      </div>
-      <p className="text-base font-medium text-dc-text-muted">
-        Every brief, match, and completed campaign is logged from launch — the dataset is the moat.
-      </p>
-    </SlideShell>
-  );
-}
-
-/* ---------- 09 · Go-to-Market ---------- */
-
-export function SlideGTM({ index, total }: SlideProps) {
-  const phases = [
-    { n: "Metro 1", body: "Founder-led: hand-onboard 20–30 creators + 5–10 restaurants. Reach 70%+ search-to-fill." },
-    { n: "Density", body: "3:1–5:1 creator-to-restaurant ratio per market before scaling spend. Creators first." },
-    { n: "Replicate", body: "Documented playbook → 2–3 adjacent metros, then concentric expansion to 20+." },
-  ];
-  return (
-    <SlideShell index={index} total={total} variant="light" eyebrow="Go-to-Market">
-      <h2 className="max-w-4xl text-5xl font-extrabold leading-tight">
-        Win one metro. Then <GradientText>copy-paste.</GradientText>
-      </h2>
-      <p className="mt-4 max-w-3xl text-xl text-dc-text-muted">
-        The DoorDash playbook — liquidity in one market beats thin coverage everywhere. Explicit budget gates and
-        kill-switches at each step.
-      </p>
-      <div className="mt-10 grid flex-1 grid-cols-3 gap-6">
-        {phases.map((p, i) => (
-          <Card key={p.n} className="flex flex-col">
-            <div className="text-base font-bold uppercase tracking-widest text-dc-teal">Step {i + 1}</div>
-            <h3 className="mt-2 text-2xl font-bold text-dc-text">{p.n}</h3>
-            <p className="mt-3 text-lg leading-relaxed text-dc-text-muted">{p.body}</p>
-          </Card>
-        ))}
-      </div>
-    </SlideShell>
-  );
-}
-
-/* ---------- 10 · Moat ---------- */
-
-export function SlideMoat({ index, total }: SlideProps) {
-  const layers = [
-    { icon: <Database className="h-6 w-6" />, name: "Data flywheel", body: "Every campaign makes Donny smarter — primary, compounding moat." },
-    { icon: <Network className="h-6 w-6" />, name: "Network effects", body: "Hyperlocal liquidity per metro — 70%+ search-to-fill." },
-    { icon: <Plug className="h-6 w-6" />, name: "Ecosystem", body: "POS + social workflow integration raises switching costs." },
-    { icon: <Scale className="h-6 w-6" />, name: "Legal", body: "Trademarks, trade secrets, provisional patents — sequenced." },
-    { icon: <ShieldCheck className="h-6 w-6" />, name: "Regulatory", body: "Built-in FTC disclosure + AI transparency = trust edge." },
-    { icon: <Tag className="h-6 w-6" />, name: "Brand", body: '"#DragonDashed" — verbification as a distribution moat.' },
-  ];
-  return (
-    <SlideShell index={index} total={total} variant="dark" eyebrow="Defensibility">
-      <h2 className="max-w-4xl text-5xl font-extrabold leading-tight">
-        Six layers. <GradientText>Compounding.</GradientText>
-      </h2>
-      <p className="mt-4 max-w-3xl text-xl text-white/70">
-        No single feature is the moat — the compounding interaction is. Surface features clone in days; data and
-        liquidity don't.
-      </p>
-      <div className="mt-8 grid flex-1 grid-cols-3 gap-5">
-        {layers.map((l, i) => (
-          <Card key={l.name} dark className={i === 0 ? "ring-1 ring-dc-teal/50" : ""}>
-            <div className="flex items-center gap-3 text-dc-teal">
-              {l.icon}
-              <h3 className="text-xl font-bold text-white">{l.name}</h3>
-            </div>
-            <p className="mt-2 text-base leading-relaxed text-white/65">{l.body}</p>
-          </Card>
-        ))}
-      </div>
-    </SlideShell>
-  );
-}
-
-/* ---------- 11 · Team ---------- */
-
-export function SlideTeam({ index, total }: SlideProps) {
-  const team = [
-    {
-      name: "Damon “Dame” Williams",
-      role: "Co-founder · CTO",
-      body: "Product and platform — architect of the DragonCandy experience and the Donny AI intelligence layer.",
-    },
-    {
-      name: "Joe Castelo",
-      role: "Co-founder · CEO",
-      body: "Sales & partnerships. 70-year Hoboken hospitality family; award-winning operator and dealmaker.",
-    },
-    {
-      name: "Juwan Robinson",
-      role: "Co-founder",
-      body: "Strategic guidance and capital network across the growth roadmap.",
-    },
-  ];
-  return (
-    <SlideShell index={index} total={total} variant="light" eyebrow="Team">
-      <h2 className="max-w-4xl text-5xl font-extrabold leading-tight">
-        Built by operators, not tourists.
-      </h2>
-      <div className="mt-10 grid flex-1 grid-cols-3 gap-6">
-        {team.map((m) => (
-          <Card key={m.name} className="flex flex-col">
-            <div className="h-14 w-14 rounded-full bg-gradient-to-br from-dc-teal to-dc-pink-accent" />
-            <h3 className="mt-5 text-2xl font-bold text-dc-text">{m.name}</h3>
-            <div className="mt-1 text-base font-semibold text-dc-teal-btn">{m.role}</div>
-            <p className="mt-3 text-lg leading-relaxed text-dc-text-muted">{m.body}</p>
-          </Card>
-        ))}
-      </div>
-    </SlideShell>
-  );
-}
-
-/* ---------- 12 · Vision (Donny super-intelligence + adaptability) ---------- */
-
-export function SlideVision({ index, total }: SlideProps) {
-  const trajectory = [
-    {
-      icon: <Sparkles className="h-6 w-6" />,
-      title: "Today — the copilot",
-      body: "Campaign-from-URL, AI matching, scheduling, and analytics inside the app.",
-    },
-    {
-      icon: <Bot className="h-6 w-6" />,
-      title: "Next — the super-agent",
-      body: "Runs campaigns end-to-end, and delivers value beyond the app — a public Donny API and a standalone assistant.",
-    },
-    {
-      icon: <Brain className="h-6 w-6" />,
-      title: "Horizon — AGI-adjacent",
-      body: "Self-improving agents that build, fix, scale, and secure the platform itself.",
-    },
-  ];
-  const adapt = [
-    {
-      icon: <Layers className="h-6 w-6" />,
-      title: "Model-agnostic routing",
-      body: "Adopt the best or cheapest model the day it ships — backend-only, no rewrite.",
-    },
-    {
-      icon: <Network className="h-6 w-6" />,
-      title: "Provider-independent",
-      body: "Anthropic + OpenAI today, any frontier lab tomorrow. Never locked in.",
-    },
-    {
-      icon: <Database className="h-6 w-6" />,
-      title: "Owns its data",
-      body: "Proprietary flywheel → fine-tune our own models. Capability up, cost down.",
-    },
-  ];
-  return (
-    <SlideShell index={index} total={total} variant="gradient" eyebrow="Vision">
-      <h2 className="max-w-5xl text-5xl font-extrabold leading-tight">
-        Donny is becoming a <GradientText>super-intelligence</GradientText> — and we're built to ride the curve.
-      </h2>
-      <p className="mt-2 max-w-4xl text-lg text-white/70">
-        Increasingly autonomous, increasingly capable — riding the frontier instead of being disrupted by it.
-      </p>
-      <div className="mt-4 grid flex-1 grid-cols-2 gap-10">
-        <div>
-          <h3 className="text-sm font-bold uppercase tracking-widest text-dc-teal">From assistant → super-agent</h3>
-          <div className="mt-3 flex flex-col gap-3">
-            {trajectory.map((t) => (
-              <div key={t.title} className="flex gap-4">
-                <div className="mt-0.5 shrink-0 text-dc-teal">{t.icon}</div>
-                <div>
-                  <div className="text-lg font-bold text-white">{t.title}</div>
-                  <div className="text-base leading-relaxed text-white/65">{t.body}</div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-        <div>
-          <h3 className="text-sm font-bold uppercase tracking-widest text-dc-pink-accent">Built to ride the AI curve</h3>
-          <div className="mt-3 flex flex-col gap-3">
-            {adapt.map((t) => (
-              <div key={t.title} className="flex gap-4">
-                <div className="mt-0.5 shrink-0 text-dc-pink-accent">{t.icon}</div>
-                <div>
-                  <div className="text-lg font-bold text-white">{t.title}</div>
-                  <div className="text-base leading-relaxed text-white/65">{t.body}</div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-      <p className="mt-4 text-center text-lg font-semibold text-white/80">
-        We don't bet on one model — we ride every model.{" "}
-        <span className="text-dc-teal">Adaptability is the moat that compounds.</span>
-      </p>
-    </SlideShell>
-  );
-}
-
-/* ---------- 13 · Financials ---------- */
-
-export function SlideFinancials({ index, total }: SlideProps) {
-  const rows = [
-    { y: "Year 1", arr: "$300–600K", team: "5–6", metros: "2–3", note: "Launch + first liquidity" },
-    { y: "Year 2", arr: "$2–4.5M", team: "7–8", metros: "8–12", note: "Brands drive NRR > 110%" },
-    { y: "Year 3", arr: "$7–12M", team: "10–11", metros: "20+", note: "$2–5M profit" },
-  ];
-  return (
-    <SlideShell index={index} total={total} variant="dark" eyebrow="Financials">
-      <h2 className="max-w-4xl text-5xl font-extrabold leading-tight">
-        Lean by design. <GradientText>Margin by discipline.</GradientText>
-      </h2>
-      <div className="mt-9 overflow-hidden rounded-3xl border border-white/10">
-        <div className="grid grid-cols-[1.1fr_1.4fr_1fr_1fr_1.6fr] bg-white/5 px-8 py-4 text-sm font-bold uppercase tracking-wider text-dc-teal">
-          <div>Year</div>
-          <div>ARR</div>
-          <div>Headcount</div>
-          <div>Metros</div>
-          <div>Notes</div>
-        </div>
-        {rows.map((r) => (
+      <div className="mt-8 space-y-3">
+        {COMPETITORS.map((c) => (
           <div
-            key={r.y}
-            className="grid grid-cols-[1.1fr_1.4fr_1fr_1fr_1.6fr] items-center border-t border-white/10 px-8 py-5 text-lg"
+            key={c.who}
+            className="grid grid-cols-[15rem_1fr_20rem] items-center gap-6 rounded-2xl border border-dc-teal/15 bg-white px-7 py-4"
           >
-            <div className="font-bold text-white">{r.y}</div>
-            <div className="text-2xl font-extrabold">
-              <GradientText>{r.arr}</GradientText>
-            </div>
-            <div className="text-white/80">{r.team}</div>
-            <div className="text-white/80">{r.metros}</div>
-            <div className="text-white/65">{r.note}</div>
+            <p className="text-lg font-bold">{c.who}</p>
+            <p className="text-base text-dc-text-muted">{c.what}</p>
+            <p className="flex items-center gap-2 text-base font-semibold text-dc-pink-accent">
+              <X className="h-4 w-4 shrink-0" />
+              {c.gap}
+            </p>
           </div>
         ))}
-      </div>
-      <p className="mt-6 text-center text-lg font-semibold text-white/80">
-        This round: a <span className="text-dc-teal">~$3M seed</span> buys an 18-month runway to
-        Year-2 scale — <span className="text-dc-teal">50%</span> build · <span className="text-dc-teal">30%</span> GTM ·
-        <span className="text-dc-teal"> 20%</span> working capital.
-      </p>
-      <div className="mt-5 flex items-center justify-center gap-10 text-base font-semibold text-white/75">
-        <span>Guardrails:</span>
-        <span>LTV:CAC &ge; 2:1</span>
-        <span>CAC payback &le; 12 mo</span>
-        <span>Churn &lt; 6%/mo</span>
-        <span>AI spend capped at 15% of revenue</span>
+        <div className="grid grid-cols-[15rem_1fr_20rem] items-center gap-6 rounded-2xl border-2 border-dc-teal bg-dc-teal/[0.06] px-7 py-4">
+          <p className="text-lg font-extrabold">DragonCandy</p>
+          <p className="text-base text-dc-text">
+            Brief, match, shoot, approve, post, measure — one flow, one bill.
+          </p>
+          <p className="flex items-center gap-2 text-base font-bold text-dc-teal-btn">
+            <Check className="h-4 w-4 shrink-0" />
+            Priced for one restaurant.
+          </p>
+        </div>
       </div>
     </SlideShell>
   );
 }
 
-/* ---------- 13 · The Ask ---------- */
+/* ---------- 05 · The three supply lines ---------- */
+
+export function SlideSupplyLines({ index, total }: SlideProps) {
+  return (
+    <SlideShell index={index} total={total} eyebrow="The three supply lines">
+      <H2>Three ways content arrives — and only one of them costs money.</H2>
+
+      <div className="mt-9 grid grid-cols-3 gap-5">
+        <Card>
+          <IconBadge>
+            <Users className="h-6 w-6" />
+          </IconBadge>
+          <p className="mt-4 text-2xl font-bold">Hired creators</p>
+          <p className="mt-2 text-base leading-relaxed text-dc-text-muted">
+            The restaurant posts a campaign; creators apply; one is hired, shoots, and is paid
+            through the platform. The paid line, and the one we take a cut of.
+          </p>
+          <p className="mt-3 text-sm font-semibold text-dc-teal-btn">Live today</p>
+        </Card>
+        <Card>
+          <IconBadge tone="pink">
+            <Camera className="h-6 w-6" />
+          </IconBadge>
+          <p className="mt-4 text-2xl font-bold">DragonShare</p>
+          <p className="mt-2 text-base leading-relaxed text-dc-text-muted">
+            A creator eating at the table posts anyway. The restaurant can boost that post after
+            the fact — $5 to $500 — instead of commissioning it in advance.
+          </p>
+          <p className="mt-3 text-sm font-semibold text-dc-teal-btn">Live today</p>
+        </Card>
+        <Card>
+          <IconBadge>
+            <QrCode className="h-6 w-6" />
+          </IconBadge>
+          <p className="mt-4 text-2xl font-bold">Customer QR</p>
+          <p className="mt-2 text-base leading-relaxed text-dc-text-muted">
+            A code on the table turns an ordinary customer's phone into supply. The cheapest
+            content in the building is already being filmed by the people sitting in it.
+          </p>
+          <p className="mt-3 text-sm font-semibold text-dc-pink-accent">Built, not yet switched on</p>
+        </Card>
+      </div>
+
+      {/* Not `mt-auto`: with three tall cards above, auto margin collapses to zero and the
+          mark overlaps the card bottoms. A fixed gap is what actually reserves the space. */}
+      <div className="mt-6 flex items-baseline gap-3">
+        <p className="shrink-0 text-lg text-dc-text-muted">Second launch restaurant:</p>
+        <PendingMark input={FOUNDER_INPUTS.uncleRoccoStatus} />
+      </div>
+    </SlideShell>
+  );
+}
+
+/* ---------- 06 · What is actually built ---------- */
+
+export function SlideBuilt({ index, total }: SlideProps) {
+  return (
+    <SlideShell index={index} total={total} variant="dark" eyebrow="What is actually built">
+      <div className="flex items-start justify-between gap-10">
+        <div>
+          <H2>
+            This is not a deck about
+            <br />
+            <GradientText>something we intend to build.</GradientText>
+          </H2>
+          <p className="mt-4 max-w-2xl text-xl text-white/70">
+            Payments, three social platforms, and an AI layer that has been running campaigns
+            since May. Every figure below is a shell command, not a claim.
+          </p>
+        </div>
+        <div className="shrink-0 rounded-2xl bg-white p-3">
+          <QRCodeSVG value="https://dragoncandy.com" size={128} />
+          <p className="mt-2 text-center text-[11px] font-bold text-dc-text">dragoncandy.com</p>
+        </div>
+      </div>
+
+      <div className="mt-9 grid grid-cols-4 gap-x-8 gap-y-7">
+        <Stat dark value={count(OPERATING.pageComponents.value)} label="Pages" />
+        <Stat dark value={count(OPERATING.hooks.value)} label="React hooks" />
+        <Stat dark value={count(OPERATING.edgeFunctions.value)} label="Edge functions" />
+        <Stat dark value={count(OPERATING.migrations.value)} label="Database migrations" />
+        <Stat dark value={count(OPERATING.sourceFiles.value)} label="TypeScript source files" />
+        <Stat
+          dark
+          value={count(OPERATING.tests.value)}
+          label="Tests, all passing"
+          sub={`across ${count(OPERATING.testFiles.value)} files`}
+        />
+        <Stat dark value="3" label="Social platforms live" sub="Instagram · TikTok · YouTube" />
+        <Stat dark value={money(OPERATING.burnMonthly.value)} label="Monthly running cost" sub="every vendor, summed" />
+      </div>
+
+      <div className="mt-auto flex items-center gap-3">
+        <Tag p="MEASURED" dark />
+        <Source dark>
+          Counted {OPERATING.pageComponents.asOf} by the commands recorded against each row in{' '}
+          <code>src/pitch/model/assumptions.ts</code>. Re-runnable in under a second.
+        </Source>
+      </div>
+    </SlideShell>
+  );
+}
+
+/* ---------- 07 · The ask ---------- */
 
 export function SlideAsk({ index, total }: SlideProps) {
-  const use = [
-    { pct: "50%", label: "Engineering & Donny AI" },
-    { pct: "30%", label: "GTM & metro expansion" },
-    { pct: "20%", label: "Working capital" },
-  ];
   return (
-    <SlideShell index={index} total={total} variant="gradient" eyebrow="The Ask">
-      <div className="flex flex-1 flex-col justify-center">
-        <h2 className="text-6xl font-extrabold leading-tight">
-          Raising <GradientText>$2.5–3.5M</GradientText>
-        </h2>
-        <p className="mt-3 text-2xl font-semibold text-white/80">
-          ~$12–15M post-money · 18-month runway to Year-2 scale
-        </p>
+    <SlideShell index={index} total={total} variant="gradient" eyebrow="The ask">
+      {/*
+        `<Gloss>` must NOT go inside `<GradientText>`. GradientText is
+        `bg-clip-text text-transparent`, and an inline span that WRAPS has no background
+        behind its second line — so the gloss rendered as invisible text on the exported
+        slide while `textContent` still contained it, which meant the glossary test
+        passed and the deck shipped a term with no visible explanation. Term in the
+        gradient, gloss in ordinary text underneath.
+      */}
+      <H2>
+        We are raising a pre-seed on a <GradientText>SAFE</GradientText>.
+      </H2>
+      <p className="mt-2 max-w-4xl text-lg text-white/70">
+        <Gloss t="SAFE" />
+      </p>
 
-        <div className="mt-10 grid grid-cols-3 gap-6">
-          {use.map((u) => (
-            <Card key={u.label} dark className="text-center">
-              <div className="text-4xl font-extrabold">
-                <GradientText>{u.pct}</GradientText>
-              </div>
-              <div className="mt-2 text-lg font-medium text-white/75">{u.label}</div>
-            </Card>
-          ))}
+      <div className="mt-5 max-w-4xl">
+        <div className="flex flex-wrap items-baseline gap-x-4 gap-y-3 text-xl">
+          <span className="font-semibold text-white/70">Terms:</span>
+          <PendingMark input={FOUNDER_INPUTS.safeTerms} dark />
         </div>
+        <p className="mt-3 text-base text-white/60">
+          The budget below derives what the company <em>needs</em>. The size, the{' '}
+          <Gloss t="valuation cap" />, the discount and <Gloss t="MFN" /> are ours to decide and
+          an investor's to negotiate — so this deck does not pretend they are settled.
+        </p>
+      </div>
 
-        <p className="mt-9 rounded-2xl border border-white/10 bg-white/5 px-6 py-4 text-base font-medium text-white/70">
-          Recommended from the 18-month operating plan (full cost model on file). Final raise,
-          valuation, and structure to be set by the founders.
+      <AskFigures />
+
+      <div className="mt-auto flex items-center gap-4 rounded-2xl border border-white/15 bg-white/5 px-7 py-3.5">
+        <span className="text-3xl font-extrabold text-white">$0</span>
+        <p className="text-base text-white/70">
+          committed so far. Nobody is in this round yet, and we would rather say that on slide 7
+          than have you find out on the call.
         </p>
       </div>
     </SlideShell>
   );
 }
 
-/* ---------- 14 · Close ---------- */
+/* ---------- 08 · How the money works ---------- */
+
+export function SlideRevenue({ index, total }: SlideProps) {
+  const m = projectMonth({ month: 0, restaurants: 100, mix: REGISTERED_MIX });
+  return (
+    <SlideShell index={index} total={total} eyebrow="How the money works">
+      <H2>Four streams, stacked on one customer.</H2>
+
+      <div className="mt-7 grid grid-cols-4 gap-4">
+        <Card className="!p-6">
+          <p className="text-sm font-bold uppercase tracking-wider text-dc-teal-btn">1 · Subscription</p>
+          <p className="mt-3 text-3xl font-extrabold">
+            {money(PRICING.starter.value)}–{money(PRICING.pro.value)}
+          </p>
+          <p className="mt-2 text-sm text-dc-text-muted">
+            Starter, Growth, Pro. Charged monthly, live in the app today.
+          </p>
+        </Card>
+        <Card className="!p-6">
+          <p className="text-sm font-bold uppercase tracking-wider text-dc-teal-btn">
+            2 · <Gloss t="take rate" />
+          </p>
+          <p className="mt-3 text-3xl font-extrabold">
+            {pct(TIER_TAKE_RATES.pro.value * 100)}–{pct(TIER_TAKE_RATES.free.value * 100)}
+          </p>
+          <p className="mt-2 text-sm text-dc-text-muted">
+            Falls as the subscription rises. The higher the tier, the smaller our slice.
+          </p>
+        </Card>
+        <Card className="!p-6">
+          <p className="text-sm font-bold uppercase tracking-wider text-dc-pink-accent">
+            3 · AI overages
+          </p>
+          <p className="mt-3 text-3xl font-extrabold">$0.10–0.25</p>
+          <p className="mt-2 text-sm text-dc-text-muted">
+            Per call past the tier's allowance. Live, never charged — excluded from every
+            projection here.
+          </p>
+        </Card>
+        <Card className="!p-6">
+          <p className="text-sm font-bold uppercase tracking-wider text-dc-pink-accent">
+            4 · Rush surcharge
+          </p>
+          <p className="mt-3 text-3xl font-extrabold">$25–50</p>
+          <p className="mt-2 text-sm text-dc-text-muted">
+            DragonDash, for content needed today. Live, never charged — also excluded.
+          </p>
+        </Card>
+      </div>
+
+      <div className="mt-7 flex items-end gap-12">
+        <Stat
+          value={money(m.totalRevenue)}
+          label="Monthly revenue at 100 restaurants"
+          sub={`${money(m.subscriptionRevenue)} subscription + ${money(m.takeRateRevenue)} take rate`}
+        />
+        <Stat
+          value={money(m.gmvDollars)}
+          label={<>Campaign volume through the platform</>}
+          sub={`${count(m.campaigns)} campaigns × ${money(avgCampaignValue())} average`}
+        />
+      </div>
+
+      <div className="mt-auto flex items-center gap-3">
+        <Tag p="MEASURED" />
+        <Source>
+          Prices and take rates are what the app charges today (<code>docs/STRIPE_PRICES.md</code>,{' '}
+          <code>stripe-webhook</code>). The volume they are multiplied by is <b>MODELED</b> — see
+          the next slide. Streams 3 and 4 are deliberately worth $0 in every figure in this deck.
+        </Source>
+      </div>
+    </SlideShell>
+  );
+}
+
+/* ---------- 09 · Unit economics ---------- */
+
+export function SlideUnitEconomics({ index, total }: SlideProps) {
+  const u = unitEconomics(REGISTERED_MIX);
+  const m = projectMonth({ month: 0, restaurants: 1, mix: REGISTERED_MIX });
+  return (
+    <SlideShell index={index} total={total} eyebrow="Unit economics">
+      <H2>
+        What one restaurant is worth,
+        <br />
+        against what it costs to win.
+      </H2>
+
+      <div className="mt-8 grid grid-cols-4 gap-8">
+        <Stat
+          value={money(u.grossProfitPerBusinessPerMonth)}
+          label="Gross profit per restaurant per month"
+          sub={`${pct(m.grossMarginPct, 1)} gross margin`}
+        />
+        <Stat
+          value={money(u.ltv)}
+          label={<>LTV</>}
+          sub={`${u.customerLifetimeMonths.toFixed(0)} months at ${pct(UNIT_ECONOMICS.monthlyChurn.value * 100, 1)} monthly churn`}
+        />
+        <Stat
+          value={`${u.ltvToCacAtCacHigh.toFixed(1)}–${u.ltvToCacAtCacLow.toFixed(1)}:1`}
+          label={<>LTV to CAC</>}
+          sub={`kill-switch sits at 2:1`}
+        />
+        <Stat
+          value={`${u.cacPaybackMonthsAtCacLow.toFixed(1)}–${u.cacPaybackMonthsAtCacHigh.toFixed(1)} mo`}
+          label="Payback"
+          sub="kill-switch sits at 12 months"
+        />
+      </div>
+
+      <div className="mt-8 max-w-5xl space-y-2 text-lg text-dc-text-muted">
+        <p>
+          <b className="text-dc-text">
+            <Gloss t="LTV" />
+          </b>{' '}
+          — gross profit per month times how long a customer stays.
+        </p>
+        <p>
+          <b className="text-dc-text">
+            <Gloss t="CAC" />
+          </b>{' '}
+          — modelled at {money(UNIT_ECONOMICS.restaurantCacLow.value)}–
+          {money(UNIT_ECONOMICS.restaurantCacHigh.value)} for a restaurant.
+        </p>
+        <p>
+          <b className="text-dc-text">
+            <Gloss t="gross margin" />
+          </b>{' '}
+          and <Gloss t="payback" /> are both computed here, not quoted.
+        </p>
+        <p>
+          <b className="text-dc-text">
+            <Gloss t="churn" />
+          </b>{' '}
+          — modelled at {pct(UNIT_ECONOMICS.monthlyChurn.value * 100, 1)} a month, against a
+          kill-switch that stops the company at 6%.
+        </p>
+      </div>
+
+      <div className="mt-auto flex items-center gap-3">
+        <Tag p="MODELED" />
+        <Source>
+          <b>This is a projection measured against a projection.</b> DragonCandy has never
+          acquired a paying customer, so the CAC band is a target from our own pricing briefing,
+          not an observed cost. The ratio is honest arithmetic on two modelled inputs — treat it
+          as the shape of the business, not as evidence.
+        </Source>
+      </div>
+    </SlideShell>
+  );
+}
+
+/* ---------- 10 · Hoboken liquidity ---------- */
+
+export function SlideLiquidity({ index, total }: SlideProps) {
+  const ratio = MARKET.creatorsPerRestaurant.value;
+  const atTarget = monthsToLiquidity({
+    restaurantsPerMonth: 2,
+    creatorsPerMonth: 2 * ratio,
+    horizonMonths: 36,
+  });
+  const underRatio = monthsToLiquidity({
+    restaurantsPerMonth: 2,
+    creatorsPerMonth: 2 * 2,
+    horizonMonths: 36,
+  });
+  const headline = isLiquid(1, ratio).applicantsPerCampaign;
+
+  return (
+    <SlideShell index={index} total={total} variant="dark" eyebrow="Hoboken liquidity">
+      {/* The gloss sits UNDER the headline, not inside it: at 5xl, "liquidity (enough of
+          both sides that neither is left waiting)" ran to three lines and the definition
+          of the word became the slide's headline instead of the claim about it. */}
+      <H2>Liquidity needs a definition before a number.</H2>
+      <p className="mt-2 text-base text-white/60">
+        <Gloss t="liquidity" />
+      </p>
+
+      <div className="mt-5 grid grid-cols-2 gap-5">
+        <Card dark>
+          <p className="text-sm font-bold uppercase tracking-wider text-dc-teal">Our definition</p>
+          <p className="mt-3 text-xl leading-relaxed text-white/85">
+            A posted campaign draws at least{' '}
+            <b className="text-white">{LIQUIDITY_THRESHOLD.minApplicantsPerCampaign} applicants</b>{' '}
+            over the {MARKET.campaignOpenDays.value} days it stays open,{' '}
+            <b className="text-white">and</b> a creator opening the app sees at least{' '}
+            <b className="text-white">
+              {LIQUIDITY_THRESHOLD.minCampaignsVisibleToCreator} campaigns
+            </b>{' '}
+            they can apply to right now.
+          </p>
+        </Card>
+        <Card dark>
+          <p className="text-sm font-bold uppercase tracking-wider text-dc-teal">The answer</p>
+          <p className="mt-3 text-6xl font-extrabold text-white">
+            {atTarget === null ? 'Never' : `Month ${atTarget}`}
+          </p>
+          <p className="mt-2 text-lg text-white/70">
+            at 2 restaurants and {2 * ratio} creators signed per month.
+          </p>
+        </Card>
+      </div>
+
+      <div className="mt-5 grid grid-cols-2 gap-5">
+        <div className="rounded-2xl border border-dc-pink-accent/40 bg-dc-pink-accent/10 px-7 py-4">
+          <p className="text-lg font-bold text-dc-pink">More restaurants do not fix it.</p>
+          <p className="mt-1.5 text-base text-white/70">
+            Sign 2 restaurants a month but only 2 creators each and the market is{' '}
+            <b className="text-white">
+              {underRatio === null ? 'never liquid, at any restaurant count' : `liquid only in month ${underRatio}`}
+            </b>
+            . Creator-side lag is what kills local marketplaces, so the model is built to be able
+            to say so.
+          </p>
+        </div>
+        <div className="rounded-2xl border border-white/15 bg-white/5 px-7 py-4">
+          <p className="text-lg font-bold text-white">The headline clears by very little.</p>
+          <p className="mt-1.5 text-base text-white/70">
+            At the target ratio we get {headline.toFixed(1)} applicants per campaign against a
+            floor of {LIQUIDITY_THRESHOLD.minApplicantsPerCampaign.toFixed(1)} — about{' '}
+            {(((headline - LIQUIDITY_THRESHOLD.minApplicantsPerCampaign) / headline) * 100).toFixed(0)}%
+            of headroom, set by two modelled constants.
+          </p>
+        </div>
+      </div>
+
+      {/* The founder mark gets its own row. Inline inside `Source` it wrapped mid-sentence
+          and pushed the whole block off the bottom of the canvas. */}
+      <div className="mt-4 flex items-baseline gap-3">
+        <p className="shrink-0 text-base text-white/60">Restaurants in Hoboken:</p>
+        <PendingMark input={FOUNDER_INPUTS.hobokenRestaurantCount} dark />
+      </div>
+
+      <div className="mt-2 flex items-center gap-3">
+        <Tag p="MODELED" dark />
+        <Source dark>
+          The one forward-looking claim in this deck that becomes MEASURED the day we launch: our
+          own schema computes both halves from real applications.
+        </Source>
+      </div>
+    </SlideShell>
+  );
+}
+
+/* ---------- 11 · Hoboken → NYC ---------- */
+
+export function SlideScale({ index, total }: SlideProps) {
+  const rows = businessStepTable([100, 1000, 10000], REGISTERED_MIX);
+  return (
+    <SlideShell index={index} total={total} eyebrow="Hoboken → NYC">
+      <H2>The same engine, three sizes.</H2>
+      <p className="mt-4 max-w-4xl text-xl text-dc-text-muted">
+        Steady-state economics at a fixed number of businesses — what the company looks like
+        while it holds that count, not a calendar prediction of when it gets there.
+      </p>
+
+      <div className="mt-8 overflow-hidden rounded-2xl border border-dc-teal/20">
+        <table className="w-full">
+          <thead className="bg-dc-teal/[0.07]">
+            <tr className="text-left text-sm font-bold uppercase tracking-wider text-dc-text-muted">
+              <th className="px-7 py-4">Businesses</th>
+              <th className="px-7 py-4 text-right">Creators</th>
+              <th className="px-7 py-4 text-right">Campaign volume / mo</th>
+              <th className="px-7 py-4 text-right">Revenue / mo</th>
+              <th className="px-7 py-4 text-right">Revenue / yr</th>
+              <th className="px-7 py-4 text-right">Gross margin</th>
+            </tr>
+          </thead>
+          <tbody className="text-xl font-semibold tabular-nums">
+            {rows.map((r) => (
+              <tr key={r.businesses} className="border-t border-dc-teal/15">
+                <td className="px-7 py-4 font-extrabold">{count(r.businesses)}</td>
+                <td className="px-7 py-4 text-right text-dc-text-muted">{count(r.creators)}</td>
+                <td className="px-7 py-4 text-right text-dc-text-muted">
+                  {moneyShort(r.monthlyGmv)}
+                </td>
+                <td className="px-7 py-4 text-right">{moneyShort(r.monthlyRevenue)}</td>
+                <td className="px-7 py-4 text-right text-dc-teal-btn">
+                  {moneyShort(r.annualRevenue)}
+                </td>
+                <td className="px-7 py-4 text-right">{pct(r.grossMarginPct, 1)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      <div className="mt-auto flex items-center gap-3">
+        <Tag p="MODELED" />
+        <Source>
+          Assumes a {pct(MARKET.tierMixFree.value * 100)} free /{' '}
+          {pct(MARKET.tierMixStarter.value * 100)} starter /{' '}
+          {pct(MARKET.tierMixGrowth.value * 100)} growth / {pct(MARKET.tierMixPro.value * 100)} pro
+          mix — i.e. {pct((1 - MARKET.tierMixFree.value) * 100)} of restaurants on a paid plan,
+          from a base of zero today. <b>No <Gloss t="churn" /> drag is applied to these rows.</b>{' '}
+          Read them as steady state, not as a forecast net of the customers who leave.
+        </Source>
+      </div>
+    </SlideShell>
+  );
+}
+
+/* ---------- 12 · The trajectory ---------- */
+
+export function SlideTrajectory({ index, total }: SlideProps) {
+  const years = threeYearTrajectory();
+  const max = Math.max(...years.map((y) => y.revenueHigh));
+  return (
+    <SlideShell index={index} total={total} variant="dark" eyebrow="The trajectory">
+      <H2>
+        Three years, with the cost line
+        <br />
+        <GradientText>drawn in.</GradientText>
+      </H2>
+
+      <div className="mt-8 space-y-6">
+        {years.map((y) => (
+          <div key={y.year} className="flex items-center gap-7">
+            <p className="w-20 shrink-0 text-2xl font-extrabold">Y{y.year}</p>
+            <div className="relative h-9 flex-1 overflow-hidden rounded-lg bg-white/5">
+              <div
+                className="absolute inset-y-0 left-0 rounded-lg bg-gradient-to-r from-dc-teal-btn to-dc-teal"
+                style={{ width: `${(y.revenueHigh / max) * 100}%` }}
+              />
+              <div
+                className="absolute inset-y-0 left-0 rounded-lg bg-white/25"
+                style={{ width: `${(y.totalCostHigh / max) * 100}%` }}
+              />
+            </div>
+            <div className="w-[26rem] shrink-0 text-right text-lg tabular-nums">
+              <span className="font-bold text-white">
+                {moneyShort(y.revenueLow)}–{moneyShort(y.revenueHigh)}
+              </span>
+              <span className="text-white/45"> revenue · </span>
+              <span className={y.ebitdaHigh >= 0 ? 'font-bold text-dc-teal' : 'font-bold text-dc-pink'}>
+                {moneyShort(y.ebitdaLow)} to {moneyShort(y.ebitdaHigh)}
+              </span>
+              <span className="text-white/45"> EBITDA</span>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <p className="mt-7 max-w-5xl text-lg text-white/70">
+        <b className="text-white">
+          <Gloss t="EBITDA" />
+        </b>
+        . The worst case pairs the low revenue with the high cost; the best case pairs high
+        revenue with low cost. Year 1 is negative in every pairing, which is what a pre-seed is
+        for.
+      </p>
+
+      <div className="mt-auto flex items-center gap-3">
+        <Tag p="MODELED" dark />
+        <Source dark>
+          Cost is all-in — Stripe, AI, infrastructure, payroll, marketing and legal — so it is
+          not comparable to the gross-margin line two slides back, which excludes everything
+          below the gross-profit line.
+        </Source>
+      </div>
+    </SlideShell>
+  );
+}
+
+/* ---------- 13 · Why it compounds ---------- */
+
+export function SlideCompounds({ index, total }: SlideProps) {
+  return (
+    <SlideShell index={index} total={total} eyebrow="Why it compounds">
+      <H2>
+        Every campaign teaches the thing
+        <br />
+        that runs the <GradientText>next campaign.</GradientText>
+      </H2>
+
+      <div className="mt-8 grid grid-cols-2 gap-5">
+        <Card>
+          <IconBadge>
+            <Database className="h-6 w-6" />
+          </IconBadge>
+          <p className="mt-4 text-2xl font-bold">A campaign is not one row.</p>
+          <p className="mt-3 text-lg leading-relaxed text-dc-text-muted">
+            It is a chain: a brief that states intent, several applicants resolving to one hire —
+            a preference pair — an approve-or-reject that is a quality label, and a performance
+            record that is the outcome. One campaign yields tens of labelled rows, not one.
+          </p>
+        </Card>
+        <Card>
+          <IconBadge tone="pink">
+            <Bot className="h-6 w-6" />
+          </IconBadge>
+          <p className="mt-4 text-2xl font-bold">Which is why the threshold is low.</p>
+          <p className="mt-3 text-lg leading-relaxed text-dc-text-muted">
+            A few thousand campaigns produce tens of thousands of labelled preference pairs — the
+            regime <Gloss t="LoRA" /> is sample-efficient in, at $50–300 a run. We tune three
+            things: match ranking, brief generation, performance prediction.
+          </p>
+        </Card>
+      </div>
+
+      <div className="mt-6 flex items-center gap-4 rounded-2xl border-2 border-dc-teal/40 bg-dc-teal/[0.05] px-7 py-5">
+        <ArrowRight className="h-6 w-6 shrink-0 text-dc-teal-btn" />
+        <p className="text-lg text-dc-text">
+          <b>The unit is labelled examples, not campaigns.</b> If an investor with an AI
+          background challenges "1,000 to 5,000 campaigns", that is the right challenge and this
+          is the answer — the number was defensible, the unit was wrong, and we fixed the unit.
+        </p>
+      </div>
+
+      <div className="mt-auto flex items-center gap-3">
+        <Tag p="MODELED" />
+        <Source>
+          Nothing has been fine-tuned yet — this is the plan the data makes possible, and the
+          reason the ledger is written from day one. LoRA run costs are from our own cost model
+          §3.1.
+        </Source>
+      </div>
+    </SlideShell>
+  );
+}
+
+/* ---------- 14 · Team & board ---------- */
+
+export function SlideTeam({ index, total }: SlideProps) {
+  return (
+    <SlideShell index={index} total={total} variant="dark" eyebrow="Team & board">
+      <H2>Three founders, one board member, no padding.</H2>
+
+      <div className="mt-8 grid grid-cols-3 gap-5">
+        <Card dark>
+          <p className="text-2xl font-bold">Joe Castelo</p>
+          <p className="mt-1 text-base font-semibold text-dc-teal">CEO · Sales &amp; partnerships</p>
+          <p className="mt-3 text-base leading-relaxed text-white/70">
+            Ten years running restaurants in Hoboken, including Antique Bar &amp; Bakery. Ran a
+            production company before that. He is the customer, which is why the product knows
+            where the pain is.
+          </p>
+        </Card>
+        <Card dark>
+          <p className="text-2xl font-bold">Damon Williams</p>
+          <p className="mt-1 text-base font-semibold text-dc-teal">Co-founder · CTO</p>
+          <p className="mt-3 text-base leading-relaxed text-white/70">
+            Senior engineer. Built the platform on slide 6 — the payments, the AI layer, the
+            social integrations and the tests that keep them honest.
+          </p>
+        </Card>
+        <Card dark>
+          <p className="text-2xl font-bold">Juwan Robinson</p>
+          <p className="mt-1 text-base font-semibold text-dc-teal">Shareholder</p>
+          <p className="mt-3 text-base leading-relaxed text-white/70">
+            Co-explored the original idea with Joe and stayed through the pivot from agency to
+            platform.
+          </p>
+        </Card>
+      </div>
+
+      {/* Labels kept short enough not to wrap: at two lines each they collided with the
+          provenance row below. */}
+      <div className="mt-6 space-y-3">
+        <div className="flex items-baseline gap-3">
+          <p className="shrink-0 text-lg text-white/70">Track records:</p>
+          <PendingMark input={FOUNDER_INPUTS.teamBios} dark />
+        </div>
+        <div className="flex items-baseline gap-3">
+          <p className="shrink-0 text-lg text-white/70">Board:</p>
+          <PendingMark input={FOUNDER_INPUTS.adrianConsent} dark />
+        </div>
+      </div>
+
+      <div className="mt-5 flex items-center gap-3">
+        <Tag p="MEASURED" dark />
+        <Source dark>
+          Engineering is being extended through three outside houses already in conversation
+          rather than four full-time hires — the budget on slide 7 is built on that shape.
+        </Source>
+      </div>
+    </SlideShell>
+  );
+}
+
+/* ---------- 15 · Close ---------- */
 
 export function SlideClose({ index, total }: SlideProps) {
   return (
-    <SlideShell index={index} total={total} variant="dark" bare>
-      <div className="relative flex h-full flex-col items-center justify-center px-20 text-center">
-        <div className="pointer-events-none absolute -right-32 top-10 h-80 w-80 rounded-full bg-dc-teal/15 blur-3xl" />
-        <div className="pointer-events-none absolute -left-32 bottom-10 h-80 w-80 rounded-full bg-dc-pink-accent/15 blur-3xl" />
-        <img src="/logo.webp" alt="DragonCandy" className="relative h-16 w-auto" />
-        <p className="relative mt-10 font-script text-6xl text-dc-pink">Less typing = more margin.</p>
-        <p className="relative mt-8 max-w-3xl text-2xl font-semibold text-white/80">
-          The intelligence layer for local restaurant marketing — and the service that sells it.
-        </p>
-        <div className="relative mt-12 flex items-center gap-8 text-lg text-white/60">
-          <span className="font-semibold text-dc-teal">#DragonDashed</span>
-          <span>dragoncandy.com</span>
-          <span>[founders@dragoncandy.com]</span>
+    <SlideShell index={index} total={total} variant="gradient" bare>
+      <div className="relative flex h-full flex-col justify-between px-20 py-16">
+        <img src="/logo.webp" alt="DragonCandy" className="h-14 w-auto self-start" />
+
+        <div className="max-w-5xl">
+          <p className="text-6xl font-extrabold leading-[1.1] tracking-tight">
+            “DragonCandy is my social
+            <br />
+            media department.
+            <br />
+            <GradientText>Now it's yours.”</GradientText>
+          </p>
+          <p className="mt-8 text-2xl font-semibold text-white/70">
+            Joe Castelo · CEO, DragonCandy
+          </p>
+        </div>
+
+        <div className="flex items-end justify-between text-white/60">
+          <div>
+            <p className="text-base font-semibold text-white">Dragon Candy LLC</p>
+            <p className="text-base">33-41 Newark St., 5th Floor · Hoboken, NJ 07030</p>
+            <p className="text-base">dragoncandy.com</p>
+          </div>
+          <p className="font-script text-3xl text-dc-pink">Less typing = more margin.</p>
         </div>
       </div>
     </SlideShell>
