@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@18.5.0";
 import { createClient } from "npm:@supabase/supabase-js@2.57.2";
+import { mirrorIdentitySignals } from "../_shared/identity-mirror.ts";
 import { corsHeaders } from "../_shared/cors.ts";
 import { flushPendingBalance } from "../_shared/flush-pending-balance.ts";
 import { STRIPE_IDENTITY_RESET } from "../_shared/stripe-identity-reset.ts";
@@ -165,6 +166,17 @@ serve(async (req) => {
     });
 
     const onboardingComplete = account.charges_enabled && account.payouts_enabled;
+
+    // Mirror Stripe's identity signals on every status read — see the creator function
+    // and _shared/identity-mirror.ts for why. Matched by stripe_account_id, so this also
+    // heals the org_units rows that carry a restaurant's per-location account, which a
+    // caller-keyed write would leave stale.
+    const mirror = await mirrorIdentitySignals(supabaseClient, account, !!onboardingComplete);
+    if (mirror.errors.length > 0) {
+      logStep("Warning: identity mirror had write failures", { errors: mirror.errors });
+    } else {
+      logStep("Mirrored identity signals", { stamped: mirror.stamped });
+    }
 
     // Write onboarding status back to the source table
     if (org_unit_id) {
