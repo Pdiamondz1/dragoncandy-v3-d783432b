@@ -1,5 +1,51 @@
 # Wiki Log
 
+## [2026-08-24] ingest | Two branches, one migration version — and a shell that lied twice
+
+**Updated** [[Instagram Insights Connector]] (deploy status + the collision), `docs/PROJECT_CONTEXT.md`
+§5, `docs/DATABASE_SCHEMA.md` (the two direct-connector token tables, neither previously documented)
+and the index. **Source:** `raw/sessions/2026-08-24-instagram-connector-live.md`.
+
+PR #489 merged and live on prod: migration `20260825120000` applied, seven edge functions deployed
+and boot-verified. The connector still cannot connect anything — its three secrets are unprovisioned
+— so this is a deploy, not a launch.
+
+**The finding came from the merge, not the code.** `feat/verify-address-throttle` shipped
+`20260825100000_reserve_address_verification` while this branch sat in review, and this branch's
+table carried the same stamp. The ledger is keyed on the version alone, so the second file to apply
+is refused as already recorded, and forcing past that refusal is precisely how `recorded != actual`
+is manufactured. Renumbered — but the durable half is `supabase/migrations.test.ts`, which found
+**seven** collisions already in the tree. Those are **frozen rather than fixed**: none is in prod's
+ledger at all, so renumbering fourteen files would tell us nothing about prod. **A version is a
+timestamp a human types, so two branches open on one day will collide eventually — the check is
+worth more than the fix.**
+
+**A failing gate was investigated before it was fixed.** The PR's Lighthouse check had been red at
+desktop performance 0.73 against a 0.90 gate. Every other PR that day passed it, the config was
+byte-identical between the merge base and `main`, and the branch's only frontend addition is a lazy
+route — so a re-run was the cheap discriminator, and it came back green. Recorded as variance, not
+as something fixed.
+
+**"It ran fine" was false twice, and prod said so both times.** The two prod commands were handed
+over to be run by hand. First they ran in the main checkout, where the branch's files do not exist —
+which would have mattered even more had the paths resolved, since `supabase functions deploy` reads
+`config.toml` from the current directory and the main checkout has no `instagram-*` entries, so the
+three anonymous functions would have deployed with `verify_jwt=true` and Meta's callbacks would 401
+before the signature check ever ran. Then the corrected commands, prefixed with `!` for the Claude
+Code prompt but typed into plain zsh, parsed as `(! cd X) && cmd` — the `cd` succeeded, `!` inverted
+it, and `&&` short-circuited, so the directory changed and nothing else happened. Both were caught
+by the same probes: ledger row absent, `to_regclass` null against a control that returns a name, and
+`POST /functions/v1/instagram-oauth-start` returning **404** where a deployed function returns 401.
+**A shell that prints nothing has not necessarily done nothing, and one that prints success has not
+necessarily done anything — check the target, not the report.**
+
+**One claim deliberately withheld.** The two Meta callbacks answer `503 not_configured` because
+`INSTAGRAM_APP_SECRET` is unset. That is the correct fail-closed path, and it means the request never
+reaches the signature check — so the forgery-rejection path is proven by its 8 unit tests and **not**
+by any live probe.
+
+Pages updated: [[Instagram Insights Connector]]
+
 ## [2026-08-23] ingest | Ask each platform what it tells you, not only what it lets you do
 
 **Created** [[Instagram Insights Connector]] (`concepts/instagram-insights-connector.md`) — the

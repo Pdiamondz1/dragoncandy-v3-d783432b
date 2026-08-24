@@ -2,8 +2,8 @@
 title: Instagram Insights Connector
 type: concept
 created: 2026-08-23
-updated: 2026-08-23
-sources: []
+updated: 2026-08-24
+sources: [2026-08-24-instagram-connector-live.md]
 tags: [instagram, meta, oauth, analytics, social, security]
 ---
 
@@ -189,13 +189,57 @@ user's own JWT, and `verifyState` requires the state to name that caller.
   case; there is no comment or DM feature to demonstrate, and an unjustifiable
   permission can bounce the whole submission rather than just itself.
 
+## Live on prod, and what that does and does not prove (2026-08-24)
+
+PR #489 merged (`db736dc8`), migration `20260825120000` applied, all seven edge
+functions deployed. Verified with controls that could have failed, because a
+green command is not evidence:
+
+- **Objects, not the ledger.** The ledger row exists AND `to_regclass` returns
+  the table where an invented name returns `null`; `instagram_connection_status`
+  is one row in `pg_proc` where an invented name is zero. `recorded != actual`
+  has bitten this project three times, so these are separate questions.
+- **Lockdown.** RLS enabled with **zero policies**; grants exactly `postgres` +
+  `service_role`. The status function is `SECURITY DEFINER`, `search_path`
+  pinned, EXECUTE to `authenticated` + `service_role` and **not** `anon`.
+- **Live `verify_jwt` matches `config.toml`** — four `true`, three `false`.
+  Read back from the platform rather than assumed, which is the check all three
+  pre-deploy reviewers asked for.
+- **Boot-verified.** Every function answers with **our** JSON body rather than
+  the gateway's, so the modules loaded; the public anon key gets through none of
+  them; and an absent function name returns **404** where these return 401/503.
+
+**What this deliberately does not claim.** The two Meta callbacks answer
+`503 not_configured` because `INSTAGRAM_APP_SECRET` is unset. That is the correct
+fail-closed path — and it means the request never reaches the signature check, so
+the forgery-rejection path is proven by its 8 unit tests and **not** by any live
+probe. It becomes provable when the secret exists.
+
+## Two branches, one migration version
+
+`feat/verify-address-throttle` shipped `20260825100000_reserve_address_verification`
+while this connector was in review, and this connector's table carried the same
+stamp. The ledger is keyed on the version alone, so the second file to apply is
+refused as already recorded — and forcing past that refusal is precisely how
+`recorded != actual` is manufactured. Renumbered to `20260825120000` (table) and
+`20260825130000` (cron).
+
+The fix that matters is `supabase/migrations.test.ts`, which fails CI on any new
+collision. It found **seven** already in the tree; those are frozen rather than
+renumbered, because none of the seven is in prod's ledger at all, so changing
+them would churn fourteen files and tell us nothing about prod. **A version is a
+timestamp a human types, so two branches open on one day will collide eventually
+— the check is worth more than the fix.**
+
 ## Known Issues
 
-- **Nothing is deployed and the flow has never run against real Meta
-  credentials.** `INSTAGRAM_APP_ID`, `INSTAGRAM_APP_SECRET` and
-  `INSTAGRAM_OAUTH_STATE_SECRET` are unprovisioned.
+- **The three secrets are still unprovisioned** — `INSTAGRAM_APP_ID`,
+  `INSTAGRAM_APP_SECRET`, `INSTAGRAM_OAUTH_STATE_SECRET` — so no real Instagram
+  account has ever connected. Every function is deployed and fails closed until
+  they exist. This line previously read "nothing is deployed"; the deploy landed
+  2026-08-24 and the credential gap is what remains.
 - The deauthorize and data-deletion URLs are **not yet registered** in Business
-  login settings — the endpoints had to exist first.
+  login settings — the endpoints had to exist first, and now do.
 - The data-deletion response points at `/privacy`, which explains what this
   integration stores but is **not a per-request status page**. Deletion is
   synchronous so there is no pending state to show, but a page that acknowledged
