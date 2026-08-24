@@ -7,6 +7,8 @@ import { SettingsSection } from './SettingsSection';
 import { StripeConnectSetup } from './StripeConnectSetup';
 import { SocialMediaLinks } from '@/components/business-profile/SocialMediaLinks';
 import { ConnectedAccountsList } from '@/components/outstand/ConnectedAccountsList';
+import { YouTubeAnalyticsCard } from '@/features/settings/YouTubeAnalyticsCard';
+import { InstagramInsightsCard } from '@/features/settings/InstagramInsightsCard';
 import { FileUploadSection } from '@/components/business-profile/FileUploadSection';
 import type { LocationProfileFormData } from '@/hooks/useLocationProfileForm';
 
@@ -140,6 +142,34 @@ export function LocationSettingsSections({
         subtitle="This location's accounts"
       >
         <ConnectedAccountsList role="business" />
+
+        {/* The analytics connectors live here as well as on the main settings page,
+            because a business with locations manages social PER LOCATION — this is the
+            page an owner actually lands on. Without them the only Instagram button on
+            this screen was Outstand's, which is a different integration doing a
+            different job; the founder connected the wrong one on 2026-08-24 and the
+            resulting grant went to Outstand-IG.
+
+            They are grouped under their own heading and labelled account-wide because
+            they ARE: `instagram_account_connections` / `youtube_channel_connections`
+            key on `user_id`, not on an org unit. Dropping the bare cards under a
+            heading that reads "This location's accounts" would assert a per-location
+            relationship the schema does not have, and a three-location business would
+            see the same account on all three with nothing explaining why. */}
+        <div className="border-t border-dc-teal/10 pt-4 mt-4 space-y-3">
+          <div>
+            <h4 className="font-bold text-dc-text">Analytics connections</h4>
+            <p className="text-sm text-dc-text-muted">
+              These read performance data and never post. They belong to your DragonCandy
+              account rather than to this location, so the same connection appears on every
+              location you manage.
+            </p>
+          </div>
+
+          <YouTubeAnalyticsCard />
+
+          <InstagramInsightsCard />
+        </div>
 
         <div className="border-t border-dc-teal/10 pt-4 mt-4">
           <details className="group">
