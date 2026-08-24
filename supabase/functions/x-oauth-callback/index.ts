@@ -92,30 +92,32 @@ serve(async (req: Request) => {
     // account identity has to come from the token itself.
     const account = await fetchAccount(tokens.access_token);
 
-    // SWAPPING ACCOUNTS MUST NOT ORPHAN THE OLD GRANT.
+    // SWAPPING ACCOUNTS MUST NOT ORPHAN THE OLD GRANT — and must not break a
+    // working one either.
     //
     // One row per user, so connecting a DIFFERENT X account overwrites the only
-    // copy of the previous account's tokens. Without this the old grant stays
-    // live at X, invisible in our UI and impossible for us to revoke — the
-    // user's only route is to find it themselves under Connected apps. That is
-    // precisely the "never abandon a live grant" invariant this connector
-    // claims to keep, and an upsert alone breaks it silently.
+    // copy of the previous account's tokens. Left alone, the old grant stays
+    // live at X, invisible in our UI and impossible for us to revoke, which
+    // breaks the "never abandon a live grant" invariant this connector claims to
+    // keep.
     //
-    // Best-effort, and deliberately not fatal: the new grant is already minted
-    // and refusing here would leave the user with two live grants instead of
-    // one. A revoke that fails is logged and the connect proceeds.
+    // ORDER: capture, upsert, THEN revoke. The obvious order — revoke the old
+    // grant, then write the new row — has a failure this one does not: the
+    // upsert can be REFUSED (the target account is already linked to a different
+    // DragonCandy user, 23505), and by then the user's perfectly good previous
+    // connection has been revoked. A rejected account switch would break the
+    // connection the user already had. Capturing the token first means nothing
+    // is handed back until the replacement has actually succeeded.
     const { data: existing } = await supabase
       .from(TABLE)
       .select('x_user_id, access_token')
       .eq('user_id', user.id)
       .maybeSingle();
 
-    if (existing && existing.x_user_id !== account.x_user_id) {
-      const previous = await revokeToken(existing.access_token as string);
-      console.error(
-        `[x-oauth-callback] replacing account ${existing.x_user_id}; previous grant: ${previous}`,
-      );
-    }
+    const replacing =
+      existing && existing.x_user_id !== account.x_user_id
+        ? (existing.access_token as string)
+        : null;
 
     const { error: upsertError } = await supabase.from(TABLE).upsert(
       {
@@ -134,7 +136,16 @@ serve(async (req: Request) => {
         // error that made the user reconnect in the first place.
         status: 'active',
         last_error: null,
+        // EVERY claim field, not just the timestamps. A refresh or an insights
+        // read can be in flight while the user reconnects, and that worker holds
+        // a claim id. Leaving the id behind lets it pass the stale-claim guard
+        // and commit against the NEW connection — overwriting freshly minted
+        // tokens, or caching the OLD account's metrics under the new one.
+        // Clearing the ids is what makes every outstanding claim stale.
         refresh_claimed_at: null,
+        refresh_claim_id: null,
+        insights_claimed_at: null,
+        insights_claim_id: null,
         // The new grant may see different data, so any cached snapshot from the
         // old one is not ours to keep serving.
         insights: null,
@@ -160,6 +171,17 @@ serve(async (req: Request) => {
     }
 
     stored = true;
+
+    // Only now, with the replacement committed. Best-effort and deliberately not
+    // fatal: the new grant is already stored, so failing here would report a
+    // broken connect for a connection that works. Logged, because an orphaned
+    // grant is invisible otherwise.
+    if (replacing) {
+      const previous = await revokeToken(replacing);
+      console.error(
+        `[x-oauth-callback] replaced ${existing?.x_user_id}; previous grant: ${previous}`,
+      );
+    }
 
     return json(req, {
       connected: true,

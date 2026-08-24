@@ -78,9 +78,42 @@ serve(async (req: Request) => {
       );
     }
 
-    const { error: delError } = await supabase.from(TABLE).delete().eq('id', conn.id);
+    // DELETE ONLY WHAT WE ACTUALLY REVOKED.
+    //
+    // The row can change between loading it and deleting it, and both ways it
+    // can change are harmful:
+    //
+    //   - A RECONNECT lands a new grant on the same row. Deleting by id alone
+    //     would remove the connection the user just made, while the grant we
+    //     revoked was already the old one.
+    //   - A REFRESH rotates the token. We would have revoked a token X now
+    //     reports as `already_invalid` — which reads like success — and then
+    //     deleted the row holding the LIVE credential, orphaning that grant with
+    //     nothing left to revoke it.
+    //
+    // Matching on the access token as well as the id makes the delete
+    // conditional on the row still being the one we revoked. Zero rows affected
+    // means it is not, and the honest answer is to change nothing and say so.
+    const { data: deleted, error: delError } = await supabase
+      .from(TABLE)
+      .delete()
+      .eq('id', conn.id)
+      .eq('access_token', conn.access_token)
+      .select('id');
+
     if (delError) {
       return json(req, { error: 'storage_failed', message: delError.message }, 500);
+    }
+
+    if (!deleted || deleted.length === 0) {
+      return json(
+        req,
+        {
+          error: 'retry',
+          message: 'Your X connection changed while we were disconnecting it. Please try again.',
+        },
+        409,
+      );
     }
 
     return json(req, { disconnected: true, revoked: outcome });
