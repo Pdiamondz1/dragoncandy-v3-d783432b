@@ -112,6 +112,30 @@ holds no Toast credentials. See §6.
 
 ### In flight
 
+- **The investor deck, rebuilt on the model** — Plan B of the investor-deck spec. Fifteen slides in
+  the advisor's order (the ask lands at slide 7), every figure read from `src/pitch/model/` so the
+  deck, the generated diligence document and the interactive Assumptions Ledger cannot disagree.
+  Three primitives replace three habits: a glossed term renders with its plain-English gloss and a
+  test renders every slide to enforce it; provenance is on every figure; a founder input renders as
+  its answer or as a **marked hole**, with no third branch. **The confidential half is absent, not
+  hidden** — and it took two mechanisms: `import.meta.env.VITE_X` does NOT fold when X is unset
+  (which is exactly the public build, so every budget line shipped behind a false runtime
+  condition), and folding the branch cleaned the JavaScript but **not the sourcemap**, which carried
+  the whole budget in a deployed `.map`. `npm run pitch:verify-public` asserts it over `dist/`, with
+  controls in both directions. **Four Codex findings across three rounds, all real, clean at round
+  4** — the two worth carrying: **a provenance tag applied to a COPY is worse than no tag** (two
+  rows read `MEASURED` while their own notes said nobody had checked; registered users were
+  **30 → 45**, an investor-facing count understated by a third), and **two consumers of one register
+  will disagree if each does its own arithmetic** (the deck sized the runway buffer on the FIRST
+  month's burn — before either engineer starts — quoting a raise $305K below the document's). Also:
+  a text assertion proves a string is present, never that a human can read it; the ask slide's gloss
+  rendered as invisible text while its test passed. Delivery is the **PDF**, not the URL —
+  `PITCH_NOTES=1` adds facing speaker notes under a different filename, deliberately opt-in, because
+  the coaching written for Joe must never reach an investor. **Pending:** merge #506 then #509; the
+  five §8 founder inputs (SAFE terms, team bios, Uncle Rocco's status, Adrian's consent, a Hoboken
+  restaurant count), each marked on its slide and printed by the exporter; and note the corrected
+  raise of **$1,462,568** sits inside the $500K–$1.5M band by $37K.
+  → `docs/wiki/concepts/investor-pitch-deck.md` · `docs/wiki/concepts/build-time-confidentiality.md` · #506, #509
 - **Social login (Google/Apple/Facebook) — shipped dark, and a one-line fix that would have
   switched off the email gate** — two blockers first: an OAuth user would have been told to
   verify an email nothing ever sends (`profiles.email_verified` defaults false, the trigger
