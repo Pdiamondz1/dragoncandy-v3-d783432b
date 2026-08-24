@@ -1,5 +1,6 @@
 /**
- * The five inputs §8 of the spec says the build will stop at.
+ * The inputs the build stops at — the five §8 of the spec named, plus any the work since
+ * has turned up (see `launchEventPlan`).
  *
  * None of them is derivable from the repo — they are founder decisions and other
  * people's consent. The spec's instruction is explicit about the team bios and the
@@ -100,6 +101,25 @@ export const FOUNDER_INPUTS = {
     // The founder's answer is recorded where it belongs, in the Q&A doc's traction paragraph.
     value: null,
   },
+  launchEventPlan: {
+    key: 'launchEventPlan',
+    question:
+      'For the three launch events (Hoboken / Palm Beach / Montauk): what dates, are the venues BOOKED or intended, and what is the budget for the three together?',
+    blocks: 'Hoboken \u2192 NYC',
+    // Deliberately vague about the money, and that is not squeamishness: this module is in
+    // the public bundle's graph, so its strings AND its comments ship — a comment would ride
+    // out in the sourcemap even after minification. The first draft of this `why` quoted a
+    // budget line label verbatim and `npm run pitch:verify-public` failed the build over it.
+    // The arithmetic that makes this urgent lives in `confidential.ts`, next to the line it
+    // is about, where the public build never resolves it.
+    why:
+      'The cities and two of the venues are decided (see FOUNDER_FACTS.launchEvents); nothing ' +
+      'else about them is. It is not cosmetic either: the ask is COMPUTED from the budget, and ' +
+      'the budget provides for launch marketing in one city, not three. Price the events and the ' +
+      'raise moves; leave them out and the deck asks for a plan it has not costed. Both are ' +
+      'founder decisions and neither is a thing to infer.',
+    value: null,
+  },
 } as const satisfies Record<string, FounderInput>;
 
 export type FounderInputKey = keyof typeof FOUNDER_INPUTS;
@@ -132,6 +152,23 @@ export const FOUNDER_FACTS = {
   launchRestaurants: {
     statement:
       'Two restaurants are committed to launch: Antique Bar & Bakery (the CEO\'s own) and Uncle Rocco\'s.',
+    source: 'founder statement, Damon Williams (CTO), in session',
+    asOf: '2026-08-24',
+  },
+  /**
+   * Three launch events, stated by the founders 2026-08-24. Recorded as *cities and venues*
+   * and nothing else, because that is all that was said.
+   *
+   * Note what this is NOT. It is not a change to the metro sequence: the capital-raise cost
+   * model's own plan is Hoboken (Mo 0-6) -> Manhattan (Mo 5-12) -> Palm Beach (Mo 11-18),
+   * each gated on density before the next, and Montauk is not a metro under anyone's
+   * definition (year-round population ~4,000). An event is a night; a market is a year.
+   * Conflating the two would put the deck at odds with its own liquidity slide, which argues
+   * that creator-side lag is what kills local marketplaces.
+   */
+  launchEvents: {
+    statement:
+      'Three launch events are planned: Hoboken, NJ at Antique Lofts; Palm Beach, FL at the Colony Hotel; and Montauk, NY at a venue not yet chosen.',
     source: 'founder statement, Damon Williams (CTO), in session',
     asOf: '2026-08-24',
   },

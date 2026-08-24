@@ -189,6 +189,15 @@ p(`Tier mix assumed: ${pct(MARKET.tierMixFree.value * 100)} free / ${pct(MARKET.
 p();
 p(`**"Is churn in these numbers?"** — **No.** Churn is benchmarked at ${pct(UNIT_ECONOMICS.monthlyChurn.value * 100, 1)} a month and no formula applies a drag. This is what the business looks like holding that customer count, not a forecast net of leavers. Say so unprompted.`);
 p();
+p('**"How do you actually get the first ones?"** — ' + FOUNDER_FACTS.launchEvents.statement);
+p('Say what these are and what they are not. They are **events**, not three market launches: the');
+p('metro sequence is Hoboken, then Manhattan, then Palm Beach, each gated on density before the');
+p('next, and Montauk is a night rather than a market. What makes the three coherent is that they');
+p('are one network in three places across the year — the Hoboken and New York hospitality crowd');
+p('summers in Montauk and winters in Palm Beach — so all three feed the same market. Dates, whether');
+p('the venues are booked, and the budget are **not settled**; the deck marks that on the slide.');
+p(`Source: ${FOUNDER_FACTS.launchEvents.source}, ${FOUNDER_FACTS.launchEvents.asOf}.`);
+p();
 
 p('## Slide 12 — the trajectory');
 p();

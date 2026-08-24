@@ -95,6 +95,15 @@ Tier mix assumed: 30% free / 40% starter / 25% growth / 5% pro — i.e. 70% of r
 
 **"Is churn in these numbers?"** — **No.** Churn is benchmarked at 4.0% a month and no formula applies a drag. This is what the business looks like holding that customer count, not a forecast net of leavers. Say so unprompted.
 
+**"How do you actually get the first ones?"** — Three launch events are planned: Hoboken, NJ at Antique Lofts; Palm Beach, FL at the Colony Hotel; and Montauk, NY at a venue not yet chosen.
+Say what these are and what they are not. They are **events**, not three market launches: the
+metro sequence is Hoboken, then Manhattan, then Palm Beach, each gated on density before the
+next, and Montauk is a night rather than a market. What makes the three coherent is that they
+are one network in three places across the year — the Hoboken and New York hospitality crowd
+summers in Montauk and winters in Palm Beach — so all three feed the same market. Dates, whether
+the venues are booked, and the budget are **not settled**; the deck marks that on the slide.
+Source: founder statement, Damon Williams (CTO), in session, 2026-08-24.
+
 ## Slide 12 — the trajectory
 
 | Year | Revenue | Total cost | EBITDA |
@@ -145,4 +154,5 @@ settled yet", not a number invented in the room.
 - **The ask** — What are the SAFE terms — target size within $500K–$1.5M, valuation cap, discount, MFN?
 - **Team & board** — What are the three founders' real track records, in the form an investor reads — "Ex-product at X", "Founding engineer at Y"?
 - **Hoboken liquidity** — How many restaurants operate in Hoboken IN TOTAL — the town-wide denominator, with its source? (Our own count is not this number: that is two.)
+- **Hoboken → NYC** — For the three launch events (Hoboken / Palm Beach / Montauk): what dates, are the venues BOOKED or intended, and what is the budget for the three together?
 

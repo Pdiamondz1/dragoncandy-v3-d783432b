@@ -739,7 +739,16 @@ export function SlideScale({ index, total }: SlideProps) {
         </table>
       </div>
 
-      <div className="mt-auto flex items-center gap-3">
+      {/* The events sit on THIS slide, not on the ask, because what an investor is buying
+          here is the route between the three sizes in the table above. They move the ask
+          all the same — the raise is computed from the budget — which is why the mark asks
+          for a number and not only for dates. */}
+      <div className="mt-6 flex items-baseline gap-3">
+        <p className="shrink-0 text-lg text-dc-text-muted">Launch events:</p>
+        <PendingMark input={FOUNDER_INPUTS.launchEventPlan} />
+      </div>
+
+      <div className="mt-4 flex items-center gap-3">
         <Tag p="MODELED" />
         <Source>
           Assumes a {pct(MARKET.tierMixFree.value * 100)} free /{' '}
