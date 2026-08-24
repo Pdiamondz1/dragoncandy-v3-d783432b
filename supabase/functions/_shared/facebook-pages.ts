@@ -175,6 +175,25 @@ export async function verifyState(
   }
 }
 
+/**
+ * The web origins the callback may send a browser back to.
+ *
+ * `capacitor://localhost` is deliberately ABSENT, exactly as in the YouTube and
+ * Instagram connectors, and the omission is a known gap rather than an
+ * oversight: it is a webview-internal origin, not a scheme the OS hands back
+ * from an external browser, so listing it would ship a redirect that cannot work
+ * while making the native case look solved. A native user completing this flow
+ * lands on the website and finishes there.
+ *
+ * Solving it properly needs a custom-scheme deep link (`com.dragoncandy.app://`)
+ * opened through Capacitor's Browser plugin, with that scheme registered in each
+ * provider console — a cross-cutting change to all three connectors and three
+ * consoles, not something to smuggle into one connector's feature branch.
+ *
+ * (Codex flagged this on the post-merge pass. It is real, and it is pre-existing
+ * and identical in `instagram.ts`; what was missing here was this note, which is
+ * why the sibling file was not flagged and this one was.)
+ */
 const ALLOWED_ORIGINS = [
   ...APP_ORIGINS,
   ...WWW_APP_ORIGINS,
