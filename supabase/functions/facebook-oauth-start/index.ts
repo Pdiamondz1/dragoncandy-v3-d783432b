@@ -8,7 +8,8 @@
 // HMAC-signed state minted here — read `_shared/oauth-state.ts` before changing
 // either.
 //
-// ENV: FACEBOOK_APP_ID, FACEBOOK_OAUTH_STATE_SECRET, SUPABASE_URL,
+// ENV: FACEBOOK_APP_ID, FACEBOOK_LOGIN_CONFIG_ID, FACEBOOK_OAUTH_STATE_SECRET,
+//      SUPABASE_URL,
 //      SUPABASE_SERVICE_ROLE_KEY
 
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';

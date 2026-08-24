@@ -100,6 +100,14 @@ const FB_VERSION = 'v23.0';
  * unjustifiable permission can bounce a whole App Review submission — which is
  * exactly what happened when `instagram_business_content_publish` had to be
  * removed from this same app.
+ *
+ * NOT SENT ON THE WIRE. This app uses Facebook Login for Business, where the
+ * permissions live in a saved configuration and the authorize URL carries a
+ * `config_id` instead (see `CONFIG_ID_ENV`). This list is therefore the
+ * specification of what that configuration must contain — keep the two in step,
+ * because nothing in the code can check it for you. Verified in the console
+ * 2026-08-24: the Manage Pages use case has exactly these three added, plus the
+ * automatic `public_profile`.
  */
 export const FACEBOOK_SCOPES = [
   'pages_show_list',
@@ -221,18 +229,60 @@ export function redirectUriFor(origin: string): string {
   return `${origin}/facebook/callback`;
 }
 
+/**
+ * The saved Facebook Login for Business configuration this flow authorizes under.
+ *
+ * NOT A SCOPE LIST, and that is the whole point of this constant existing.
+ *
+ * The DragonCandy Meta app carries **Facebook Login for Business**, not consumer
+ * Facebook Login — the app's own sidebar lists Settings / Quickstart /
+ * Configurations / Templates, which is the for-Business product. On that
+ * product Meta is explicit: *"config_id has replaced scope (which should not be
+ * used)"*. The two models are mutually exclusive; sending `scope` to a
+ * for-Business app does not request those permissions.
+ *
+ * The first version of this connector sent `scope`, inferred from the Instagram
+ * and Google flows rather than checked against the login product this app
+ * actually has. It would have opened a dialog that requested nothing and
+ * returned a token with no Page permissions — a failure that looks like the user
+ * declining, which is the worst shape for it to take because it invites blaming
+ * the user.
+ *
+ * The configuration is created in the console (Facebook Login for Business →
+ * Configurations) and carries the permissions there, which is why
+ * `FACEBOOK_SCOPES` below is now documentation of what that configuration must
+ * contain rather than something sent on the wire.
+ */
+const CONFIG_ID_ENV = 'FACEBOOK_LOGIN_CONFIG_ID';
+
 export function buildAuthUrl(state: string, redirectUri: string): string {
   const params = new URLSearchParams({
     client_id: requireAppId(),
     redirect_uri: redirectUri,
     state,
     response_type: 'code',
-    // Facebook takes a COMMA-separated scope list. Instagram takes the same
-    // shape, Google takes spaces — a mismatch here reads as "the user declined".
-    scope: FACEBOOK_SCOPES.join(','),
-    // Always show the Page picker, even to a user who has consented before.
-    // Without it a user who granted access to one Page cannot later add another
-    // without removing the app entirely, and the failure looks like our bug.
+    // NOT REDUNDANT with `response_type` above, and leaving it out is a live
+    // failure rather than a tidiness question.
+    //
+    // Under Facebook Login for Business the SAVED CONFIGURATION carries its own
+    // default response type, and it wins unless this override is present —
+    // Meta: with it set, "any response types passed in the response_type will
+    // take precedence over the default types". A configuration defaulting to a
+    // token would therefore redirect with a fragment while `/facebook/callback`
+    // waits for a `code`, and every connect would die immediately after
+    // consent, at the point where the user believes it worked.
+    //
+    // The whole exchange downstream is authorization-code: `exchangeCode` posts
+    // the code, and a fragment token never reaches the server at all.
+    override_default_response_type: 'true',
+    // Fails CLOSED when unset rather than falling back to `scope`. A fallback
+    // would produce a consent screen that succeeds while granting nothing, and
+    // the connector would then store a token that cannot read insights and
+    // report it as connected.
+    config_id: env(CONFIG_ID_ENV),
+    // Always show the picker, even to a user who has consented before. Without
+    // it a user who granted access to one Page cannot later add another without
+    // removing the app entirely, and the failure looks like our bug.
     auth_type: 'rerequest',
   });
   return `${FB_AUTH_URL}?${params.toString()}`;
