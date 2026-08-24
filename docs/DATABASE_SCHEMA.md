@@ -236,6 +236,35 @@
 > (not just active) members — who may CALL it and which rows it SHOWS are deliberately different
 > questions.
 >
+> **Social login — `handle_new_user` changed, plus two RPCs (`20260825140000`, NOT APPLIED).**
+> See [[Social Login]].
+>
+> `handle_new_user` now sets `profiles.email_verified` from the **creating provider**
+> (`raw_app_meta_data->>'provider'` against an allowlist of `google`/`apple`/`facebook`),
+> never from `email_confirmed_at`. That distinction is load-bearing: Supabase's built-in
+> confirmation is **disabled** on this project — 45 of 45 users have `email_confirmed_at`
+> set, 44 within ONE SECOND of `created_at` (min 6ms) — so mirroring it would auto-verify
+> every password signup and switch the app's own verification email gate off for everyone.
+> The `ON CONFLICT` branch ORs rather than overwrites, so a re-provision cannot erase a
+> `true` someone earned by clicking a link.
+>
+> **`claim_initial_role(p_role user_role)`** (SECURITY DEFINER, `search_path=public`, revoked
+> from `public, anon`, granted `authenticated`) — `signInWithOAuth` cannot carry user
+> metadata, so the trigger defaults every social signup to `content_creator`, and
+> `authenticated` has INSERT but not UPDATE on `profiles.role`. Identity from `auth.uid()`
+> with **no id parameter**. Returns `{claimed, reason}`; refuses with `onboarding_complete`,
+> `organization_exists`, `not_an_oauth_account` or `account_not_new`. **The last two are not
+> redundant with each other**: provider refuses a password account that later linked Google
+> (that column records the CREATING identity and does not change on linking), age refuses an
+> account genuinely created by Google months ago. Also sets the leftover
+> `creator_profiles.profile_visibility` to `private` when a business claims, because that
+> column **defaults to `public`** and the row exists only because of the trigger's default.
+>
+> **`sync_oauth_email_verification()`** (same lockdown, no parameters) — `handle_new_user`
+> fires on INSERT, so it never sees a password account whose owner later signs in with
+> Google: GoTrue links the identity to the existing row. Keyed on `auth.identities`, which
+> GoTrue writes and no client can. Sets `email_verified` true and **never false**.
+
 > **Two `profiles` PII lockdowns — write and read are separate problems, closed separately.**
 > 1. **Write** (`20260824100000` + `20260824101000` + `20260824170000`): `revoke update, insert on
 >    public.profiles from authenticated, anon`, then `grant update (<cols>)` / `grant insert (<5 cols>)`

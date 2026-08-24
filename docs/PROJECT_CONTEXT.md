@@ -107,6 +107,33 @@ holds no Toast credentials. See §6.
 
 ### In flight
 
+- **Social login (Google/Apple/Facebook) — shipped dark, and a one-line fix that would have
+  switched off the email gate** — two blockers first: an OAuth user would have been told to
+  verify an email nothing ever sends (`profiles.email_verified` defaults false, the trigger
+  never set it, `AuthPage` gates on it, and `authenticated` holds INSERT but no UPDATE), and
+  every social signup would have become a `content_creator` because `signInWithOAuth` cannot
+  carry user metadata. **The obvious fix was wrong and prod proved it:** mirroring
+  `email_confirmed_at` would have auto-verified every PASSWORD signup, because Supabase's own
+  confirmation is disabled here — **45 of 45 users confirmed, 44 within ONE SECOND of
+  creation, minimum 6ms**. Verification comes from the PROVIDER, via an allowlist. Migration
+  `20260825140000` ships **three** objects, each for a case a trigger cannot see:
+  `handle_new_user` (accounts OAuth CREATES), `claim_initial_role` (the chosen role, once)
+  and `sync_oauth_email_verification` (accounts OAuth LINKS TO — an INSERT trigger never sees
+  a password account that later signs in with Google). `claim_initial_role` refuses four
+  ways, and **neither account-identity guard is redundant**: provider catches a password
+  account that linked Google, age catches one genuinely created by Google months ago, and
+  either alone converts an existing account. The age window is **not** a consent-screen
+  deadline — `created_at` is stamped after the callback. Role and guarded destination travel
+  in the redirect URL, because `sessionStorage` is origin-scoped and this trip can change
+  origins. **Web only**: native ejects the user into Safari and needs a custom-scheme
+  redirect. Seven Codex rounds, seven findings, all real, clean at 7. Proven on prod in
+  rolled-back transactions where **the controls did real work** — removing the guards
+  reproduced "an existing account was converted", and widening the identity allowlist made a
+  password-only account verify itself. **Pending: the migration is NOT applied and the flag
+  is off, so none of it is live**; no provider console is configured, so nobody has completed
+  a real round trip; and Facebook/Google review both need a public privacy-policy URL, which
+  the site gate would break. → `docs/wiki/concepts/social-login.md` ·
+  `docs/runbooks/social-login-setup.md` · `feat/social-login`
 - **Onboarding slices 3 and 4 — a wizard that reads the registry, and two requirements no brand
   could satisfy** — the wizard is now declarative slides driven by the slice-1 requirement registry
   (`ROLE_STEPS` / `STEP_PHASE` / `REQUIREMENT_STEP`), with a coverage test that carries a forced
