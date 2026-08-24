@@ -23,10 +23,21 @@
  * `notes.ts`, whose keys define the deck's own `SlideId` type, so it cannot drift from
  * the deck by being edited separately.
  *
- * The second guard is staleness. A PDF older than the newest file under `src/pitch/` is
- * a deck that disagrees with the model it claims to be built from — which is the whole
- * premise of this deck — and it is an easy mistake: the notes build sitting in this
- * directory today is four hours older than the code and looks identical in `ls`.
+ * The second guard is which build it is, and the first version of this script did not
+ * have it. `npm run pitch:pdf` produces the PUBLIC deck — its ask slide reads "Amount in
+ * the confidential build" three times — and only
+ * `VITE_PITCH_CONFIDENTIAL=1 npm run pitch:pdf` produces the complete one. Page count
+ * cannot tell them apart, and neither can anything else in the file: every page is a
+ * JPEG, so a PDF text search has nothing to read. The redacted deck therefore went to
+ * the Confidential drive under a name promising the opposite, and stayed there until the
+ * Codex second review said so. The exporter now records the answer in a manifest, taken
+ * from the rendered page rather than from an env var, and the remote filename is derived
+ * from it — so the name cannot disagree with the contents.
+ *
+ * The third guard is staleness. A PDF older than its build inputs is a deck that
+ * disagrees with the model it claims to be built from, which is this deck's whole
+ * premise, and it is an easy mistake: the notes build sitting in this directory was four
+ * hours behind the code and looked identical in `ls`.
  *
  * And the upload is verified by MD5 rather than by rclone's exit code. Vendors report
  * success on writes that did not stick; this project has the scars.
@@ -44,13 +55,35 @@ const FOLDER_ID = '1d0yb3VvRPVBF28s1UBHPfrubwkaOsRvM';
 const REMOTE = 'dcdrive:';
 
 /**
- * Stable, so a re-upload replaces the file rather than piling up dated copies beside it.
- * Drive keeps its own version history, which is the better place for that.
+ * The name says which build it is, and is derived from the manifest rather than chosen.
+ *
+ * Stable within a build, so a re-upload replaces the file instead of piling up dated
+ * copies; Drive keeps its own version history, which is the better place for that.
  */
-const REMOTE_NAME = 'DragonCandy — Investor Deck (CONFIDENTIAL).pdf';
+function remoteNameFor(confidential: boolean): string {
+  return confidential
+    ? 'DragonCandy — Investor Deck (CONFIDENTIAL).pdf'
+    : 'DragonCandy — Investor Deck (public build, figures omitted).pdf';
+}
 
 const DEFAULT_LOCAL = 'dragoncandy-pitch.pdf';
-const SOURCE_DIR = 'src/pitch';
+
+/**
+ * What the PDF is built from, for the staleness check.
+ *
+ * This is an enumeration, and enumerations rot here — the logo constant and the
+ * `profiles` column grants both shipped green tests over lists that had gone stale. It
+ * is watched: the deck reaches outside `src/pitch` for its base stylesheet, its Tailwind
+ * tokens and the exporter itself, and a change to any of those with nothing under
+ * `src/pitch` touched would leave a stale PDF looking fresh.
+ */
+const BUILD_INPUTS = [
+  'src/pitch',
+  'src/index.css',
+  'tailwind.config.ts',
+  'vite.config.ts',
+  'scripts/export-pitch-pdf.mjs',
+];
 
 const rcloneArgs = ['--drive-team-drive', TEAM_DRIVE_ID, '--drive-root-folder-id', FOLDER_ID];
 
@@ -64,13 +97,23 @@ function countPages(pdf: Buffer): number {
   return (pdf.toString('latin1').match(/\/Type\s*\/Page[^s]/g) ?? []).length;
 }
 
-function newestMtimeUnder(dir: string): number {
+function newestMtime(path: string): number {
+  const stat = statSync(path);
+  if (!stat.isDirectory()) return stat.mtimeMs;
   let newest = 0;
-  for (const entry of readdirSync(dir, { withFileTypes: true })) {
-    const path = join(dir, entry.name);
-    newest = Math.max(newest, entry.isDirectory() ? newestMtimeUnder(path) : statSync(path).mtimeMs);
+  for (const entry of readdirSync(path, { withFileTypes: true })) {
+    newest = Math.max(newest, newestMtime(join(path, entry.name)));
   }
   return newest;
+}
+
+interface Manifest {
+  md5: string;
+  bytes: number;
+  slides: number;
+  pages: number;
+  confidential: boolean;
+  withNotes: boolean;
 }
 
 const local = process.argv[2] ?? DEFAULT_LOCAL;
@@ -98,17 +141,53 @@ if (pages !== expectedPages) {
 }
 
 const pdfMtime = statSync(local).mtimeMs;
-const sourceMtime = newestMtimeUnder(SOURCE_DIR);
+const sourceMtime = Math.max(...BUILD_INPUTS.map(newestMtime));
 if (pdfMtime < sourceMtime) {
   die(
-    `${local} is older than the newest file in ${SOURCE_DIR}/.\n` +
+    `${local} is older than the newest of ${BUILD_INPUTS.join(', ')}.\n` +
       `  PDF last written:    ${new Date(pdfMtime).toISOString()}\n` +
       `  Source last changed: ${new Date(sourceMtime).toISOString()}\n\n` +
       'The deck would not match the model it is built from. Re-run `npm run pitch:pdf`.',
   );
 }
 
-console.log(`${local}: ${pages} pages, ${pdf.length.toLocaleString()} bytes — uploading.`);
+/**
+ * Which build is this? The PDF cannot say — every page is a JPEG, so there is no text to
+ * search, and both builds have the same page count. The public build's ask slide reads
+ * "Amount in the confidential build" three times, and it went to the Confidential drive
+ * under a name promising the opposite until the Codex second review caught it.
+ *
+ * So the exporter records it, and the manifest is bound to these bytes by md5 — a file
+ * sitting in the same directory is not evidence about the file beside it.
+ */
+const manifestPath = local.replace(/\.pdf$/, '') + '.manifest.json';
+let manifest: Manifest;
+try {
+  manifest = JSON.parse(readFileSync(manifestPath, 'utf8')) as Manifest;
+} catch {
+  die(
+    `No ${manifestPath}. Re-run \`npm run pitch:pdf\` — without it there is no way to tell\n` +
+      'the complete deck from the redacted one, and they look identical.',
+  );
+}
+
+const localMd5 = createHash('md5').update(pdf).digest('hex');
+if (manifest.md5 !== localMd5) {
+  die(
+    `${manifestPath} describes a different file.\n` +
+      `  manifest md5 ${manifest.md5}\n` +
+      `  ${local} md5 ${localMd5}\n\n` +
+      'Re-run `npm run pitch:pdf` so the two are written together.',
+  );
+}
+
+const REMOTE_NAME = remoteNameFor(manifest.confidential);
+
+console.log(
+  `${local}: ${pages} pages, ${pdf.length.toLocaleString()} bytes, ` +
+    `${manifest.confidential ? 'CONFIDENTIAL build' : 'PUBLIC build (figures omitted)'}.`,
+);
+console.log(`Uploading as: ${REMOTE_NAME}`);
 
 execFileSync('rclone', ['copyto', local, `${REMOTE}${REMOTE_NAME}`, ...rcloneArgs], {
   stdio: ['ignore', 'inherit', 'inherit'],
@@ -116,7 +195,6 @@ execFileSync('rclone', ['copyto', local, `${REMOTE}${REMOTE_NAME}`, ...rcloneArg
 
 // Verified against the bytes Drive actually holds. rclone exiting 0 says the transfer
 // returned, not that the file on the other side is this one.
-const localMd5 = createHash('md5').update(pdf).digest('hex');
 const listing = JSON.parse(
   execFileSync('rclone', ['lsjson', REMOTE, '--hash', '--files-only', ...rcloneArgs], {
     encoding: 'utf8',

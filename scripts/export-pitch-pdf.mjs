@@ -34,6 +34,7 @@
 import { chromium } from "@playwright/test";
 import { preview } from "vite";
 import { writeFileSync, existsSync, readFileSync } from "node:fs";
+import { createHash } from "node:crypto";
 
 const withNotes = process.env.PITCH_NOTES === "1";
 const out =
@@ -80,6 +81,7 @@ if (!url) {
 
 const browser = await chromium.launch();
 const shots = [];
+let confidential = false;
 try {
   const page = await browser.newPage({
     viewport: { width: 1280, height: 720 },
@@ -101,6 +103,22 @@ try {
 
   const total = await page.evaluate(() => document.querySelectorAll(".pitch-slide").length);
   if (!total) throw new Error("No slides found at " + url + " (is this the production build?)");
+
+  // Which build is this?
+  //
+  // Asked of the RENDERED PAGE rather than of `process.env.VITE_PITCH_CONFIDENTIAL`,
+  // because the env var describes the intent of whoever typed the command and the page
+  // describes what was actually built. `vite build` and this script are separate
+  // commands: export against a stale `dist/` and the variable says confidential while
+  // the pixels say otherwise. The sentinel is the public build's own copy, which exists
+  // precisely to announce that the figures are missing.
+  const PUBLIC_SENTINEL = "Amount in the confidential build";
+  const isPublicBuild = await page.evaluate(
+    (needle) => document.body.innerText.includes(needle),
+    PUBLIC_SENTINEL,
+  );
+  confidential = !isPublicBuild;
+  console.log(confidential ? "Build: CONFIDENTIAL (complete)" : "Build: public (figures omitted)");
 
   await page.keyboard.press("Home");
   for (let i = 0; i < total; i++) {
@@ -147,10 +165,40 @@ if (withNotes && bridge.slides.length !== shots.length) {
   );
 }
 
-writeFileSync(out, buildPdf(pages, PAGE_W, PAGE_H));
+const pdf = buildPdf(pages, PAGE_W, PAGE_H);
+writeFileSync(out, pdf);
+
+// A sidecar recording what this file IS, for `npm run pitch:upload`.
+//
+// The uploader cannot tell the builds apart by looking: every page is a JPEG, so there
+// is no text in the PDF to search, and the two builds have the same page count. Without
+// this, the redacted deck uploads under a name promising the complete one — which it did,
+// to the Confidential drive, until the Codex second review caught it.
+//
+// `md5` binds the manifest to the bytes beside it. A manifest that merely sits in the
+// same directory says nothing about the file it is read with.
+const manifest = out.replace(/\.pdf$/, "") + ".manifest.json";
+writeFileSync(
+  manifest,
+  JSON.stringify(
+    {
+      pdf: out,
+      md5: createHash("md5").update(pdf).digest("hex"),
+      bytes: pdf.length,
+      slides: shots.length,
+      pages: pages.length,
+      confidential,
+      withNotes,
+    },
+    null,
+    2,
+  ) + "\n",
+);
+
 console.log(
   `Wrote ${out} (${pages.length} pages${withNotes ? `, ${shots.length} slides + ${shots.length} notes` : ""})`,
 );
+console.log(`Wrote ${manifest}`);
 
 /* ---------- helpers ---------- */
 
