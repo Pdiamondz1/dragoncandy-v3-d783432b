@@ -85,8 +85,11 @@ stale silently; re-read the invoices before quoting this anywhere. Production la
 delivery system stabilization that gated launch landed in late May 2026;
 remaining blockers are final bug resolution and payment-flow hardening.
 
-**Codebase scale** (as of 2026-08-23): 92 pages, 269 hooks, 100 edge functions (`verify-phone` +
-`verify-address` added by the identity-verification slice — both undeployed pending secrets).
+**Codebase scale** (re-counted 2026-08-24): 92 pages, 269 hooks, **111 edge functions — and for
+once the repo and prod agree exactly**: 111 directories under `supabase/functions/` (excluding
+`_shared`) and 111 deployed, all `ACTIVE`. This line said **100**, and said `verify-phone` /
+`verify-address` were "undeployed pending secrets" — both were deployed on 2026-08-23, which §5
+recorded and this line did not. Counts here are a snapshot, not a fact: re-count before quoting.
 **Repo**: `/Users/dwill/GIT/dragoncandy-v3-d783432b` (moved from Windows to macOS 2026-08-14)
 **Active integrations**: Stripe Connect, Outstand.so (social media —
 Instagram, TikTok, YouTube), Google Maps (geocoding), Claude Sonnet 4 + Haiku
@@ -517,6 +520,112 @@ holds no Toast credentials. See §6.
   drop 7 days after consent** — Google expires refresh tokens for External + Testing apps on that
   schedule, and that is a console setting, not a bug in the refresh code.
   → `docs/wiki/concepts/youtube-analytics-connector.md`
+- **Instagram read-only insights connector** — the second direct platform API under the
+  2026-08-23 scope decision (Outstand publishes; direct APIs measure). Per-user OAuth on
+  `instagram_business_basic` + `instagram_business_manage_insights` and nothing that can post.
+  **MERGED, APPLIED AND DEPLOYED 2026-08-24** (#489, `db736dc8`) — this line read "BUILT, NOT
+  DEPLOYED" until then. Migration `20260825120000` applied, seven edge functions `v1 ACTIVE`, and
+  the live `verify_jwt` read back off the platform matches `config.toml` exactly (four `true`,
+  three `false`). Verified by OBJECT, not by the ledger: `to_regclass` returns the table where an
+  invented name returns `null`, RLS is on with **zero policies**, grants are exactly `postgres` +
+  `service_role`, and the status function is `SECURITY DEFINER` granted to `authenticated` but
+  **not `anon`**. Boot-verified too — every function answers with OUR JSON body rather than the
+  gateway's, the public anon key gets through none of them, and an absent function name returns
+  **404** where these return 401/503.
+  **It still cannot connect anything, so this is a deploy and not a launch** — the three secrets
+  remain unprovisioned (`INSTAGRAM_APP_ID`, `INSTAGRAM_APP_SECRET`, a new
+  `INSTAGRAM_OAUTH_STATE_SECRET` kept separate from Google's so one leaked key does not compromise
+  both flows), and every function fails closed without them. **One claim is deliberately withheld:**
+  the two Meta callbacks answer `503 not_configured`, which is the correct fail-closed path and
+  means the request never reaches the signature check — so the forgery-rejection path is proven by
+  its 8 unit tests and **not** by any live probe.
+  **"It ran fine" was false twice, and prod said so both times.** The deploy commands ran first in
+  the main checkout, where this branch's files do not exist — which would have mattered more had
+  the paths resolved, since `supabase functions deploy` reads `config.toml` from the **current
+  directory** and the main checkout has no `instagram-*` entries, so the three anonymous functions
+  would have deployed at the default `verify_jwt=true` and Meta's callbacks would 401 at the
+  gateway before the signature check ever ran. Then the corrected commands carried Claude Code's
+  `!` prefix into a plain zsh shell, where `!` is **pipeline negation**: `! cd X && cmd` parses as
+  `(! cd X) && cmd`, so the `cd` succeeded, `!` inverted it, `&&` short-circuited, and the prompt
+  changed directory while nothing else ran. **A shell printing nothing has not necessarily done
+  nothing; one printing success has not necessarily done anything — check the target, not the
+  report.**
+  **Built on the YouTube connector, and the value is the three places where copying it would have
+  been WRONG** — each checked against Meta's own docs rather than inferred from Google's shape.
+  **(1) There is no refresh token**: the 60-day access token IS the credential and
+  `ig_refresh_token` extends that same token, so a refresh replaces it. **(2) Therefore a
+  connection nobody reads DIES** — Meta only extends a token that is *still valid*, so
+  refresh-on-expiry (correct for Google) is guaranteed to fail here, and an expired token is
+  recoverable only by the user re-consenting. Hence proactive refresh at 15 days remaining, plus
+  a daily sweep for dormant accounts. **(3) There is no revoke endpoint** — Meta's access-token
+  reference says Delete is "not supported" on that node, so `youtube-disconnect`'s ordering
+  (revoke first, 502 and keep the row on failure) would make disconnect **permanently
+  impossible**. Disconnect attempts it, reports the outcome, and deletes the row either way,
+  which is safe here for a reason it is not for YouTube: deleting the row destroys our only copy
+  of the token, where YouTube's failure mode is *keeping* a live credential. The UI says exactly
+  that rather than implying the grant is gone.
+  **The console gave back what the docs took away.** Reading Business login settings surfaced a
+  **Deauthorize callback URL** — Meta will not let us revoke a grant, but it will tell us when the
+  *user* does, so a user-side removal now deletes our row instead of stranding a dead token.
+  **Instagram is weaker than YouTube at revoking and stronger at reporting; ask each platform what
+  it tells you, not only what it lets you do.** That callback and the required data-deletion
+  callback are the only two functions here without a JWT — Meta calls them with no session, so the
+  `signed_request` HMAC is their *entire* authorization (own module, 8 tests, every negative a real
+  forgery: wrong secret, payload swapped after signing, truncated signature, algorithm downgrade;
+  the HMAC covers the RAW base64url payload, since re-serialising reorders keys and fails looking
+  like a wrong secret; a missing app secret fails **closed**, or a missing config value becomes an
+  open delete endpoint).
+  **The tests caught a real bug in this build's own first draft** — `summarize` guarded values with
+  `Number.isFinite(Number(x))`, which admits `null` because `Number(null)` is **0** and 0 is
+  finite, so a day Instagram reported nothing for became a day with zero reach. Totals still added
+  up; only the day count betrayed it. **A defensive-looking default is the most likely place to
+  fabricate data** — the same trap sits at the last step in the UI, where
+  `value?.toLocaleString() ?? '0'` would undo the server's care, so the card renders an absent
+  metric as an em dash.
+  Also extracted `_shared/oauth-state.ts`, since this was the **third** copy of the HMAC state
+  logic; `youtube.ts` is deliberately NOT migrated in the same PR (it went live hours earlier, and
+  swapping its state implementation inside a feature PR means a reviewer cannot tell a behaviour
+  change from a feature) — a debt with a name, whose follow-up diff is only the swap.
+  **Codex found two P1s, both real and both deployment rather than logic:** the three anonymous
+  functions relied on a code comment asking the deployer to remember `--no-verify-jwt` (now all
+  seven declared in `supabase/config.toml`, four true and three false — **and my claim that this
+  repo has no `config.toml` was wrong, produced by a stale shell working directory**), and the
+  refresh sweep had **no cron**, i.e. a guard protecting exactly the population it was built for
+  and nobody else (now migration `20260825130000`, daily 04:00 UTC).
+  **Meta console work DONE in the browser 2026-08-23:** redirect URI
+  `https://dragoncandy.com/instagram/callback` saved, and `instagram_business_content_publish`
+  **removed** — verified after a page **reload**, with the control that the other two permissions
+  survived, because the confirm dialog never names the permission it removes.
+  `manage_comments`/`manage_messages` turned out **never to have been added** despite an
+  "Add all required permissions" button that would add both. Corrects a claim made the same hour:
+  the field is **`OAuth redirect URIs`, plural** — a chip list, not the single box the first-run
+  dialog shows, so preview origins can be registered whenever wanted.
+  **Two branches picked the same migration version, and nothing noticed until they met (2026-08-24).**
+  `feat/verify-address-throttle` shipped `20260825100000_reserve_address_verification` while this
+  branch was open, and this branch's table carried the *same* stamp. It is recorded in prod's
+  ledger, so `db:apply` would have refused the Instagram table as already recorded, and forcing it
+  past that is precisely how `recorded != actual` happens — the failure this project has three
+  cases of. Renumbered to `20260825120000` (table) and `20260825130000` (cron). The durable half is
+  `supabase/migrations.test.ts`, which found **seven** collisions already in the tree; those are
+  **frozen rather than fixed** — none of the seven is in prod's ledger at all (0 rows, checked the
+  same day), so renumbering them would churn fourteen files and tell us nothing about prod. It
+  compares an exact set, so a third file joining a frozen version fails too, and a forced control
+  proved it fails and names both files. **A version is a timestamp a human picks, so two branches
+  open on one day will eventually pick the same round number — the check is worth more than the
+  fix.**
+  **The Lighthouse failure on this PR was variance, not the branch:** desktop performance measured
+  0.73 against the 0.90 gate on 2026-08-23 while every other PR that day passed, and a re-run after
+  merging main — with no change to any landing-page file — came back green. Codex clean at round 1
+  on the merge.
+  **Pending (2026-08-24):** the three secrets; the Vault secret `instagram_refresh_sweep_url`
+  (confirmed absent — 12 vault rows, none of them this one) **and then** the cron migration
+  `20260825130000`, which is deliberately NOT applied yet, since a schedule whose url resolves to
+  NULL fails quietly in `cron.job_run_details` rather than anywhere anyone looks; registering the
+  deauthorize + data-deletion URLs (the endpoints had to exist first, and now do); App Review,
+  which needs a demo video — and note the site-gate
+  conflict in `docs/runbooks/google-oauth-demo-video.md` applies to Meta's review too, since it
+  also requires an anonymously reachable privacy policy.
+  → `docs/wiki/concepts/instagram-insights-connector.md`
 - **Content delivery system stabilization** — bug-fixing the creator→business content
   handoff and payment flow; gates production launch. → `docs/SHIPPED_LOG.md`
 - **Outstand social media integration** — IG/TikTok/YouTube linking + delegated posting;

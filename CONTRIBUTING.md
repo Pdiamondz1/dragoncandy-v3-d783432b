@@ -145,7 +145,8 @@ Every change gets **two AI reviews and a person**:
 1. Your own AI review
 2. Automated security review — required if you touched the backend, database permissions, or
    anything scoped to a customer
-3. **A second review by a different AI model** (`codex review --base main`), re-run until clean
+3. **A second review by a different AI model** (`codex review --base origin/main` — `origin/main`,
+   not `main`, which goes stale in a worktree), re-run until clean
 4. A person reviews and merges
 
 This isn't ceremony. The second review keeps finding real bugs the first one missed.
