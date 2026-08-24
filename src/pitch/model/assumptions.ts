@@ -61,48 +61,57 @@ export const OPERATING = {
     asOf: '2026-08-23',
     note: 'NOT yet confirmed against prod. To verify: select count(*) from profiles. Organic, unpaid. Approximate in PROJECT_CONTEXT; re-count before quoting precisely.',
   }),
-  pageComponents: measured({ value: 95, unit: 'files', label: 'Page components', source: "find src/pages -name '*.tsx' | wc -l", asOf: '2026-08-23' }),
+  pageComponents: measured({
+    value: 96,
+    unit: 'files',
+    label: 'Page components',
+    source: "find src/pages -name '*.tsx' | wc -l",
+    asOf: '2026-08-24',
+    note: 'PROJECT_CONTEXT.md\'s own "re-counted 2026-08-24" line says 92 pages and 269 hooks. That ' +
+      'line disagrees with scripts/update-scale-numbers.mjs, which generates it: run on origin/main ' +
+      'the script counts 96 and 277, and git ls-tree on origin/main agrees. The hand re-count is the ' +
+      'wrong one. We quote the command, because a figure that reproduces beats a figure someone typed.',
+  }),
   hooks: measured({
-    value: 272,
+    value: 277,
     unit: 'files',
     label: 'React hooks',
     source: "find src/hooks -name 'use*.ts' -o -name 'use*.tsx' | wc -l",
-    asOf: '2026-08-23',
-    note: 'A raw file count of the same directory (every *.ts/*.tsx, not just use*) gives 274 — the ' +
-      'other two files are campaignAvailability.ts and its test. The use* convention is authoritative ' +
-      'because it is what scripts/update-scale-numbers.mjs (and therefore PROJECT_CONTEXT.md) counts.',
+    asOf: '2026-08-24',
+    note: 'The use* convention is authoritative because it is what scripts/update-scale-numbers.mjs ' +
+      'counts. See the pageComponents note for why this disagrees with PROJECT_CONTEXT.md.',
   }),
-  edgeFunctions: measured({ value: 104, unit: 'functions', label: 'Edge functions', source: "ls -d supabase/functions/*/ | grep -v _shared | wc -l", asOf: '2026-08-23' }),
+  edgeFunctions: measured({ value: 111, unit: 'functions', label: 'Edge functions', source: "ls -d supabase/functions/*/ | grep -v _shared | wc -l", asOf: '2026-08-24' }),
   sourceFiles: measured({
-    value: 1193,
+    value: 1218,
     unit: 'files',
     label: 'TypeScript source files',
     source: "find src -type f \\( -name '*.ts' -o -name '*.tsx' \\) | wc -l",
-    asOf: '2026-08-23',
-    note: 'Re-read 2026-08-23 during the final fix wave — was 1182, then briefly 1192 mid-wave. The ' +
+    asOf: '2026-08-24',
+    note: 'Re-read 2026-08-24 after merging origin/main into the deck branch — was 1193. The ' +
       'count includes this model\'s own files (src/pitch/model/*.ts and its tests), so it moves as ' +
       'the model itself grows. A shell command that reproduces in under a second and disagrees with ' +
       'itself on the same commit is not stale in the MAX_MEASURED_AGE_DAYS sense — it needs to be ' +
       're-run at the end of a work session, not just within 90 days.',
   }),
-  migrations: measured({ value: 402, unit: 'files', label: 'Database migrations', source: 'ls supabase/migrations/*.sql | wc -l', asOf: '2026-08-23' }),
+  migrations: measured({ value: 406, unit: 'files', label: 'Database migrations', source: 'ls supabase/migrations/*.sql | wc -l', asOf: '2026-08-24' }),
   tests: measured({
-    value: 2923,
+    value: 3190,
     unit: 'tests',
     label: 'Passing tests',
     source: 'npx vitest run',
-    asOf: '2026-08-23',
-    note: 'Re-read 2026-08-23 during the final fix wave — was 2857. Includes this model\'s own test ' +
-      'suite (src/pitch/model/*.test.ts), which grew during the same wave that measures it.',
+    asOf: '2026-08-24',
+    note: 'Re-read 2026-08-24 on the deck branch after merging origin/main — was 2923. All green ' +
+      '(286 files). Includes this model\'s own test suite, which grows as the deck does, so re-run ' +
+      'at the end of a work session rather than trusting the 90-day window.',
   }),
   testFiles: measured({
-    value: 268,
+    value: 286,
     unit: 'files',
     label: 'Test files',
     source: 'npx vitest run',
-    asOf: '2026-08-23',
-    note: 'Re-read 2026-08-23 during the final fix wave — was 262. Includes this model\'s own test ' +
-      'files, same caveat as `tests` above.',
+    asOf: '2026-08-24',
+    note: 'Re-read 2026-08-24 — was 268. Same caveat as `tests` above.',
   }),
   aiCostCapPctOfRevenue: measured({
     value: 0.15,
