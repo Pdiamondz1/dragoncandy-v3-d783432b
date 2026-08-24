@@ -13,6 +13,21 @@ export type TierMix = Record<TierName, number>;
 
 const TIERS: TierName[] = ['free', 'starter', 'growth', 'pro'];
 
+/**
+ * The tier mix as registered, assembled in one place.
+ *
+ * It lived as a local `MIX` literal inside `scripts/generate-investor-model.ts`, which was
+ * fine while the document was the only consumer. The deck is the second, and a second copy
+ * is how the document and the slides start quoting different revenue from the same register.
+ * Both now read this.
+ */
+export const REGISTERED_MIX: TierMix = {
+  free: MARKET.tierMixFree.value,
+  starter: MARKET.tierMixStarter.value,
+  growth: MARKET.tierMixGrowth.value,
+  pro: MARKET.tierMixPro.value,
+};
+
 function assertMixSumsToOne(mix: TierMix): void {
   const total = TIERS.reduce((sum, t) => sum + mix[t], 0);
   if (Math.abs(total - 1) > 1e-9) {

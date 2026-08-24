@@ -27,6 +27,8 @@
     "preview:url": "node scripts/preview-url.mjs",
     "pitch:pdf": "vite build && node scripts/export-pitch-pdf.mjs",
     "pitch:preview": "vite build && vite preview --open /pitch",
+    "pitch:verify-public": "npx tsx scripts/verify-public-bundle.ts",
+    "pitch:qa": "npx tsx scripts/generate-investor-qa.ts",
     "audit:agent": "npx tsx scripts/managed-agent-audit.ts",
     "eval:rag": "node supabase/scripts/with-env.mjs rag-eval.mjs",
     "eval:rag:report": "node supabase/scripts/with-env.mjs rag-eval-report.mjs",

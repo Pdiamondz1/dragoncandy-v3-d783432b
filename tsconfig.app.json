@@ -10,7 +10,10 @@
     "noEmit": true,
     "noFallthroughCasesInSwitch": true,
     "noImplicitOverride": true,
-    "paths": { "@/*": ["./src/*"] },
+    "paths": {
+      "@/*": ["./src/*"],
+      "@pitch/confidential": ["./src/pitch/model/confidential.ts"]
+    },
     "skipLibCheck": true,
     "strict": true,
     "noUnusedLocals": true,
