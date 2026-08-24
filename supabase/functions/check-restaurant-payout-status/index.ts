@@ -167,16 +167,6 @@ serve(async (req) => {
 
     const onboardingComplete = account.charges_enabled && account.payouts_enabled;
 
-    // Mirror Stripe's identity signals on every status read — see the creator function
-    // and _shared/identity-mirror.ts for why. Matched by stripe_account_id, so this also
-    // heals the org_units rows that carry a restaurant's per-location account, which a
-    // caller-keyed write would leave stale.
-    const mirror = await mirrorIdentitySignals(supabaseClient, account, !!onboardingComplete);
-    if (mirror.errors.length > 0) {
-      logStep("Warning: identity mirror had write failures", { errors: mirror.errors });
-    } else {
-      logStep("Mirrored identity signals", { stamped: mirror.stamped });
-    }
 
     // Write onboarding status back to the source table
     if (org_unit_id) {
@@ -213,6 +203,22 @@ serve(async (req) => {
       if (updateError) {
         logStep("Warning: Failed to update onboarding status in business_profiles", { error: updateError.message });
       }
+    }
+
+    // Mirror Stripe's identity signals — AFTER the write-back above, and the order is
+    // load-bearing rather than tidy. On the fallback path (`org_unit_id` given, that row
+    // carrying no account yet) the block above is what copies `stripe_account_id` onto the
+    // org unit. This mirror matches rows BY that column, so running it first meant the very
+    // request that links a location left that location's identity columns null — the row
+    // self-healed its account id and not its identity, and readiness stayed stale until some
+    // later request happened to run. Found by the Codex second review and confirmed against
+    // the file; see _shared/identity-mirror.ts for why the match is by account rather than
+    // by caller.
+    const mirror = await mirrorIdentitySignals(supabaseClient, account, !!onboardingComplete);
+    if (mirror.errors.length > 0) {
+      logStep("Warning: identity mirror had write failures", { errors: mirror.errors });
+    } else {
+      logStep("Mirrored identity signals", { stamped: mirror.stamped });
     }
 
     // Onboarding-return backstop: if payout-ready, release any held pending_balance.
