@@ -2,7 +2,7 @@ import { motion } from '@/lib/motion';
 import { LandingButton } from '@/components/landing/LandingButton';
 import { ROLE_REQUIREMENTS } from '@/lib/accountReadiness/requirements';
 import type { AccountRole } from '@/lib/accountReadiness/types';
-import { REQUIREMENT_STEP } from '../steps';
+import { uncoveredRecommendedKeys } from '../steps';
 import { Loader2 } from 'lucide-react';
 
 interface ReadyStepProps {
@@ -26,11 +26,15 @@ const HEADING: Record<AccountRole, string> = {
  * Deliberately links rather than collects. These are the items the founder chose to
  * keep out of the wizard so onboarding stays short; presenting them as a to-do list
  * with real destinations is the whole of their treatment here.
+ *
+ * "Not in the wizard" is decided per ROLE, not per requirement — see
+ * uncoveredRecommendedKeys. A creator has no address slide where a business does, and
+ * filtering on the shared step map alone hid the address item from exactly the creators
+ * who needed it.
  */
 export function ReadyStep({ name, role, onContinue, loading }: ReadyStepProps) {
-  const optional = ROLE_REQUIREMENTS[role].filter(
-    (r) => r.tier === 'recommended' && REQUIREMENT_STEP[r.key] === null,
-  );
+  const uncovered = new Set(uncoveredRecommendedKeys(role, ROLE_REQUIREMENTS[role]));
+  const optional = ROLE_REQUIREMENTS[role].filter((r) => uncovered.has(r.key));
 
   return (
     <motion.div

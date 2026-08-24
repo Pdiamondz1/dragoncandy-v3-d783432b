@@ -153,3 +153,29 @@ export function coreFingerprint(input: {
     input.avatarFile ? [input.avatarFile.name, input.avatarFile.size] : null,
   ]);
 }
+
+/**
+ * The recommended requirements this role's wizard does NOT collect — what the closing
+ * slide offers as "any time, from settings".
+ *
+ * Keyed on whether THIS ROLE's slides cover the requirement, not on whether the
+ * requirement maps to a slide at all. The distinction is the whole point: `address` maps
+ * to the `address` slide, which business and brand reach and creators do not (a creator's
+ * city and country come from auto-detection during the core save). Filtering on the
+ * mapping alone made the requirement vanish from a creator's onboarding entirely —
+ * no slide AND no mention — precisely for the creator whose auto-detection failed and who
+ * therefore needed to see it. Silence produced by an artifact of a shared map is not a
+ * decision anyone made.
+ */
+export function uncoveredRecommendedKeys(
+  role: AccountRole,
+  requirements: readonly { key: RequirementKey; tier: string }[],
+): RequirementKey[] {
+  return requirements
+    .filter((r) => r.tier === 'recommended')
+    .filter((r) => {
+      const step = REQUIREMENT_STEP[r.key];
+      return step === null || !ROLE_STEPS[role].includes(step);
+    })
+    .map((r) => r.key);
+}

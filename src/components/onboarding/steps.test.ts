@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { ROLE_REQUIREMENTS } from '@/lib/accountReadiness/requirements';
 import type { AccountRole } from '@/lib/accountReadiness/types';
-import { ROLE_STEPS, STEP_PHASE, REQUIREMENT_STEP, NO_CAPTURE_FLOW, collectSteps, lastCollectStep, coreFingerprint } from './steps';
+import { ROLE_STEPS, STEP_PHASE, REQUIREMENT_STEP, NO_CAPTURE_FLOW, uncoveredRecommendedKeys, collectSteps, lastCollectStep, coreFingerprint } from './steps';
 import type { StepId } from './steps';
 
 const ROLES: AccountRole[] = ['business_client', 'content_creator', 'brand'];
@@ -148,5 +148,50 @@ describe('coreFingerprint', () => {
   it('distinguishes a different picture with the same name', () => {
     expect(coreFingerprint({ ...base, avatarFile: { name: 'me.jpg', size: 42 } }))
       .not.toBe(coreFingerprint({ ...base, avatarFile: { name: 'me.jpg', size: 99 } }));
+  });
+});
+
+
+describe('uncoveredRecommendedKeys', () => {
+  /**
+   * The bug: `address` maps to the `address` slide, business and brand reach that slide
+   * and creators do not. Filtering the closing list on the mapping alone therefore hid
+   * "Confirm your address" from every creator — including the ones whose automatic
+   * location detection failed, who are the only reason the item exists.
+   */
+  it('offers a creator the address item, since creators have no address slide', () => {
+    expect(uncoveredRecommendedKeys('content_creator', ROLE_REQUIREMENTS.content_creator))
+      .toContain('address');
+  });
+
+  it('does not offer a business the address item, since its slide collects it', () => {
+    expect(uncoveredRecommendedKeys('business_client', ROLE_REQUIREMENTS.business_client))
+      .not.toContain('address');
+  });
+
+  it('never offers a requirement the role does not have', () => {
+    for (const role of ROLES) {
+      const keys = new Set(ROLE_REQUIREMENTS[role].map((r) => r.key));
+      for (const k of uncoveredRecommendedKeys(role, ROLE_REQUIREMENTS[role])) {
+        expect(keys.has(k)).toBe(true);
+      }
+    }
+  });
+
+  it('never offers a required requirement — the closing list is optional work only', () => {
+    for (const role of ROLES) {
+      const required = new Set(
+        ROLE_REQUIREMENTS[role].filter((r) => r.tier === 'required').map((r) => r.key),
+      );
+      for (const k of uncoveredRecommendedKeys(role, ROLE_REQUIREMENTS[role])) {
+        expect(required.has(k)).toBe(false);
+      }
+    }
+  });
+
+  it('excludes phone, which every role does collect as a slide', () => {
+    for (const role of ROLES) {
+      expect(uncoveredRecommendedKeys(role, ROLE_REQUIREMENTS[role])).not.toContain('phone_verified');
+    }
   });
 });
