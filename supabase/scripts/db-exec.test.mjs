@@ -199,6 +199,28 @@ describe('findTransactionControl', () => {
     expect(findTransactionControl('update t set x = 1;\nEND WORK;')).toBe('end work');
   });
 
+  it('ignores transaction words inside a double-quoted identifier', () => {
+    // Legal, and left visible it is a false POSITIVE — a migration rejected for control it
+    // does not have.
+    expect(findTransactionControl('alter table t rename column a to "x; commit; y";')).toBeNull();
+    expect(findTransactionControl('select 1 as "he""re; commit;";')).toBeNull();
+  });
+
+  it('ignores transaction words inside an E-string, which escapes with backslashes', () => {
+    // A naive scanner ends the literal at the \' and reads the remainder as code.
+    expect(findTransactionControl("select E'it\\'s fine; commit;' as note;")).toBeNull();
+  });
+
+  it('finds the transaction-ending forms that do not spell themselves COMMIT', () => {
+    // ABORT is ROLLBACK; AND CHAIN commits and opens a NEW transaction, so the migration's work
+    // is already committed before the ledger insert is attempted.
+    expect(findTransactionControl('update t set x = 1;\nabort;')).toBe('abort');
+    expect(findTransactionControl('update t set x = 1;\nend and chain;')).toBe('end and chain');
+    expect(findTransactionControl('update t set x = 1;\nend transaction and no chain;'))
+      .toBe('end transaction and no chain');
+    expect(findTransactionControl('update t set x = 1;\ncommit and chain;')).toBe('commit');
+  });
+
   it('finds real transaction control at statement level', () => {
     expect(findTransactionControl('begin;\nupdate t set x = 1;\ncommit;')).toBe('begin');
     expect(findTransactionControl('update t set x = 1;\ncommit;')).toBe('commit');

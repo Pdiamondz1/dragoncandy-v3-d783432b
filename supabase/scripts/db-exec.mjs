@@ -160,10 +160,32 @@ export function stripNonCode(sql) {
     }
 
     if (rest[0] === "'") {
+      // An E'' string escapes with backslashes as well as doubled quotes. Miss that and the
+      // scanner ends the literal early at a \' and reads the rest of it as code.
+      const prev = sql[i - 1];
+      const beforePrev = sql[i - 2] ?? ' ';
+      const escapes =
+        (prev === 'e' || prev === 'E') && !/[A-Za-z0-9_$]/.test(beforePrev);
       let j = i + 1;
       while (j < sql.length) {
-        if (sql[j] === "'" && sql[j + 1] === "'") j += 2;
+        if (escapes && sql[j] === '\\') j += 2;
+        else if (sql[j] === "'" && sql[j + 1] === "'") j += 2;
         else if (sql[j] === "'") { j++; break; }
+        else j++;
+      }
+      out += blank(j - i);
+      i = j;
+      continue;
+    }
+
+    // Double-quoted identifiers are legal and can contain anything, `"x; commit; y"` included.
+    // Left visible, that is a false POSITIVE — a migration rejected for transaction control it
+    // does not have. The failure directions differ but the instrument is the same.
+    if (rest[0] === '"') {
+      let j = i + 1;
+      while (j < sql.length) {
+        if (sql[j] === '"' && sql[j + 1] === '"') j += 2;
+        else if (sql[j] === '"') { j++; break; }
         else j++;
       }
       out += blank(j - i);
@@ -208,10 +230,18 @@ export function stripNonCode(sql) {
  * Only END carries the terminator requirement. BEGIN legitimately takes trailing words
  * (`begin work`, `begin isolation level serializable`), so pinning it the same way would miss
  * them.
+ *
+ * The keyword list is Postgres's, not the obvious four. `ABORT` is a spelling of ROLLBACK, and
+ * `AND CHAIN` commits the current transaction and opens a new one — which still ends the
+ * wrapper, so the migration's work is committed before the ledger insert is even attempted.
+ * A chained commit reads as harmless and is not.
  */
 export function findTransactionControl(sql) {
+  // END [WORK|TRANSACTION] [AND [NO] CHAIN] — the only form needing a terminator, to keep it
+  // apart from a CASE expression's END.
+  const END = /end(?:\s+(?:transaction|work))?(?:\s+and(?:\s+no)?\s+chain)?\s*(?=;|$)/.source;
   const m = stripNonCode(sql).match(
-    /(?:^|;)\s*(begin|start\s+transaction|commit|rollback|end(?:\s+(?:transaction|work))?\s*(?=;|$))/i,
+    new RegExp(`(?:^|;)\\s*(begin|start\\s+transaction|commit|rollback|abort|${END})`, 'i'),
   );
   return m ? m[1].trim().toLowerCase().replace(/\s+/g, ' ') : null;
 }
