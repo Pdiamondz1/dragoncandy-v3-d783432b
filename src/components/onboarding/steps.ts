@@ -47,9 +47,39 @@ export const STEP_PHASE: Record<StepId, StepPhase> = {
 export const ROLE_STEPS: Record<AccountRole, readonly StepId[]> = {
   business_client: ['identity', 'cuisine', 'phone', 'address', 'payments', 'ready'],
   content_creator: ['identity', 'skills', 'bio', 'phone', 'payments', 'ready'],
-  // No address slide, matching the registry: a brand has no `address` requirement, and
-  // the slide would have written a street address onto a `product` row.
-  brand: ['identity', 'industry', 'phone', 'payments', 'ready'],
+  // Two slides a brand deliberately does not get, each because the flow behind it does
+  // not exist for brands:
+  //   `address`  — a brand has no `address` requirement, and the slide would have written
+  //                a street address onto a `product` row.
+  //   `payments` — there is no brand Stripe Connect path; both restaurant functions filter
+  //                `account_type = 'restaurant'`, so the slide would silently do nothing.
+  //                See PaymentsStep's header. The brand `stripe` requirement stays on the
+  //                checklist unsatisfiable — visible, rather than papered over with a
+  //                setup flow that cannot work.
+  brand: ['identity', 'industry', 'phone', 'ready'],
+};
+
+/**
+ * Required requirements the wizard deliberately does NOT carry, per role, each with the
+ * reason it cannot. This is not a convenience list for things nobody got round to: an
+ * entry belongs here only when the capture flow provably does not exist, so a slide could
+ * not do anything but pretend.
+ *
+ * Both current entries are the same fact. There is no brand Stripe Connect path —
+ * `create-restaurant-connect-account` and `check-restaurant-payout-status` filter
+ * `business_profiles.account_type = 'restaurant'` on every statement, so a brand's writes
+ * match zero rows and its status read finds nothing (production: 6 brands, 0 Stripe
+ * accounts). `identity_verified` rides along because it is mirrored from Stripe's verdict
+ * and has no other writer.
+ *
+ * The requirements stay on the brand checklist regardless. This list says the WIZARD
+ * cannot clear them; it does not claim they are satisfied, and it must never be used to
+ * make one look so.
+ */
+export const NO_CAPTURE_FLOW: Record<AccountRole, readonly RequirementKey[]> = {
+  business_client: [],
+  content_creator: [],
+  brand: ['identity_verified', 'stripe'],
 };
 
 /**

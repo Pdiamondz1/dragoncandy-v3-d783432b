@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { ROLE_REQUIREMENTS } from '@/lib/accountReadiness/requirements';
 import type { AccountRole } from '@/lib/accountReadiness/types';
-import { ROLE_STEPS, STEP_PHASE, REQUIREMENT_STEP, collectSteps, lastCollectStep, coreFingerprint } from './steps';
+import { ROLE_STEPS, STEP_PHASE, REQUIREMENT_STEP, NO_CAPTURE_FLOW, collectSteps, lastCollectStep, coreFingerprint } from './steps';
 import type { StepId } from './steps';
 
 const ROLES: AccountRole[] = ['business_client', 'content_creator', 'brand'];
@@ -17,10 +17,29 @@ describe('wizard covers every required requirement', () => {
   it.each(ROLES)('%s', (role) => {
     const missing = ROLE_REQUIREMENTS[role]
       .filter((r) => r.tier === 'required')
+      .filter((r) => !NO_CAPTURE_FLOW[role].includes(r.key))
       .map((r) => ({ key: r.key, step: REQUIREMENT_STEP[r.key] }))
       .filter(({ step }) => step !== null && !ROLE_STEPS[role].includes(step))
       .map(({ key }) => key);
     expect(missing).toEqual([]);
+  });
+
+  /**
+   * The exemption above is the only way to weaken this file, so it gets its own guard:
+   * an entry must name a requirement the role actually has, and the two roles whose
+   * Stripe flow works must claim no exemptions at all. Without this, "the flow does not
+   * exist" becomes the answer to any coverage failure.
+   */
+  it.each(ROLES)('%s exempts only requirements it really has', (role) => {
+    const keys = new Set(ROLE_REQUIREMENTS[role].map((r) => r.key));
+    for (const exempt of NO_CAPTURE_FLOW[role]) {
+      expect(keys.has(exempt), `${role} exempts "${exempt}", which it does not require`).toBe(true);
+    }
+  });
+
+  it('exempts nothing for the roles whose capture flows all exist', () => {
+    expect(NO_CAPTURE_FLOW.business_client).toEqual([]);
+    expect(NO_CAPTURE_FLOW.content_creator).toEqual([]);
   });
 
   // A passing coverage test proves nothing unless it can fail. This runs the same
