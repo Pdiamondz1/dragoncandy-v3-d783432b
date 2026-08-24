@@ -83,12 +83,12 @@ export const OPERATING = {
   }),
   edgeFunctions: measured({ value: 111, unit: 'functions', label: 'Edge functions', source: "ls -d supabase/functions/*/ | grep -v _shared | wc -l", asOf: '2026-08-24' }),
   sourceFiles: measured({
-    value: 1218,
+    value: 1229,
     unit: 'files',
     label: 'TypeScript source files',
     source: "find src -type f \\( -name '*.ts' -o -name '*.tsx' \\) | wc -l",
     asOf: '2026-08-24',
-    note: 'Re-read 2026-08-24 after merging origin/main into the deck branch — was 1193. The ' +
+    note: 'Re-read 2026-08-24 at the end of the deck build — was 1193 before it. The ' +
       'count includes this model\'s own files (src/pitch/model/*.ts and its tests), so it moves as ' +
       'the model itself grows. A shell command that reproduces in under a second and disagrees with ' +
       'itself on the same commit is not stale in the MAX_MEASURED_AGE_DAYS sense — it needs to be ' +
@@ -96,22 +96,22 @@ export const OPERATING = {
   }),
   migrations: measured({ value: 406, unit: 'files', label: 'Database migrations', source: 'ls supabase/migrations/*.sql | wc -l', asOf: '2026-08-24' }),
   tests: measured({
-    value: 3190,
+    value: 3223,
     unit: 'tests',
     label: 'Passing tests',
     source: 'npx vitest run',
     asOf: '2026-08-24',
-    note: 'Re-read 2026-08-24 on the deck branch after merging origin/main — was 2923. All green ' +
-      '(286 files). Includes this model\'s own test suite, which grows as the deck does, so re-run ' +
+    note: 'Re-read 2026-08-24 at the end of the deck build — was 2923 before it. All green ' +
+      '(290 files). Includes this model\'s own test suite, which grows as the deck does, so re-run ' +
       'at the end of a work session rather than trusting the 90-day window.',
   }),
   testFiles: measured({
-    value: 286,
+    value: 290,
     unit: 'files',
     label: 'Test files',
     source: 'npx vitest run',
     asOf: '2026-08-24',
-    note: 'Re-read 2026-08-24 — was 268. Same caveat as `tests` above.',
+    note: 'Re-read 2026-08-24 at the end of the deck build — was 268. Same caveat as `tests` above.',
   }),
   aiCostCapPctOfRevenue: measured({
     value: 0.15,

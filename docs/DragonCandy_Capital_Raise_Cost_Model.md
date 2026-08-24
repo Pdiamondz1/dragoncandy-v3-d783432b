@@ -124,6 +124,17 @@ Trigger: once **1,000–5,000 campaigns** accumulate (`docs/PROJECT_CONTEXT.md` 
 Horizon"). LoRA/QLoRA on an open model trained on DragonCandy's proprietary brief→match→outcome
 data. 2026 economics make this almost a rounding error:
 
+> **The unit is labelled examples, not campaigns — restated 2026-08-24.** An investor with
+> an AI background will challenge "1,000–5,000" as a suspiciously round threshold, and they
+> are right to: stated as *campaigns* it invites the reading that a campaign is one training
+> example, which would make the number look far too small. It is not. One campaign is a
+> causal chain that yields several labelled rows — a brief (intent), N applicants resolving
+> to one hire (a preference pair), an approve-or-reject (a quality label), and a performance
+> record (an outcome). A few thousand campaigns therefore produce **tens of thousands of
+> labelled preference pairs**, which is the regime LoRA is sample-efficient in and what the
+> run costs below are priced against. The campaign count stays as the trigger because it is
+> the thing we can count in our own schema; the defence is the multiplier.
+
 - A LoRA training run: **$50–$300**; QLoRA on a single H100, 8–12 hrs: **$10–$16**; hosted LoRA
   fine-tune (Together/Fireworks) **$0.48–$0.75/M tokens** (Llama-70B on 30M tokens ≈ **$43.50**)
   ([fine-tuning cost 2026](https://www.spheron.network/blog/how-to-fine-tune-llm-2026/),

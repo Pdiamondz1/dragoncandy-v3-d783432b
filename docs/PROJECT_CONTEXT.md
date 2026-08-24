@@ -1588,7 +1588,11 @@ boundaries (see `.claude/handoffs/`).
 - City-by-city density: one metro first (20–30 creators, 5–10 restaurants),
   then replication scorecard for metro 2.
 - Fine-tuning Donny on proprietary data once 1,000–5,000 campaigns
-  accumulate (LoRA on open-source models).
+  accumulate (LoRA on open-source models). **The unit is labelled examples, not
+  campaigns** (restated 2026-08-24): one campaign is a chain yielding a brief, a
+  preference pair, a quality label and an outcome, so a few thousand campaigns produce
+  tens of thousands of labelled rows — which is why the threshold is not as small as it
+  reads. Quote the multiplier when the number is challenged.
 - **Toast integration partnership — APPLICATION FULLY SUBMITTED 2026-08-23.** All three steps
   done in one session: the API Documentation License Agreement (accepted as Dragon Candy LLC),
   Toast's confirmation email, and the **Integration Request Application** itself. Toast's

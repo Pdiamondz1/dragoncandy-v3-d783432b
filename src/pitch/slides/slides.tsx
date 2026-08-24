@@ -317,8 +317,8 @@ export function SlideSupplyLines({ index, total }: SlideProps) {
           </IconBadge>
           <p className="mt-4 text-2xl font-bold">Hired creators</p>
           <p className="mt-2 text-base leading-relaxed text-dc-text-muted">
-            The restaurant posts a campaign; matched creators apply; one gets hired, shoots, and
-            gets paid through the platform. This is the paid line and the one we take a cut of.
+            The restaurant posts a campaign; creators apply; one is hired, shoots, and is paid
+            through the platform. The paid line, and the one we take a cut of.
           </p>
           <p className="mt-3 text-sm font-semibold text-dc-teal-btn">Live today</p>
         </Card>
@@ -346,10 +346,10 @@ export function SlideSupplyLines({ index, total }: SlideProps) {
         </Card>
       </div>
 
-      <div className="mt-auto flex items-baseline gap-3">
-        <p className="text-lg text-dc-text-muted">
-          Second launch restaurant, Uncle Rocco's:
-        </p>
+      {/* Not `mt-auto`: with three tall cards above, auto margin collapses to zero and the
+          mark overlaps the card bottoms. A fixed gap is what actually reserves the space. */}
+      <div className="mt-6 flex items-baseline gap-3">
+        <p className="shrink-0 text-lg text-dc-text-muted">Second launch restaurant:</p>
         <PendingMark input={FOUNDER_INPUTS.uncleRoccoStatus} />
       </div>
     </SlideShell>
@@ -411,20 +411,27 @@ export function SlideBuilt({ index, total }: SlideProps) {
 export function SlideAsk({ index, total }: SlideProps) {
   return (
     <SlideShell index={index} total={total} variant="gradient" eyebrow="The ask">
+      {/*
+        `<Gloss>` must NOT go inside `<GradientText>`. GradientText is
+        `bg-clip-text text-transparent`, and an inline span that WRAPS has no background
+        behind its second line — so the gloss rendered as invisible text on the exported
+        slide while `textContent` still contained it, which meant the glossary test
+        passed and the deck shipped a term with no visible explanation. Term in the
+        gradient, gloss in ordinary text underneath.
+      */}
       <H2>
-        We are raising a pre-seed on a{' '}
-        <GradientText>
-          <Gloss t="SAFE" />
-        </GradientText>
-        .
+        We are raising a pre-seed on a <GradientText>SAFE</GradientText>.
       </H2>
+      <p className="mt-2 max-w-4xl text-lg text-white/70">
+        <Gloss t="SAFE" />
+      </p>
 
-      <div className="mt-7 max-w-4xl">
-        <div className="flex flex-wrap items-baseline gap-x-4 gap-y-3 text-2xl">
+      <div className="mt-5 max-w-4xl">
+        <div className="flex flex-wrap items-baseline gap-x-4 gap-y-3 text-xl">
           <span className="font-semibold text-white/70">Terms:</span>
           <PendingMark input={FOUNDER_INPUTS.safeTerms} dark />
         </div>
-        <p className="mt-3 text-lg text-white/60">
+        <p className="mt-3 text-base text-white/60">
           The budget below derives what the company <em>needs</em>. The size, the{' '}
           <Gloss t="valuation cap" />, the discount and <Gloss t="MFN" /> are ours to decide and
           an investor's to negotiate — so this deck does not pretend they are settled.
@@ -433,9 +440,9 @@ export function SlideAsk({ index, total }: SlideProps) {
 
       <AskFigures />
 
-      <div className="mt-auto flex items-center gap-4 rounded-2xl border border-white/15 bg-white/5 px-7 py-4">
-        <span className="text-4xl font-extrabold text-white">$0</span>
-        <p className="text-lg text-white/70">
+      <div className="mt-auto flex items-center gap-4 rounded-2xl border border-white/15 bg-white/5 px-7 py-3.5">
+        <span className="text-3xl font-extrabold text-white">$0</span>
+        <p className="text-base text-white/70">
           committed so far. Nobody is in this round yet, and we would rather say that on slide 7
           than have you find out on the call.
         </p>
@@ -615,11 +622,15 @@ export function SlideLiquidity({ index, total }: SlideProps) {
 
   return (
     <SlideShell index={index} total={total} variant="dark" eyebrow="Hoboken liquidity">
-      <H2>
-        <Gloss t="liquidity" /> needs a definition before it can have a number.
-      </H2>
+      {/* The gloss sits UNDER the headline, not inside it: at 5xl, "liquidity (enough of
+          both sides that neither is left waiting)" ran to three lines and the definition
+          of the word became the slide's headline instead of the claim about it. */}
+      <H2>Liquidity needs a definition before a number.</H2>
+      <p className="mt-2 text-base text-white/60">
+        <Gloss t="liquidity" />
+      </p>
 
-      <div className="mt-7 grid grid-cols-2 gap-5">
+      <div className="mt-5 grid grid-cols-2 gap-5">
         <Card dark>
           <p className="text-sm font-bold uppercase tracking-wider text-dc-teal">Our definition</p>
           <p className="mt-3 text-xl leading-relaxed text-white/85">
@@ -644,8 +655,8 @@ export function SlideLiquidity({ index, total }: SlideProps) {
         </Card>
       </div>
 
-      <div className="mt-6 grid grid-cols-2 gap-5">
-        <div className="rounded-2xl border border-dc-pink-accent/40 bg-dc-pink-accent/10 px-7 py-5">
+      <div className="mt-5 grid grid-cols-2 gap-5">
+        <div className="rounded-2xl border border-dc-pink-accent/40 bg-dc-pink-accent/10 px-7 py-4">
           <p className="text-lg font-bold text-dc-pink">More restaurants do not fix it.</p>
           <p className="mt-1.5 text-base text-white/70">
             Sign 2 restaurants a month but only 2 creators each and the market is{' '}
@@ -656,7 +667,7 @@ export function SlideLiquidity({ index, total }: SlideProps) {
             to say so.
           </p>
         </div>
-        <div className="rounded-2xl border border-white/15 bg-white/5 px-7 py-5">
+        <div className="rounded-2xl border border-white/15 bg-white/5 px-7 py-4">
           <p className="text-lg font-bold text-white">The headline clears by very little.</p>
           <p className="mt-1.5 text-base text-white/70">
             At the target ratio we get {headline.toFixed(1)} applicants per campaign against a
@@ -667,13 +678,18 @@ export function SlideLiquidity({ index, total }: SlideProps) {
         </div>
       </div>
 
-      <div className="mt-auto flex items-center gap-3">
+      {/* The founder mark gets its own row. Inline inside `Source` it wrapped mid-sentence
+          and pushed the whole block off the bottom of the canvas. */}
+      <div className="mt-4 flex items-baseline gap-3">
+        <p className="shrink-0 text-base text-white/60">Restaurants in Hoboken:</p>
+        <PendingMark input={FOUNDER_INPUTS.hobokenRestaurantCount} dark />
+      </div>
+
+      <div className="mt-2 flex items-center gap-3">
         <Tag p="MODELED" dark />
         <Source dark>
-          Hoboken has <PendingMark input={FOUNDER_INPUTS.hobokenRestaurantCount} dark /> — the
-          share of the town this represents is the number that makes it mean something. This is
-          also the one forward-looking claim in the deck that becomes MEASURED the day we launch:
-          our own schema computes both halves from real applications.
+          The one forward-looking claim in this deck that becomes MEASURED the day we launch: our
+          own schema computes both halves from real applications.
         </Source>
       </div>
     </SlideShell>
@@ -892,18 +908,20 @@ export function SlideTeam({ index, total }: SlideProps) {
         </Card>
       </div>
 
+      {/* Labels kept short enough not to wrap: at two lines each they collided with the
+          provenance row below. */}
       <div className="mt-6 space-y-3">
         <div className="flex items-baseline gap-3">
-          <p className="text-lg text-white/70">Track records, in the form an investor reads:</p>
+          <p className="shrink-0 text-lg text-white/70">Track records:</p>
           <PendingMark input={FOUNDER_INPUTS.teamBios} dark />
         </div>
         <div className="flex items-baseline gap-3">
-          <p className="text-lg text-white/70">Adrian Vella, advisor — named with consent:</p>
+          <p className="shrink-0 text-lg text-white/70">Adrian Vella, advisor:</p>
           <PendingMark input={FOUNDER_INPUTS.adrianConsent} dark />
         </div>
       </div>
 
-      <div className="mt-auto flex items-center gap-3">
+      <div className="mt-5 flex items-center gap-3">
         <Tag p="MEASURED" dark />
         <Source dark>
           Engineering is being extended through three outside houses already in conversation

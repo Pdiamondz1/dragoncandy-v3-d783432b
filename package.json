@@ -25,7 +25,7 @@
     "model:doc": "npx tsx scripts/generate-investor-model.ts",
     "build:workspace": "node scripts/workspace/build-gs.mjs",
     "preview:url": "node scripts/preview-url.mjs",
-    "pitch:pdf": "vite build && node scripts/export-pitch-pdf.mjs",
+    "pitch:pdf": "vite build && npx tsx scripts/emit-pitch-notes.ts && node scripts/export-pitch-pdf.mjs",
     "pitch:preview": "vite build && vite preview --open /pitch",
     "pitch:verify-public": "npx tsx scripts/verify-public-bundle.ts",
     "pitch:qa": "npx tsx scripts/generate-investor-qa.ts",

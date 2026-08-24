@@ -30,10 +30,10 @@
 | Page components (`pageComponents`) | 96 | files | MEASURED | `find src/pages -name '*.tsx' \| wc -l` | 2026-08-24 |
 | React hooks (`hooks`) | 277 | files | MEASURED | `find src/hooks -name 'use*.ts' -o -name 'use*.tsx' \| wc -l` | 2026-08-24 |
 | Edge functions (`edgeFunctions`) | 111 | functions | MEASURED | `ls -d supabase/functions/*/ \| grep -v _shared \| wc -l` | 2026-08-24 |
-| TypeScript source files (`sourceFiles`) | 1218 | files | MEASURED | `find src -type f \( -name '*.ts' -o -name '*.tsx' \) \| wc -l` | 2026-08-24 |
+| TypeScript source files (`sourceFiles`) | 1229 | files | MEASURED | `find src -type f \( -name '*.ts' -o -name '*.tsx' \) \| wc -l` | 2026-08-24 |
 | Database migrations (`migrations`) | 406 | files | MEASURED | `ls supabase/migrations/*.sql \| wc -l` | 2026-08-24 |
-| Passing tests (`tests`) | 3190 | tests | MEASURED | `npx vitest run` | 2026-08-24 |
-| Test files (`testFiles`) | 286 | files | MEASURED | `npx vitest run` | 2026-08-24 |
+| Passing tests (`tests`) | 3223 | tests | MEASURED | `npx vitest run` | 2026-08-24 |
+| Test files (`testFiles`) | 290 | files | MEASURED | `npx vitest run` | 2026-08-24 |
 | AI spend cap as share of revenue (`aiCostCapPctOfRevenue`) | 0.15 | fraction | MEASURED | `docs/PROJECT_CONTEXT.md (section 8)` | 2026-08-23 |
 | Standard delivery, low band (`campaignPriceStandardLow`) | 75 | USD/deliverable | MEASURED | `src/lib/campaignPricing.ts (TIER_PRICE_BANDS)` | 2026-08-23 |
 | Standard delivery, high band (`campaignPriceStandardHigh`) | 150 | USD/deliverable | MEASURED | `src/lib/campaignPricing.ts (TIER_PRICE_BANDS)` | 2026-08-23 |
