@@ -185,8 +185,18 @@ describe('findTransactionControl', () => {
     expect(findTransactionControl("select 'commit;' as note;")).toBeNull();
   });
 
+  // END is a synonym for COMMIT and is also how CASE closes. These two tests are the pair that
+  // makes the rule meaningful: same keyword, opposite verdicts, separated by position alone.
   it('ignores a CASE expression that closes with END', () => {
     expect(findTransactionControl('select case when a then 1 else 2 end;')).toBeNull();
+    expect(findTransactionControl('select 1;\nselect case when a then 1 else 2 end;')).toBeNull();
+    expect(findTransactionControl('select case when a then 1 end as x from t;')).toBeNull();
+  });
+
+  it('finds a statement-level END, which Postgres treats as COMMIT', () => {
+    expect(findTransactionControl('update t set x = 1;\nend;')).toBe('end');
+    expect(findTransactionControl('update t set x = 1;\nend transaction;')).toBe('end transaction');
+    expect(findTransactionControl('update t set x = 1;\nEND WORK;')).toBe('end work');
   });
 
   it('finds real transaction control at statement level', () => {

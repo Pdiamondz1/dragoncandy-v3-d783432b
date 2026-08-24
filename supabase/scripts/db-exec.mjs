@@ -197,14 +197,23 @@ export function stripNonCode(sql) {
  * prevent, so the guarantee would be silently false exactly when it was needed.
  * `20260719080000_dezzy_content_playbooks_shipped_log.sql` in this repo does this.
  *
- * `END` is a synonym for COMMIT and is deliberately NOT matched: it is also how a CASE expression
- * closes, so matching it produces false positives on ordinary SQL. The gap is narrow, because a
- * file that commits must first BEGIN and BEGIN is matched — the only miss is a file that leans on
- * the wrapper's BEGIN and closes it with a bare END.
+ * `END` is a synonym for COMMIT and IS matched, which needs care: `END` is also how a CASE
+ * expression closes. The two are separable by position rather than by spelling — a transaction
+ * END *starts* a statement, so it follows a `;` or the beginning of the file, while a CASE's END
+ * always sits mid-expression and never does. That is the same anchor every keyword here uses,
+ * plus a required terminator, so `select ... else 2 end;` does not match while `...; end;` does.
+ * An earlier revision left END out and wrote the gap down as narrow; a documented hole is still a
+ * hole, and this one is on the guarantee the whole command exists for.
+ *
+ * Only END carries the terminator requirement. BEGIN legitimately takes trailing words
+ * (`begin work`, `begin isolation level serializable`), so pinning it the same way would miss
+ * them.
  */
 export function findTransactionControl(sql) {
-  const m = stripNonCode(sql).match(/(?:^|;)\s*(begin|start\s+transaction|commit|rollback)\b/i);
-  return m ? m[1].toLowerCase().replace(/\s+/g, ' ') : null;
+  const m = stripNonCode(sql).match(
+    /(?:^|;)\s*(begin|start\s+transaction|commit|rollback|end(?:\s+(?:transaction|work))?\s*(?=;|$))/i,
+  );
+  return m ? m[1].trim().toLowerCase().replace(/\s+/g, ' ') : null;
 }
 
 // ---------------------------------------------------------------------------
