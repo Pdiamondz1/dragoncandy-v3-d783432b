@@ -89,3 +89,37 @@ export const lastCollectStep = (role: AccountRole): StepId | undefined => {
   const collect = collectSteps(role);
   return collect[collect.length - 1];
 };
+
+/**
+ * A fingerprint of everything the collect slides gather, used to decide whether the core
+ * save needs re-running when the last collect slide is left again.
+ *
+ * The wizard originally gated that save on a plain "have we saved once" boolean, which
+ * meant going back, correcting a name or a cuisine, and continuing left the edit on
+ * screen and out of the database — the recorded-vs-actual split this whole engine exists
+ * to close, reproduced inside its own onboarding.
+ *
+ * Comparing values rather than wiring a dirty flag into every setter, because a missed
+ * setter fails silently and looks exactly like working code. The avatar contributes its
+ * FILE IDENTITY (name and size), not its bytes: re-selecting the same picture is not an
+ * edit worth a second upload, and reading the bytes here would make this async.
+ */
+export function coreFingerprint(input: {
+  name: string;
+  industry: string;
+  cuisines: readonly string[];
+  skills: readonly string[];
+  bio: string;
+  showInFeed: boolean;
+  avatarFile: { name: string; size: number } | null;
+}): string {
+  return JSON.stringify([
+    input.name.trim(),
+    input.industry,
+    [...input.cuisines].sort(),
+    [...input.skills].sort(),
+    input.bio.trim(),
+    input.showInFeed,
+    input.avatarFile ? [input.avatarFile.name, input.avatarFile.size] : null,
+  ]);
+}

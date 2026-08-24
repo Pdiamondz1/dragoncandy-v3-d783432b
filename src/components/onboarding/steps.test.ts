@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { ROLE_REQUIREMENTS } from '@/lib/accountReadiness/requirements';
 import type { AccountRole } from '@/lib/accountReadiness/types';
-import { ROLE_STEPS, STEP_PHASE, REQUIREMENT_STEP, collectSteps, lastCollectStep } from './steps';
+import { ROLE_STEPS, STEP_PHASE, REQUIREMENT_STEP, collectSteps, lastCollectStep, coreFingerprint } from './steps';
 import type { StepId } from './steps';
 
 const ROLES: AccountRole[] = ['business_client', 'content_creator', 'brand'];
@@ -75,5 +75,59 @@ describe('requirement-to-slide map', () => {
       .filter(([, step]) => step !== null && !(step in STEP_PHASE))
       .map(([key]) => key);
     expect(bad).toEqual([]);
+  });
+});
+
+
+describe('coreFingerprint', () => {
+  const base = {
+    name: 'Joe', industry: 'food', cuisines: ['italian'], skills: ['video'],
+    bio: 'I cook.', showInFeed: true, avatarFile: null,
+  };
+
+  it('is stable for unchanged input', () => {
+    expect(coreFingerprint(base)).toBe(coreFingerprint({ ...base }));
+  });
+
+  /**
+   * The bug this exists to prevent: going back, editing a collect field, and continuing
+   * used to skip the save entirely, leaving the edit on screen and out of the database.
+   * Every field a collect slide gathers must move the fingerprint, or that returns for
+   * whichever field is missed.
+   */
+  it.each([
+    ['name', { name: 'Joseph' }],
+    ['industry', { industry: 'retail' }],
+    ['cuisines', { cuisines: ['italian', 'thai'] }],
+    ['skills', { skills: ['photo'] }],
+    ['bio', { bio: 'I bake.' }],
+    ['showInFeed', { showInFeed: false }],
+    ['avatarFile', { avatarFile: { name: 'me.jpg', size: 1234 } }],
+  ])('changes when %s changes', (_field, patch) => {
+    expect(coreFingerprint({ ...base, ...patch })).not.toBe(coreFingerprint(base));
+  });
+
+  it('ignores the order chips were tapped in — that is not an edit', () => {
+    expect(coreFingerprint({ ...base, cuisines: ['thai', 'italian'] }))
+      .toBe(coreFingerprint({ ...base, cuisines: ['italian', 'thai'] }));
+  });
+
+  it('ignores surrounding whitespace, which the save trims anyway', () => {
+    expect(coreFingerprint({ ...base, name: '  Joe  ', bio: ' I cook. ' })).toBe(coreFingerprint(base));
+  });
+
+  /**
+   * Re-selecting the same picture is not worth a second upload, so identity — not
+   * object reference — is what counts.
+   */
+  it('treats two distinct file objects describing the same picture as unchanged', () => {
+    const a = { avatarFile: { name: 'me.jpg', size: 42 } };
+    const b = { avatarFile: { name: 'me.jpg', size: 42 } };
+    expect(coreFingerprint({ ...base, ...a })).toBe(coreFingerprint({ ...base, ...b }));
+  });
+
+  it('distinguishes a different picture with the same name', () => {
+    expect(coreFingerprint({ ...base, avatarFile: { name: 'me.jpg', size: 42 } }))
+      .not.toBe(coreFingerprint({ ...base, avatarFile: { name: 'me.jpg', size: 99 } }));
   });
 });

@@ -1,6 +1,7 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from '@/lib/motion';
+import { useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/hooks/useAuth';
 import { useAutoDetect } from '@/hooks/useAutoDetect';
 import { supabase } from '@/integrations/supabase/client';
@@ -20,8 +21,8 @@ import { PhoneStep } from './steps/PhoneStep';
 import { AddressStep } from './steps/AddressStep';
 import { PaymentsStep } from './steps/PaymentsStep';
 import { ReadyStep } from './steps/ReadyStep';
-import { ROLE_STEPS, STEP_PHASE, lastCollectStep } from './steps';
-import { useOrgFromProfile, useOrgUnits, useUpdateOrgUnit } from '@/hooks/useOrgData';
+import { ROLE_STEPS, STEP_PHASE, lastCollectStep, coreFingerprint } from './steps';
+import { useOrgFromProfile, useOrgUnits, useUpdateOrgUnit, KEYS } from '@/hooks/useOrgData';
 import type { Database } from '@/integrations/supabase/types';
 
 type UserRole = 'business_client' | 'content_creator' | 'brand';
@@ -104,14 +105,23 @@ export function OnboardingWizard() {
   // a visible choice, not a silent database default. Nothing back-fills existing creators.
   const [showInFeed, setShowInFeed] = useState(true);
 
-  // Service-slide state. `coreSaved` is the gate: everything after the last collect
-  // slide needs the profile rows to exist.
-  const [coreSaved, setCoreSaved] = useState(false);
+  // Service-slide state. The saved fingerprint is the gate: everything after the last
+  // collect slide needs the profile rows to exist, AND needs them to match what is on
+  // screen. A plain "have we saved once" boolean did the first job and not the second —
+  // going back, correcting a field and continuing left the edit visible and unsaved.
+  const [savedFingerprint, setSavedFingerprint] = useState<string | null>(null);
   const [phoneVerified, setPhoneVerified] = useState(false);
   const [address, setAddress] = useState('');
   const [addressSaving, setAddressSaving] = useState(false);
   const [addressSaved, setAddressSaved] = useState(false);
 
+  // Recomputed every render and compared by value — see coreFingerprint.
+  const currentFingerprint = coreFingerprint({
+    name, industry, cuisines, skills, bio, showInFeed, avatarFile,
+  });
+  const uploadedAvatar = useRef<{ file: File; path: string } | null>(null);
+
+  const queryClient = useQueryClient();
   const { data: orgFromProfile } = useOrgFromProfile();
   const { data: orgUnits = [] } = useOrgUnits(orgFromProfile?.org?.id);
   const updateOrgUnit = useUpdateOrgUnit();
@@ -158,7 +168,7 @@ export function OnboardingWizard() {
     // needs a profile to attach an account to. It also fixes an abandonment bug — a user
     // who quits on the payments slide now has a complete profile and a working
     // dashboard instead of an account that captured nothing.
-    if (currentStep === lastCollectStep(role) && !coreSaved) {
+    if (currentStep === lastCollectStep(role) && currentFingerprint !== savedFingerprint) {
       const ok = await saveCore();
       if (!ok) return;
     }
@@ -201,11 +211,18 @@ export function OnboardingWizard() {
 
   const saveCore = async (): Promise<boolean> => {
     if (!user) return false;
+    // Read once, at the start: comparing the fingerprint captured here against the one
+    // stored on success means a field edited WHILE the save is in flight stays dirty and
+    // gets saved again, rather than being marked clean by a save that never saw it.
+    const fingerprintAtSave = currentFingerprint;
     setLoading(true);
 
     try {
-      let avatarUrl: string | null = null;
-      if (avatarFile) {
+      // Reuse the path from a previous save rather than uploading the same picture twice.
+      // Only the FILE changing is worth another upload; a second save triggered by an
+      // edited name would otherwise leave an orphaned object in storage every time.
+      let avatarUrl: string | null = uploadedAvatar.current?.path ?? null;
+      if (avatarFile && uploadedAvatar.current?.file !== avatarFile) {
         const isCreator = role === 'content_creator';
         const result = await uploadProfileAsset({
           file: avatarFile,
@@ -213,6 +230,7 @@ export function OnboardingWizard() {
           kind: isCreator ? 'avatar' : 'logo',
         });
         avatarUrl = result.path;
+        uploadedAvatar.current = { file: avatarFile, path: result.path };
       }
 
       const locationData = {
@@ -322,7 +340,15 @@ export function OnboardingWizard() {
       // navigate to next would read a stale null profile and hang on their
       // loading state until a full page reload.
       await refreshProfile();
-      setCoreSaved(true);
+      // The org query is a SEPARATE React Query cache from AuthContext's profile, and
+      // `refreshProfile` does not touch it. For a new business the upsert above is what
+      // fires `trg_auto_create_org`, so the cached `{ org: null }` this component read on
+      // mount is stale the instant that insert lands — leaving `useOrgUnits` disabled,
+      // `primaryUnit` undefined, and the address slide unable to save at all. Refetched
+      // rather than merely invalidated, and awaited, so the org id is resolved BEFORE the
+      // slide that needs it can be reached.
+      await queryClient.refetchQueries({ queryKey: KEYS.orgFromProfile(user.id) });
+      setSavedFingerprint(fingerprintAtSave);
       return true;
     } catch (err) {
       console.error(err);
@@ -487,6 +513,7 @@ export function OnboardingWizard() {
               <motion.button
                 type="button"
                 onClick={goBack}
+                aria-label="Go back"
                 whileTap={{ scale: 0.9 }}
                 className="w-10 h-10 rounded-full bg-white border border-landing-line flex items-center justify-center text-landing-ink-soft hover:bg-landing-lilac transition-colors"
               >

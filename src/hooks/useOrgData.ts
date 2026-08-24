@@ -7,7 +7,7 @@ import type { Organization, OrgUnit, OrgMember } from '@/types/org';
 
 // ── Query key constants ──────────────────────────────────────────────────────
 
-const KEYS = {
+export const KEYS = {
   org: (userId?: string) => ['org', userId] as const,
   orgFromProfile: (userId?: string) => ['org-from-profile', userId] as const,
   orgUnits: (orgId?: string) => ['org-units', orgId] as const,

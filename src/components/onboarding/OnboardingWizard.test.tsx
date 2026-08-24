@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import '@testing-library/jest-dom';
-import { render, screen, fireEvent } from '@testing-library/react';
-import { describe, it, expect, vi } from 'vitest';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 vi.mock('@/hooks/useAuth', () => ({
   useAuth: () => ({
@@ -12,10 +12,12 @@ vi.mock('@/hooks/useAuth', () => ({
 vi.mock('@/hooks/useAutoDetect', () => ({
   useAutoDetect: () => ({ loading: false, city: '', country: '', timezone: '' }),
 }));
+const mocks = vi.hoisted(() => ({ upsert: vi.fn().mockResolvedValue({ error: null }) }));
+
 vi.mock('@/integrations/supabase/client', () => ({
   supabase: {
     from: () => ({
-      upsert: vi.fn().mockResolvedValue({ error: null }),
+      upsert: mocks.upsert,
       select: () => ({ eq: () => ({ maybeSingle: async () => ({ data: null, error: null }) }) }),
     }),
   },
@@ -38,11 +40,23 @@ import { OnboardingWizard } from './OnboardingWizard';
  */
 function renderWizard() {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-  return render(
+  const refetchSpy = vi.spyOn(client, 'refetchQueries').mockResolvedValue(undefined);
+  const result = render(
     <QueryClientProvider client={client}>
       <OnboardingWizard />
     </QueryClientProvider>,
   );
+  return { ...result, refetchSpy };
+}
+
+/** Identity → name → Continue → cuisine → pick → Continue. Leaving the LAST collect
+ *  slide is what triggers the core save. */
+async function reachFirstServiceSlide() {
+  fireEvent.change(screen.getByPlaceholderText(/Taco Bell/i), { target: { value: "Tony's Pizza" } });
+  fireEvent.click(screen.getByRole('button', { name: /Continue/i }));
+  await screen.findByRole('heading', { name: /What kind of food do you serve\?/i });
+  fireEvent.click(screen.getByRole('button', { name: /Italian/i }));
+  fireEvent.click(screen.getByRole('button', { name: /Continue/i }));
 }
 
 describe('OnboardingWizard — restaurant cuisine step', () => {
@@ -64,5 +78,63 @@ describe('OnboardingWizard — restaurant cuisine step', () => {
     // Pick a cuisine → Continue enables.
     fireEvent.click(screen.getByRole('button', { name: /Italian/i }));
     expect(screen.getByRole('button', { name: /Continue/i })).toBeEnabled();
+  });
+});
+
+describe('OnboardingWizard — the core save runs when it needs to', () => {
+  beforeEach(() => { mocks.upsert.mockClear(); });
+
+  /**
+   * The org query is a separate React Query cache from AuthContext's profile, and for a
+   * new business the core save is what causes `trg_auto_create_org` to create the org.
+   * Without this refetch the wizard keeps the `{ org: null }` it cached on mount, so the
+   * address slide can never resolve a location to write to.
+   */
+  it('refetches the org query after provisioning, not just the auth profile', async () => {
+    const { refetchSpy } = renderWizard();
+    await reachFirstServiceSlide();
+    await waitFor(() => expect(refetchSpy).toHaveBeenCalled());
+    const keys = refetchSpy.mock.calls.map((c) => JSON.stringify(c[0]));
+    expect(keys.some((k) => k.includes('org-from-profile'))).toBe(true);
+  });
+
+  /**
+   * The bug: `coreSaved` was a one-way latch, so going back, correcting a field and
+   * continuing skipped the save. The edit stayed on screen and never reached the row.
+   */
+  it('saves again when a collect field is edited after the first save', async () => {
+    renderWizard();
+    await reachFirstServiceSlide();
+    await waitFor(() => expect(mocks.upsert).toHaveBeenCalled());
+    const firstRun = mocks.upsert.mock.calls.length;
+
+    // Back to cuisine, back to identity, change the name, forward again.
+    fireEvent.click(screen.getByRole('button', { name: /go back/i }));
+    await screen.findByRole('heading', { name: /What kind of food do you serve\?/i });
+    fireEvent.click(screen.getByRole('button', { name: /go back/i }));
+    await screen.findByRole('heading', { name: /What's your restaurant called\?/i });
+    fireEvent.change(screen.getByPlaceholderText(/Taco Bell/i), { target: { value: 'Tony Pizzeria' } });
+    fireEvent.click(screen.getByRole('button', { name: /Continue/i }));
+    await screen.findByRole('heading', { name: /What kind of food do you serve\?/i });
+    fireEvent.click(screen.getByRole('button', { name: /Continue/i }));
+
+    await waitFor(() => expect(mocks.upsert.mock.calls.length).toBeGreaterThan(firstRun));
+  });
+
+  /**
+   * The control for the test above: without it, "saves again" would also pass against a
+   * wizard that simply saves on every forward press, which is what this replaced.
+   */
+  it('does not save again when nothing was edited', async () => {
+    renderWizard();
+    await reachFirstServiceSlide();
+    await waitFor(() => expect(mocks.upsert).toHaveBeenCalled());
+    const firstRun = mocks.upsert.mock.calls.length;
+
+    fireEvent.click(screen.getByRole('button', { name: /go back/i }));
+    await screen.findByRole('heading', { name: /What kind of food do you serve\?/i });
+    fireEvent.click(screen.getByRole('button', { name: /Continue/i }));
+
+    await waitFor(() => expect(mocks.upsert.mock.calls.length).toBe(firstRun));
   });
 });
