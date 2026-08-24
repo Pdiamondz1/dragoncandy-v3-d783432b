@@ -162,6 +162,42 @@
 > the opposite default from the readiness engine's "`unknown` never blocks", because here the risk of
 > a false "allow" is our own carrier bill, not a user's blocked action.
 >
+> **`address_verification_attempts`** (`20260825100000`) — the same shape one function over, for
+> `verify-address` (`id`, `user_id` FK `auth.users` ON DELETE CASCADE, `ip_hash`, `role` ∈
+> `creator`/`business`, `outcome` ∈ `reserved`/`answered`/`failed`/`throttled`, `created_at`), with
+> the identical lockdown (RLS on, `service_role`-only policy, table-level `revoke all … from public,
+> anon, authenticated` — never a column-level revoke, which is a no-op against the ambient
+> table-wide grant). Written only via `reserve_address_verification` below, plus two service-role
+> writes in `verify-address` that record how a reserved slot was spent.
+>
+> **Why this table exists at all:** every `verify-address` call is a billed Google Geocoding request
+> (~$5/1,000) and **Google offers no daily quota cap for Maps Platform** — the console shows *v3
+> requests per day* as Unlimited with editing disabled ("Quota is not adjustable") and refuses to
+> attach an alert to it. So this is not defence in depth; it is the only bound that exists. See
+> [[Identity & Address Verification]].
+>
+> **`reserve_address_verification(p_user_id uuid, p_ip_hash text, p_role text, p_user_limit int,
+> p_user_window_seconds int, p_burst_limit int, p_burst_window_seconds int, p_ip_limit int) returns
+> jsonb`** (`20260825100000`, SECURITY DEFINER, `search_path=public`, revoked from `public, anon,
+> authenticated`, granted to `service_role`) — same atomic count-and-reserve pattern as the phone RPC
+> below, same fixed lock order (user key then ip key, so callers sharing an IP queue rather than
+> deadlock), reserving the row **before** the caller issues the billed request. Returns
+> `{reserved, reason}` plus `attempt_id` on success; `reason` distinguishes `user_daily` /
+> `user_burst` / `ip_daily` so the client can say something true about how long the wait is. A null
+> or errored result refuses with a 503.
+>
+> **Three differences from the phone RPC, each deliberate:** no cooldown (a geocode is ~1/1000th the
+> unit cost of an SMS, so volume caps matter and spacing does not — and a cooldown would penalise a
+> business saving several locations in one sitting, each save firing its own verification); **two**
+> user windows rather than one (a daily cap alone lets a loop spend the day in seconds, a burst cap
+> alone lets a slow drip run all day); and the counting predicate is an **exclusion**
+> (`outcome <> 'throttled'`) rather than an inclusion list. That last one is the one to preserve: an
+> inclusion list silently stops counting a newly-added outcome (under-throttles, costs money), an
+> exclusion list counts it (over-throttles, annoys one user). `'throttled'` is the only outcome that
+> provably issued no request. Limits live in `supabase/functions/verify-address/rateLimit.ts` and are
+> passed in as parameters; a CI test asserts the call site actually reads them, since a constant
+> nothing reads is not a control.
+>
 > **`reserve_phone_verification_send(p_user_id uuid, p_ip_hash text, p_limit int, p_window_seconds
 > int, p_cooldown_seconds int) returns jsonb`** (`20260824160000`, SECURITY DEFINER,
 > `search_path=public`, `revoke execute … from public, anon, authenticated` + `grant … to

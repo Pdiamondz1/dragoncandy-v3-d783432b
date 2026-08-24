@@ -778,13 +778,30 @@ holds no Toast credentials. See §6.
   against a stubbed provider and nothing else (and the Twilio **Primary Compliance Profile** is a
   separate gate from funding); no address has been geocoded end to end; a
   `READINESS_GATE_ENABLED` flag-row decision (founder call — **do not enable it until a real address
-  verifies**, since until then the `required` address item is display-only); a **Google Cloud daily
-  quota cap on Geocoding**, which is the only bound on that spend because `verify-address` has no
-  throttle; `send-promotion-notification` still reads the three Twilio secrets that were overwritten
+  verifies**, since until then the `required` address item is display-only);
+  `send-promotion-notification` still reads the three Twilio secrets that were overwritten
   with the new account's, and has not been re-checked; two functions surface an unauthenticated
   request as **500 rather than 401** (pre-existing, confirmed live, deliberately not folded into a
   deploy); and the pre-existing unauthenticated IDOR (`get_user_conversations`) found in scope but
   left for an owner outside this branch.
+  **The "set a Google Cloud daily quota cap on Geocoding" item that stood here is DELETED because
+  the control does not exist.** It was written twice as "the only bound on that spend", and
+  checking it in the console refuted it: the Geocoding API's *v3 requests per day* quota reads
+  **Unlimited** with its edit control disabled — *"Quota is not adjustable"* — and a usage **alert**
+  cannot be attached either (*"Alerts can not be generated for unlimited quotas from the table"*).
+  Google removed per-day caps for Maps Platform; only a per-minute limit (3,000) remains, which
+  bounds burst rate and not daily spend. Spend was bounded only by the billing project
+  (`forward-deck-506417-g9`) still being on the **$300 / 90-day free trial**, which Google does not
+  auto-charge past — a bound nobody chose and that disappears on **Activate**. Closed properly by an
+  application-level throttle in `verify-address` (#490, **applied, deployed and verified on prod
+  2026-08-24**; caps 40/user/day, 6/user/min, 200/IP/day, so a fully abusive account costs
+  $0.20/day), mirroring
+  `verify-phone`'s atomic reservation RPC. *A remedy nobody has opened the console to confirm is a
+  hypothesis, and writing it down twice does not make it a control.*
+  Two related corrections while there: the Maps key lives in **My First Project**
+  (`forward-deck-506417-g9`), correctly restricted to Geocoding API — **not** in `dragoncandy-social`,
+  which has **no billing account at all** and is where the YouTube connector runs (harmless today,
+  since those APIs are free-tier, but it will bite the first billable thing added there).
   → `docs/wiki/concepts/identity-verification.md` · `docs/SHIPPED_LOG.md`
 - **Donny's `social_*` tools repaired (7 calls → 0 successes → 4 working tools)** — Donny told the
   founder he had "no visibility into which Instagram account is connected", sent him to find an
