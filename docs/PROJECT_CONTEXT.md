@@ -76,7 +76,10 @@ paid campaign in under 60 seconds.
 
 ## 4. Current State
 
-Pre-revenue by choice. ~30 organic users, $0 paying customers, **~$569/mo
+Pre-revenue by choice. **45 organic users** (read off prod 2026-08-24 — `select count(*)
+from profiles`; this line said "~30" and the investor model had copied that figure and
+tagged it MEASURED, so a number wrong by a third was vouched for by its own provenance
+tag), $0 paying customers (also confirmed against prod the same day), **~$569/mo
 operating cost** (as of 2026-08-23: Lovable $50, Anthropic $200, **Outstand.so $249**,
 Supabase $45, OpenAI $25 — sums to $569; this line briefly stated $572, which did not
 reconcile with these same five components, until corrected the same day, and the $3

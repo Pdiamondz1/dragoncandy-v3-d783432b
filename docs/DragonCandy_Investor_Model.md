@@ -25,8 +25,8 @@
 | Growth tier take rate (`takeRate_growth`) | 0.05 | fraction | MEASURED | `supabase/functions/stripe-webhook/index.ts (TIER_TAKE_RATES)` | 2026-08-23 |
 | Pro tier take rate (`takeRate_pro`) | 0.03 | fraction | MEASURED | `supabase/functions/stripe-webhook/index.ts (TIER_TAKE_RATES)` | 2026-08-23 |
 | Monthly operating cost (`burnMonthly`) | 569 | USD/month | MEASURED | `vendor invoices \| Lovable 50 + Anthropic 200 + Outstand 249 + Supabase 45 + OpenAI 25` | 2026-08-23 |
-| Paying customers (`payingCustomers`) | 0 | accounts | MEASURED | `docs/PROJECT_CONTEXT.md (section 4)` | 2026-08-23 |
-| Registered users (`registeredUsers`) | 30 | accounts | MEASURED | `docs/PROJECT_CONTEXT.md (section 4)` | 2026-08-23 |
+| Paying customers (`payingCustomers`) | 0 | accounts | MEASURED | `prod: select count(*) from organizations where take_rate is not null and stripe_subscription_id is not null` | 2026-08-24 |
+| Registered users (`registeredUsers`) | 45 | accounts | MEASURED | `prod: select count(*) from profiles` | 2026-08-24 |
 | Page components (`pageComponents`) | 96 | files | MEASURED | `find src/pages -name '*.tsx' \| wc -l` | 2026-08-24 |
 | React hooks (`hooks`) | 277 | files | MEASURED | `find src/hooks -name 'use*.ts' -o -name 'use*.tsx' \| wc -l` | 2026-08-24 |
 | Edge functions (`edgeFunctions`) | 111 | functions | MEASURED | `ls -d supabase/functions/*/ \| grep -v _shared \| wc -l` | 2026-08-24 |

@@ -49,17 +49,25 @@ export const OPERATING = {
     value: 0,
     unit: 'accounts',
     label: 'Paying customers',
-    source: 'docs/PROJECT_CONTEXT.md (section 4)',
-    asOf: '2026-08-23',
-    note: 'NOT yet confirmed against prod. To verify: select count(*) from organizations where take_rate is not null and stripe_subscription_id is not null. Stripe is in test mode, so a non-zero result would mean live charges exist and must be escalated.',
+    source: "prod: select count(*) from organizations where take_rate is not null and stripe_subscription_id is not null",
+    asOf: '2026-08-24',
+    note: 'Confirmed 0 against production 2026-08-24. Previously carried this same value with a ' +
+      'note admitting it had never been checked, sourced to PROJECT_CONTEXT.md — MEASURED means ' +
+      'read off production, an invoice or the codebase, and reading it off another document is ' +
+      'none of those. Stripe is in test mode, so a non-zero result here would mean live charges ' +
+      'exist and must be escalated rather than quoted.',
   }),
   registeredUsers: measured({
-    value: 30,
+    value: 45,
     unit: 'accounts',
     label: 'Registered users',
-    source: 'docs/PROJECT_CONTEXT.md (section 4)',
-    asOf: '2026-08-23',
-    note: 'NOT yet confirmed against prod. To verify: select count(*) from profiles. Organic, unpaid. Approximate in PROJECT_CONTEXT; re-count before quoting precisely.',
+    source: 'prod: select count(*) from profiles',
+    asOf: '2026-08-24',
+    note: 'Read off production 2026-08-24: 45. This row said 30, tagged MEASURED, sourced to ' +
+      'PROJECT_CONTEXT.md §4 ("~30 organic users") and carrying a note that it had never been ' +
+      'checked — so an investor-facing figure was wrong by a third for as long as the doc was ' +
+      'stale, with a provenance tag vouching for it. Surfaced by the Codex second review, which ' +
+      'read the note rather than the tag. 26 organizations exist against these 45 users.',
   }),
   pageComponents: measured({
     value: 96,
