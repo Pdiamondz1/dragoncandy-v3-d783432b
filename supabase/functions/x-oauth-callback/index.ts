@@ -32,7 +32,6 @@ import {
   XError,
 } from '../_shared/x-api.ts';
 import { fetchAccount } from '../_shared/x-metrics.ts';
-import { TABLE } from '../_shared/x-connection.ts';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
@@ -94,92 +93,47 @@ serve(async (req: Request) => {
     // account identity has to come from the token itself.
     const account = await fetchAccount(tokens.access_token);
 
-    // SWAPPING ACCOUNTS MUST NOT ORPHAN THE OLD GRANT — and must not break a
-    // working one either.
+    // ONE ATOMIC WRITE, and three separate failures live behind that.
     //
-    // One row per user, so connecting a DIFFERENT X account overwrites the only
-    // copy of the previous account's tokens. Left alone, the old grant stays
-    // live at X, invisible in our UI and impossible for us to revoke, which
-    // breaks the "never abandon a live grant" invariant this connector claims to
-    // keep.
+    // 1. SWAPPING ACCOUNTS MUST NOT ORPHAN THE OLD GRANT. One row per user, so
+    //    connecting a DIFFERENT X account overwrites the only copy of the
+    //    previous account's tokens — leaving that grant live at X, invisible in
+    //    our UI and impossible for us to revoke. `store_x_connection` returns
+    //    those tokens so the revoke below can still reach them.
     //
-    // ORDER: capture, upsert, THEN revoke. The obvious order — revoke the old
-    // grant, then write the new row — has a failure this one does not: the
-    // upsert can be REFUSED (the target account is already linked to a different
-    // DragonCandy user, 23505), and by then the user's perfectly good previous
-    // connection has been revoked. A rejected account switch would break the
-    // connection the user already had. Capturing the token first means nothing
-    // is handed back until the replacement has actually succeeded.
-    // The reconnect half of the same serialisation. A claim only disconnect
-    // respects is not a lock: this takes the same advisory key and REFUSES while
-    // a disconnect is mid-revoke, rather than storing a connection that revoke
-    // is about to invalidate.
-    const { data: connectClaim, error: connectClaimError } = await supabase.rpc(
-      'claim_x_connect',
-      { p_user_id: user.id, p_x_user_id: account.x_user_id },
-    );
+    // 2. NOR MUST IT BREAK A WORKING ONE. Revoking first and writing second has
+    //    a failure this order does not: the write can be REFUSED, because the
+    //    target account belongs to another DragonCandy user — and by then a
+    //    perfectly good previous connection has been revoked. Nothing is handed
+    //    back until the replacement has actually succeeded.
+    //
+    // 3. AND IT MUST NOT RACE A DISCONNECT. The lock, the disconnect check and
+    //    the upsert are all inside the RPC because `pg_advisory_xact_lock` is
+    //    released when its transaction ends: a claim RPC that returned before
+    //    the upsert left exactly the gap it was meant to close, and the upsert —
+    //    which clears every claim field — would then have CANCELLED a disconnect
+    //    that claimed in between, storing tokens its revoke was about to
+    //    invalidate. A lock only helps while it is held.
+    const { data: result, error: storeError } = await supabase.rpc('store_x_connection', {
+      p_user_id: user.id,
+      p_x_user_id: account.x_user_id,
+      p_username: account.username,
+      p_display_name: account.display_name,
+      p_followers_count: account.followers_count,
+      p_following_count: account.following_count,
+      p_tweet_count: account.tweet_count,
+      p_scopes: tokens.scopes,
+      p_access_token: tokens.access_token,
+      p_access_token_expires_at: tokens.expires_at,
+      p_refresh_token: tokens.refresh_token,
+    });
 
-    if (connectClaimError) {
-      throw new XError('storage_failed', connectClaimError.message, 500);
+    if (storeError) {
+      throw new XError('storage_failed', storeError.message, 500);
     }
 
-    if (!connectClaim?.claimed) {
-      throw new XError(
-        'disconnect_in_progress',
-        'Your X account is being disconnected right now. Wait a moment and try connecting again.',
-        409,
-      );
-    }
-
-    const replacing = connectClaim.previous
-      ? {
-          x_user_id: connectClaim.previous.x_user_id as string,
-          access: connectClaim.previous.access_token as string,
-          refresh: (connectClaim.previous.refresh_token as string | null) ?? null,
-        }
-      : null;
-
-    const { error: upsertError } = await supabase.from(TABLE).upsert(
-      {
-        user_id: user.id,
-        x_user_id: account.x_user_id,
-        username: account.username,
-        display_name: account.display_name,
-        followers_count: account.followers_count,
-        following_count: account.following_count,
-        tweet_count: account.tweet_count,
-        scopes: tokens.scopes,
-        access_token: tokens.access_token,
-        access_token_expires_at: tokens.expires_at,
-        refresh_token: tokens.refresh_token,
-        // A reconnect must clear these, or a healed connection keeps showing the
-        // error that made the user reconnect in the first place.
-        status: 'active',
-        last_error: null,
-        // EVERY claim field, not just the timestamps. A refresh or an insights
-        // read can be in flight while the user reconnects, and that worker holds
-        // a claim id. Leaving the id behind lets it pass the stale-claim guard
-        // and commit against the NEW connection — overwriting freshly minted
-        // tokens, or caching the OLD account's metrics under the new one.
-        // Clearing the ids is what makes every outstanding claim stale.
-        refresh_claimed_at: null,
-        refresh_claim_id: null,
-        insights_claimed_at: null,
-        insights_claim_id: null,
-        // The new grant may see different data, so any cached snapshot from the
-        // old one is not ours to keep serving.
-        insights: null,
-        insights_cached_at: null,
-        connected_at: new Date().toISOString(),
-      },
-      { onConflict: 'user_id' },
-    );
-
-    if (upsertError) {
-      // The unique constraint on x_user_id: this X account is already connected
-      // to a DIFFERENT DragonCandy user. Refusing is deliberate — two rows on
-      // one grant would rotate each other's refresh token away, killing both.
-      if (upsertError.code === '23505') {
+    if (!result?.stored) {
+      if (result?.reason === 'account_in_use') {
         throw new XError(
           'account_in_use',
           'That X account is already connected to another DragonCandy account. ' +
@@ -187,7 +141,14 @@ serve(async (req: Request) => {
           409,
         );
       }
-      throw new XError('storage_failed', upsertError.message, 500);
+      if (result?.reason === 'disconnect_in_progress') {
+        throw new XError(
+          'disconnect_in_progress',
+          'Your X account is being disconnected right now. Wait a moment and try connecting again.',
+          409,
+        );
+      }
+      throw new XError('storage_failed', 'Could not save the X connection', 500);
     }
 
     stored = true;
@@ -196,10 +157,18 @@ serve(async (req: Request) => {
     // fatal: the new grant is already stored, so failing here would report a
     // broken connect for a connection that works. Logged, because an orphaned
     // grant is invisible otherwise.
-    if (replacing) {
-      const previous = await revokeGrant(replacing.access, replacing.refresh);
+    // The only thing outside the lock, and safe there: the previous grant's
+    // tokens came back from the RPC, so nothing is abandoned, and the row they
+    // belonged to has already been replaced. Best-effort — the new connection is
+    // stored and works, so failing here would report a broken connect for one
+    // that is fine. Logged, because an orphaned grant is invisible otherwise.
+    if (result.previous) {
+      const previous = await revokeGrant(
+        result.previous.access_token as string,
+        (result.previous.refresh_token as string | null) ?? null,
+      );
       console.error(
-        `[x-oauth-callback] replaced ${replacing.x_user_id}; previous grant: ${previous}`,
+        `[x-oauth-callback] replaced ${result.previous.x_user_id}; previous grant: ${previous}`,
       );
     }
 

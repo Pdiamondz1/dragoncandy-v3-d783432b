@@ -725,20 +725,40 @@ revoke execute on function public.commit_x_disconnect(uuid, uuid, boolean)
 grant execute on function public.commit_x_disconnect(uuid, uuid, boolean) to service_role;
 
 -- ---------------------------------------------------------------------------
--- claim_x_connect — the OTHER half of the same serialisation.
+-- store_x_connection — the ENTIRE connect write, in one transaction.
 --
--- A claim that only disconnect respects is not a lock. This is what makes
--- reconnect participate: it takes the same advisory key, refuses while a
--- disconnect is mid-revoke, and otherwise clears every outstanding claim so no
--- worker from the previous grant can commit against the new one.
+-- This replaces a `claim_x_connect` that returned before the upsert ran. That
+-- was not serialisation and the Codex review said so: `pg_advisory_xact_lock`
+-- is released when the claiming transaction ends, so a disconnect could claim
+-- and begin revoking in the gap between the claim and the upsert — and the
+-- upsert, which clears every claim field, would then CANCEL that disconnect's
+-- claim while storing tokens the in-flight revoke was about to invalidate. The
+-- connection would read `active` over credentials that no longer work.
 --
--- Returns the previous grant's tokens so the caller can revoke them AFTER the
--- replacement is stored — nothing is handed back until the swap has succeeded.
+-- A lock only helps while it is held, so everything it protects has to happen
+-- inside it. The only thing left outside is the revoke of the PREVIOUS grant,
+-- which is an HTTP call and is safe there: its tokens are returned to the
+-- caller, so nothing is abandoned, and the row it belonged to is already gone.
+--
+-- Returns:
+--   {stored: false, reason: 'disconnect_in_progress'}  a revoke is in flight
+--   {stored: false, reason: 'account_in_use'}          that X account belongs
+--                                                      to another user
+--   {stored: true, previous: null | {...}}             previous grant to revoke
 -- ---------------------------------------------------------------------------
 
-create or replace function public.claim_x_connect(
+create or replace function public.store_x_connection(
   p_user_id uuid,
   p_x_user_id text,
+  p_username text,
+  p_display_name text,
+  p_followers_count integer,
+  p_following_count integer,
+  p_tweet_count integer,
+  p_scopes text[],
+  p_access_token text,
+  p_access_token_expires_at timestamptz,
+  p_refresh_token text,
   p_claim_ttl_seconds integer default 60
 )
 returns jsonb
@@ -748,11 +768,14 @@ set search_path = public
 as $$
 declare
   v_conn public.x_account_connections%rowtype;
+  v_previous jsonb := null;
 begin
   if current_setting('request.jwt.claims', true)::jsonb->>'role' is distinct from 'service_role' then
-    raise exception 'claim_x_connect is service-role only';
+    raise exception 'store_x_connection is service-role only';
   end if;
 
+  -- Same key as claim_x_disconnect, which is what makes the two mutually
+  -- exclusive. Held for the whole of this function.
   perform pg_advisory_xact_lock(hashtext('x_grant:' || p_user_id::text));
 
   select * into v_conn from public.x_account_connections where user_id = p_user_id;
@@ -760,32 +783,91 @@ begin
   if found
      and v_conn.disconnect_claimed_at is not null
      and v_conn.disconnect_claimed_at > now() - make_interval(secs => p_claim_ttl_seconds) then
-    -- A revoke is in flight against this grant. Writing a new row now would
-    -- store a connection that revoke is about to invalidate.
-    return jsonb_build_object('claimed', false, 'reason', 'disconnect_in_progress');
+    -- Refuse rather than cancel. Clearing that claim here is precisely the bug
+    -- this function was written to remove.
+    return jsonb_build_object('stored', false, 'reason', 'disconnect_in_progress');
   end if;
 
-  if not found then
-    return jsonb_build_object('claimed', true, 'previous', null);
-  end if;
-
-  if v_conn.x_user_id is not distinct from p_x_user_id then
-    -- Same account reconnecting. Nothing to revoke; the upsert replaces the
-    -- credentials in place.
-    return jsonb_build_object('claimed', true, 'previous', null);
-  end if;
-
-  return jsonb_build_object(
-    'claimed', true,
-    'previous', jsonb_build_object(
+  -- Only a DIFFERENT account leaves a grant behind. Reconnecting the same one
+  -- replaces its credentials in place, and revoking there would kill the
+  -- connection we are in the middle of establishing.
+  if found and v_conn.x_user_id is distinct from p_x_user_id then
+    v_previous := jsonb_build_object(
       'x_user_id', v_conn.x_user_id,
       'access_token', v_conn.access_token,
       'refresh_token', v_conn.refresh_token
+    );
+  end if;
+
+  begin
+    insert into public.x_account_connections as c (
+      user_id, x_user_id, username, display_name,
+      followers_count, following_count, tweet_count,
+      scopes, access_token, access_token_expires_at, refresh_token,
+      status, last_error,
+      refresh_claimed_at, refresh_claim_id,
+      insights, insights_cached_at, insights_claimed_at, insights_claim_id,
+      disconnect_claimed_at, disconnect_claim_id,
+      connected_at, last_synced_at
     )
-  );
+    values (
+      p_user_id, p_x_user_id, p_username, p_display_name,
+      p_followers_count, p_following_count, p_tweet_count,
+      coalesce(p_scopes, '{}'), p_access_token, p_access_token_expires_at, p_refresh_token,
+      'active', null,
+      null, null,
+      null, null, null, null,
+      null, null,
+      now(), null
+    )
+    on conflict (user_id) do update set
+      x_user_id = excluded.x_user_id,
+      username = excluded.username,
+      display_name = excluded.display_name,
+      followers_count = excluded.followers_count,
+      following_count = excluded.following_count,
+      tweet_count = excluded.tweet_count,
+      scopes = excluded.scopes,
+      access_token = excluded.access_token,
+      access_token_expires_at = excluded.access_token_expires_at,
+      refresh_token = excluded.refresh_token,
+      -- A reconnect must clear these, or a healed connection keeps showing the
+      -- error that made the user reconnect.
+      status = 'active',
+      last_error = null,
+      -- EVERY claim field. A refresh or insights read can be in flight, and it
+      -- holds a claim id; clearing the id is what makes that claim stale, so it
+      -- cannot commit against the NEW connection. Safe to clear the disconnect
+      -- claim here only because the guard above proved none is live.
+      refresh_claimed_at = null,
+      refresh_claim_id = null,
+      insights_claimed_at = null,
+      insights_claim_id = null,
+      disconnect_claimed_at = null,
+      disconnect_claim_id = null,
+      -- The new grant may see different data, so a snapshot from the old one is
+      -- not ours to keep serving.
+      insights = null,
+      insights_cached_at = null,
+      connected_at = now(),
+      last_synced_at = null;
+  exception
+    when unique_violation then
+      -- The unique constraint on x_user_id: that X account belongs to a
+      -- different DragonCandy user. Refusing is deliberate — two rows on one
+      -- grant would rotate each other's refresh token away and kill both.
+      -- Returned rather than raised so the caller can revoke the grant it just
+      -- minted instead of stranding it.
+      return jsonb_build_object('stored', false, 'reason', 'account_in_use');
+  end;
+
+  return jsonb_build_object('stored', true, 'previous', v_previous);
 end;
 $$;
 
-revoke execute on function public.claim_x_connect(uuid, text, integer)
-  from public, anon, authenticated;
-grant execute on function public.claim_x_connect(uuid, text, integer) to service_role;
+revoke execute on function public.store_x_connection(
+  uuid, text, text, text, integer, integer, integer, text[], text, timestamptz, text, integer
+) from public, anon, authenticated;
+grant execute on function public.store_x_connection(
+  uuid, text, text, text, integer, integer, integer, text[], text, timestamptz, text, integer
+) to service_role;
