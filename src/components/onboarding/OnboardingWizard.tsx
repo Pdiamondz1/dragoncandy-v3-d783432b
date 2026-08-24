@@ -135,6 +135,87 @@ export function OnboardingWizard() {
   const updateOrgUnit = useUpdateOrgUnit();
   const primaryUnit = orgUnits.find(u => u.is_primary) ?? orgUnits[0];
 
+  /**
+   * RESUME AFTER STRIPE. Hosted Connect onboarding is a full page navigation off-site and
+   * back, so returning to `/profile/setup` remounts this component with every field at its
+   * initial value and `currentIndex` at 0.
+   *
+   * That is not merely untidy, and it is why the return-path change could not ship alone.
+   * The creator write is `upsert(..., { onConflict: 'user_id' })` with NO `ignoreDuplicates`,
+   * so a user who came back to a blank slide 1 and pressed Continue would overwrite their
+   * own name, bio and skills with empty strings. The bug this replaced merely ended
+   * onboarding; this one would have destroyed data. Raised as a P1 by the Codex second
+   * review and confirmed against both files before acting on it.
+   *
+   * So: rehydrate from the rows that already exist, then land on the slide the user left.
+   * Runs at most once, and never overwrites something already on screen — if the user has
+   * begun typing, their input wins.
+   */
+  const hydrated = useRef(false);
+  useEffect(() => {
+    if (hydrated.current || !user) return;
+    hydrated.current = true;
+
+    let cancelled = false;
+    void (async () => {
+      // Branched rather than a dynamic column string: the generated Supabase types can only
+      // resolve a LITERAL select list, and a variable one silently degrades to a parser
+      // error type. Two queries with real field lists also keep the repo's
+      // "never select *" rule checkable.
+      const { data, error } = role === 'content_creator'
+        ? await supabase
+            .from('creator_profiles')
+            .select('creator_name, bio, skills, avatar_url, allow_portfolio_in_feed, is_completed')
+            .eq('user_id', user.id)
+            .maybeSingle()
+        : await supabase
+            .from('business_profiles')
+            .select('business_name, industry, cuisines, logo_url, is_completed')
+            .eq('user_id', user.id)
+            .maybeSingle();
+
+      // A failed read must leave a FIRST-TIME user's blank wizard alone rather than
+      // guessing. `maybeSingle` gives null for "no row", which is the ordinary new-signup
+      // case and not an error.
+      if (cancelled || error || !data) return;
+      const row = data as unknown as Record<string, unknown>;
+
+      const str = (v: unknown) => (typeof v === 'string' ? v : '');
+      const arr = (v: unknown) => (Array.isArray(v) ? (v as string[]) : []);
+
+      if (role === 'content_creator') {
+        setName(prev => prev || str(row.creator_name));
+        setBio(prev => prev || str(row.bio));
+        setSkills(prev => (prev.length ? prev : arr(row.skills)));
+        setAvatarPreview(prev => prev || str(row.avatar_url) || null);
+        if (typeof row.allow_portfolio_in_feed === 'boolean') setShowInFeed(row.allow_portfolio_in_feed);
+      } else {
+        setName(prev => prev || str(row.business_name));
+        setIndustry(prev => prev || str(row.industry));
+        setCuisines(prev => (prev.length ? prev : arr(row.cuisines)));
+        setAvatarPreview(prev => prev || str(row.logo_url) || null);
+      }
+
+      // Only jump when Stripe actually sent them back AND the profile is complete — a
+      // half-finished wizard must still start where the user left off, not at the end.
+      // The query flag is deliberately NOT cleared here: `StripeConnectSetup` reads the
+      // same flag to refresh its status and clears it itself, and clearing it first would
+      // silently break that refresh.
+      const params = new URLSearchParams(window.location.search);
+      const backFromStripe =
+        params.get('stripe_onboarding') === 'complete' || params.get('stripe_refresh') === 'true';
+      if (backFromStripe && row.is_completed === true) {
+        const target = steps.indexOf('payments');
+        if (target > -1) {
+          setDirection(1);
+          setCurrentIndex(target);
+        }
+      }
+    })();
+
+    return () => { cancelled = true; };
+  }, [user, role, steps]);
+
   const currentStep = steps[currentIndex];
   const isReady = currentStep === 'ready';
   // True when the current slide is a service slide whose work is not done, so the
