@@ -223,14 +223,18 @@ function buildPdf(pages, pageW, pageH) {
     if (page.type === "image") {
       const contentId = alloc();
       const imageId = alloc();
-      const content = `q ${pageW} 0 0 ${pageH} 0 0 cm /Im0 Do Q`;
+      const content = Buffer.from(`q ${pageW} 0 0 ${pageH} 0 0 cm /Im0 Do Q`, "latin1");
 
       obj(
         pageId,
         `<< /Type /Page /Parent ${pagesId} 0 R /MediaBox [0 0 ${pageW} ${pageH}] ` +
           `/Resources << /XObject << /Im0 ${imageId} 0 R >> >> /Contents ${contentId} 0 R >>`,
       );
-      obj(contentId, `<< /Length ${content.length} >>\nstream\n${content}\nendstream`);
+      offsets[contentId] = pos;
+      push(`${contentId} 0 obj\n`);
+      push(`<< /Length ${content.length} >>\nstream\n`);
+      push(content);
+      push("\nendstream\nendobj\n");
 
       offsets[imageId] = pos;
       push(`${imageId} 0 obj\n`);
@@ -244,13 +248,25 @@ function buildPdf(pages, pageW, pageH) {
     }
 
     const contentId = alloc();
-    const content = notesStream(page, pageW, pageH);
+    // Encode ONCE, and take /Length from the bytes rather than from the JavaScript
+    // string. They agree today only because `pdfString` strips every character above
+    // U+00FF and `push` writes latin1 — a silent dependency between three functions.
+    // (Codex flagged this as an active bug via UTF-8 encoding; that part was wrong, and
+    // a byte-level check of all 30 streams in the exported PDF found 0 mismatches. The
+    // fragility is real even though the failure was not: loosen that regex, or add a
+    // path that skips `pdfString`, and the lengths desync into a malformed PDF with
+    // nothing to say so.)
+    const content = Buffer.from(notesStream(page, pageW, pageH), "latin1");
     obj(
       pageId,
       `<< /Type /Page /Parent ${pagesId} 0 R /MediaBox [0 0 ${pageW} ${pageH}] ` +
         `/Resources << /Font << /F1 ${fontId} 0 R /F2 ${boldId} 0 R >> >> /Contents ${contentId} 0 R >>`,
     );
-    obj(contentId, `<< /Length ${content.length} >>\nstream\n${content}\nendstream`);
+    offsets[contentId] = pos;
+    push(`${contentId} 0 obj\n`);
+    push(`<< /Length ${content.length} >>\nstream\n`);
+    push(content);
+    push("\nendstream\nendobj\n");
   });
 
   const xrefStart = pos;

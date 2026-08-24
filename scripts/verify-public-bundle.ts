@@ -25,11 +25,9 @@ import { join } from 'node:path';
 import { money } from '../src/pitch/deck/format';
 import {
   PRE_SEED_BUDGET,
-  PRE_SEED_HORIZON_MONTHS,
   USE_OF_FUNDS_SPLIT,
-  budgetTotal,
   buildFundsAllocation,
-  requiredRaise,
+  preSeedRaise,
 } from '../src/pitch/model/confidential';
 
 const DIST = 'dist';
@@ -84,12 +82,15 @@ console.log(`Control passed: found all ${MUST_BE_PRESENT.length} strings that mu
 
 /* ---------- the assertion ---------- */
 
-const operatingNeed = budgetTotal(PRE_SEED_BUDGET, PRE_SEED_HORIZON_MONTHS);
-const raise = requiredRaise({
-  operatingNeed,
-  bufferMonths: 3,
-  endingMonthlyBurn: budgetTotal(PRE_SEED_BUDGET, 1),
-});
+/**
+ * The figures come from `preSeedRaise()` — the same function the deck renders from.
+ *
+ * This block used to reconstruct the raise itself, and when the deck's calculation was
+ * corrected this file kept searching for the OLD number. A verifier looking for a value
+ * that no longer exists reports "clean" forever, which is the worst way for a security
+ * assertion to fail: loudly reassuring. Import the source of truth; never restate it.
+ */
+const { operatingNeed, raise } = preSeedRaise();
 
 /**
  * A needle has to be able to identify the value it stands for.
@@ -114,7 +115,18 @@ const forbidden: { what: string; needle: string }[] = [
     what: `bucket label "${b.label}"`,
     needle: b.label,
   })),
-  // Derived totals: seven figures, not round, and not plausible as an unrelated constant.
+  // Derived totals. Seven figures, not round, not plausible as an unrelated constant —
+  // but understand what they do and do not prove.
+  //
+  // These do NOT fire even against the confidential build, and that is expected rather
+  // than a bug: the deck computes the raise in the browser from the budget lines, so its
+  // digits never exist as a literal anywhere in `dist/`. They are here to catch a future
+  // change that inlines a precomputed total, not to detect today's leak.
+  //
+  // **The labels are the load-bearing check.** Measured, not assumed: scanning a
+  // `VITE_PITCH_CONFIDENTIAL=1` build reports 12 leaks, all of them labels, and 0 against
+  // the default build. If the labels are ever removed from this list, this script stops
+  // being able to detect anything at all while still printing "clean".
   { what: 'the raise total', needle: String(Math.round(raise)) },
   { what: 'the operating need', needle: String(Math.round(operatingNeed)) },
   { what: 'the raise total, formatted', needle: money(raise) },
