@@ -174,6 +174,19 @@ describe('startSocialSignIn', () => {
    * made — the same corruption the RPC's own guards refuse, arriving by a
    * different route.
    */
+  /**
+   * A signup that reached the provider and was cancelled THERE leaves its role
+   * behind — the redirect that would have consumed it never came back. A later
+   * login in the same tab carries no role of its own, so without this the stale
+   * value is applied to whatever account that login creates.
+   */
+  it('clears an abandoned signup role when a role-less login starts', async () => {
+    stashPendingRole('brand');
+    supa.signInWithOAuth.mockResolvedValue({ error: null });
+    await startSocialSignIn('google', null);
+    expect(takePendingRole()).toBeNull();
+  });
+
   it('drops the stashed role when the provider call returns an error', async () => {
     supa.signInWithOAuth.mockResolvedValue({ error: { message: 'Unsupported provider' } });
     const result = await startSocialSignIn('google', 'business_client');

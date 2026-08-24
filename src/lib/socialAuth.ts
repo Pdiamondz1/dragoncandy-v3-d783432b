@@ -112,7 +112,14 @@ export async function startSocialSignIn(
   provider: SocialProvider,
   role: AccountRole | null,
 ): Promise<StartResult> {
+  // Set it, or clear it — never leave it. A signup that reached the provider and
+  // was cancelled there leaves its role behind with no redirect to consume it, and
+  // a later LOGIN in the same tab carries no role of its own to overwrite it. The
+  // stale value would then be applied to whatever account that login creates.
+  // Writing on every attempt means the stash always describes the attempt in
+  // progress rather than some earlier one.
   if (role) stashPendingRole(role);
+  else takePendingRole();
   try {
     const redirect = new URL('/auth', publicOrigin());
     if (role) redirect.searchParams.set(ROLE_PARAM, role);
