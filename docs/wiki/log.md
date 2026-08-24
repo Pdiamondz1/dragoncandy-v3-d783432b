@@ -1,5 +1,21 @@
 # Wiki Log
 
+## [2026-08-24] ingest | Social login, and a one-line fix that would have switched off the email gate
+
+**Created** [[Social Login]] and `raw/sessions/2026-08-24-social-login.md`. **Updated**
+`docs/wiki/index.md`, `docs/SHIPPED_LOG.md`, `docs/PROJECT_CONTEXT.md` §5 and
+`docs/DATABASE_SCHEMA.md` (the two new RPCs and the changed trigger).
+
+The finding worth carrying is the one that came from prod rather than the code: mirroring
+`email_confirmed_at` into `email_verified` is the obvious fix and would have auto-verified
+every password signup, because Supabase's built-in confirmation is disabled on this project
+— 45 of 45 users confirmed, 44 within one second of creation, minimum 6ms. A column that
+looks like a verification signal is only one if something verifies; check what writes it.
+
+Seven Codex rounds, seven findings, all real, and two of them the same shape one level
+apart: a trigger that fires on INSERT cannot see an account that already existed. That is
+why the migration ships three objects rather than two.
+
 ## [2026-08-24] update | A height comparison has two sides
 
 **Created** `docs/wiki/raw/sessions/2026-08-24-body-height-unit-mismatch.md`.

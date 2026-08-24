@@ -32,6 +32,118 @@
 >
 > **Adding an entry:** prepend it (newest first). See `knowledge-sync` step 4.
 
+## [2026-08-24] Social login — and the one-line fix that would have switched off the email gate
+
+**Branch:** `feat/social-login`. Google, Apple and Facebook, shipped **dark** behind
+`SOCIAL_LOGIN_ENABLED`. Setup: `docs/runbooks/social-login-setup.md`.
+
+### Two blockers, both invisible until you look at the grants
+
+An OAuth user would have been told to **verify an email that never arrives**:
+`profiles.email_verified` defaults false, `handle_new_user` never set it, `AuthPage` gates
+every login on it, and the verification mail only goes out from the password signup path.
+The client cannot patch it — `authenticated` holds INSERT on that column but not UPDATE.
+
+And **every social signup would have become a content creator**: `signInWithOAuth` cannot
+carry user metadata, so the trigger has nothing to read and falls back to its default. On a
+three-role marketplace that files every restaurant and brand as a creator, and the same
+grant rule blocks fixing it afterwards.
+
+### The obvious fix was wrong, and production said so
+
+Mirroring `email_confirmed_at` into `email_verified` would have **auto-verified every
+password signup**, silently switching the app's own email gate off for everyone — because
+Supabase's built-in confirmation is disabled here. Measured: **45 of 45 users have
+`email_confirmed_at` set, 44 of them within ONE SECOND of `created_at`, minimum gap 6ms**.
+GoTrue stamps it during signup, not on a click.
+
+Verification comes from the **provider** instead, via an allowlist rather than
+`<> 'email'`, so a provider nobody planned for cannot inherit it from a match the code
+never considered. **A column that looks like a verification signal is only one if something
+verifies — check what writes it before trusting its name.**
+
+### Three objects, each for a case a trigger cannot see
+
+Migration `20260825140000`. `handle_new_user` covers accounts OAuth **creates**.
+`claim_initial_role` applies the role chosen before the redirect, once.
+`sync_oauth_email_verification` covers accounts OAuth **links to** — a password account
+that never verified whose owner later signs in with Google, where GoTrue links the identity
+to the existing row and no INSERT happens. The third exists only because review found the
+second's blind spot; it keys off `auth.identities`, which GoTrue writes and no client can,
+and only ever sets true.
+
+### `claim_initial_role` refuses four ways, and two guards are not redundant
+
+Identity from `auth.uid()` with no id parameter. `onboarding_complete` and
+`organization_exists` make it one-shot by condition rather than by timestamp — claiming
+business or brand provisions an org, so a second claim would leave org rows describing an
+account type the user no longer has.
+
+The other two were added because **"nothing completed and no organization" describes an
+abandoned signup exactly as well as a brand-new one**. `not_an_oauth_account` refuses a
+password account that later linked Google (`raw_app_meta_data->>'provider'` records the
+identity that CREATED the account and does not change on linking). `account_not_new`
+refuses an account genuinely created by Google months ago whose owner now picks a different
+role — the provider check passes for that one, and only age refuses it. Either guard alone
+converts an existing account into one it never agreed to be.
+
+**The age window is not a deadline on the consent screen.** `auth.users.created_at` is
+stamped when GoTrue processes the provider's callback, so leaving Google open for an hour
+creates the account at the end of that hour. Written into the migration, because a reader
+who assumes otherwise would widen it and reopen the case it closes.
+
+Not a privilege surface: password signup already lets the client choose `role` freely,
+because role is a declared account type and real authorization lives in `user_roles` /
+`has_role()`. It also privates the leftover creator row when a business claims —
+`creator_profiles.profile_visibility` **defaults to `public`**, so a restaurant would
+otherwise show up in Find Creators as an empty creator.
+
+### Carrying state across a redirect that destroys it
+
+Role and guarded destination travel in the **redirect URL**, not only in `sessionStorage`,
+which is origin-scoped — and this round trip can change origins. Both are validated on the
+way in; neither protects anything (the RPC does), but neither hands an arbitrary string to
+an RPC either. The stash is written on **every** attempt, the role or nothing, because a
+signup cancelled at the provider leaves its role for a later login to consume.
+
+The destination is a same-origin **path**: `//evil.com` is protocol-relative and resolves
+elsewhere, a backslash reads as a slash to some parsers, `/auth` loops. Deliberately a new
+parameter, not the existing `returnTo`, which is the absolute-URL external-handoff path.
+
+### Web only
+
+`signInWithOAuth` must redirect to a real https origin, which in the Capacitor webview
+walks the user out of the app into Safari and finishes them on the web app. Native needs a
+custom-scheme redirect through Capacitor's Browser plugin, registered in three consoles.
+Until then the shell shows the email form alone. **Apple is not optional** — Apple rejects
+any iOS app offering another social login without it, and a test says so.
+
+### Verification and review
+
+**Seven Codex rounds, seven findings, all real; clean at round 7.** Everything was proven on
+prod inside rolled-back transactions, every assertion paired with a control — and the
+controls did real work twice: removing the two account-identity guards reproduced "an
+existing account was converted", and widening the identity allowlist to `IS NOT NULL` made
+a password-only account verify itself. Neither was visible from reading the code. **The
+rollback itself was proven first** (create a table, roll back, confirm `to_regclass` is
+null), because a proof running in a transaction nobody verified is a write to production.
+Prod confirmed untouched after every run: 0 probe rows, functions absent, 45 users.
+
+TypeScript does not check RPC names on this client — verified with a control file calling an
+invented function, which produced zero type errors, because `types.ts` lags migrations and
+the client is cast loose. A test matches the name and parameter against the migration.
+
+One commit went in with a failing test: `npm run test | tail -3` prints the duration line
+and cuts the failure count off above it.
+
+**Pending:** the migration is NOT applied and the flag is off, so none of this is live. No
+provider console is configured, so nobody has completed a real OAuth round trip — it is
+proven at the SQL layer and by unit tests, not end to end. Facebook and Google review both
+need a public privacy-policy URL, which the site gate would break.
+
+→ `docs/wiki/concepts/social-login.md` · `docs/runbooks/social-login-setup.md`
+
+---
 ## [2026-08-24] Size body in dvh like the shell — a height comparison has two sides
 
 The follow-up to the entry below, which shipped a fix that did not resolve the report. Confirmed

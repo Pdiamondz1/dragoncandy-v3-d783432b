@@ -11,6 +11,8 @@ import { BRAND_ROLE_ENABLED } from "@/lib/featureConfig";
 import { AuthShell } from "@/components/auth/AuthShell";
 import { Eyebrow } from "@/components/landing/Eyebrow";
 import { ALLOWED_REDIRECT_ORIGINS } from "@/lib/allowedOrigins";
+import { SocialAuthButtons } from "@/components/auth/SocialAuthButtons";
+import { applyPendingRole, syncOauthVerification, readReturnPath } from "@/lib/socialAuth";
 import { HEADER_LOGO_CLASS, PUBLIC_LOGO_INTRINSIC } from "@/lib/brandLogo";
 
 type SignupStep = "role-selection" | "signup-form";
@@ -42,7 +44,16 @@ const AuthPage = () => {
   const location = useLocation();
   const { user, isAuthenticated, migrateCampaignData } = useAuth();
 
-  const returnTo = (location.state as { from?: { pathname: string; search: string } })?.from;
+  const routerReturnTo = (location.state as { from?: { pathname: string; search: string } })?.from;
+  // A full-page OAuth round trip destroys `location.state`, so the destination a
+  // route guard recorded comes back in the URL instead. Router state wins when both
+  // exist: it is the one this navigation actually carried.
+  const returnTo = routerReturnTo ?? (() => {
+    const path = readReturnPath(location.search);
+    if (!path) return undefined;
+    const [pathname, search] = path.split(/(?=\?)/);
+    return { pathname, search: search ?? '' };
+  })();
 
   // Update mode when URL params change
   useEffect(() => {
@@ -81,6 +92,18 @@ const AuthPage = () => {
     if (!user) return;
 
     try {
+      // Apply the role a social signup chose, BEFORE reading the profile below —
+      // `claim_initial_role` may change it, and reading first would route the user
+      // by the trigger's default (`content_creator`) for exactly one visit, landing
+      // a restaurant on the creator dashboard. Resolves to null and does nothing
+      // for every password login, which stash nothing.
+      //
+      // The verification sync runs alongside it and for a different account: the
+      // trigger fires on INSERT, so it misses a password account that never
+      // verified and whose owner has now signed in with Google. Both are no-ops
+      // for an ordinary password login.
+      await Promise.all([syncOauthVerification(), applyPendingRole()]);
+
       const { data: profile } = await supabase
         .from('profiles')
         .select('role, email_verified')
@@ -289,6 +312,15 @@ const AuthPage = () => {
 
           <AuthForm mode="login" onError={setError} />
 
+          {/* Role is null on login: the account already has one, and `claim_initial_role`
+              refuses anything but a fresh account anyway. */}
+          <SocialAuthButtons
+            mode="login"
+            role={null}
+            returnPath={returnTo ? returnTo.pathname + (returnTo.search || '') : null}
+            onError={setError}
+          />
+
           {error === 'verify_email' ? (
             <div className="bg-red-50 border border-red-200 px-4 py-3 rounded-xl mt-3 max-w-sm md:max-w-md mx-auto text-center space-y-2">
               <p className="text-sm text-red-600">
@@ -343,6 +375,13 @@ const AuthPage = () => {
             onError={setError}
             preSelectedRole={selectedRole}
             onChangeRole={handleChangeRole}
+          />
+
+          <SocialAuthButtons
+            mode="signup"
+            role={selectedRole}
+            returnPath={returnTo ? returnTo.pathname + (returnTo.search || '') : null}
+            onError={setError}
           />
 
           {error === 'verify_email' ? (
