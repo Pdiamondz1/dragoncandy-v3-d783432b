@@ -24,6 +24,10 @@
 //   npm run db:query -- --file path/to/query.sql            # from a file
 //   npm run db:apply -- supabase/migrations/2026...sql      # apply ONE migration + ledger row
 //
+// `db:apply --no-transaction` exists for DDL Postgres will not run inside a transaction; it sends
+// the migration and its ledger row as two separate calls, because a multi-statement query is
+// itself an implicit transaction. See the comment at the branch for the measurement.
+//
 // `db:apply` is deliberately NOT `db push`: it applies exactly the one file you name, wrapped in a
 // transaction, and records its ledger row in the same transaction so "applied" and "recorded" cannot
 // diverge. This project has three recorded instances of `recorded != actual` and one of
@@ -33,6 +37,7 @@ import { readFileSync, existsSync } from 'node:fs';
 import { basename, dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createInterface } from 'node:readline';
+import { pathToFileURL } from 'node:url';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const ENV_FILE = join(HERE, '.env.sync.local');
@@ -41,7 +46,7 @@ const API = 'https://api.supabase.com/v1';
 // ---------------------------------------------------------------------------
 // Config
 
-function loadToken() {
+export function loadToken() {
   if (process.env.SUPABASE_ACCESS_TOKEN) return process.env.SUPABASE_ACCESS_TOKEN;
   if (existsSync(ENV_FILE)) {
     for (const line of readFileSync(ENV_FILE, 'utf8').split(/\r?\n/)) {
@@ -56,7 +61,7 @@ function loadToken() {
  * The project ref comes from supabase/config.toml, not from a flag with a default. A default
  * project ref is how you run something against prod while believing you are on staging.
  */
-function loadProjectRef() {
+export function loadProjectRef() {
   const cfg = join(HERE, '..', 'config.toml');
   if (!existsSync(cfg)) die('supabase/config.toml not found — cannot determine the project ref.');
   const m = readFileSync(cfg, 'utf8').match(/^\s*project_id\s*=\s*"([^"]+)"/m);
@@ -72,7 +77,9 @@ function die(msg) {
 // ---------------------------------------------------------------------------
 // API
 
-async function runSql(token, ref, query) {
+export class ApiError extends Error {}
+
+export async function runSql(token, ref, query, { rethrow = false } = {}) {
   const res = await fetch(`${API}/projects/${ref}/database/query`, {
     method: 'POST',
     headers: {
@@ -90,7 +97,9 @@ async function runSql(token, ref, query) {
     try {
       detail = JSON.stringify(JSON.parse(text), null, 2);
     } catch { /* leave as text */ }
-    die(`HTTP ${res.status} from the Management API:\n${detail}`);
+    const msg = `HTTP ${res.status} from the Management API:\n${detail}`;
+    if (rethrow) throw new ApiError(msg);
+    die(msg);
   }
   try {
     return JSON.parse(text);
@@ -109,7 +118,7 @@ function printRows(rows) {
 // ---------------------------------------------------------------------------
 // Commands
 
-async function cmdQuery(token, ref, args) {
+export async function cmdQuery(token, ref, args) {
   let sql;
   const fileIdx = args.indexOf('--file');
   if (fileIdx !== -1) {
@@ -137,7 +146,7 @@ async function confirm(question) {
   return answer.trim().toLowerCase() === 'yes';
 }
 
-async function cmdApply(token, ref, args) {
+export async function cmdApply(token, ref, args) {
   const path = args.find((a) => !a.startsWith('--'));
   if (!path) die('Usage: npm run db:apply -- <path-to-migration.sql>');
   if (!existsSync(path)) die(`No such file: ${path}`);
@@ -165,24 +174,51 @@ async function cmdApply(token, ref, args) {
   // change the ledger never heard about is this project's most-repeated failure.
   //
   // --no-transaction exists for the DDL Postgres refuses to run inside one (CREATE INDEX
-  // CONCURRENTLY, ALTER TYPE ... ADD VALUE on older versions). Using it means a partial failure
-  // leaves the database half-migrated, so read the file first.
+  // CONCURRENTLY, VACUUM, ALTER TYPE ... ADD VALUE on older versions).
+  //
+  // It sends the migration and the ledger row as SEPARATE API calls, and that is not a style
+  // choice. Postgres wraps every statement of a multi-statement query in one implicit
+  // transaction, so concatenating them re-creates the exact transaction the flag exists to
+  // avoid. Measured against this project 2026-08-24: `vacuum (analyze) pg_class` alone
+  // succeeds, and `select 1; vacuum (analyze) pg_class;` fails with
+  // "25001: VACUUM cannot run inside a transaction block". A flag that cannot do the one thing
+  // it is for is worse than no flag, because its name is a promise.
+  //
+  // The same wrapping applies INSIDE the file: in this mode the migration must hold exactly one
+  // transaction-prohibited statement and nothing else, or Postgres wraps the file's own
+  // statements and rejects it identically. That is the API's behaviour, not this script's.
+  //
+  // The cost of two calls is that they can half-apply — the migration runs, the ledger does not.
+  // That is checked for explicitly below rather than left to the exit code.
   const noTx = args.includes('--no-transaction');
   const ledger = `insert into supabase_migrations.schema_migrations (version, name) values ('${version}', '${name.replace(/'/g, "''")}') on conflict (version) do nothing;`;
-  const payload = noTx ? `${sql}\n${ledger}` : `begin;\n${sql}\n${ledger}\ncommit;`;
 
   console.error('');
   console.error(`  project : ${ref}`);
   console.error(`  file    : ${path}`);
   console.error(`  version : ${version}`);
-  console.error(`  wrapped : ${noTx ? 'NO — --no-transaction, a failure can leave this half-applied' : 'yes, begin/commit'}`);
+  console.error(`  wrapped : ${noTx ? 'NO — --no-transaction: two separate calls, a failure can leave this applied-but-unrecorded' : 'yes, begin/commit'}`);
   console.error('');
   if (!(await confirm('Type "yes" to apply this to the project above: '))) {
     console.error('db-exec: aborted, nothing was run.');
     process.exit(1);
   }
 
-  const result = await runSql(token, ref, payload);
+  let result;
+  if (noTx) {
+    result = await runSql(token, ref, sql);
+    try {
+      await runSql(token, ref, ledger, { rethrow: true });
+    } catch (err) {
+      die(
+        `APPLIED BUT NOT RECORDED: the migration RAN, then the ledger insert failed.\n${err.message}\n` +
+        `Record version ${version} by hand before doing anything else — an applied migration the ledger ` +
+        `never heard about is this project's most-repeated failure.`,
+      );
+    }
+  } else {
+    result = await runSql(token, ref, `begin;\n${sql}\n${ledger}\ncommit;`);
+  }
   console.error('db-exec: applied.');
   printRows(result);
 
@@ -200,19 +236,27 @@ async function cmdApply(token, ref, args) {
 
 // ---------------------------------------------------------------------------
 
-const [cmd, ...args] = process.argv.slice(2);
-const token = loadToken();
-if (!token) {
-  die(
-    'No SUPABASE_ACCESS_TOKEN.\n' +
-    '  Create one at https://supabase.com/dashboard/account/tokens\n' +
-    `  then add this line to ${ENV_FILE}:\n` +
-    '    SUPABASE_ACCESS_TOKEN=sbp_your_token_here\n' +
-    '  (that path is gitignored), or export SUPABASE_ACCESS_TOKEN in your shell.',
-  );
-}
-const ref = loadProjectRef();
+// Only run when invoked as a command. Importing this file (from a test) must not execute
+// anything — a script that runs on import cannot be tested, and the --no-transaction call
+// shape is exactly the kind of promise that needs a test rather than a comment.
+const invokedDirectly =
+  process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href;
 
-if (cmd === 'query') await cmdQuery(token, ref, args);
-else if (cmd === 'apply') await cmdApply(token, ref, args);
-else die('Usage: db-exec.mjs query "<sql>" | query --file <path> | apply <migration.sql>');
+if (invokedDirectly) {
+  const [cmd, ...args] = process.argv.slice(2);
+  const token = loadToken();
+  if (!token) {
+    die(
+      'No SUPABASE_ACCESS_TOKEN.\n' +
+      '  Create one at https://supabase.com/dashboard/account/tokens\n' +
+      `  then add this line to ${ENV_FILE}:\n` +
+      '    SUPABASE_ACCESS_TOKEN=sbp_your_token_here\n' +
+      '  (that path is gitignored), or export SUPABASE_ACCESS_TOKEN in your shell.',
+    );
+  }
+  const ref = loadProjectRef();
+
+  if (cmd === 'query') await cmdQuery(token, ref, args);
+  else if (cmd === 'apply') await cmdApply(token, ref, args);
+  else die('Usage: db-exec.mjs query "<sql>" | query --file <path> | apply <migration.sql>');
+}
