@@ -14,6 +14,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { FOUNDER_INPUTS, OUTSTANDING, isPending, outstandingReport } from './pending';
 import { PendingMark } from './components';
 import { deck } from '../slides';
+import { SlideLiquidity } from '../slides/slides';
 
 afterEach(cleanup);
 
@@ -42,6 +43,32 @@ describe('founder inputs', () => {
 
     expect(container.querySelector('[data-pending="safeTerms"]')).toBeTruthy();
     expect(container.textContent).toContain(FOUNDER_INPUTS.safeTerms.question);
+  });
+
+  /**
+   * The label next to a mark is part of the question, and this one got a wrong answer.
+   *
+   * The liquidity slide read "Restaurants in Hoboken:", which standing beside a liquidity
+   * model says *our supply* just as naturally as it says *the town's total* — and the
+   * founder answered with ours ("two"). The number wanted is the denominator. Both the
+   * slide and the question now say which, and this pins it, because the failure was
+   * silent: a plausible answer to the wrong question looks exactly like progress.
+   */
+  it('asks for the town-wide count, on the slide and in the question', () => {
+    const { container } = render(
+      <SlideLiquidity index={0} total={deck.length} />,
+    );
+    const mark = container.querySelector('[data-pending="hobokenRestaurantCount"]');
+    expect(mark).toBeTruthy();
+
+    // Read the LABEL, not the slide. The first draft asserted `container.textContent`
+    // contained "town-wide" and passed with the old ambiguous label — because the mark
+    // renders the question, and the question says "town-wide". A whole-slide text search
+    // cannot tell the label apart from the thing standing next to it.
+    const label = mark?.parentElement?.querySelector('p');
+    expect(label?.textContent).toContain('town-wide');
+
+    expect(FOUNDER_INPUTS.hobokenRestaurantCount.question).toMatch(/IN TOTAL|town-wide/);
   });
 
   /**

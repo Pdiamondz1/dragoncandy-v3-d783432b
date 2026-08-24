@@ -681,7 +681,7 @@ export function SlideLiquidity({ index, total }: SlideProps) {
       {/* The founder mark gets its own row. Inline inside `Source` it wrapped mid-sentence
           and pushed the whole block off the bottom of the canvas. */}
       <div className="mt-4 flex items-baseline gap-3">
-        <p className="shrink-0 text-base text-white/60">Restaurants in Hoboken:</p>
+        <p className="shrink-0 text-base text-white/60">Restaurants in Hoboken, town-wide:</p>
         <PendingMark input={FOUNDER_INPUTS.hobokenRestaurantCount} dark />
       </div>
 
