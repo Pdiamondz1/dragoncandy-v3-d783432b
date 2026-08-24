@@ -104,6 +104,38 @@ holds no Toast credentials. See §6.
 
 ### In flight
 
+- **Onboarding slices 3 and 4 — a wizard that reads the registry, and two requirements no brand
+  could satisfy** — the wizard is now declarative slides driven by the slice-1 requirement registry
+  (`ROLE_STEPS` / `STEP_PHASE` / `REQUIREMENT_STEP`), with a coverage test that carries a forced
+  control, so adding a required requirement fails a test instead of silently producing a checklist
+  row onboarding cannot clear. **The core save moved to the collect/service boundary** — every later
+  slide acts on rows that must exist — which closed an abandonment bug and created three of its own,
+  all caught by review: the org query is a separate React Query cache, so a new business kept
+  `{org: null}` and the address slide could never resolve a location; the save can now beat
+  `useAutoDetect`, so a fast creator saved null city/country and nothing ever asked again; and
+  `goNext` became async, so a double tap advanced TWO slides and skipped phone verification. Slice 4
+  gave the depth dimensions surfaces: the Locations page finally shows address status (`required`,
+  and unmet for **every** business on prod — 30 units, 4 with an address, 0 verified), with saving
+  now waiting for verification rather than losing the race against its own invalidation; and
+  `deriveTeam` returns `pending` while an invite is outstanding instead of telling an owner to invite
+  the team they just invited. **Two brand requirements no brand could ever clear**: `address`
+  removed — spec §4.4 excluded it and slice 2 silently reversed that, and prod agreed with the spec
+  (7 brand units, all products, zero addresses, and the page it pointed at offers a Website URL
+  field) — and `stripe` KEPT but its wizard slide removed, because **there is no brand Connect path
+  at all** (both restaurant functions filter `account_type='restaurant'`; 6 brands, 0 Stripe
+  accounts) and presenting a setup flow that silently does nothing is worse than not offering it.
+  **`publish_campaign` demands `stripe` and lists `brand`; it has no call site today, and the day it
+  gets one every brand is blocked.** The registry has now drifted from its spec twice in the same
+  direction, so both decisions are pinned by tests rather than comments. Ten Codex rounds, twelve
+  findings, all real, all mine, clean at round 11 — nearly every one a consequence of an earlier
+  change in the same session. Two forced controls changed a conclusion: the double-tap test pins a
+  PAIR of guards, not the ref it looks like it tests, and the retry-loop test first asserted against
+  elapsed time while its control passed. **Pending:** both-viewport prod verification (still no
+  test-account credentials); the Donny RAG sync; and social login, blocked on a `handle_new_user`
+  migration — that trigger never sets `email_verified`, which defaults false while `AuthPage` gates
+  on it, so an OAuth user would be told to verify an email that is never sent, and `authenticated`
+  holds INSERT but no UPDATE on the column, so there is no client-side fix. Auth logic, so it needs
+  confirmation first. → `docs/wiki/concepts/onboarding-wizard-and-depth.md` · `feat/onboarding-slice-3`
 - **Retrieval quality measured, not assumed** — chunking proved the text was reachable; it did not
   prove Donny *finds* it. `npm run eval:rag` now answers that against **53 real queries** taken from
   `donny_tool_executions` (every internal search Donny has ever run — they predate the work and
@@ -859,6 +891,7 @@ holds no Toast credentials. See §6.
   memory system despite `CLAUDE.md` saying they do**; the Donny RAG sync; and slices 2-4 (identity &
   verification, entry experience, depth). **Slice 2 (identity & verification) built — see "Built —
   awaiting founder go-live" above**; this line previously named it only as a future slice.
+  **Slices 3 and 4 shipped 2026-08-24 — see the entry below.**
   → `docs/wiki/concepts/account-completeness-engine.md` · #472
 - **Every `href` in our transactional emails was caller-chosen — closed on prod (#442)** — ~30
   templates built every link from caller-supplied `data` with no check, reachable because

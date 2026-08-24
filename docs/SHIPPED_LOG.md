@@ -32,6 +32,178 @@
 >
 > **Adding an entry:** prepend it (newest first). See `knowledge-sync` step 4.
 
+## [2026-08-24] Onboarding slices 3 and 4 — a wizard that reads the registry, and two requirements no brand could satisfy
+
+**Branch:** `feat/onboarding-slice-3` (carries both slices). Slice 3 rebuilt the wizard; slice 4 gave
+the depth dimensions — locations, team, social — surfaces that can actually satisfy them.
+
+### The wizard is declarative, and the registry is its authority
+
+`src/components/onboarding/steps.ts` holds `ROLE_STEPS` (which slides a role gets), `STEP_PHASE`
+(collect / service / ready) and `REQUIREMENT_STEP` (which slide satisfies which requirement key). A
+test asserts every `required` requirement has a slide and carries a forced control — it guts a role's
+slides and checks the comparison actually fails. Adding a required requirement now fails a test
+rather than silently producing a checklist row onboarding cannot clear, which is the failure slice 1
+shipped twice.
+
+Service slides never block: the forward button on an incomplete one reads "Skip for now", never
+"Continue", because labelling it Continue would imply the step had been done.
+
+### The core save moved to the collect/service boundary, and created three problems doing it
+
+Not at the end. Every slide after it acts on rows that must already exist — `verify-address` reads
+the stored address back rather than trusting the client, and Stripe Connect needs a profile to attach
+an account to. It also closed an abandonment bug: someone who quits on the payments slide now has a
+complete profile and a working dashboard instead of an account that captured nothing.
+
+All three consequences were found by review, not by testing:
+
+1. **The org query is a separate React Query cache from AuthContext's profile.** `useOrgFromProfile`
+   caches `{org: null}` on mount for a new business, and the core save is what fires
+   `trg_auto_create_org`. `refreshProfile()` does not touch React Query, so `useOrgUnits` stayed
+   disabled and the address slide could only ever reach its no-location error. The save now refetches
+   that query and awaits it.
+2. **It can beat `useAutoDetect`,** which waits out a geolocation timeout. A creator who tapped
+   through quickly saved null city, country and timezone; detection landed a second later; nothing
+   ever asked again. The location that nearby matching runs on was lost silently and permanently.
+3. **It made `goNext` async.** Two clicks ran two saves and two `setCurrentIndex(prev => prev + 1)`
+   calls, advancing TWO slides — so a double tap skipped phone verification without ever showing it,
+   and uploaded the avatar twice.
+
+### Dirtiness is a fingerprint, not a flag
+
+The save was first gated on a "have we saved once" boolean, so going back, correcting a name or
+cuisine and continuing showed the edit and discarded it — the recorded-vs-actual split the readiness
+engine exists to close, reproduced inside its own onboarding.
+
+`coreFingerprint` compares values instead. **Deliberately not a dirty flag wired into every setter:**
+a missed setter fails silently and looks exactly like working code, where a field missing from the
+fingerprint is one place to look and is pinned per-field by a test. It is captured at the start of the
+save and stored on success, so a field edited while a save is in flight stays dirty rather than being
+marked clean by a save that never saw it. Chip order and whitespace are not edits; the avatar
+contributes file identity, so re-selecting the same picture is not another upload.
+
+### The delayed location write touches only the location
+
+The late-detection path first reran the whole `saveCore`, wrong twice over. It writes the entire
+profile from live form state, so detection settling while someone was mid-edit on a collect slide they
+had walked back to would persist that half-finished value — an emptied name stored as `full_name: ''`
+before they pressed Continue, bypassing the validation Continue enforces. And it left the key
+unchanged on failure while toggling `loading`, an effect dependency, so a persistent failure retried
+on every subsequent render.
+
+It now updates city, country and timezone and nothing else, records the attempted key **before** the
+await so a failure is attempted once, and fails silently to the console — nobody asked for this write,
+and losing it costs nothing the checklist does not already show.
+
+### Slice 4: locations
+
+`address` is `required` for business, resolves to the Locations page, and was unmet for **every**
+business on the platform (30 org units, 4 with any address, 0 verified). The page said nothing about
+addresses. Each card now carries its status, and the two states that are not done say what to do.
+
+**Three states, because the database holds two facts** — the address string and the server-written
+`address_verified_at` stamp, and nothing meaning "a geocode is in flight"; a fourth would be invented.
+`unconfirmed` deliberately does not mean wrong: the column shipped with no backfill, so every location
+predating it reads unconfirmed however correct its address is.
+
+**Saving waits for verification instead of racing it.** `onSuccess` invalidates the units query
+immediately, so a fire-and-forget geocode lost that race every time — the refetch landed before the
+stamp, the badge still said "needs confirming", and the owner's only evidence that anything had
+happened was that nothing had. Bounded at 6s because `functions.invoke` carries no timeout of its own;
+the helper resolves on every path and rejects on none, so a Google outage still leaves the address
+saved. Past the bound, an invalidation is attached to the abandoned request — "the next refetch picks
+it up" assumes a next refetch, and the user is sitting on the page. Creating a unit stays
+fire-and-forget, deliberately: that path navigates to Settings, so nobody is watching the badge.
+
+The save toast reports the outcome rather than the write. "Location updated" for an address that
+failed to geocode is the same class of lie the stamp exists to prevent, one level up.
+
+### Slice 4: team
+
+`deriveTeam` counted only `invitation_status='active'`, so sending an invitation changed nothing —
+"Invite your team" kept asking someone to do what they had just done. That is what `pending` is for,
+and it was unreachable because the context carried one number where two facts existed. The counts are
+separate queries so an unreadable invited count still leaves met/unmet answerable. The ordering is
+pinned: the invited branch runs only where nobody has joined, so an org that already has a team stays
+met when it invites a fourth person. Nothing on production is in this state (26 orgs, 26 members, all
+active, zero invited) — which is why it went unnoticed: the honest state was unreachable, not unused.
+
+### Slice 4: social
+
+Already complete end to end — `outstand-proxy` writes the mirror row, `?section=social` opens the
+right accordion in both settings pages, and creators use the same table as businesses. Verified, not
+changed.
+
+### Two brand requirements no brand could ever satisfy
+
+**`address` — removed.** Spec §4.4 says it is business-only, because a brand's primary `org_unit` is
+a `product` and demanding a street address of it "would be a requirement no brand can meaningfully
+satisfy". Slice 1 obeyed that; slice 2 added the row back with no note saying why. The spec's
+prediction came true unchanged: 7 brand units on production, all products, zero addresses, and the
+page the row pointed at (`/dashboard/brand/products`) offers a Website URL field and no address field.
+It was a `required` row, undismissable by tier, that no brand could ever clear.
+
+**`stripe` — kept, and still unsatisfiable, deliberately.** There is no brand Connect path anywhere:
+`create-restaurant-connect-account` and `check-restaurant-payout-status` filter
+`account_type = 'restaurant'` on every statement, and brand settings has never rendered
+`StripeConnectSetup` — its "Payments" section is a budget-range field. 6 brands, 0 Stripe accounts. So
+the new payments slide would have been the first place a brand was offered Stripe, and it would have
+silently done nothing. The slide was removed for brands rather than the requirement, because brands
+genuinely do need to fund sponsorships and removing it would hide a real gap. **`publish_campaign`
+demands `stripe` and lists `brand` among its roles; it has no call site today, and the day it gets one
+every brand is blocked.**
+
+The exemption is declared in `NO_CAPTURE_FLOW` with its reason and guarded by two tests, because it is
+the only way to weaken the coverage invariant: an entry must name a requirement the role actually has,
+and the roles whose flows work must claim no exemptions at all.
+
+**The registry has now drifted from its spec twice, silently, in the same direction** — a later slice
+adding a requirement the spec explicitly excluded. Comments beside the entry did not hold; tests do.
+
+### Phone: two server contracts and one of our own
+
+`usePhoneVerification` is the first caller of `verify-phone` in `src/`. Two behaviours are pinned by
+tests because neither is guessable: a wrong code returns **HTTP 200** with `{status:'unmet'}`, and
+`supabase.functions.invoke` puts non-2xx bodies in `error.context` (a `Response`), not `data`.
+
+And ours: `1 (201) 555-0134` is an ordinary way to write a US number, and blindly prefixing `+1`
+produced `+112015550134` — a shape the E.164 check accepts and Twilio rejects, so the code never
+arrived and nothing on screen explained why. The de-duplication is NANP-specific and gated on the NANP
+default, because `1` is a legitimate first digit of a subscriber number elsewhere.
+
+### The review loop
+
+**Ten Codex rounds, twelve findings, all real, all mine; clean at round 11.** The shape repeats and is
+the durable part: nearly every finding was a consequence of a change made earlier in the same session,
+not of the original code. Moving the save fixed abandonment and created a cache-staleness bug, a
+detection race and a double-advance. Fixing the detection race created a save-per-keystroke. Fixing
+that created a validation bypass and a retry loop.
+
+**Two forced controls changed a conclusion, which is the argument for running them at all.** The
+double-tap test passes with either guard removed and fails only with both, so it pins the pair rather
+than the ref — and both the comment and the test now say so, because "the suite still passes" is
+exactly the argument that would delete the half doing the work. The retry-loop test first asserted
+against elapsed time and its control passed: the retry needs a re-render to re-run the effect, and the
+harness was providing none.
+
+Also fixed along the way: three org-unit selects returned rows cast to `OrgUnit` while omitting
+`address_verified_at`, which that type declares as present; the wizard's back button had no accessible
+name at all; and the loading guard added mid-session folded "failed" into "loading", leaving Confirm
+address disabled forever under a message about progress that was not happening.
+
+**Pending:** both-viewport production verification (every changed surface is behind auth and no
+test-account credentials exist — the same gap slices 1 and 2 recorded); the Donny RAG sync; and social
+login, which is blocked on a `handle_new_user` migration and therefore on confirmation, since that is
+auth logic. `handle_new_user` is the only trigger on `auth.users` and never sets `email_verified`,
+which defaults false, while `AuthPage` gates on it — so an OAuth user would be told to verify an email
+that is never sent, and `authenticated` holds INSERT but no UPDATE on that column, so there is no
+client-side fix.
+
+→ `docs/wiki/concepts/onboarding-wizard-and-depth.md` · `docs/wiki/concepts/account-completeness-engine.md`
+
+---
+
 ## [2026-08-23] A password cannot stop a signup: locking the site to a private preview
 
 **Built and reviewed. NOT live** — PR #482 open, none of the four Vercel variables set.
