@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { motion } from '@/lib/motion';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { LandingButton } from '@/components/landing/LandingButton';
+import { Button } from '@/components/ui/button';
 import { Check, Loader2, MapPin } from 'lucide-react';
 
 interface AddressStepProps {
@@ -46,11 +46,11 @@ export function AddressStep({
         initial={{ opacity: 0, scale: 0.96 }}
         animate={{ opacity: 1, scale: 1 }}
       >
-        <div className="w-14 h-14 rounded-full bg-landing-mint/20 flex items-center justify-center">
-          <Check className="w-7 h-7 text-landing-mint" strokeWidth={3} />
+        <div className="w-14 h-14 rounded-full bg-dc-teal/20 flex items-center justify-center">
+          <Check className="w-7 h-7 text-dc-teal-btn" strokeWidth={3} />
         </div>
-        <p className="text-landing-ink font-semibold">Address confirmed</p>
-        <p className="text-sm text-landing-ink-soft text-center">{address}</p>
+        <p className="text-dc-text font-semibold">Address confirmed</p>
+        <p className="text-sm text-dc-text-muted text-center">{address}</p>
       </motion.div>
     );
   }
@@ -60,30 +60,32 @@ export function AddressStep({
       <motion.div className="w-full" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}>
         <Label htmlFor="onboarding-address" className="sr-only">Street address</Label>
         <div className="relative">
-          <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-landing-ink-soft" />
+          <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-dc-text-muted" />
           <Input
             id="onboarding-address"
             value={address}
             onChange={(e) => { onAddressChange(e.target.value); setTouched(true); }}
             placeholder="123 Washington St, Hoboken, NJ 07030"
-            className="pl-12 text-base font-medium h-14 rounded-2xl border-2 border-landing-line bg-white text-landing-ink focus-visible:ring-2 focus-visible:ring-landing-mint placeholder:text-landing-ink-soft"
+            className="pl-12 text-base font-medium h-14 rounded-2xl border-2 border-dc-teal/15 bg-white text-dc-text focus-visible:ring-2 focus-visible:ring-dc-teal-btn placeholder:text-dc-text-muted"
             autoComplete="street-address"
             autoFocus
           />
         </div>
       </motion.div>
 
-      <LandingButton
+      <Button
         type="button"
+        variant="dc-primary"
+        size="lg"
         onClick={onSave}
         disabled={address.trim().length < 6 || saving || locationLoading || locationError}
         className="w-full"
       >
         {saving || locationLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Confirm address'}
-      </LandingButton>
+      </Button>
 
       {locationLoading && !locationError && (
-        <p role="status" className="text-sm text-center text-landing-ink-soft">
+        <p role="status" className="text-sm text-center text-dc-text-muted">
           Setting up your location — one moment.
         </p>
       )}
@@ -91,7 +93,7 @@ export function AddressStep({
       {/* Names the exit, because this slide is skippable and the address can be added in
           settings later. A dead button with no explanation is the failure being avoided. */}
       {locationError && (
-        <p role="alert" className="text-sm text-center text-landing-ink-soft">
+        <p role="alert" className="text-sm text-center text-dc-text-muted">
           We could not load your location just now. Skip this for now and add your address
           in settings — nothing else you have entered is affected.
         </p>
@@ -103,12 +105,12 @@ export function AddressStep({
         server-side by `verify-address`, and a geocode that cannot resolve leaves it null.
       */}
       {pending && !verified && (
-        <p role="status" className="text-sm text-center text-landing-ink-soft">
+        <p role="status" className="text-sm text-center text-dc-text-muted">
           Saved. We're checking the address — this can take a moment, and you can carry on.
         </p>
       )}
       {touched && !pending && (
-        <p className="text-xs text-center text-landing-ink-soft">
+        <p className="text-xs text-center text-dc-text-muted">
           We use this to match you with creators nearby.
         </p>
       )}

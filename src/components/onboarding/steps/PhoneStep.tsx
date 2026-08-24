@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { motion } from '@/lib/motion';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { LandingButton } from '@/components/landing/LandingButton';
+import { Button } from '@/components/ui/button';
 import { Check, Loader2 } from 'lucide-react';
 import { usePhoneVerification, toE164, isE164 } from '@/hooks/usePhoneVerification';
 
@@ -13,8 +13,8 @@ interface PhoneStepProps {
 }
 
 const FIELD =
-  'text-center text-lg font-medium h-14 rounded-2xl border-2 border-landing-line bg-white ' +
-  'text-landing-ink focus-visible:ring-2 focus-visible:ring-landing-mint placeholder:text-landing-ink-soft';
+  'text-center text-lg font-medium h-14 rounded-2xl border-2 border-dc-teal/15 bg-white ' +
+  'text-dc-text focus-visible:ring-2 focus-visible:ring-dc-teal-btn placeholder:text-dc-text-muted';
 
 export function PhoneStep({ onVerified, verified }: PhoneStepProps) {
   const [phone, setPhone] = useState('');
@@ -47,11 +47,11 @@ export function PhoneStep({ onVerified, verified }: PhoneStepProps) {
         initial={{ opacity: 0, scale: 0.96 }}
         animate={{ opacity: 1, scale: 1 }}
       >
-        <div className="w-14 h-14 rounded-full bg-landing-mint/20 flex items-center justify-center">
-          <Check className="w-7 h-7 text-landing-mint" strokeWidth={3} />
+        <div className="w-14 h-14 rounded-full bg-dc-teal/20 flex items-center justify-center">
+          <Check className="w-7 h-7 text-dc-teal-btn" strokeWidth={3} />
         </div>
-        <p className="text-landing-ink font-semibold">Phone verified</p>
-        <p className="text-sm text-landing-ink-soft">{e164}</p>
+        <p className="text-dc-text font-semibold">Phone verified</p>
+        <p className="text-sm text-dc-text-muted">{e164}</p>
       </motion.div>
     );
   }
@@ -75,9 +75,9 @@ export function PhoneStep({ onVerified, verified }: PhoneStepProps) {
       </motion.div>
 
       {!codeSent && (
-        <LandingButton type="button" onClick={handleSend} disabled={!canSend} className="w-full">
+        <Button type="button" variant="dc-primary" size="lg" onClick={handleSend} disabled={!canSend} className="w-full">
           {sending ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Send code'}
-        </LandingButton>
+        </Button>
       )}
 
       {codeSent && (
@@ -94,18 +94,20 @@ export function PhoneStep({ onVerified, verified }: PhoneStepProps) {
             maxLength={10}
             autoFocus
           />
-          <LandingButton
+          <Button
             type="button"
+            variant="dc-primary"
+            size="lg"
             onClick={handleCheck}
             disabled={code.trim().length < 4 || checking}
             className="w-full"
           >
             {checking ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Verify'}
-          </LandingButton>
+          </Button>
           <button
             type="button"
             onClick={() => { setCodeSent(false); setCode(''); setMessage(null); }}
-            className="text-sm text-landing-ink-soft underline underline-offset-4"
+            className="text-sm text-dc-text-muted underline underline-offset-4"
           >
             Use a different number
           </button>
@@ -118,7 +120,7 @@ export function PhoneStep({ onVerified, verified }: PhoneStepProps) {
         "didn't match" — replacing either with generic copy loses the only actionable part.
       */}
       {message && (
-        <p role="status" className="text-sm text-center text-landing-ink-soft">{message}</p>
+        <p role="status" className="text-sm text-center text-dc-text-muted">{message}</p>
       )}
     </div>
   );
