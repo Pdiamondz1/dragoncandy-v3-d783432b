@@ -2,9 +2,12 @@
 
 Everything the code cannot do for itself.
 
-**Steps 1-3 are DONE (2026-08-24), verified by reading them back after a full
-page reload.** What remains is steps 4-6: apply the migration, deploy the four
-functions, connect an account. See the status box under each heading.
+**Steps 1-5 are DONE (2026-08-24).** The console changes were verified by
+reading them back after a full page reload; the migration and the deploy were
+verified by object and by live probe, each with a control that could have
+failed. What remains is **step 6: connect a real account**, which is the only
+step that can prove `X_CLIENT_SECRET` — everything up to here proves the client
+*ID*, and those are different secrets. See the status box under each heading.
 
 Related: [[X Analytics Connector]] · `docs/runbooks/google-oauth-demo-video.md`
 (the site-gate conflict at the end applies here too).
@@ -175,6 +178,18 @@ several flows.
 
 ## 4. Apply the migration **before** the frontend deploys
 
+> **DONE 2026-08-24.** Applied with `db:apply` (never `db push`). Verified by
+> object: table present where an invented name returns null, RLS on with **zero**
+> policies, grants exactly `postgres` + `service_role`, `x_connection_status`
+> executable by `authenticated` but not `anon`, and all seven token-touching
+> claim/commit RPCs `service_role` only.
+>
+> **The zero-policy count needed a control to mean anything.** A query returning
+> 0 looks identical whether the answer is genuinely zero or the query is wrong.
+> Run against `profiles` the same query returns 7, so the 0 is a real zero. This
+> is the project's own rule — when a probe returns zero, prove it could have
+> returned non-zero.
+
 ```bash
 npm run db:apply -- supabase/migrations/20260826100000_x_account_connections.sql
 ```
@@ -211,6 +226,20 @@ where proname in ('x_connection_status','claim_x_token_refresh','commit_x_token_
 ---
 
 ## 5. Deploy the four functions
+
+> **DONE 2026-08-24.** All four `v1 ACTIVE`, deployed from this worktree. The
+> `verify_jwt = true` on each was read back off the **platform**, not off
+> `config.toml` — the file is a claim about the deploy, not a record of it — and
+> the two agree. Every deploy's upload list showed the `_shared/*` dependencies
+> bundling, so that hazard is checked by observation rather than assumption.
+>
+> **The boot probe's control did real work.** An invented function name returns
+> **404** where all four return **401**, so 401 means "registered", not "gateway
+> artifact". Better still, the two 401s differ in *shape*: with no header the
+> body is the gateway's `{"code":"UNAUTHORIZED_NO_AUTH_HEADER"}`, while with the
+> public anon key it is **ours**, `{"error":"unauthorized"}`. That second body is
+> the thing that proves the module loaded and our code ran. The anon key got
+> through none of the four.
 
 Run from **this worktree**, not the main checkout — `supabase functions deploy`
 reads `config.toml` from the **current directory**, and the main checkout has no
