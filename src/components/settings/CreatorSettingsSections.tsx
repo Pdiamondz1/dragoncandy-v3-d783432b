@@ -18,6 +18,7 @@ import { CreatorSocialMediaLinks } from '@/components/creator-profile/CreatorSoc
 import { ConnectedAccountsList } from '@/components/outstand/ConnectedAccountsList';
 import { YouTubeAnalyticsCard } from '@/features/settings/YouTubeAnalyticsCard';
 import { InstagramInsightsCard } from '@/features/settings/InstagramInsightsCard';
+import { FacebookPageInsightsCard } from '@/features/settings/FacebookPageInsightsCard';
 import { PortfolioUpload } from '@/components/creator-profile/PortfolioUpload';
 import { AvatarUpload } from '@/components/creator-profile/AvatarUpload';
 import type { CreatorProfileFormData } from '@/hooks/useCreatorProfileForm';
@@ -265,6 +266,7 @@ export function CreatorSettingsSections({
         <YouTubeAnalyticsCard />
 
         <InstagramInsightsCard />
+        <FacebookPageInsightsCard />
 
         <div className="border-t border-dc-teal/10 pt-4 mt-4">
           <details className="group">
