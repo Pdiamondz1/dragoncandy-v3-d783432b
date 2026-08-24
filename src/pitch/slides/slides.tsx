@@ -873,12 +873,12 @@ export function SlideCompounds({ index, total }: SlideProps) {
   );
 }
 
-/* ---------- 14 · Team & advisors ---------- */
+/* ---------- 14 · Team & board ---------- */
 
 export function SlideTeam({ index, total }: SlideProps) {
   return (
-    <SlideShell index={index} total={total} variant="dark" eyebrow="Team & advisors">
-      <H2>Three founders, one advisor, no padding.</H2>
+    <SlideShell index={index} total={total} variant="dark" eyebrow="Team & board">
+      <H2>Three founders, one board member, no padding.</H2>
 
       <div className="mt-8 grid grid-cols-3 gap-5">
         <Card dark>
@@ -916,7 +916,7 @@ export function SlideTeam({ index, total }: SlideProps) {
           <PendingMark input={FOUNDER_INPUTS.teamBios} dark />
         </div>
         <div className="flex items-baseline gap-3">
-          <p className="shrink-0 text-lg text-white/70">Adrian Vella, advisor:</p>
+          <p className="shrink-0 text-lg text-white/70">Board:</p>
           <PendingMark input={FOUNDER_INPUTS.adrianConsent} dark />
         </div>
       </div>
