@@ -450,6 +450,24 @@ export type RevokeOutcome = 'revoked' | 'already_invalid' | 'failed';
  * the user actually agreed to, and leaving it live while telling them they are
  * disconnected is the lie this ordering exists to prevent.
  */
+/**
+ * Graph error codes that mean THE TOKEN is dead, as opposed to the request being
+ * wrong.
+ *
+ * 190 invalid/expired OAuth token · 102 session invalid · 463 expired ·
+ * 467 invalidated. Only these justify `already_invalid`.
+ */
+const TOKEN_DEAD_CODES = new Set([102, 190, 463, 467]);
+
+export function isTokenDeadError(payload: any): boolean {
+  const raw = payload?.error?.code;
+  const code = typeof raw === 'number' ? raw : Number(raw);
+  if (Number.isFinite(code) && TOKEN_DEAD_CODES.has(code)) return true;
+  const sub = Number(payload?.error?.error_subcode);
+  // 463/467 also arrive as subcodes under a generic 190.
+  return Number.isFinite(sub) && (sub === 463 || sub === 467);
+}
+
 export async function revokePermissions(userToken: string): Promise<RevokeOutcome> {
   const params = new URLSearchParams({ access_token: userToken });
   let res: Response;
@@ -459,10 +477,37 @@ export async function revokePermissions(userToken: string): Promise<RevokeOutcom
     return 'failed';
   }
   if (res.ok) return 'revoked';
-  // A token Meta has already invalidated cannot be revoked, and that is the
-  // state we were trying to reach. Treating it as failure would strand the row
-  // forever, leaving the user unable to disconnect something already gone.
-  if (res.status === 400 || res.status === 401) return 'already_invalid';
+
+  // WHICH KIND of failure decides whether the caller may delete the row that
+  // holds our only copy of the token — so this classification IS the "never
+  // abandon a live grant" rule, and getting it wrong defeats the ordering the
+  // whole function exists for.
+  //
+  // An earlier version returned `already_invalid` for ANY 400. Meta answers 400
+  // for a great many things that have nothing to do with the token, so an
+  // unrelated Graph error would delete the credential, report a clean
+  // disconnect, and leave a live authorization nothing could ever revoke — the
+  // precise failure this ordering prevents, arriving through the classifier
+  // instead. (Codex second review, round 3.)
+  //
+  // So `already_invalid` is now claimed only when Meta says the TOKEN is dead,
+  // which is the one case where deleting the row strands nothing because there
+  // is nothing left to strand. Everything else is `failed`: the row survives and
+  // the user can retry.
+  let payload: any = null;
+  try {
+    const text = await res.text();
+    payload = text ? JSON.parse(text) : null;
+  } catch {
+    payload = null;
+  }
+
+  if (isTokenDeadError(payload)) return 'already_invalid';
+
+  // A bare 401 with no readable body still means the credential was rejected;
+  // there is nothing here that could be revoked later.
+  if (res.status === 401 && !payload?.error) return 'already_invalid';
+
   return 'failed';
 }
 

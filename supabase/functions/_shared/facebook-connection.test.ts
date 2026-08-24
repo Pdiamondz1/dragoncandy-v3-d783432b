@@ -5,7 +5,7 @@ import {
   INSIGHTS_TASK,
   missingInsightsReason,
 } from './facebook-connection.ts';
-import { INSIGHTS_PERMISSIONS } from './facebook-pages.ts';
+import { INSIGHTS_PERMISSIONS, isTokenDeadError } from './facebook-pages.ts';
 
 /**
  * `canReadInsights` has TWO gates, and an earlier version checked only one.
@@ -82,5 +82,41 @@ describe('canRevoke', () => {
     // leave a live grant behind on every disconnect.
     expect(canRevoke({ user_token_expires_at: null })).toBe(true);
     expect(canRevoke({ user_token_expires_at: 'not-a-date' })).toBe(true);
+  });
+});
+
+/**
+ * This classification decides whether `facebook-disconnect` may delete the row
+ * holding our only copy of the token — so it IS the "never abandon a live grant"
+ * rule, not a detail of it.
+ *
+ * An earlier version returned `already_invalid` for ANY HTTP 400. Meta answers
+ * 400 for a great many things unrelated to the token, so an ordinary Graph error
+ * would delete the credential, report a clean disconnect, and leave a live
+ * authorization nothing could ever revoke. (Codex second review, round 3.)
+ */
+describe('isTokenDeadError', () => {
+  it.each([190, 102, 463, 467])('recognises code %i as a dead token', (code) => {
+    expect(isTokenDeadError({ error: { code } })).toBe(true);
+  });
+
+  it('recognises the expiry subcodes that arrive under a generic 190', () => {
+    expect(isTokenDeadError({ error: { code: 190, error_subcode: 463 } })).toBe(true);
+    expect(isTokenDeadError({ error: { code: 190, error_subcode: 467 } })).toBe(true);
+  });
+
+  it('does NOT treat an ordinary Graph error as a dead token', () => {
+    // The finding, stated as a test: these all arrive as HTTP 400 and none of
+    // them means the token is gone. Claiming otherwise deletes the only thing
+    // that could still revoke the grant.
+    expect(isTokenDeadError({ error: { code: 100, message: 'Invalid parameter' } })).toBe(false);
+    expect(isTokenDeadError({ error: { code: 4, message: 'rate limited' } })).toBe(false);
+    expect(isTokenDeadError({ error: { code: 200, message: 'permissions error' } })).toBe(false);
+    expect(isTokenDeadError({})).toBe(false);
+    expect(isTokenDeadError(null)).toBe(false);
+  });
+
+  it('accepts a numeric string, because Meta is inconsistent about quoting', () => {
+    expect(isTokenDeadError({ error: { code: '190' } })).toBe(true);
   });
 });
