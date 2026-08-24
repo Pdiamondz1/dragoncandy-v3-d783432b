@@ -47,9 +47,9 @@ export function PaymentsStep({ role }: PaymentsStepProps) {
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
     >
-      <p className="text-sm text-center text-landing-ink-soft">{COPY[role]}</p>
+      <p className="text-sm text-center text-dc-text-muted">{COPY[role]}</p>
       <StripeConnectSetup role={role === 'content_creator' ? 'creator' : 'business'} />
-      <p className="text-xs text-center text-landing-ink-soft">
+      <p className="text-xs text-center text-dc-text-muted">
         Stripe takes over from here and returns you to your settings, not to this page.
         Everything you have entered is already saved.
       </p>

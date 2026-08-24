@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@18.5.0";
 import { createClient } from "npm:@supabase/supabase-js@2.57.2";
+import { mirrorIdentitySignals } from "../_shared/identity-mirror.ts";
 import { corsHeaders } from "../_shared/cors.ts";
 import { flushPendingBalance } from "../_shared/flush-pending-balance.ts";
 
@@ -77,6 +78,25 @@ serve(async (req) => {
     });
 
     const onboardingComplete = account.charges_enabled && account.payouts_enabled;
+
+    // Mirror Stripe's identity signals on every status read.
+    //
+    // The webhook was the only writer, and `account.updated` fires only ON CHANGE — so an
+    // account connected before that code shipped had no event coming and stayed unmirrored
+    // forever. On production that was EVERY connected account (3/3 creators, 2/2 businesses,
+    // measured 2026-08-24). A null stamp derives UNMET on a REQUIRED requirement, so a fully
+    // payable account was told to verify an identity Stripe had already verified.
+    // See _shared/identity-mirror.ts.
+    //
+    // Result is LOGGED, never thrown: this is a read the payout UI depends on, and a
+    // transient DB failure must not black it out. Logging is what keeps a silent failure
+    // distinguishable from success.
+    const mirror = await mirrorIdentitySignals(supabaseClient, account, !!onboardingComplete);
+    if (mirror.errors.length > 0) {
+      logStep("Warning: identity mirror had write failures", { errors: mirror.errors });
+    } else {
+      logStep("Mirrored identity signals", { stamped: mirror.stamped });
+    }
 
     // Update database if onboarding status changed
     if (onboardingComplete !== creatorProfile.stripe_onboarding_complete) {

@@ -1,5 +1,5 @@
 import { motion } from '@/lib/motion';
-import { LandingButton } from '@/components/landing/LandingButton';
+import { Button } from '@/components/ui/button';
 import { ROLE_REQUIREMENTS } from '@/lib/accountReadiness/requirements';
 import type { AccountRole } from '@/lib/accountReadiness/types';
 import { uncoveredRecommendedKeys } from '../steps';
@@ -43,23 +43,23 @@ export function ReadyStep({ name, role, onContinue, loading }: ReadyStepProps) {
       animate={{ opacity: 1, scale: 1 }}
     >
       <div className="text-center">
-        <h2 className="text-2xl font-display font-bold text-landing-ink">{HEADING[role]}</h2>
+        <h2 className="text-2xl font-bold text-dc-text">{HEADING[role]}</h2>
         {name.trim() && (
-          <p className="text-sm text-landing-ink-soft mt-1">Welcome, {name.trim()}.</p>
+          <p className="text-sm text-dc-text-muted mt-1">Welcome, {name.trim()}.</p>
         )}
       </div>
 
       {optional.length > 0 && (
-        <div className="w-full rounded-2xl border-2 border-landing-line bg-white p-4">
-          <p className="text-sm font-semibold text-landing-ink mb-2">
+        <div className="w-full rounded-2xl border-2 border-dc-teal/15 bg-white p-4">
+          <p className="text-sm font-semibold text-dc-text mb-2">
             {optional.length === 1 ? 'One optional thing, any time:' : `${optional.length} optional things, any time:`}
           </p>
           <ul className="flex flex-col gap-2">
             {optional.map((r) => (
               <li key={r.key} className="flex items-start gap-2">
-                <span aria-hidden className="mt-1.5 w-1.5 h-1.5 rounded-full bg-landing-mint shrink-0" />
-                <span className="text-sm text-landing-ink-soft">
-                  <span className="text-landing-ink font-medium">{r.label}</span> — {r.why}
+                <span aria-hidden className="mt-1.5 w-1.5 h-1.5 rounded-full bg-dc-teal shrink-0" />
+                <span className="text-sm text-dc-text-muted">
+                  <span className="text-dc-text font-medium">{r.label}</span> — {r.why}
                 </span>
               </li>
             ))}
@@ -67,9 +67,9 @@ export function ReadyStep({ name, role, onContinue, loading }: ReadyStepProps) {
         </div>
       )}
 
-      <LandingButton type="button" onClick={onContinue} disabled={loading} className="w-full">
+      <Button type="button" variant="dc-primary" size="lg" onClick={onContinue} disabled={loading} className="w-full">
         {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Go to dashboard'}
-      </LandingButton>
+      </Button>
     </motion.div>
   );
 }

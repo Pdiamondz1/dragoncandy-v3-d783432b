@@ -125,8 +125,19 @@ export function StripeConnectSetup({ role }: StripeConnectSetupProps) {
       }
     } catch (err: unknown) {
       console.error('Failed to create connect account:', err);
-      const context = (err as { context?: Response })?.context;
-      const serverMsg = context ? await context.json().catch(() => null) : null;
+      // `context` is a Response only when the function ANSWERED. On a network or CORS
+      // failure supabase-js hands back a FunctionsFetchError whose `context` is the
+      // underlying TypeError — no `.json` on it. Calling it threw SYNCHRONOUSLY, and a
+      // throw inside a catch block is not caught by the `.catch()` chained to it, so the
+      // rejection escaped and `toast.error` below never ran: the user pressed "Connect
+      // Stripe Account", the call failed, and the UI reported nothing at all. Observed
+      // against staging, whose deployed functions still send the pre-migration
+      // `Access-Control-Allow-Origin: https://dragoncandy.io`.
+      const context = (err as { context?: unknown })?.context;
+      const serverMsg =
+        context && typeof (context as Response).json === 'function'
+          ? await (context as Response).json().catch(() => null)
+          : null;
       toast.error(serverMsg?.error || 'Connection failed. Please try again.');
     } finally {
       setConnecting(false);
