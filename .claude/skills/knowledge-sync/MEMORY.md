@@ -225,7 +225,55 @@
   [[Domain Migration (.io → .com)]] rule *change instrument when a probe cannot distinguish true
   from false*; here the instrument never addressed the question at all.
 
+- **[handover-shell] When you hand a command to a human, own the directory AND the shell.** On
+  2026-08-24 the same two prod commands failed twice for two different environment reasons, and both
+  times came back as "ran fine". First they ran in the **main checkout**, where a worktree branch's
+  files do not exist — and `supabase functions deploy` reads `supabase/config.toml` from the
+  **current directory**, so a path-resolving version of that mistake would have deployed three
+  anonymous functions at the default `verify_jwt=true` and made Meta's callbacks 401 before their
+  signature check ever ran. Then the corrected commands carried this harness's `!` run-this prefix
+  into a plain zsh shell, where `!` is **pipeline negation**: `! cd X && cmd` parses as
+  `(! cd X) && cmd`, so the `cd` ran, succeeded, `!` inverted it, `&&` short-circuited, and the
+  terminal showed a changed prompt and no output — indistinguishable from success without checking
+  the target. **Prefix handover commands with an absolute `cd`, never with `!`, and name the exact
+  line that proves success** (e.g. `db-exec: ledger row confirmed for <version>`). Then verify
+  against the system, not the report. Same family as `[status-correction]`: the report is not the
+  fact.
+- **[version-collision] Migration versions collide between concurrent branches, and only the merge
+  reveals it.** Two branches open at once both chose `20260825100000`; the ledger is keyed on the
+  version alone, so the second to apply is refused as already recorded, and forcing past that
+  manufactures `recorded != actual`. `supabase/migrations.test.ts` now fails CI on any new collision
+  and found **seven** pre-existing ones — frozen rather than renumbered, since none is in prod's
+  ledger. **When merging `main` into a branch that adds a migration, check the version before
+  reading the diff**, and prefer a stamp that is not a round hour.
+
 ## Run log (newest first — add each new entry at the TOP; never edit/delete past entries)
+
+### [2026-08-24] Instagram connector merged, applied, deployed (PR #489, `docs/instagram-connector-live`)
+
+**Output:** `docs/wiki/raw/sessions/2026-08-24-instagram-connector-live.md` →
+[[Instagram Insights Connector]] (deploy status + a "two branches, one migration version" section)
+· `log.md` entry *"Two branches, one migration version — and a shell that lied twice"* ·
+`DATABASE_SCHEMA.md` gained a **Direct platform connectors** section documenting BOTH connector
+tables (neither had ever been documented — YouTube's included) · `PROJECT_CONTEXT.md` §5 edited
+**in place** + §4's codebase-scale line corrected (100 → 111 edge functions; it also still called
+`verify-phone`/`verify-address` undeployed a day after they shipped).
+
+**Happened:** continued a merged-worktree branch from a second worktree. Merging `main` exposed a
+duplicate migration version against `feat/verify-address-throttle`; renumbered and added
+`supabase/migrations.test.ts`. CI cleared (the standing Lighthouse red was variance, not the
+branch), Codex clean, three `edge-function-reviewer` passes returned deploy-ordering findings only.
+Migration applied and seven functions deployed by the founder, then verified and merged.
+
+**Worked:** probing prod rather than believing "it ran fine" — twice, with controls that could have
+failed (`to_regclass` vs an invented name; 404-for-absent vs 401-for-deployed). Also investigating
+the red Lighthouse gate *before* fixing it: a re-run was the cheap discriminator, where "optimise
+the landing page" would have been days of work on a non-problem.
+
+**Failed:** two handovers cost a round trip each because the commands didn't account for the
+directory or the shell they'd run in.
+
+**Remember:** `[handover-shell]` and `[version-collision]`, added to Lessons this run.
 
 ### [2026-08-23] site access lockdown (private preview)
 - Output: `docs/wiki/raw/sessions/2026-08-23-site-access-lockdown.md` →

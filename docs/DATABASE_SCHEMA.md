@@ -746,6 +746,46 @@ predicate. See `docs/wiki/concepts/synthetic-weight-engine.md`.
 > `account_scope='internal'` guard + `ON CONFLICT DO UPDATE` refresh (a corrective migration restored
 > these after the initial spine migration reverted them — caught by the Codex second review).
 
+## Direct platform connectors (analytics only)
+
+Per-user OAuth links to a platform's own API, under the 2026-08-23 scope decision: **Outstand
+publishes, direct APIs measure**. Neither table was documented here before 2026-08-24 — the
+YouTube one had been live since 2026-08-23.
+
+| Table | Purpose |
+|-|-|
+| `youtube_channel_connections` | One row per linked YouTube channel (`20260823170000`). `channel_id`, `channel_title`, `google_email`, `scopes`, `refresh_token` (NOT NULL — Google's refresh token is a separate, long-lived credential), `access_token` + `access_token_expires_at`, `status`, `last_error`, `connected_at`, `last_synced_at`. |
+| `instagram_account_connections` | One row per linked Instagram account (`20260825120000`, applied 2026-08-24). `ig_user_id`, `username`, `account_type`, `followers_count`, `permissions`, `access_token` (NOT NULL), `token_issued_at`, `token_expires_at`, `status`, `last_error`, `connected_at`, `last_synced_at`. |
+
+> **The column sets differ for a reason that is the whole design.** Instagram has **no refresh
+> token**: the 60-day access token *is* the credential, and `ig_refresh_token` extends that same
+> token rather than minting a new one. So `token_expires_at` is user-facing information here (a
+> connection genuinely ends on a date) where YouTube's expiry is an implementation detail, and a
+> connection nobody reads **dies** — Meta only extends a token that is still valid, so
+> refresh-on-expiry, which is correct for Google, is guaranteed to fail here. Hence proactive
+> refresh at 15 days remaining plus a daily sweep (`instagram-refresh-sweep`, cron migration
+> `20260825130000`). See [[Instagram Insights Connector]].
+>
+> **Both tables are service-role-only by construction, and verified so rather than assumed.**
+> RLS enabled with **zero policies for any role**, PLUS the ambient grants revoked at TABLE level
+> (a column-level `REVOKE` is a documented no-op against Supabase's table-wide `GRANT` — the same
+> lesson `20260804174854` / `20260805163247` record). Grants and RLS are independent gates, so a
+> future migration that re-grants the table still hits RLS-with-no-policy. Checked on prod
+> 2026-08-24 for `instagram_account_connections`: grants are exactly `postgres` + `service_role`,
+> `relrowsecurity` is true, and `pg_policies` returns 0 rows.
+>
+> **The UI never reads either table.** It calls `instagram_connection_status()` /
+> `youtube_connection_status()` — `SECURITY DEFINER`, `search_path=public`, taking **no arguments**
+> so identity can only come from `auth.uid()` (the `dre_my_standing` pattern), EXECUTE granted to
+> `authenticated` + `service_role` and revoked from `PUBLIC`/`anon`, and returning **no token
+> column**. A bare `REVOKE ... FROM PUBLIC` does not lock down a definer function against
+> Supabase's default privileges; `anon` must be named.
+>
+> **Version stamps are not free-form.** `20260825120000` began life as `20260825100000` and was
+> renumbered because `feat/verify-address-throttle` had already recorded that version in prod's
+> ledger. `supabase/migrations.test.ts` now fails CI on any new collision — see
+> [[Instagram Insights Connector]].
+
 ## Social & Outstand Integration
 
 | Table | Purpose |
