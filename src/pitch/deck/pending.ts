@@ -60,7 +60,7 @@ export const FOUNDER_INPUTS = {
     key: 'teamBios',
     question:
       'What are the three founders\' real track records, in the form an investor reads — "Ex-product at X", "Founding engineer at Y"?',
-    blocks: 'Team & advisors',
+    blocks: 'Team & board',
     why: 'What the repo holds is Joe (ten years running ABB, filmmaker), Damon (CTO, builds the platform) and Juwan (shareholder). The spec calls that thin and forbids inventing more.',
     value: null,
   },
@@ -70,15 +70,21 @@ export const FOUNDER_INPUTS = {
       'Has Uncle Rocco\'s agreed to USE the platform as a launch restaurant, or only to let us use their footage?',
     blocks: 'The three supply lines',
     why: 'The permission on record covers the reels on the landing page. A second launch restaurant is a different claim, and the slide says different things depending.',
-    value: null,
+    // Answered by the founder 2026-08-24: they are using the platform, not merely
+    // licensing footage. That is the stronger of the two readings, so the slide now makes
+    // the stronger claim — which is exactly why it was worth asking rather than assuming.
+    value: "Uncle Rocco's — confirmed, using the platform",
   },
   adrianConsent: {
     key: 'adrianConsent',
     question:
-      'Has Adrian Vella agreed in writing to be named as an advisor in a document sent to investors?',
-    blocks: 'Team & advisors',
+      'Has Adrian Vella agreed in writing to be named in a document sent to investors, and in what role?',
+    blocks: 'Team & board',
     why: 'Naming a real person to investors is his decision, not ours. He briefed the deck; that is not the same as consenting to appear in it.',
-    value: null,
+    // Answered by the founder 2026-08-24: consent given, and the role is BOARD MEMBER, not
+    // advisor. The question asked for the role as well as the consent, and it mattered —
+    // the deck had him down as an advisor throughout, which understates a board seat.
+    value: 'Adrian Vella — named with consent',
   },
   hobokenRestaurantCount: {
     key: 'hobokenRestaurantCount',
