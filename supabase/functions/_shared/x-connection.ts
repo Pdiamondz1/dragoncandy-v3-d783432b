@@ -181,6 +181,16 @@ export async function getUsableAccessToken(
           503,
         );
       }
+      case 'disconnect_in_progress':
+        // A disconnect is revoking this grant. Refreshing would mint a
+        // credential against a grant being withdrawn, and the commit would have
+        // nothing to write to. Saying so beats a generic failure: the user is
+        // mid-disconnect and the honest answer is that it is happening.
+        throw new XError(
+          'disconnect_in_progress',
+          'Your X account is being disconnected. Nothing was changed here.',
+          409,
+        );
       case 'no_refresh_token':
         throw new XReconnectRequiredError(
           'This X connection cannot be renewed because offline access was not granted. ' +

@@ -80,6 +80,21 @@ serve(async (req: Request) => {
       if (claim?.reason === 'no_connection') {
         return json(req, { disconnected: true, revoked: 'already_gone' });
       }
+      if (claim?.reason === 'refresh_in_progress') {
+        // A refresh is mid-exchange with X. Revoking and deleting now would
+        // strand the rotated credentials it is about to receive, leaving a live
+        // grant nothing knows about. One retry costs the user a moment; the
+        // alternative costs them a grant they cannot see.
+        return json(
+          req,
+          {
+            error: 'retry',
+            message:
+              'Your X connection is being renewed right now. Try disconnecting again in a moment.',
+          },
+          409,
+        );
+      }
       return json(
         req,
         {

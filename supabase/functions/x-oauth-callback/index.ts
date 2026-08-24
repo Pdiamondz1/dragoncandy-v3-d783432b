@@ -148,6 +148,13 @@ serve(async (req: Request) => {
           409,
         );
       }
+      if (result?.reason === 'refresh_in_progress') {
+        throw new XError(
+          'refresh_in_progress',
+          'Your existing X connection is being renewed right now. Wait a moment and try again.',
+          409,
+        );
+      }
       throw new XError('storage_failed', 'Could not save the X connection', 500);
     }
 

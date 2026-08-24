@@ -292,9 +292,20 @@ begin
     raise exception 'claim_x_token_refresh is service-role only';
   end if;
 
-  -- Serialises every refresh for this user. Taken BEFORE the row is read, so the
-  -- row cannot change between the read and the decision.
-  perform pg_advisory_xact_lock(hashtext('x_token_refresh:' || p_user_id::text));
+  -- ONE key for every operation that mutates this grant — refresh, insights,
+  -- connect and disconnect all take `x_grant:<user>`.
+  --
+  -- They used to take three different keys, which is not mutual exclusion, it is
+  -- three independent locks that happen to be near each other. The Codex review
+  -- found the consequence: a token expires, one tab starts a refresh, another
+  -- disconnects, and because the two never met, the disconnect could revoke and
+  -- delete the row while the refresh was mid-exchange with X. That exchange then
+  -- succeeds, its rotated credentials have nowhere to be committed, and the
+  -- grant stays live at X with no record of it anywhere.
+  --
+  -- Taken BEFORE the row is read, so the row cannot change between the read and
+  -- the decision.
+  perform pg_advisory_xact_lock(hashtext('x_grant:' || p_user_id::text));
 
   select * into v_conn
   from public.x_account_connections
@@ -302,6 +313,14 @@ begin
 
   if not found then
     return jsonb_build_object('claimed', false, 'reason', 'no_connection');
+  end if;
+
+  -- A disconnect is revoking this grant right now. Refreshing would mint a
+  -- credential against a grant that is being withdrawn — and the refresh's own
+  -- commit would then have nothing to write to.
+  if v_conn.disconnect_claimed_at is not null
+     and v_conn.disconnect_claimed_at > now() - make_interval(secs => p_claim_ttl_seconds) then
+    return jsonb_build_object('claimed', false, 'reason', 'disconnect_in_progress');
   end if;
 
   -- Someone else already replaced the token this caller was rejected on. The
@@ -387,7 +406,7 @@ begin
     raise exception 'commit_x_token_refresh is service-role only';
   end if;
 
-  perform pg_advisory_xact_lock(hashtext('x_token_refresh:' || p_user_id::text));
+  perform pg_advisory_xact_lock(hashtext('x_grant:' || p_user_id::text));
 
   select * into v_conn from public.x_account_connections where user_id = p_user_id;
   if not found then
@@ -489,7 +508,7 @@ begin
 
   -- Lock first, THEN read. The Facebook disconnect race (`20260825160000`) was
   -- exactly the other order.
-  perform pg_advisory_xact_lock(hashtext('x_insights_read:' || p_user_id::text));
+  perform pg_advisory_xact_lock(hashtext('x_grant:' || p_user_id::text));
 
   select * into v_conn from public.x_account_connections where user_id = p_user_id;
   if not found then
@@ -563,7 +582,7 @@ begin
     raise exception 'commit_x_insights_read is service-role only';
   end if;
 
-  perform pg_advisory_xact_lock(hashtext('x_insights_read:' || p_user_id::text));
+  perform pg_advisory_xact_lock(hashtext('x_grant:' || p_user_id::text));
 
   select * into v_conn from public.x_account_connections where user_id = p_user_id;
   if not found then
@@ -650,6 +669,15 @@ begin
   if v_conn.disconnect_claimed_at is not null
      and v_conn.disconnect_claimed_at > now() - make_interval(secs => p_claim_ttl_seconds) then
     return jsonb_build_object('claimed', false, 'reason', 'in_progress');
+  end if;
+
+  -- The other half of the same exclusion. A refresh is mid-exchange with X:
+  -- revoking and deleting now would strand the rotated credentials it is about
+  -- to receive, leaving a live grant nothing knows about. Refusing costs the
+  -- user one retry; the alternative costs them a grant they cannot see.
+  if v_conn.refresh_claimed_at is not null
+     and v_conn.refresh_claimed_at > now() - make_interval(secs => p_claim_ttl_seconds) then
+    return jsonb_build_object('claimed', false, 'reason', 'refresh_in_progress');
   end if;
 
   update public.x_account_connections
@@ -786,6 +814,15 @@ begin
     -- Refuse rather than cancel. Clearing that claim here is precisely the bug
     -- this function was written to remove.
     return jsonb_build_object('stored', false, 'reason', 'disconnect_in_progress');
+  end if;
+
+  -- Same reasoning for a refresh: its commit is claim-bound and this write
+  -- clears every claim id, so proceeding would silently discard credentials it
+  -- is about to receive from X while the OLD grant stays live.
+  if found
+     and v_conn.refresh_claimed_at is not null
+     and v_conn.refresh_claimed_at > now() - make_interval(secs => p_claim_ttl_seconds) then
+    return jsonb_build_object('stored', false, 'reason', 'refresh_in_progress');
   end if;
 
   -- Only a DIFFERENT account leaves a grant behind. Reconnecting the same one
