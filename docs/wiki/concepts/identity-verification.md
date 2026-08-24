@@ -523,9 +523,32 @@ and the next save re-fires verification.
   Profile** is a separate gate from funding the account and is not complete. Treat every claim about
   end-to-end behaviour as reviewed, not exercised.
 - **`verify-address`'s throttle is CLOSED** (`feat/verify-address-throttle`) — see the section below
-  for why the remedy this bullet used to name was fiction. Built, reviewed, **not yet deployed**:
-  migration `20260825100000` is unapplied and the function is undeployed, so the cap is not yet in
-  force on prod.
+  for why the remedy this bullet used to name was fiction. **LIVE ON PROD 2026-08-24** — migration
+  `20260825100000` applied and recorded, `verify-address` redeployed and boot-verified. This bullet
+  read "not yet deployed" for about an hour.
+  **Applied through the dashboard SQL editor, not `apply_migration`, because the Supabase MCP could
+  not authenticate** — its OAuth flow returns `{"message":"Unrecognized client_id"}` from a
+  runtime-registered client, which is a plugin/service fault and not fixable from this repo. The
+  ledger `INSERT` was therefore included in the pasted SQL by hand; omitting it is how a future
+  `supabase db push` decides the file is unapplied and re-runs it. *If the editor is ever the route
+  again, carry the ledger row with it.*
+  **Verified by object with a control, never by the exit code:** table present, RLS on, client
+  roles on the table `none`, function present + `SECURITY DEFINER` + `search_path=public`, both
+  indexes, ledger row recorded — and a deliberately-wrong control row that read MISMATCH, proving
+  the comparison could fail. (Two rows read MISMATCH for `postgres,service_role` vs an expected
+  `service_role`: the owning role holds grants too, so the expectation was too strict, not the
+  grant wrong.)
+  **The RPC's behaviour is proven, not assumed** — a hand-run, rolled-back prod script, since its
+  only automated coverage is text assertions over source. Three reservations under a limit of three
+  all succeeded; the fourth, fifth and sixth declined `user_daily`; exactly **3** reserved rows and
+  exactly **1** throttled row existed afterwards (the Codex P1 bound, demonstrated rather than
+  claimed); a burst limit of 2 returned `user_burst`; an IP limit of 1 returned `ip_daily` while the
+  *same* limit under a **different** IP returned `ok`, proving the IP bucket is keyed rather than
+  global; a zero limit and a bad role both raised; and an `authenticated` caller raised
+  `service_role only`. A follow-up count confirmed **0 rows left** — a proof that pollutes prod is
+  not a proof.
+  **Still unexercised end to end:** no real geocode has run, because auth rejects before the
+  throttle is reached and there are no test credentials in this environment.
 - **`send-promotion-notification` reads the three Twilio secrets that were overwritten** with the new
   account's credentials, and has not been re-checked since. It is the one other consumer of
   `TWILIO_ACCOUNT_SID` / `TWILIO_AUTH_TOKEN` / `TWILIO_PHONE_NUMBER`.
