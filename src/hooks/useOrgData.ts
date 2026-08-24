@@ -7,7 +7,7 @@ import type { Organization, OrgUnit, OrgMember } from '@/types/org';
 
 // ── Query key constants ──────────────────────────────────────────────────────
 
-const KEYS = {
+export const KEYS = {
   org: (userId?: string) => ['org', userId] as const,
   orgFromProfile: (userId?: string) => ['org-from-profile', userId] as const,
   orgUnits: (orgId?: string) => ['org-units', orgId] as const,
@@ -136,7 +136,7 @@ export function useActiveOrgUnit(orgUnitId?: string | null) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('org_units')
-        .select('id, org_id, unit_type, name, address, lat, lng, website_url, logo_url, is_primary, deleted_at, created_at, updated_at, description, brand_category, sample_content_urls, show_parent_brand, instagram_url, tiktok_url, youtube_url, facebook_url, linkedin_url, x_url, other_social_url')
+        .select('id, org_id, unit_type, name, address, lat, lng, website_url, logo_url, is_primary, deleted_at, created_at, updated_at, description, brand_category, sample_content_urls, show_parent_brand, instagram_url, tiktok_url, youtube_url, facebook_url, linkedin_url, x_url, other_social_url, address_verified_at')
         .eq('id', orgUnitId!)
         .maybeSingle();
 
@@ -234,7 +234,7 @@ export function useCreateOrgUnit(orgId?: string | null) {
       const { data, error } = await supabase
         .from('org_units')
         .insert(payload)
-        .select('id, org_id, unit_type, name, address, lat, lng, website_url, logo_url, is_primary, deleted_at, created_at, updated_at, description, brand_category, sample_content_urls, show_parent_brand, instagram_url, tiktok_url, youtube_url, facebook_url, linkedin_url, x_url, other_social_url')
+        .select('id, org_id, unit_type, name, address, lat, lng, website_url, logo_url, is_primary, deleted_at, created_at, updated_at, description, brand_category, sample_content_urls, show_parent_brand, instagram_url, tiktok_url, youtube_url, facebook_url, linkedin_url, x_url, other_social_url, address_verified_at')
         .single();
 
       if (error) throw error;
@@ -243,6 +243,11 @@ export function useCreateOrgUnit(orgId?: string | null) {
       // Best-effort, fire-and-forget: never block or fail the save on a geocode
       // outcome. See src/lib/verifyAddress.ts.
       if (payload.address) {
+        // Still fire-and-forget here, where the update path now awaits — and the asymmetry
+        // is deliberate rather than an oversight. Creating a unit navigates straight to
+        // Settings, so nobody is looking at the address badge when the geocode lands; by
+        // the time the Locations page is next opened, the stamp is there. Awaiting would
+        // buy a correct badge nobody is watching, at the cost of stalling the navigation.
         void requestBusinessAddressVerification({ orgUnitId: unit.id, address: payload.address });
       }
 
@@ -253,6 +258,31 @@ export function useCreateOrgUnit(orgId?: string | null) {
     },
     onError: () => { toast.error('Failed to create location'); },
   });
+}
+
+/**
+ * How long a save will wait for address verification before carrying on without it.
+ * Long enough for a normal Google geocode round trip, short enough that a hung request
+ * cannot strand someone in a modal that says "Saving…".
+ */
+export const VERIFY_ADDRESS_WAIT_MS = 6000;
+
+/**
+ * Resolves when `work` resolves, or when the limit elapses — whichever is first, and
+ * never rejects. Returns true when the LIMIT ended the wait rather than the work, which
+ * the caller needs: the abandoned work keeps running and still writes server-side, so
+ * something has to notice when it lands.
+ */
+export async function withTimeLimit(work: Promise<unknown>, ms: number): Promise<boolean> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    return await Promise.race([
+      work.catch(() => undefined).then(() => false),
+      new Promise<boolean>((resolve) => { timer = setTimeout(() => resolve(true), ms); }),
+    ]);
+  } finally {
+    if (timer !== undefined) clearTimeout(timer);
+  }
 }
 
 // ── useUpdateOrgUnit ─────────────────────────────────────────────────────────
@@ -311,7 +341,7 @@ export function useUpdateOrgUnit() {
         .from('org_units')
         .update({ ...updates, updated_at: new Date().toISOString() })
         .eq('id', id)
-        .select('id, org_id, unit_type, name, address, lat, lng, website_url, logo_url, is_primary, deleted_at, created_at, updated_at, description, brand_category, sample_content_urls, show_parent_brand, instagram_url, tiktok_url, youtube_url, facebook_url, linkedin_url, x_url, other_social_url')
+        .select('id, org_id, unit_type, name, address, lat, lng, website_url, logo_url, is_primary, deleted_at, created_at, updated_at, description, brand_category, sample_content_urls, show_parent_brand, instagram_url, tiktok_url, youtube_url, facebook_url, linkedin_url, x_url, other_social_url, address_verified_at')
         .single();
 
       if (error) throw error;
@@ -337,7 +367,44 @@ export function useUpdateOrgUnit() {
       // re-opening the revocation risk for verified ones.
       const neverVerified = previousAddressKnown && !previouslyVerified;
       if ((addressChanged || neverVerified) && updates.address) {
-        void requestBusinessAddressVerification({ orgUnitId: unit.id, address: updates.address });
+        // AWAITED, where this used to be fire-and-forget — because `onSuccess` invalidates
+        // the units query immediately, and a fire-and-forget verification loses that race
+        // every time. The refetch would land before the server wrote `address_verified_at`,
+        // so saving an address showed "needs confirming" for a stamp that arrived a moment
+        // later and that nothing would re-read. The owner's only evidence that anything
+        // happened was that nothing had.
+        //
+        // Awaiting does not make the save depend on the geocode: the helper resolves on
+        // every path and throws on none (see src/lib/verifyAddress.ts), so a Google outage
+        // still leaves the address saved, still returns the unit, and still reports
+        // success. The bound below is about the CLOCK, not about failure — an invoke with
+        // no timeout of its own could otherwise hold the modal open indefinitely.
+        const verification = requestBusinessAddressVerification({
+          orgUnitId: unit.id, address: updates.address,
+        });
+        const timedOut = await withTimeLimit(verification, VERIFY_ADDRESS_WAIT_MS);
+
+        if (timedOut) {
+          // The WAIT ended, not the work. The request is still running and will still
+          // write the stamp, and `onSuccess` is about to invalidate a units query that
+          // cannot yet see it — so without this the badge would sit on "needs confirming"
+          // for a verification that succeeded, until something unrelated happened to
+          // refetch. The user is looking at the page right now; nothing else is coming.
+          void verification.finally(() => {
+            queryClient.invalidateQueries({ queryKey: KEYS.orgUnits(unit.org_id) });
+          });
+        } else {
+          // Re-read rather than trusting the row written above: the stamp is
+          // server-written and therefore is not in that statement's RETURNING clause.
+          // Failure here is not worth surfacing — the caller already has a saved unit,
+          // and the invalidated query will collect the stamp on its own.
+          const { data: reread } = await supabase
+            .from('org_units')
+            .select('address_verified_at')
+            .eq('id', unit.id)
+            .maybeSingle();
+          if (reread) unit.address_verified_at = reread.address_verified_at;
+        }
       }
 
       return unit;

@@ -1,5 +1,19 @@
 # Wiki Log
 
+## [2026-08-24] ingest | Onboarding slices 3 and 4 — the wizard, and the depth dimensions
+
+**Created** [[Onboarding Wizard & Depth]] and `docs/wiki/raw/sessions/2026-08-24-onboarding-wizard-and-depth.md`.
+**Updated** [[Account Completeness Engine]] (the wizard now reads its registry; the declared
+`NO_CAPTURE_FLOW` exemption; the two brand requirements no brand could satisfy), `docs/wiki/index.md`,
+`docs/SHIPPED_LOG.md` and `docs/PROJECT_CONTEXT.md` §5.
+
+Slice 3 rebuilt the wizard as registry-driven slides and moved the core save to the collect/service
+boundary; slice 4 gave locations, team and social surfaces that can satisfy them. Two requirements no
+brand could ever clear were found by checking the registry against production — `address` (the spec
+excluded it and slice 2 silently reversed that) and `stripe` (no brand Connect path exists at all).
+The registry has now drifted from its spec twice in the same direction, so the decisions are pinned
+by tests rather than comments. Ten Codex rounds, twelve findings, all real, nearly all consequences
+of an earlier change in the same session.
 ## [2026-08-24] ingest | Two branches, one migration version — and a shell that lied twice
 
 **Updated** [[Instagram Insights Connector]] (deploy status + the collision), `docs/PROJECT_CONTEXT.md`
