@@ -53,6 +53,7 @@ const CreatorOverview = lazy(() => import("./pages/CreatorOverview"));
 const BusinessSettings = lazy(() => import("./pages/BusinessSettings"));
 const CreatorSettings = lazy(() => import("./pages/CreatorSettings"));
 const YouTubeCallback = lazy(() => import("./pages/YouTubeCallback"));
+const InstagramCallback = lazy(() => import("./pages/InstagramCallback"));
 const CampaignsPage = lazy(() => import("./pages/CampaignsPage"));
 const CampaignCreator = lazy(() => import("./pages/CampaignCreator"));
 const CampaignDetailsPage = lazy(() => import("./pages/CampaignDetailsPage"));
@@ -256,6 +257,7 @@ function AnimatedRoutes() {
               browser finishing consent is the one that started it. The path is
               registered verbatim in the Google Cloud console. */}
           <Route path="/youtube/callback" element={<ProtectedRoute><YouTubeCallback /></ProtectedRoute>} />
+          <Route path="/instagram/callback" element={<ProtectedRoute><InstagramCallback /></ProtectedRoute>} />
 
           {/* Campaign Routes */}
           <Route path="/dashboard/business/campaigns" element={<ProtectedRoute><BusinessRoute><CampaignsPage /></BusinessRoute></ProtectedRoute>} />

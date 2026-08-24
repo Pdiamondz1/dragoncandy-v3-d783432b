@@ -46,6 +46,45 @@ function buildInitialForm(editUnit?: OrgUnit | null): FormState {
   return { name: editUnit.name, secondaryField, isPrimary: editUnit.is_primary, cloneFromId: '' };
 }
 
+/**
+ * What to tell someone after a location save, given what the row now says.
+ *
+ * Three outcomes rather than one "Saved", because this is where the `address`
+ * requirement is actually satisfied or not, and the difference is invisible otherwise:
+ * `address_verified_at` is written by the server after a geocode, so an address that
+ * saved fine can still be unconfirmed. Saying "updated" for all three would report the
+ * write and hide the result.
+ *
+ * `verifiedAt` is read from the row AFTER verification has been awaited (see
+ * useUpdateOrgUnit), so an unconfirmed outcome here means the geocode genuinely did not
+ * resolve or did not answer in time — not merely that we asked too early.
+ */
+export function describeSaveOutcome(
+  name: string,
+  isLocation: boolean,
+  address: string | null,
+  verifiedAt: string | null,
+): { title: string; description: string } {
+  if (!isLocation) {
+    return { title: 'Product updated', description: `"${name}" has been updated.` };
+  }
+  if (!address || address.trim().length === 0) {
+    return {
+      title: 'Location updated',
+      description: `"${name}" has no address yet, so creators nearby will not find it.`,
+    };
+  }
+  if (verifiedAt) {
+    return { title: 'Address confirmed', description: `"${name}" is now matched to creators nearby.` };
+  }
+  // Deliberately not an error, and deliberately not "invalid". The address is saved; only
+  // the check is outstanding, and it can still land on its own.
+  return {
+    title: 'Location updated',
+    description: 'We could not confirm the address just now. It is saved — try again in a moment if the badge does not clear.',
+  };
+}
+
 export function AddEditUnitModal({
   open,
   onOpenChange,
@@ -89,13 +128,17 @@ export function AddEditUnitModal({
         : { website_url: secondary };
 
       if (isEditing) {
-        await updateUnit.mutateAsync({
+        const saved = await updateUnit.mutateAsync({
           id: editUnit!.id,
           name,
           is_primary: form.isPrimary,
           ...fieldPayload,
         });
-      } else {
+        toast(describeSaveOutcome(name, isLocation, saved.address, saved.address_verified_at));
+        onOpenChange(false);
+        return;
+      }
+      {
         const cloneSource = form.cloneFromId
           ? existingUnits?.find(u => u.id === form.cloneFromId)
           : null;
@@ -130,11 +173,6 @@ export function AddEditUnitModal({
         navigate('/dashboard/business/settings');
         return;
       }
-      toast({
-        title: 'Unit updated',
-        description: `"${name}" has been updated successfully.`,
-      });
-      onOpenChange(false);
     } catch (err) {
       const message = err instanceof Error ? err.message : 'An unexpected error occurred.';
       toast({
@@ -175,7 +213,20 @@ export function AddEditUnitModal({
               value={form.secondaryField}
               onChange={(e) => handleField('secondaryField', e.target.value)}
               disabled={isSaving}
+              aria-describedby={isLocation ? 'unit-secondary-hint' : undefined}
             />
+            {/*
+              Why the field matters, at the point of typing. It was previously unlabelled
+              beyond "Address" and optional in practice: 26 of 30 locations on the platform
+              have none, which is also why the `locations` requirement reads unmet almost
+              everywhere.
+            */}
+            {isLocation && (
+              <p id="unit-secondary-hint" className="text-xs text-dc-text-muted">
+                Creators are matched by how near they are, so this is what puts you in local
+                searches. We check it when you save.
+              </p>
+            )}
           </div>
 
           {!isEditing && cloneableUnits.length > 0 && (

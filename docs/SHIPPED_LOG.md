@@ -32,6 +32,545 @@
 >
 > **Adding an entry:** prepend it (newest first). See `knowledge-sync` step 4.
 
+## [2026-08-24] Instagram connector: the first real connection, and three things between deployed and usable
+
+The previous entry left the connector merged, applied, deployed — and unusable, because its
+three secrets were unprovisioned. This closed that. The interesting part is that the gap
+between *deployed* and *usable* held three separate defects and **none of them was in the
+connector's own code**.
+
+**A real account is connected.** `@areyouaman` (`ig_user_id` 17841400763893777), 18:20:20 UTC.
+Read from the row rather than the card, because a card renders whatever it was handed:
+`permissions` is exactly `instagram_business_basic` + `instagram_business_manage_insights` —
+**nothing that can post**, which is the scope decision made checkable instead of asserted;
+`account_type` BUSINESS, confirming the professional-account prerequisite from Meta rather than
+from us; `status=active`, `last_error=null`; a 60-day token expiring 2026-10-23; and
+`last_synced_at` stamped **11 seconds after** `connected_at`. That last one is load-bearing — a
+row can be written without the API ever being called, and that timestamp cannot.
+
+The card reads **Reach 1, Views —, Interactions —**. The em dashes are [[Honest Analytics]]
+working: Instagram returned no value for two metrics and the UI shows absent as `—`, not `0`.
+**Three tidy zeros would have been the suspicious result.** This build's own first draft had the
+inverse bug — `Number(null)` is `0` and `0` is finite — so a day Instagram said nothing about
+became a day with zero reach, with totals still adding up and only the day count betraying it.
+
+**The claim we deliberately withheld is now made.** Both Meta callbacks used to answer
+`503 not_configured`: the correct fail-closed path, but one that returns *before* the signature
+check, leaving forgery rejection proven by 8 unit tests and nothing else. With the app secret
+set, a forged `signed_request` returns **401** on both, where an invented function name returns
+**404** — the control that separates "our code ran and rejected this" from a gateway answering
+the same way for something that does not exist. **The 503 → 401 transition is itself the evidence
+the secret is wired in.** Secrets verified by name and digest, never value;
+`INSTAGRAM_OAUTH_STATE_SECRET`'s digest genuinely differs from `GOOGLE_OAUTH_STATE_SECRET`'s,
+which proves the separate-keys design rather than restating it.
+
+**Defect 1 — the button existed, on a page nobody uses.** The founder connected through the live
+app and the consent screen said **"Outstand-IG"**. Our table stayed empty, correctly: he had
+never reached our connector. `LocationSettingsSections` rendered `ConnectedAccountsList`
+(Outstand, which publishes) and neither analytics card, and a multi-location business lands on
+the *location* page. The two integrations look alike, do opposite jobs, and nothing on either
+button says which. **A page that offers one and hides the other does not present a choice; it
+misroutes.** Closed by #502, with copy stating the connections are account-wide — both key on
+`user_id`, so bare cards under a heading reading "This location's accounts" would assert a
+per-location relationship the schema does not have. The durable half is
+`analyticsCardsCoverage.test.ts`, which **derives** the surfaces rendering
+`ConnectedAccountsList` instead of naming them; naming them is precisely how the logo work the
+day before reported green while three unenumerated headers stayed wrong.
+
+**Defect 2 — an unpublished app has no users but its developers.** The next attempt returned
+**"Insufficient Developer Role"**. An Unpublished Meta app can only be authorized by accounts
+holding a role on it. Fixed by adding the account as an **Instagram Tester** and accepting from
+the Instagram account itself. Two dead ends worth recording because both cost time: the invite is
+not in the Instagram mobile app, and not under "Apps and websites" → App website permissions
+(which offers only Apps and websites / Message Links / Spotify). It lives at
+`instagram.com/accounts/manage_access/`.
+
+**Defect 3 — Meta reports success and discards the write.** App settings → Basic needed four
+fields corrected. Changing all four and pressing Save returned Meta's **own** `{"success":true}`
+payload, captured off the wire, and reverted all four on reload. Saving **one field per Save
+click** persisted every time. **A vendor's success flag is not evidence the value stuck** — the
+same shape as this project's `recorded != actual` cases, one layer out: the authority reported
+the write and the write is not there. Privacy policy, Terms and Category `Business and pages`
+landed that way. `app_details_user_data_deletion` still refuses after four attempts, including
+the exact sequence that worked for its neighbour; on the failing attempts **no request carrying
+the value was sent at all** (XHR and fetch both hooked), where successful saves did send one — so
+the form is not submitting that field rather than the server rejecting it.
+
+**Two shell traps, both of which reported success**, neither Instagram-specific. The deploy
+commands first ran **in the main checkout**, where this branch's files do not exist — which would
+have mattered more than it did, since `supabase functions deploy` reads `config.toml` from the
+*current directory* and the main checkout has no `instagram-*` entries, so the three anonymous
+functions would have deployed at `verify_jwt=true` and Meta's callbacks would have 401'd at the
+gateway before the signature check ever ran. Then the corrected commands carried Claude Code's
+`!` prefix into a plain zsh shell, where `!` is **pipeline negation**: `! cd X && cmd` parses as
+`(! cd X) && cmd`, so the `cd` succeeded, `!` inverted it, `&&` short-circuited, and the prompt
+changed directory while nothing else ran. **A shell printing nothing has not necessarily done
+nothing, and one printing success has not necessarily done anything — check the target, not the
+report.** Both were caught by probing prod.
+
+**A hypothesis withdrawn.** Mid-session, the missing privacy-policy URL was proposed as the cause
+of a "Something went wrong" screen during a connect attempt. The connect later succeeded with
+those fields still unset, so it is disproven — recorded because it was written down as a likely
+cause and would otherwise survive as one.
+
+**Verified done, by object rather than by memory:** all three secrets set; Vault secret
+`instagram_refresh_sweep_url` present (PROJECT_CONTEXT had it as "confirmed absent"); cron
+migration `20260825130000` applied, `instagram-refresh-sweep` at `0 4 * * *`, `active=true`; both
+Meta callbacks registered. **Pending:** the sweep has **never fired** (`cron.job_run_details`: 0
+runs), so the schedule is proven to exist and not proven to work; the one Meta field above; and
+App Review, which needs a demo video and inherits the site-gate conflict in
+`docs/runbooks/google-oauth-demo-video.md`.
+
+→ `docs/wiki/concepts/instagram-insights-connector.md` · #489, #502
+
+
+## [2026-08-24] Social login — and the one-line fix that would have switched off the email gate
+
+**Branch:** `feat/social-login`. Google, Apple and Facebook, shipped **dark** behind
+`SOCIAL_LOGIN_ENABLED`. Setup: `docs/runbooks/social-login-setup.md`.
+
+### Two blockers, both invisible until you look at the grants
+
+An OAuth user would have been told to **verify an email that never arrives**:
+`profiles.email_verified` defaults false, `handle_new_user` never set it, `AuthPage` gates
+every login on it, and the verification mail only goes out from the password signup path.
+The client cannot patch it — `authenticated` holds INSERT on that column but not UPDATE.
+
+And **every social signup would have become a content creator**: `signInWithOAuth` cannot
+carry user metadata, so the trigger has nothing to read and falls back to its default. On a
+three-role marketplace that files every restaurant and brand as a creator, and the same
+grant rule blocks fixing it afterwards.
+
+### The obvious fix was wrong, and production said so
+
+Mirroring `email_confirmed_at` into `email_verified` would have **auto-verified every
+password signup**, silently switching the app's own email gate off for everyone — because
+Supabase's built-in confirmation is disabled here. Measured: **45 of 45 users have
+`email_confirmed_at` set, 44 of them within ONE SECOND of `created_at`, minimum gap 6ms**.
+GoTrue stamps it during signup, not on a click.
+
+Verification comes from the **provider** instead, via an allowlist rather than
+`<> 'email'`, so a provider nobody planned for cannot inherit it from a match the code
+never considered. **A column that looks like a verification signal is only one if something
+verifies — check what writes it before trusting its name.**
+
+### Three objects, each for a case a trigger cannot see
+
+Migration `20260825140000`. `handle_new_user` covers accounts OAuth **creates**.
+`claim_initial_role` applies the role chosen before the redirect, once.
+`sync_oauth_email_verification` covers accounts OAuth **links to** — a password account
+that never verified whose owner later signs in with Google, where GoTrue links the identity
+to the existing row and no INSERT happens. The third exists only because review found the
+second's blind spot; it keys off `auth.identities`, which GoTrue writes and no client can,
+and only ever sets true.
+
+### `claim_initial_role` refuses four ways, and two guards are not redundant
+
+Identity from `auth.uid()` with no id parameter. `onboarding_complete` and
+`organization_exists` make it one-shot by condition rather than by timestamp — claiming
+business or brand provisions an org, so a second claim would leave org rows describing an
+account type the user no longer has.
+
+The other two were added because **"nothing completed and no organization" describes an
+abandoned signup exactly as well as a brand-new one**. `not_an_oauth_account` refuses a
+password account that later linked Google (`raw_app_meta_data->>'provider'` records the
+identity that CREATED the account and does not change on linking). `account_not_new`
+refuses an account genuinely created by Google months ago whose owner now picks a different
+role — the provider check passes for that one, and only age refuses it. Either guard alone
+converts an existing account into one it never agreed to be.
+
+**The age window is not a deadline on the consent screen.** `auth.users.created_at` is
+stamped when GoTrue processes the provider's callback, so leaving Google open for an hour
+creates the account at the end of that hour. Written into the migration, because a reader
+who assumes otherwise would widen it and reopen the case it closes.
+
+Not a privilege surface: password signup already lets the client choose `role` freely,
+because role is a declared account type and real authorization lives in `user_roles` /
+`has_role()`. It also privates the leftover creator row when a business claims —
+`creator_profiles.profile_visibility` **defaults to `public`**, so a restaurant would
+otherwise show up in Find Creators as an empty creator.
+
+### Carrying state across a redirect that destroys it
+
+Role and guarded destination travel in the **redirect URL**, not only in `sessionStorage`,
+which is origin-scoped — and this round trip can change origins. Both are validated on the
+way in; neither protects anything (the RPC does), but neither hands an arbitrary string to
+an RPC either. The stash is written on **every** attempt, the role or nothing, because a
+signup cancelled at the provider leaves its role for a later login to consume.
+
+The destination is a same-origin **path**: `//evil.com` is protocol-relative and resolves
+elsewhere, a backslash reads as a slash to some parsers, `/auth` loops. Deliberately a new
+parameter, not the existing `returnTo`, which is the absolute-URL external-handoff path.
+
+### Web only
+
+`signInWithOAuth` must redirect to a real https origin, which in the Capacitor webview
+walks the user out of the app into Safari and finishes them on the web app. Native needs a
+custom-scheme redirect through Capacitor's Browser plugin, registered in three consoles.
+Until then the shell shows the email form alone. **Apple is not optional** — Apple rejects
+any iOS app offering another social login without it, and a test says so.
+
+### Verification and review
+
+**Seven Codex rounds, seven findings, all real; clean at round 7.** Everything was proven on
+prod inside rolled-back transactions, every assertion paired with a control — and the
+controls did real work twice: removing the two account-identity guards reproduced "an
+existing account was converted", and widening the identity allowlist to `IS NOT NULL` made
+a password-only account verify itself. Neither was visible from reading the code. **The
+rollback itself was proven first** (create a table, roll back, confirm `to_regclass` is
+null), because a proof running in a transaction nobody verified is a write to production.
+Prod confirmed untouched after every run: 0 probe rows, functions absent, 45 users.
+
+TypeScript does not check RPC names on this client — verified with a control file calling an
+invented function, which produced zero type errors, because `types.ts` lags migrations and
+the client is cast loose. A test matches the name and parameter against the migration.
+
+One commit went in with a failing test: `npm run test | tail -3` prints the duration line
+and cuts the failure count off above it.
+
+**Pending:** the migration is NOT applied and the flag is off, so none of this is live. No
+provider console is configured, so nobody has completed a real OAuth round trip — it is
+proven at the SQL layer and by unit tests, not end to end. Facebook and Google review both
+need a public privacy-policy URL, which the site gate would break.
+
+→ `docs/wiki/concepts/social-login.md` · `docs/runbooks/social-login-setup.md`
+
+---
+## [2026-08-24] Size body in dvh like the shell — a height comparison has two sides
+
+The follow-up to the entry below, which shipped a fix that did not resolve the report. Confirmed
+working on a real phone by the founder the same day.
+
+### Three diagnoses, the first two confident and wrong
+
+Adrian and the founder reported the landing still scrolling, with white below the footer — a little
+in portrait, a lot in landscape, scroll indicator visible in both.
+
+1. **"The content overflows."** Refuted by measuring: zero overflow at every viewport Chrome could
+   produce.
+2. **"It is the rubber-band."** Plausible, shipped as #501, did not fix it. The iOS simulator even
+   confirmed WebKit *applies* `overscroll-behavior` — a true fact that answered a question nobody
+   had asked, since *applied* was never the same claim as *suppressed*, and it was then read as
+   support for the wrong answer.
+3. **The screenshot settled it.** The white sat **below the app shell**, with a scrollbar. That one
+   observation eliminates every mechanism inside the page at once: nothing under `#root` can paint
+   outside the body box.
+
+### The cause
+
+`src/index.css` pinned `html, body { height: 100% }`. A percentage resolves against the **initial
+containing block**, which on iOS Safari is the **small** viewport (toolbars showing). `100dvh` is
+the **current** dynamic viewport and **grows** as Safari collapses or compacts its toolbars —
+aggressively in landscape. So with `AppShell` at `h-[100dvh]`, the shell outgrew body's fixed box
+the moment the toolbar moved, body scrolled by exactly that difference, and the strip below the
+shell painted body's own white background.
+
+**This project had already measured the disagreement and not read it that way.** The "screen jumps"
+fix recorded body `clientHeight` **753** against `100vh` **833**, then changed the **shell's** unit
+and left the other side of the comparison on `%`. That closed the always-80px case and left a gap
+that opens and shuts with the toolbar.
+
+> **A height comparison has two sides, and fixing one of them is not fixing it.**
+
+### What shipped
+
+- `html` and `body` sized `100dvh`, the same unit as the shell, so both move together. A
+  `height: 100%` fallback stays declared **before** it, and the test asserts declaration order —
+  if the fallback came last it would win and the bug would return with the guard still green.
+- While the landing is mounted, `html`/`body` are `overflow: hidden`. Independent of any unit
+  comparison, and the standard way to stop the iOS rubber-band, which cannot fire on a document
+  with no scrollable overflow. **`#main-content` deliberately NOT locked** — if content ever does
+  not fit, `main` can still scroll, so the only CTA can never become unreachable.
+- A **height** breakpoint, `short:` (`max-height: 430px`), because no width breakpoint can see that
+  a phone is held sideways. Landscape genuinely did not fit: hero 277px + footer 78px = **355**
+  against roughly **310** a phone leaves with toolbars showing. Now **195**.
+
+### Verified
+
+844x310 and 844x240: body and main overflow both 0, CTA fully visible. 500x760 and 1440x900:
+unchanged. iOS simulator with a throwaway readout: `innerHeight` 874, `html` **874px**, `body`
+**874px** — the three agreeing for the first time. The landing lock lifts on navigation, proven by
+setting `/how-it-works`' `scrollTop` to 300 and reading back 300 rather than trusting the overflow
+property. Prod CSS confirmed **byte-identical** to the measured build (`cmp`). 3063 tests,
+typecheck, lint clean, build; Codex clean. **Then confirmed on a real phone** — the only instrument
+that could, since Chrome, device emulation and the Capacitor WebView all lack a collapsing toolbar
+and so report this family of defects absent. Third such defect.
+
+-> `docs/wiki/concepts/mobile-viewport-fixed-positioning.md` (Sec 10-11) - #504
+
+## [2026-08-24] The page could still be dragged, and the logo had five sizes
+
+Two reports on the same day against the landing that shipped as #459 and had already been
+corrected once from Adrian Vella's feedback. Neither is a regression of that fix; one is the
+residual it named in writing and declined to take, and the other is the part of it that was
+never enumerated.
+
+### A page with nothing to scroll can still be DRAGGED
+
+*"Some feedback, you can still move the page on mobile, looks buggy and would not be good when
+you add a wrapper."* Two screenshots from a real phone: white **above** the header in one, white
+**below** the footer in the other. The founder confirmed the same on desktop.
+
+Sizing `AppShell` to `h-[100dvh]` removed the *scrollable gap* that made the screen **jump**
+mid-gesture. **Rubber-band overscroll is a separate mechanism** — a scroll container with nothing
+to scroll still bounces. That also corrects the earlier prediction, which called this an iOS
+candidate: a macOS trackpad rubber-bands too, which is why one report covered both viewports
+where the previous defect was iOS-only.
+
+**Why the band is white, and why nothing inside the app could have fixed it.** The elastic strip
+a bounce opens sits **outside the body box**, so no element under `#root` can paint it. The canvas
+takes its background from `<html>`, falling back to `<body>` only when the root is transparent —
+and `body` is `bg-background`, i.e. white. So the one page whose entire premise is a dark
+cinematic screen opened a white gutter at both ends.
+
+Two guards, because they fail differently:
+
+1. `overscroll-behavior-y: none` on `html` **and** `body`. Both, because body is this document's
+   scroll container (`height:100%` + `overflow-x:hidden` computes `overflow-y` to `auto`) while
+   the value governing the viewport is read off the root. **Y axis only** — the shorthand takes X
+   with it, and X is where iOS Safari's edge-swipe-back gesture lives; there is nothing horizontal
+   to suppress anyway. **Known cost, accepted:** pull-to-refresh goes away on Android Chrome.
+2. The landing paints the canvas — `landing-surface` on `documentElement` for the route's
+   lifetime, removed on unmount so it cannot tint the white page the visitor opens next. This is
+   not redundancy: it covers exactly what guard 1 cannot reach — Safari before 16, and the
+   Capacitor WKWebView, whose bounce is a **native scroll-view setting** that no CSS property
+   switches off.
+
+### The simulator answered one question, and the honest part is which one
+
+Built and run on an iPhone 17 Pro simulator with a **throwaway** computed-style readout injected
+into the *copied* `ios/App/App/public/index.html` (never source; restored with `npx cap sync
+ios`). Inside the WKWebView: `html`/`body` `overscroll-behavior-y: none`, `html` background
+`rgb(36, 19, 50)`, `innerHeight` 874 `=== documentElement.clientHeight` 874 — so the
+`contentInset: 'never'` invariant still holds — body overflow 0, safe-top 62px.
+
+**WebKit does apply the property in a WKWebView.** That fact is unobtainable from Chrome, and it
+is the whole reason the simulator was worth running.
+
+**What it does not establish** is the native scroll view refusing to bounce. *Applied* and
+*suppressed* are different claims. No drag could be synthesised — `cliclick` is not installed and
+posting `CGEvent`s needs Accessibility permission an agent cannot grant itself — so the
+investigation was stopped there and the gap written down rather than glossed.
+
+### The logo had five sizes, and the previous guard could not have caught it
+
+Landing and `PublicPageHeader` at 48/56px; `AuthPage` at **116/140/163px tall**; `MobileTopNav`
+at **74px**; the desktop sidebar at **116px**.
+
+**Sizing by width is the defect.** Both assets are stacked badges taller than wide —
+`public/logo.webp` 280x326 (aspect 0.859), `src/assets/Transparent_DragonCandy_logo.webp` 400x465
+(0.860) — so a width class does not cap the height, it multiplies it. Because the two aspects
+agree to within 0.001, one height class renders identically whichever file a surface imports,
+which is what made a single shared constant possible at all.
+
+**The durable lesson is the guard, not the CSS.** The 2026-08-23 pass fixed two files and pinned
+them **to each other by hand** — a test asserting both contained the same literal class string.
+That test reported green for a full day while three headers it never enumerated stayed wrong, and
+the founder reported the identical defect again. *A guard that watches the pair you already
+repaired cannot see the four you did not.* The size now lives in `src/lib/brandLogo.ts` and
+`brandLogo.test.ts` derives the header list rather than listing it — the same shape as
+`profilesWriteGrants.test.ts`, for the same reason.
+
+Also shipped: `AuthPage` and `AuthShell` off `min-h-screen`, the same dead-scroll defect on the
+page the landing's only CTA leads to. The other 113 `h-screen`/`min-h-screen` usages in `src/`
+are untouched — a sweep is a different change.
+
+### Verified, and not
+
+3056 tests, typecheck, lint (0 errors), production build; both CSS rules confirmed present in the
+**built** bundle rather than only in source. In the browser, with a **forced control** —
+`documentElement.style.overscrollBehaviorY='auto'` read back `auto`, then `none` after clearing,
+so the reading is a live style and not a constant the probe echoes: landing and auth logos both
+48x56, the class added on mount and removed on SPA-navigate away, canvas grape on the landing and
+white after it, zero overflow on html/body/main, no new console errors. Codex clean at round 1.
+
+**Not verified:** the bounce itself on real iOS Safari, or by drag in the simulator; and the two
+post-login headers on screen — reaching them needs a login and **no test-account credentials
+exist**, despite `CLAUDE.md` saying they are in the memory system. Those two rest on the identical
+class string and the matching aspect ratios.
+
+Three findings recorded rather than fixed: `capacitor.config.ts` names an Xcode scheme
+(`DragonCandy`) that **does not exist** in the workspace, so `npx cap run ios` fails and one must
+build `-scheme App`; a pre-existing RAG chunking test caught the doc rewrite deleting
+`PublicPageHeader.test.tsx`, a marker string it asserts survives chunking; and `npm run dev`
+cannot boot on this machine without `VITE_ALLOW_PROD_FROM_LOCAL=true`, where the crash leaves the
+static `index.html` shell on screen with unstyled computed values — a very convincing false
+reading.
+
+-> `docs/wiki/concepts/mobile-viewport-fixed-positioning.md` (Sec 10) - `docs/wiki/concepts/brand-logo-sizing.md`
+
+## [2026-08-24] Onboarding slices 3 and 4 — a wizard that reads the registry, and two requirements no brand could satisfy
+
+**Branch:** `feat/onboarding-slice-3` (carries both slices). Slice 3 rebuilt the wizard; slice 4 gave
+the depth dimensions — locations, team, social — surfaces that can actually satisfy them.
+
+### The wizard is declarative, and the registry is its authority
+
+`src/components/onboarding/steps.ts` holds `ROLE_STEPS` (which slides a role gets), `STEP_PHASE`
+(collect / service / ready) and `REQUIREMENT_STEP` (which slide satisfies which requirement key). A
+test asserts every `required` requirement has a slide and carries a forced control — it guts a role's
+slides and checks the comparison actually fails. Adding a required requirement now fails a test
+rather than silently producing a checklist row onboarding cannot clear, which is the failure slice 1
+shipped twice.
+
+Service slides never block: the forward button on an incomplete one reads "Skip for now", never
+"Continue", because labelling it Continue would imply the step had been done.
+
+### The core save moved to the collect/service boundary, and created three problems doing it
+
+Not at the end. Every slide after it acts on rows that must already exist — `verify-address` reads
+the stored address back rather than trusting the client, and Stripe Connect needs a profile to attach
+an account to. It also closed an abandonment bug: someone who quits on the payments slide now has a
+complete profile and a working dashboard instead of an account that captured nothing.
+
+All three consequences were found by review, not by testing:
+
+1. **The org query is a separate React Query cache from AuthContext's profile.** `useOrgFromProfile`
+   caches `{org: null}` on mount for a new business, and the core save is what fires
+   `trg_auto_create_org`. `refreshProfile()` does not touch React Query, so `useOrgUnits` stayed
+   disabled and the address slide could only ever reach its no-location error. The save now refetches
+   that query and awaits it.
+2. **It can beat `useAutoDetect`,** which waits out a geolocation timeout. A creator who tapped
+   through quickly saved null city, country and timezone; detection landed a second later; nothing
+   ever asked again. The location that nearby matching runs on was lost silently and permanently.
+3. **It made `goNext` async.** Two clicks ran two saves and two `setCurrentIndex(prev => prev + 1)`
+   calls, advancing TWO slides — so a double tap skipped phone verification without ever showing it,
+   and uploaded the avatar twice.
+
+### Dirtiness is a fingerprint, not a flag
+
+The save was first gated on a "have we saved once" boolean, so going back, correcting a name or
+cuisine and continuing showed the edit and discarded it — the recorded-vs-actual split the readiness
+engine exists to close, reproduced inside its own onboarding.
+
+`coreFingerprint` compares values instead. **Deliberately not a dirty flag wired into every setter:**
+a missed setter fails silently and looks exactly like working code, where a field missing from the
+fingerprint is one place to look and is pinned per-field by a test. It is captured at the start of the
+save and stored on success, so a field edited while a save is in flight stays dirty rather than being
+marked clean by a save that never saw it. Chip order and whitespace are not edits; the avatar
+contributes file identity, so re-selecting the same picture is not another upload.
+
+### The delayed location write touches only the location
+
+The late-detection path first reran the whole `saveCore`, wrong twice over. It writes the entire
+profile from live form state, so detection settling while someone was mid-edit on a collect slide they
+had walked back to would persist that half-finished value — an emptied name stored as `full_name: ''`
+before they pressed Continue, bypassing the validation Continue enforces. And it left the key
+unchanged on failure while toggling `loading`, an effect dependency, so a persistent failure retried
+on every subsequent render.
+
+It now updates city, country and timezone and nothing else, records the attempted key **before** the
+await so a failure is attempted once, and fails silently to the console — nobody asked for this write,
+and losing it costs nothing the checklist does not already show.
+
+### Slice 4: locations
+
+`address` is `required` for business, resolves to the Locations page, and was unmet for **every**
+business on the platform (30 org units, 4 with any address, 0 verified). The page said nothing about
+addresses. Each card now carries its status, and the two states that are not done say what to do.
+
+**Three states, because the database holds two facts** — the address string and the server-written
+`address_verified_at` stamp, and nothing meaning "a geocode is in flight"; a fourth would be invented.
+`unconfirmed` deliberately does not mean wrong: the column shipped with no backfill, so every location
+predating it reads unconfirmed however correct its address is.
+
+**Saving waits for verification instead of racing it.** `onSuccess` invalidates the units query
+immediately, so a fire-and-forget geocode lost that race every time — the refetch landed before the
+stamp, the badge still said "needs confirming", and the owner's only evidence that anything had
+happened was that nothing had. Bounded at 6s because `functions.invoke` carries no timeout of its own;
+the helper resolves on every path and rejects on none, so a Google outage still leaves the address
+saved. Past the bound, an invalidation is attached to the abandoned request — "the next refetch picks
+it up" assumes a next refetch, and the user is sitting on the page. Creating a unit stays
+fire-and-forget, deliberately: that path navigates to Settings, so nobody is watching the badge.
+
+The save toast reports the outcome rather than the write. "Location updated" for an address that
+failed to geocode is the same class of lie the stamp exists to prevent, one level up.
+
+### Slice 4: team
+
+`deriveTeam` counted only `invitation_status='active'`, so sending an invitation changed nothing —
+"Invite your team" kept asking someone to do what they had just done. That is what `pending` is for,
+and it was unreachable because the context carried one number where two facts existed. The counts are
+separate queries so an unreadable invited count still leaves met/unmet answerable. The ordering is
+pinned: the invited branch runs only where nobody has joined, so an org that already has a team stays
+met when it invites a fourth person. Nothing on production is in this state (26 orgs, 26 members, all
+active, zero invited) — which is why it went unnoticed: the honest state was unreachable, not unused.
+
+### Slice 4: social
+
+Already complete end to end — `outstand-proxy` writes the mirror row, `?section=social` opens the
+right accordion in both settings pages, and creators use the same table as businesses. Verified, not
+changed.
+
+### Two brand requirements no brand could ever satisfy
+
+**`address` — removed.** Spec §4.4 says it is business-only, because a brand's primary `org_unit` is
+a `product` and demanding a street address of it "would be a requirement no brand can meaningfully
+satisfy". Slice 1 obeyed that; slice 2 added the row back with no note saying why. The spec's
+prediction came true unchanged: 7 brand units on production, all products, zero addresses, and the
+page the row pointed at (`/dashboard/brand/products`) offers a Website URL field and no address field.
+It was a `required` row, undismissable by tier, that no brand could ever clear.
+
+**`stripe` — kept, and still unsatisfiable, deliberately.** There is no brand Connect path anywhere:
+`create-restaurant-connect-account` and `check-restaurant-payout-status` filter
+`account_type = 'restaurant'` on every statement, and brand settings has never rendered
+`StripeConnectSetup` — its "Payments" section is a budget-range field. 6 brands, 0 Stripe accounts. So
+the new payments slide would have been the first place a brand was offered Stripe, and it would have
+silently done nothing. The slide was removed for brands rather than the requirement, because brands
+genuinely do need to fund sponsorships and removing it would hide a real gap. **`publish_campaign`
+demands `stripe` and lists `brand` among its roles; it has no call site today, and the day it gets one
+every brand is blocked.**
+
+The exemption is declared in `NO_CAPTURE_FLOW` with its reason and guarded by two tests, because it is
+the only way to weaken the coverage invariant: an entry must name a requirement the role actually has,
+and the roles whose flows work must claim no exemptions at all.
+
+**The registry has now drifted from its spec twice, silently, in the same direction** — a later slice
+adding a requirement the spec explicitly excluded. Comments beside the entry did not hold; tests do.
+
+### Phone: two server contracts and one of our own
+
+`usePhoneVerification` is the first caller of `verify-phone` in `src/`. Two behaviours are pinned by
+tests because neither is guessable: a wrong code returns **HTTP 200** with `{status:'unmet'}`, and
+`supabase.functions.invoke` puts non-2xx bodies in `error.context` (a `Response`), not `data`.
+
+And ours: `1 (201) 555-0134` is an ordinary way to write a US number, and blindly prefixing `+1`
+produced `+112015550134` — a shape the E.164 check accepts and Twilio rejects, so the code never
+arrived and nothing on screen explained why. The de-duplication is NANP-specific and gated on the NANP
+default, because `1` is a legitimate first digit of a subscriber number elsewhere.
+
+### The review loop
+
+**Ten Codex rounds, twelve findings, all real, all mine; clean at round 11.** The shape repeats and is
+the durable part: nearly every finding was a consequence of a change made earlier in the same session,
+not of the original code. Moving the save fixed abandonment and created a cache-staleness bug, a
+detection race and a double-advance. Fixing the detection race created a save-per-keystroke. Fixing
+that created a validation bypass and a retry loop.
+
+**Two forced controls changed a conclusion, which is the argument for running them at all.** The
+double-tap test passes with either guard removed and fails only with both, so it pins the pair rather
+than the ref — and both the comment and the test now say so, because "the suite still passes" is
+exactly the argument that would delete the half doing the work. The retry-loop test first asserted
+against elapsed time and its control passed: the retry needs a re-render to re-run the effect, and the
+harness was providing none.
+
+Also fixed along the way: three org-unit selects returned rows cast to `OrgUnit` while omitting
+`address_verified_at`, which that type declares as present; the wizard's back button had no accessible
+name at all; and the loading guard added mid-session folded "failed" into "loading", leaving Confirm
+address disabled forever under a message about progress that was not happening.
+
+**Pending:** both-viewport production verification (every changed surface is behind auth and no
+test-account credentials exist — the same gap slices 1 and 2 recorded); the Donny RAG sync; and social
+login, which is blocked on a `handle_new_user` migration and therefore on confirmation, since that is
+auth logic. `handle_new_user` is the only trigger on `auth.users` and never sets `email_verified`,
+which defaults false, while `AuthPage` gates on it — so an OAuth user would be told to verify an email
+that is never sent, and `authenticated` holds INSERT but no UPDATE on that column, so there is no
+client-side fix.
+
+→ `docs/wiki/concepts/onboarding-wizard-and-depth.md` · `docs/wiki/concepts/account-completeness-engine.md`
+
+---
+
 ## [2026-08-23] A password cannot stop a signup: locking the site to a private preview
 
 **Built and reviewed. NOT live** — PR #482 open, none of the four Vercel variables set.

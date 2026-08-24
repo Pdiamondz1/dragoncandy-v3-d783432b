@@ -106,16 +106,43 @@ serve(async (req) => {
         // fixed first and this one was missed, so a business whose Stripe account had been
         // deleted kept rendering as identity-verified. See _shared/stripe-identity-reset.ts
         // for why the eraser has to exist at every detach path, not just the obvious one.
-        await supabaseClient
+        // These two writes ARE the eraser, so their errors are checked. An unchecked
+        // eraser is the failure this whole slice exists to close, one level up: the
+        // response below reports hasAccount:false from Stripe's own 404 while the row
+        // still carries identity_verified_at pointing at an account that no longer
+        // exists, and nothing anywhere says so.
+        //
+        // Logged rather than thrown, unlike the same write in disconnect-stripe-account,
+        // because the contracts differ. There, the user pressed "disconnect" and a
+        // silent no-op means the button lied. Here this is a status READ that heals
+        // opportunistically: the Stripe half of the answer is still true, the next call
+        // re-detects the same 404 and retries the clear, and turning a transient DB blip
+        // into a 500 would black out the payout-status UI over something the caller
+        // cannot fix.
+        const { error: clearProfileError } = await supabaseClient
           .from('business_profiles')
           .update({ stripe_account_id: null, stripe_onboarding_complete: false, ...STRIPE_IDENTITY_RESET })
           .eq('user_id', user.id)
           .eq('account_type', 'restaurant');
+        if (clearProfileError) {
+          logStep("CRITICAL: failed to clear stale Stripe reference and identity signals on business_profiles", {
+            userId: user.id,
+            stripeAccountId,
+            error: clearProfileError.message,
+          });
+        }
         if (org_unit_id) {
-          await supabaseClient
+          const { error: clearOrgUnitError } = await supabaseClient
             .from('org_units')
             .update({ stripe_account_id: null, stripe_onboarding_complete: false, ...STRIPE_IDENTITY_RESET })
             .eq('id', org_unit_id);
+          if (clearOrgUnitError) {
+            logStep("CRITICAL: failed to clear stale Stripe reference and identity signals on org_units", {
+              orgUnitId: org_unit_id,
+              stripeAccountId,
+              error: clearOrgUnitError.message,
+            });
+          }
         }
         return new Response(JSON.stringify({
           hasAccount: false,

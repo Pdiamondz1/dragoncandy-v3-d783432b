@@ -139,14 +139,21 @@ export const ROLE_REQUIREMENTS: Record<AccountRole, readonly RequirementDef[]> =
     },
     phoneVerified(BRAND_SETTINGS),
     identityVerified(BRAND_SETTINGS, 'Stripe requires this before it can fund sponsorships.'),
-    {
-      key: 'address', tier: 'required',
-      // Same reasoning as the business entry above — this derives from a stamp, not from
-      // whether an address exists, and the column has no backfill.
-      label: 'Confirm your address',
-      why: 'So restaurants and creators near you can find you.',
-      derive: deriveAddress, resolve: { route: '/dashboard/brand/products' },
-    },
+    // NO `address` requirement — and its absence is a decision, not an omission.
+    //
+    // The spec says so in as many words (§4.4: "`address` is business-only. A brand's
+    // primary `org_unit` is a `product`, not a location; demanding a street address of it
+    // would be a requirement no brand can meaningfully satisfy"). Slice 1 shipped it that
+    // way; slice 2 added an `address` row here, and the spec's prediction came true
+    // exactly. `deriveAddress` reads the primary unit's `address_verified_at`, every brand
+    // unit on production is a `product` (7 of 7, zero addresses), and the route the row
+    // pointed at — /dashboard/brand/products — offers a Website URL field and no address
+    // field at all. So it was a `required` row, undismissable by tier, that no brand could
+    // ever clear, with a GO button leading somewhere that could not help.
+    //
+    // Restoring the spec's decision rather than building brand address capture, because
+    // whether brands need addresses is a product question with a written answer. If that
+    // answer changes, it changes in the spec first and comes back with a capture surface.
     stripe(BRAND_SETTINGS, 'So you can fund sponsorships without a delay.'),
     socialLinked(BRAND_SETTINGS),
   ],

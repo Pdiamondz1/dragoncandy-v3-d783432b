@@ -19,6 +19,7 @@ const base: ReadinessContext = {
     addressVerifiedAt: '2026-08-24T00:00:00Z',
   }],
   orgMemberCount: 2,
+  orgInvitedCount: undefined,
   stripe: { hasAccount: true, onboardingComplete: true },
   socialActiveCount: 1,
   creator: { skills: ['photography'], bio: 'I shoot food.', portfolioUrls: ['https://example.test/1'] },
@@ -200,6 +201,38 @@ describe('deriveLocations — every unit needs an address, not a count', () => {
 
 describe('deriveTeam', () => {
   it('met with more than one member', () => expect(deriveTeam(base).status).toBe('met'));
+
+  it('is pending, not unmet, while an invitation is outstanding', () => {
+    const state = deriveTeam({ ...base, orgMemberCount: 1, orgInvitedCount: 1 });
+    expect(state.status).toBe('pending');
+    expect(state.detail).toMatch(/accept/i);
+  });
+
+  it('counts the invitations in its detail rather than saying "some"', () => {
+    expect(deriveTeam({ ...base, orgMemberCount: 1, orgInvitedCount: 3 }).detail).toContain('3');
+  });
+
+  /**
+   * An org that already has a team is done. A third invitation sitting unanswered must
+   * not drag a met requirement back to pending — the ordering in deriveTeam is what
+   * makes that true, so pin it.
+   */
+  it('stays met when an org that already has a team invites another person', () => {
+    expect(deriveTeam({ ...base, orgMemberCount: 2, orgInvitedCount: 1 }).status).toBe('met');
+  });
+
+  it('is unmet, not pending, when nobody is invited and nobody has joined', () => {
+    expect(deriveTeam({ ...base, orgMemberCount: 1, orgInvitedCount: 0 }).status).toBe('unmet');
+  });
+
+  /**
+   * An unreadable invited count is not evidence that nobody was invited, but it must
+   * not black out the answer either: the active count alone still decides met/unmet.
+   */
+  it('falls back to the active count when the invited count could not be read', () => {
+    expect(deriveTeam({ ...base, orgMemberCount: 1, orgInvitedCount: undefined }).status).toBe('unmet');
+    expect(deriveTeam({ ...base, orgMemberCount: 2, orgInvitedCount: undefined }).status).toBe('met');
+  });
   it('unmet with only the owner', () =>
     expect(deriveTeam({ ...base, orgMemberCount: 1 }).status).toBe('unmet'));
 });

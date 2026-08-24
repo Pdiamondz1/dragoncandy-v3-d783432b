@@ -406,11 +406,156 @@ never run a file-writing agent concurrently with any agent that might touch the 
 every reviewer explicitly that the tree may be live and it must never stash, revert, or checkout
 anything.
 
+## A probe that cannot distinguish "absent" from "unmatched" is not evidence
+
+Verifying the deploy prerequisites produced a cleaner version of the standing rule *when a probe
+returns zero, prove it could have returned non-zero* — because this time a control caught the probe
+lying in the other direction.
+
+Checking whether `reserve_phone_verification_send` existed on prod, a `POST /rpc/…` with an empty
+body returned **PGRST202, "no matches were found in the schema cache"** — the identical response an
+invented function name gives. Read naively that says the migration never applied. It does not. The
+function takes **five required parameters**, and PostgREST resolves overloads by argument names, so a
+zero-argument call can never match it whether or not it exists. The result was an artefact of the
+question asked.
+
+Re-probed with the real five-argument signature it returned **42501, permission denied** — it exists
+and is correctly revoked from `anon` — while the same five-argument shape against an invented name
+still returned PGRST202. Only the second pairing is evidence, because only there does the control
+differ from the subject in exactly one respect: existence.
+
+The generalisation worth keeping: **a negative result is only informative if the probe could have
+produced a positive one for the thing you are asking about.** "Returns the not-found error" is not
+the same claim as "is not there", and the gap between them is where a false all-clear lives. The
+sibling instances are [[Domain Migration .io → .com]]'s SMTP `RCPT TO` probe (250 for real and
+nonsense addresses alike — *change instrument*) and this page's own [[Ask which gate, not whether it
+is green]].
+
+## The doc was the reviewer's source, and the doc was stale
+
+The mandatory pre-deploy `edge-function-reviewer` pass filed a **high-severity** finding: that
+migration `20260824110000` had not been applied, so `stripe-webhook` would hard-throw on its first
+Connect webhook and Stripe would retry-storm the endpoint. The reasoning was sound and the premise
+was false. The reviewer had no database access, so it did what a careful reader does — it read
+`PROJECT_CONTEXT.md`, found a `**Pending:**` clause saying the migration had not run, and reported
+it. That clause was hours stale.
+
+Two things follow. First, the finding was still worth its cost: it forced a verification pass that
+produced controls, and one of those controls caught the false negative described above. **A refuted
+finding that makes you prove something is not a wasted finding.** Second, `PROJECT_CONTEXT.md`'s
+own header warns that a `**Pending:**` clause is a claim with an expiry date — and a *reviewing
+agent* is exactly the reader least able to know the date has passed. Stale prose in a context file
+does not merely fail to help; it actively manufactures confident, well-argued, wrong findings.
+
+## A remedy nobody has opened the console to confirm is a hypothesis
+
+`verify-address` shipped with no throttle. That was recorded as acceptable because a compensating
+control existed: *set a daily quota cap on Geocoding in the Google Cloud console.* The sentence was
+written into this page and into `PROJECT_CONTEXT.md`, twice, each time as "the only bound on that
+spend."
+
+**The control does not exist.** Opening the console to set it, 2026-08-23: the Geocoding API's *v3
+requests per day* quota reads **Unlimited**, its edit control is disabled with the tooltip **"Quota
+is not adjustable"**, and a usage *alert* cannot be attached either — **"Alerts can not be generated
+for unlimited quotas from the table."** Google removed per-day caps for Maps Platform. Only a
+per-minute limit (3,000) remains, and a per-minute limit bounds burst rate, not daily spend; at
+3,000/min a runaway loop is bounded at a number with no practical meaning.
+
+What was actually bounding spend was **the $300 / 90-day free trial** on the billing project
+(`forward-deck-506417-g9`), which Google does not auto-charge past. That is a real hard stop, and it
+is also not a control anyone chose, does not survive clicking **Activate**, and would have been
+credited to a console setting that was never there.
+
+Two things generalise past Geocoding:
+
+1. **A compensating control is not a control until someone has performed it.** "We'll cap it in the
+   console" is a plan; the console is the only place that can confirm it is possible. Writing the
+   plan down twice, in two files, produced two citations of the same unverified claim and made it
+   read as established.
+2. **The remedy and the defect must be checked in the same pass.** The defect (no throttle) was
+   found by review and correctly described. The remedy was assumed in the same breath and never
+   opened. Reviewing the code but not the mitigation leaves the finding *closed on paper* — which is
+   worse than leaving it open, because an open finding still attracts attention.
+
+Closed by mirroring what `verify-phone` already had: `reserve_address_verification`
+(migration `20260825100000`), an atomic count-and-reserve under advisory locks, called immediately
+before the billed request. Three dimensions rather than phone's two-plus-cooldown — per-user daily,
+per-user burst, per-IP daily — because the abuse shape differs: a geocode is ~1/1000th the unit cost
+of an SMS, so volume matters more than spacing, and a cooldown would mostly punish the one
+legitimate pattern phone does not have (a business saving several locations in a sitting, each save
+firing its own verification).
+
+One deliberate divergence worth carrying: the counting predicate is an **exclusion**
+(`outcome <> 'throttled'`) where phone uses an inclusion list. The two fail in opposite directions
+when a future outcome is added and this file is forgotten — an inclusion list silently stops
+counting it (under-throttles, costs money), an exclusion list counts it (over-throttles, annoys one
+user). Fail closed toward the attacker.
+
+The `data-exposure-reviewer` pass found two, both low, and one was **declined on the record rather
+than quietly skipped**:
+
+- **Taken.** The 429 body returned `reason: "ip_daily"`, which tells a caller that *other* accounts
+  sharing their NAT or office IP consumed the shared bucket — no identity and no count, but still a
+  fact about strangers that this caller has no business learning. The response now collapses it to
+  `user_daily`; the true reason stays in the log. Free, because the two already produced the
+  identical human-readable string. Note the test written for it **failed first, correctly**: an
+  unscoped "never mention `reservation.reason`" assertion also forbade the `console.warn`, which is
+  exactly where the true reason belongs. Scope an assertion to the place you actually mean.
+- **Declined:** a pre-existing existence oracle where a body-supplied `orgUnitId` returns 404 when
+  absent and 403 when it exists but the caller is not an active owner/admin. Untouched by this diff,
+  and unexploitable against a v4 UUID keyspace — while the distinction is genuinely useful to an
+  operator debugging a real id. Folding an unrelated behaviour change into a throttle PR is the same
+  scope creep declined twice the same day (the 500-vs-401 pair). Recorded here so the next person
+  finds a decision rather than an oversight.
+
+The frontend needed **no change**, which is worth stating rather than leaving implicit:
+`verifyAddress.ts` is deliberately fire-and-forget and its header already names "rate limit" among
+the failures it must swallow. A 429 must never surface as "your save failed", because the save
+succeeded. The user's checklist simply continues to show the address unconfirmed — which is true —
+and the next save re-fires verification.
+
 ## Known Issues / Pending
 
-- **Nothing is verifiable end-to-end.** `verify-phone` and `verify-address` both 503 by design —
-  `TWILIO_VERIFY_SERVICE_SID`, `PHONE_VERIFY_IP_SALT`, and `GOOGLE_MAPS_SERVER_API_KEY` are all
-  unprovisioned. No real SMS or geocode call has ever been made by this code.
+- **The functions are live; the providers are still unexercised.** All five deployed and
+  boot-verified 2026-08-23, and the three secrets are provisioned and two proven by digest against
+  the live Twilio account. But **no real SMS has been sent and no real address geocoded** — the
+  Twilio path is proven against a stubbed provider and nothing else. Twilio's **Primary Compliance
+  Profile** is a separate gate from funding the account and is not complete. Treat every claim about
+  end-to-end behaviour as reviewed, not exercised.
+- **`verify-address`'s throttle is CLOSED** (`feat/verify-address-throttle`) — see the section below
+  for why the remedy this bullet used to name was fiction. **LIVE ON PROD 2026-08-24** — migration
+  `20260825100000` applied and recorded, `verify-address` redeployed and boot-verified. This bullet
+  read "not yet deployed" for about an hour.
+  **Applied through the dashboard SQL editor, not `apply_migration`, because the Supabase MCP could
+  not authenticate** — its OAuth flow returns `{"message":"Unrecognized client_id"}` from a
+  runtime-registered client, which is a plugin/service fault and not fixable from this repo. The
+  ledger `INSERT` was therefore included in the pasted SQL by hand; omitting it is how a future
+  `supabase db push` decides the file is unapplied and re-runs it. *If the editor is ever the route
+  again, carry the ledger row with it.*
+  **Verified by object with a control, never by the exit code:** table present, RLS on, client
+  roles on the table `none`, function present + `SECURITY DEFINER` + `search_path=public`, both
+  indexes, ledger row recorded — and a deliberately-wrong control row that read MISMATCH, proving
+  the comparison could fail. (Two rows read MISMATCH for `postgres,service_role` vs an expected
+  `service_role`: the owning role holds grants too, so the expectation was too strict, not the
+  grant wrong.)
+  **The RPC's behaviour is proven, not assumed** — a hand-run, rolled-back prod script, since its
+  only automated coverage is text assertions over source. Three reservations under a limit of three
+  all succeeded; the fourth, fifth and sixth declined `user_daily`; exactly **3** reserved rows and
+  exactly **1** throttled row existed afterwards (the Codex P1 bound, demonstrated rather than
+  claimed); a burst limit of 2 returned `user_burst`; an IP limit of 1 returned `ip_daily` while the
+  *same* limit under a **different** IP returned `ok`, proving the IP bucket is keyed rather than
+  global; a zero limit and a bad role both raised; and an `authenticated` caller raised
+  `service_role only`. A follow-up count confirmed **0 rows left** — a proof that pollutes prod is
+  not a proof.
+  **Still unexercised end to end:** no real geocode has run, because auth rejects before the
+  throttle is reached and there are no test credentials in this environment.
+- **`send-promotion-notification` reads the three Twilio secrets that were overwritten** with the new
+  account's credentials, and has not been re-checked since. It is the one other consumer of
+  `TWILIO_ACCOUNT_SID` / `TWILIO_AUTH_TOKEN` / `TWILIO_PHONE_NUMBER`.
+- **Two functions answer 500 where 401 is correct** — `disconnect-stripe-account` and
+  `check-restaurant-payout-status` throw missing/invalid-auth into a generic catch-all. Confirmed
+  live during boot verification. Pre-existing, not a leak, and deliberately not folded into a deploy;
+  it needs its own change.
 - **`READINESS_GATE_ENABLED` is now coupled to a secret, not just to a founder decision.** The
   `address` requirement is `required` and derives from a stamp, and until
   `GOOGLE_MAPS_SERVER_API_KEY` exists **no address can be verified at all** — so the requirement is

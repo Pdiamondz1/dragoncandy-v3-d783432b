@@ -2,8 +2,8 @@
 title: Account Completeness Engine
 type: concept
 created: 2026-08-23
-updated: 2026-08-23
-sources: [2026-08-23-account-completeness-engine.md, 2026-08-23-identity-verification.md]
+updated: 2026-08-24
+sources: [2026-08-23-account-completeness-engine.md, 2026-08-23-identity-verification.md, 2026-08-24-onboarding-wizard-and-depth.md]
 tags: [onboarding, readiness, stripe, fail-open, first-run, verification]
 ---
 # Account Completeness Engine
@@ -14,6 +14,10 @@ redesign. Lives at `src/lib/accountReadiness/`; shipped in PR #472 (`8889baef`, 
 **Slice 2 ([[Identity & Address Verification]]) gave `phone_verified`, `identity_verified` and
 `address` real writers and corrected a defect this page's own "Known Issues" section used to
 understate — see that correction below.**
+
+**Slices 3 and 4 ([[Onboarding Wizard & Depth]], 2026-08-24) made the registry the wizard's own
+source of truth, gave the depth dimensions surfaces that can satisfy them, and removed two brand
+requirements that no brand could ever clear — see below.**
 
 ## Why it exists
 
@@ -105,8 +109,53 @@ sources — they track genuinely disjoint facts.
   claim about `ReadinessGate` only — check every consumer of `useAccountReadiness` before concluding a
   required tier is harmless, because a direct consumer with no flag is a live path.**
 
+## What slices 3 and 4 changed (2026-08-24)
+
+**The wizard reads this registry.** `src/components/onboarding/steps.ts` declares each role's slides
+and maps a requirement key to the slide that satisfies it; a test asserts every `required`
+requirement has one, with a forced control proving the test can fail. So adding a required
+requirement here now fails a test rather than silently producing a checklist row onboarding cannot
+clear — the exact failure slice 1 shipped twice.
+
+**The exemption is declared, not implied.** `NO_CAPTURE_FLOW` names the required requirements a role's
+wizard deliberately does not carry, with the reason. An entry belongs there only when the capture
+flow provably does not exist, and two tests guard it: an entry must name a requirement the role
+actually has, and the roles whose flows work must claim no exemptions at all. Otherwise "the flow
+does not exist" becomes the answer to every coverage failure.
+
+**Two brand requirements were unsatisfiable, and the registry had drifted from its spec to create
+one of them.**
+
+- `address` — spec §4.4 says it is business-only, because a brand's primary `org_unit` is a
+  `product` and demanding a street address of it "would be a requirement no brand can meaningfully
+  satisfy". Slice 1 obeyed that; slice 2 added it back with no note. Production agreed with the
+  spec: 7 brand units, all products, zero addresses, and the page the row pointed at
+  (`/dashboard/brand/products`) offers a Website URL field. Removed and pinned by a test whose
+  control asserts the key survives for `business_client`.
+- `stripe` — **still present and still unsatisfiable, deliberately.** There is no brand Connect path
+  anywhere: `create-restaurant-connect-account` and `check-restaurant-payout-status` filter
+  `account_type = 'restaurant'` on every statement, and brand settings has never rendered
+  `StripeConnectSetup` (its "Payments" section is a budget-range field). 6 brands, 0 Stripe accounts.
+  Removing the requirement would hide a real gap — brands do need to fund sponsorships, and
+  `publish_campaign` demands `stripe` — so it stays visible and the wizard's payments slide was
+  removed for brands instead, because presenting a setup flow that silently does nothing is worse
+  than not offering it. **`publish_campaign` has no call site today; the day it gets one, brands are
+  blocked.**
+
+**The depth dimensions got surfaces that can satisfy them.** `address` resolves to the Locations
+page, which now shows each location's status (verified / needs confirming / no address yet) with a
+hint for the two that are not done — it previously said nothing about addresses at all, while the
+requirement was unmet for every business on the platform. `deriveTeam` now returns `pending` while an
+invitation is outstanding, instead of telling an owner to invite the team they just invited.
+
+**A lesson about this registry specifically: it has drifted from its spec twice, silently, in the
+same direction** — a later slice adding a requirement the spec explicitly excluded, with no note
+saying why. Comments beside the entry did not hold. Tests do.
+
 ## See Also
 
+- [[Onboarding Wizard & Depth]] — slices 3 and 4; the wizard that reads this registry, and the
+  surfaces that let the depth dimensions be satisfied.
 - [[Identity & Address Verification]] — slice 2; gives `phone_verified`/`identity_verified`/`address`
   real writers and corrects the gate-inertness understatement above.
 - [[Anon Key Is Not Authorization]] — same lesson shape: a check that looks like a gate but is not one.

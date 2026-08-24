@@ -87,8 +87,11 @@ Vendor pricing goes stale silently; re-read the invoices before quoting this any
 delivery system stabilization that gated launch landed in late May 2026;
 remaining blockers are final bug resolution and payment-flow hardening.
 
-**Codebase scale** (as of 2026-08-23): 95 pages, 272 hooks, 104 edge functions. `verify-phone` +
-`verify-address` were added by the identity-verification slice — both undeployed pending secrets.
+**Codebase scale** (re-counted 2026-08-24): 92 pages, 269 hooks, **111 edge functions — and for
+once the repo and prod agree exactly**: 111 directories under `supabase/functions/` (excluding
+`_shared`) and 111 deployed, all `ACTIVE`. This line said **100**, and said `verify-phone` /
+`verify-address` were "undeployed pending secrets" — both were deployed on 2026-08-23, which §5
+recorded and this line did not. Counts here are a snapshot, not a fact: re-count before quoting.
 **Repo**: `/Users/dwill/GIT/dragoncandy-v3-d783432b` (moved from Windows to macOS 2026-08-14)
 **Active integrations**: Stripe Connect, Outstand.so (social media —
 Instagram, TikTok, YouTube), Google Maps (geocoding), Claude Sonnet 4 + Haiku
@@ -106,6 +109,65 @@ holds no Toast credentials. See §6.
 
 ### In flight
 
+- **Social login (Google/Apple/Facebook) — shipped dark, and a one-line fix that would have
+  switched off the email gate** — two blockers first: an OAuth user would have been told to
+  verify an email nothing ever sends (`profiles.email_verified` defaults false, the trigger
+  never set it, `AuthPage` gates on it, and `authenticated` holds INSERT but no UPDATE), and
+  every social signup would have become a `content_creator` because `signInWithOAuth` cannot
+  carry user metadata. **The obvious fix was wrong and prod proved it:** mirroring
+  `email_confirmed_at` would have auto-verified every PASSWORD signup, because Supabase's own
+  confirmation is disabled here — **45 of 45 users confirmed, 44 within ONE SECOND of
+  creation, minimum 6ms**. Verification comes from the PROVIDER, via an allowlist. Migration
+  `20260825140000` ships **three** objects, each for a case a trigger cannot see:
+  `handle_new_user` (accounts OAuth CREATES), `claim_initial_role` (the chosen role, once)
+  and `sync_oauth_email_verification` (accounts OAuth LINKS TO — an INSERT trigger never sees
+  a password account that later signs in with Google). `claim_initial_role` refuses four
+  ways, and **neither account-identity guard is redundant**: provider catches a password
+  account that linked Google, age catches one genuinely created by Google months ago, and
+  either alone converts an existing account. The age window is **not** a consent-screen
+  deadline — `created_at` is stamped after the callback. Role and guarded destination travel
+  in the redirect URL, because `sessionStorage` is origin-scoped and this trip can change
+  origins. **Web only**: native ejects the user into Safari and needs a custom-scheme
+  redirect. Seven Codex rounds, seven findings, all real, clean at 7. Proven on prod in
+  rolled-back transactions where **the controls did real work** — removing the guards
+  reproduced "an existing account was converted", and widening the identity allowlist made a
+  password-only account verify itself. **Pending: the migration is NOT applied and the flag
+  is off, so none of it is live**; no provider console is configured, so nobody has completed
+  a real round trip; and Facebook/Google review both need a public privacy-policy URL, which
+  the site gate would break. → `docs/wiki/concepts/social-login.md` ·
+  `docs/runbooks/social-login-setup.md` · `feat/social-login`
+- **Onboarding slices 3 and 4 — a wizard that reads the registry, and two requirements no brand
+  could satisfy** — the wizard is now declarative slides driven by the slice-1 requirement registry
+  (`ROLE_STEPS` / `STEP_PHASE` / `REQUIREMENT_STEP`), with a coverage test that carries a forced
+  control, so adding a required requirement fails a test instead of silently producing a checklist
+  row onboarding cannot clear. **The core save moved to the collect/service boundary** — every later
+  slide acts on rows that must exist — which closed an abandonment bug and created three of its own,
+  all caught by review: the org query is a separate React Query cache, so a new business kept
+  `{org: null}` and the address slide could never resolve a location; the save can now beat
+  `useAutoDetect`, so a fast creator saved null city/country and nothing ever asked again; and
+  `goNext` became async, so a double tap advanced TWO slides and skipped phone verification. Slice 4
+  gave the depth dimensions surfaces: the Locations page finally shows address status (`required`,
+  and unmet for **every** business on prod — 30 units, 4 with an address, 0 verified), with saving
+  now waiting for verification rather than losing the race against its own invalidation; and
+  `deriveTeam` returns `pending` while an invite is outstanding instead of telling an owner to invite
+  the team they just invited. **Two brand requirements no brand could ever clear**: `address`
+  removed — spec §4.4 excluded it and slice 2 silently reversed that, and prod agreed with the spec
+  (7 brand units, all products, zero addresses, and the page it pointed at offers a Website URL
+  field) — and `stripe` KEPT but its wizard slide removed, because **there is no brand Connect path
+  at all** (both restaurant functions filter `account_type='restaurant'`; 6 brands, 0 Stripe
+  accounts) and presenting a setup flow that silently does nothing is worse than not offering it.
+  **`publish_campaign` demands `stripe` and lists `brand`; it has no call site today, and the day it
+  gets one every brand is blocked.** The registry has now drifted from its spec twice in the same
+  direction, so both decisions are pinned by tests rather than comments. Ten Codex rounds, twelve
+  findings, all real, all mine, clean at round 11 — nearly every one a consequence of an earlier
+  change in the same session. Two forced controls changed a conclusion: the double-tap test pins a
+  PAIR of guards, not the ref it looks like it tests, and the retry-loop test first asserted against
+  elapsed time while its control passed. **Pending:** both-viewport prod verification (still no
+  test-account credentials); the Donny RAG sync; and social login, blocked on a `handle_new_user`
+  migration — that trigger never sets `email_verified`, which defaults false while `AuthPage` gates
+  on it, so an OAuth user would be told to verify an email that is never sent, and `authenticated`
+  holds INSERT but no UPDATE on the column, so there is no client-side fix. Auth logic, so it needs
+  confirmation first. → `docs/wiki/concepts/onboarding-wizard-and-depth.md` · `feat/onboarding-slice-3`
 - **Retrieval quality measured, not assumed** — chunking proved the text was reachable; it did not
   prove Donny *finds* it. `npm run eval:rag` now answers that against **53 real queries** taken from
   `donny_tool_executions` (every internal search Donny has ever run — they predate the work and
@@ -210,10 +272,50 @@ holds no Toast credentials. See §6.
   under the CTA in the **pale** mint `#B8ECDA` (small text needs 4.5:1; the slogan's `#7BE3C0`
   measures 3.91 at p90 there against 4.62 — *the "too pale for video" note is about headlines and
   inverts for small text*), and a "Learn more" pill pointing at a **new `/how-it-works`**, built
-  because the rebuild had deleted the only page explaining the product. **Pending:** the iOS-Safari
-  half is unverifiable in any browser, emulator or simulator — it needs a real phone, and the
-  residual candidate if it persists is rubber-band overscroll (`overscroll-behavior-y`), left out
-  as an app-wide behavioural change. → `feat/landing-adrian-feedback` · #459
+  because the rebuild had deleted the only page explaining the product.
+  **It did persist, it was exactly the residual this line predicted, and that is now closed
+  (2026-08-24).** This clause read "**Pending:** the iOS-Safari half is unverifiable in any
+  browser, emulator or simulator — it needs a real phone, and the residual candidate if it
+  persists is rubber-band overscroll (`overscroll-behavior-y`), left out as an app-wide
+  behavioural change." Adrian reported it again with screenshots: *"you can still move the page on
+  mobile"*, white above the header and below the footer. **Right about the mechanism, wrong about
+  the surface** — a macOS trackpad rubber-bands too, so it was never iOS-only. `h-[100dvh]` had
+  removed the scrollable gap that made the screen *jump*; a container with nothing to scroll still
+  **bounces**, and the elastic gutter is painted by the CANVAS from `<html>` — outside the body
+  box, so nothing the app renders could ever colour it, hence white. Closed with
+  `overscroll-behavior-y: none` on html+body (**Y only**: the shorthand takes X, where iOS
+  edge-swipe-back lives; accepted cost is Android Chrome pull-to-refresh) **plus** the landing
+  painting the canvas grape for its lifetime, for what CSS cannot reach — Safari <16, and the
+  WKWebView, whose bounce is a native scroll-view setting. **The simulator settled the one thing
+  only it could:** a throwaway computed-style readout proved WebKit *applies* the property inside
+  a WKWebView (and that `innerHeight === clientHeight`, so `contentInset:'never'` still holds) —
+  while *applied* is **not** *suppressed*, which needs a real drag and is recorded as unproven.
+  **Shipped with it: one logo size across every header** (`src/lib/brandLogo.ts`) — auth was
+  116/140/**163px** tall, the post-login mobile bar **74px**, the desktop sidebar **116px**,
+  against the landing's 56, because a width class on a taller-than-wide asset multiplies the
+  height. The durable half is the guard: the previous pass fixed two files and pinned them **to
+  each other by hand**, and that test reported green for a day while three unenumerated headers
+  stayed wrong.
+  **The scrolling was NOT the rubber-band, and #501 did not fix it — #504 did (2026-08-24).** This
+  clause read "**Pending:** the drag itself on a real phone" and was answered the same day: the
+  landing still scrolled, with white below the footer, a little in portrait and a lot in landscape.
+  The white sat **below the app shell**, which rules out every mechanism inside the page at once.
+  Cause: `src/index.css` pinned `html, body { height: 100% }`, and a percentage resolves against
+  the initial containing block — on iOS Safari the **small** viewport — while the shell's `100dvh`
+  is the **current** one and GROWS as Safari collapses its toolbars. The shell outgrew body's box,
+  body scrolled by the difference, and the strip below painted body's white. **§9 had already
+  measured the disagreement** (body `clientHeight` 753 vs `100vh` 833), fixed the *shell's* unit and
+  left the other side on `%` — *a height comparison has two sides, and fixing one is not fixing it*.
+  Closed by sizing html/body in `dvh`, locking the document while the landing is mounted (`main`
+  deliberately left scrollable so the CTA can never be clipped), and a **height** breakpoint
+  `short:` for landscape, where the content genuinely did not fit (355px needed vs ~310 available →
+  195). **CONFIRMED WORKING on a real phone by the founder**, which is the only instrument that
+  could confirm it: Chrome, device emulation and the Capacitor WebView all report this family
+  absent, because none has a collapsing toolbar. Three diagnoses were needed — content overflow
+  (refuted by measurement), the rubber-band (plausible, shipped as #501, did not fix it), then this.
+  **Pending:** the two post-login headers on screen — reaching them needs a login and **no
+  test-account credentials exist**, so they are pinned at class level only.
+  → `docs/wiki/concepts/mobile-viewport-fixed-positioning.md` (§10-11) · #459, #501, #504
 - **Google Workspace corporate setup (Wave 1)** — the company's own Workspace: two shared drives,
   nine Google Groups replacing personal aliases, brand assets, and email signatures that install
   themselves. **MERGED (#453, `d83fcbe3`, 2026-08-21) and the admin half is largely DONE** — this
@@ -368,10 +470,17 @@ holds no Toast credentials. See §6.
   real rows**, not an empty state dressed up as data. **Disconnect, revoke and re-consent all followed the same
   afternoon**, closing both gaps this entry listed an hour earlier. Disconnect deleted the row —
   which *is* the proof the revoke succeeded, since the DELETE is only reached after Google returns
-  `revoked`/`already_invalid` and a failure keeps the row with its token. **Google's own behaviour
-  confirmed it independently:** the first connect had sailed through with no consent screen, and
-  immediately after disconnect the same button dropped into a full account-chooser-and-consent
-  flow — Google does not re-ask for a grant it still holds. Re-consent produced a genuinely new
+  `revoked`/`already_invalid` and a failure keeps the row with its token. **A second piece of evidence was cited here and is
+  withdrawn:** this entry said "Google's own behaviour confirmed it independently — the first
+  connect had sailed through with no consent screen, and immediately after disconnect the same
+  button dropped into a full consent flow; Google does not re-ask for a grant it still holds."
+  **That is not evidence of anything**, because `buildAuthUrl` sends **`prompt=consent`** on every
+  authorization, and Google's docs are explicit that the "only the first time" behaviour applies
+  when `prompt` is **omitted**. The consent flow appears every time either way, revoke or no
+  revoke. The revoke is still proven — by the code path, where the DELETE is reached only after
+  Google returns `revoked`/`already_invalid` — which was the stronger evidence all along; the
+  "independent confirmation" merely felt like corroboration because it was a second observation.
+  **Two observations of the same thing are not two pieces of evidence.** Re-consent produced a genuinely new
   grant (`connected_at` 17:31:49, scope array in a different order) and the analytics read ran
   again against the new token. **PUBLISHED TO PRODUCTION 2026-08-23 18:20 UTC** — publishing
   status is now *In production* (reversible via "Back to testing"), which stops the 7-day refresh
@@ -383,10 +492,17 @@ holds no Toast credentials. See §6.
   **A claim this entry made an hour earlier was wrong and is corrected here:** the consent flow is
   **two screens**, not one. Screen 1 is identity (email, Continue); **screen 2 itemises the scopes
   as "View your YouTube account" and "View YouTube Analytics reports for your YouTube content"** —
-  both *View*, which is the user-facing proof this cannot post. Screen 2 is skipped when the
-  account already holds the scopes, which is why it went unseen until a **full** revoke forced it.
-  The earlier note was not wrong about what was on screen; it was wrong to treat one screen as the
-  whole flow. The operational rule survives with a better reason: **the consent screen is not the
+  both *View*, which is the user-facing proof this cannot post. The earlier note was not wrong about what was on
+  screen; it was wrong to treat one screen as the whole flow. **This correction then carried a
+  wrong mechanism of its own, caught by the Codex second review the same day:** it said screen 2 is
+  "skipped when the account already holds the scopes, which is why it went unseen until a full
+  revoke forced it". `buildAuthUrl` sends **`prompt=consent`** unconditionally, and per Google's
+  OAuth docs that value means *prompt the user for consent* regardless of prior grants — the
+  "prompted only the first time your project requests access" behaviour is what you get when
+  `prompt` is **omitted**. So screen 2 appears on **every** connect for this app; it went unseen
+  because nobody looked past screen 1, and the revoke had nothing to do with it. **A hypothesis
+  invented to explain a gap in observation, written down as mechanism, survived a correction pass
+  because that pass was about how many screens there are and not about why.** The operational rule survives with a better reason: **the consent screen is not the
   record of what was granted** — a flow can legitimately skip a screen — so the token response's
   scope array is the only reliable source, which is why this build reads it back. **Still no
   "Google hasn't verified this app" interstitial** in Testing or immediately after publishing;
@@ -440,9 +556,25 @@ holds no Toast credentials. See §6.
   the line that actually matters, since restricted scopes are what pull in the paid CASA security
   assessment. Conclusion unchanged (brand review, not CASA); the reasoning was wrong, and the
   reasoning is what anyone would plan against. A **947-char justification is saved**; the **demo
-  video is not**, and it is awkward rather than tedious — Google requires the unverified-app screen
-  to appear in it and forbids recording against production traffic, so with the app now *in
-  production* it needs a separate test project or a hidden staging route. **A save trap worth
+  video is not — and the reason this entry gave for that was itself wrong.** It said Google
+  "requires the unverified-app screen to appear in it and forbids recording against production
+  traffic", so the video needed "a separate test project or a hidden staging route". **Google's own
+  demo-video page requires neither**, and says nothing about the environment: the requirements are
+  the end-to-end flow including the OAuth grant, the consent screen showing the exact scopes, each
+  scope demonstrably used, and the submitted app's name and branding. It is recordable today against
+  production with no new infrastructure — a fourth Google-console claim corrected in one day, the
+  same shape as the other three. **Recording it needs no revoke and no disconnect** — `prompt=consent` is
+  sent on every authorization so the scope screen always appears, and the card's connect button is
+  always present (labelled "Connect another channel" once a channel is linked). An earlier draft of
+  this very entry said the take "must start from a revoked grant"; Codex refuted it against the
+  code. Procedure
+  and the full requirement list: `docs/runbooks/google-oauth-demo-video.md`, which also flags a
+  conflict nothing else connected — **the site gate allowlists exactly `/robots.txt` and
+  `/favicon.ico`, so switching the private preview on makes the homepage and `/privacy` answer 401,
+  and Google requires both reachable by an anonymous reviewer (as do TikTok, Meta and X)**. Prod is
+  not gated today (apex 200), so it is a sequencing constraint, not a live defect; allowlisting
+  `/privacy` is not the fix — it is an SPA route, and the gate's own header records that
+  allowlisting a path with no backing file serves the whole bundle. **A save trap worth
   knowing:** the scope panel's "Update" only *stages* the change; the real save is a separate button
   at the page bottom, below the justification and video sections, so the first attempt looked saved,
   reloaded empty, and was only caught by reloading instead of trusting the post-save render.
@@ -457,6 +589,144 @@ holds no Toast credentials. See §6.
   drop 7 days after consent** — Google expires refresh tokens for External + Testing apps on that
   schedule, and that is a console setting, not a bug in the refresh code.
   → `docs/wiki/concepts/youtube-analytics-connector.md`
+- **Instagram read-only insights connector** — the second direct platform API under the
+  2026-08-23 scope decision (Outstand publishes; direct APIs measure). Per-user OAuth on
+  `instagram_business_basic` + `instagram_business_manage_insights` and nothing that can post.
+  **MERGED, APPLIED AND DEPLOYED 2026-08-24** (#489, `db736dc8`) — this line read "BUILT, NOT
+  DEPLOYED" until then. Migration `20260825120000` applied, seven edge functions `v1 ACTIVE`, and
+  the live `verify_jwt` read back off the platform matches `config.toml` exactly (four `true`,
+  three `false`). Verified by OBJECT, not by the ledger: `to_regclass` returns the table where an
+  invented name returns `null`, RLS is on with **zero policies**, grants are exactly `postgres` +
+  `service_role`, and the status function is `SECURITY DEFINER` granted to `authenticated` but
+  **not `anon`**. Boot-verified too — every function answers with OUR JSON body rather than the
+  gateway's, the public anon key gets through none of them, and an absent function name returns
+  **404** where these return 401/503.
+  **WORKING END TO END — first real account connected 2026-08-24 18:20 UTC.** This line read "it
+  still cannot connect anything, so this is a deploy and not a launch" until the same evening. All
+  three secrets are set (`INSTAGRAM_APP_ID`, `INSTAGRAM_APP_SECRET`, and
+  `INSTAGRAM_OAUTH_STATE_SECRET` kept separate from Google's so one leaked key does not compromise
+  both flows — **verified by digest, and it does differ from `GOOGLE_OAUTH_STATE_SECRET`'s**).
+  `@areyouaman` (`17841400763893777`, BUSINESS) is stored with exactly the two read scopes and
+  **nothing that can post**, `status=active`, `last_error=null`, a 60-day token expiring
+  2026-10-23, and `last_synced_at` stamped **11 seconds after** `connected_at` — which is the
+  evidence that matters, since a row can be written without the API ever being called and that
+  timestamp cannot. The card reads **Reach 1, Views —, Interactions —**; the em dashes are
+  [[Honest Analytics]] holding, because three tidy zeros would have been the suspicious result.
+  **The withheld claim is now made:** the two Meta callbacks previously answered `503
+  not_configured` and returned *before* the signature check, so forgery rejection rested on 8 unit
+  tests. With the secret set, a forged `signed_request` returns **401** on both, where an invented
+  function name returns **404** — the control that separates "our code rejected this" from a
+  gateway artifact. **The 503 → 401 transition is itself the proof the secret is wired in.**
+  **Three defects sat between *deployed* and *usable*, and none was in the connector's code.**
+  (1) The founder connected through the live app and the consent screen said **"Outstand-IG"** —
+  `LocationSettingsSections` rendered the Outstand list and neither analytics card, so the only
+  Instagram button on the page a multi-location business actually lands on belonged to the other
+  integration. The two look alike and do opposite jobs, and **a page that offers one and hides the
+  other does not present a choice, it misroutes**; fixed in #502, guarded by a test that *derives*
+  the surfaces rendering `ConnectedAccountsList` rather than naming them — naming them is exactly
+  how the logo work the day before reported green while three unenumerated headers stayed wrong.
+  (2) **"Insufficient Developer Role"**: an Unpublished Meta app can only be authorized by accounts
+  holding a role on it, so the account had to be added as an **Instagram Tester** — an invite that
+  is not in the mobile app and not under "Apps and websites", but at
+  `instagram.com/accounts/manage_access/`. (3) Meta's **App settings → Basic returns its own
+  `{"success":true}` and then discards a multi-field write** — four fields changed, saved, and all
+  four reverted on reload; saving one field per click persisted every time. **A vendor's success
+  flag is not evidence the value stuck** — the same shape as this project's `recorded != actual`
+  cases, one layer out. Privacy policy, Terms and Category `Business and pages` landed that way;
+  `app_details_user_data_deletion` still refuses after four attempts, and on the failing ones **no
+  request carrying the value was sent at all**, so the form is not submitting that field rather
+  than the server rejecting it.
+  **"It ran fine" was false twice, and prod said so both times.** The deploy commands ran first in
+  the main checkout, where this branch's files do not exist — which would have mattered more had
+  the paths resolved, since `supabase functions deploy` reads `config.toml` from the **current
+  directory** and the main checkout has no `instagram-*` entries, so the three anonymous functions
+  would have deployed at the default `verify_jwt=true` and Meta's callbacks would 401 at the
+  gateway before the signature check ever ran. Then the corrected commands carried Claude Code's
+  `!` prefix into a plain zsh shell, where `!` is **pipeline negation**: `! cd X && cmd` parses as
+  `(! cd X) && cmd`, so the `cd` succeeded, `!` inverted it, `&&` short-circuited, and the prompt
+  changed directory while nothing else ran. **A shell printing nothing has not necessarily done
+  nothing; one printing success has not necessarily done anything — check the target, not the
+  report.**
+  **Built on the YouTube connector, and the value is the three places where copying it would have
+  been WRONG** — each checked against Meta's own docs rather than inferred from Google's shape.
+  **(1) There is no refresh token**: the 60-day access token IS the credential and
+  `ig_refresh_token` extends that same token, so a refresh replaces it. **(2) Therefore a
+  connection nobody reads DIES** — Meta only extends a token that is *still valid*, so
+  refresh-on-expiry (correct for Google) is guaranteed to fail here, and an expired token is
+  recoverable only by the user re-consenting. Hence proactive refresh at 15 days remaining, plus
+  a daily sweep for dormant accounts. **(3) There is no revoke endpoint** — Meta's access-token
+  reference says Delete is "not supported" on that node, so `youtube-disconnect`'s ordering
+  (revoke first, 502 and keep the row on failure) would make disconnect **permanently
+  impossible**. Disconnect attempts it, reports the outcome, and deletes the row either way,
+  which is safe here for a reason it is not for YouTube: deleting the row destroys our only copy
+  of the token, where YouTube's failure mode is *keeping* a live credential. The UI says exactly
+  that rather than implying the grant is gone.
+  **The console gave back what the docs took away.** Reading Business login settings surfaced a
+  **Deauthorize callback URL** — Meta will not let us revoke a grant, but it will tell us when the
+  *user* does, so a user-side removal now deletes our row instead of stranding a dead token.
+  **Instagram is weaker than YouTube at revoking and stronger at reporting; ask each platform what
+  it tells you, not only what it lets you do.** That callback and the required data-deletion
+  callback are the only two functions here without a JWT — Meta calls them with no session, so the
+  `signed_request` HMAC is their *entire* authorization (own module, 8 tests, every negative a real
+  forgery: wrong secret, payload swapped after signing, truncated signature, algorithm downgrade;
+  the HMAC covers the RAW base64url payload, since re-serialising reorders keys and fails looking
+  like a wrong secret; a missing app secret fails **closed**, or a missing config value becomes an
+  open delete endpoint).
+  **The tests caught a real bug in this build's own first draft** — `summarize` guarded values with
+  `Number.isFinite(Number(x))`, which admits `null` because `Number(null)` is **0** and 0 is
+  finite, so a day Instagram reported nothing for became a day with zero reach. Totals still added
+  up; only the day count betrayed it. **A defensive-looking default is the most likely place to
+  fabricate data** — the same trap sits at the last step in the UI, where
+  `value?.toLocaleString() ?? '0'` would undo the server's care, so the card renders an absent
+  metric as an em dash.
+  Also extracted `_shared/oauth-state.ts`, since this was the **third** copy of the HMAC state
+  logic; `youtube.ts` is deliberately NOT migrated in the same PR (it went live hours earlier, and
+  swapping its state implementation inside a feature PR means a reviewer cannot tell a behaviour
+  change from a feature) — a debt with a name, whose follow-up diff is only the swap.
+  **Codex found two P1s, both real and both deployment rather than logic:** the three anonymous
+  functions relied on a code comment asking the deployer to remember `--no-verify-jwt` (now all
+  seven declared in `supabase/config.toml`, four true and three false — **and my claim that this
+  repo has no `config.toml` was wrong, produced by a stale shell working directory**), and the
+  refresh sweep had **no cron**, i.e. a guard protecting exactly the population it was built for
+  and nobody else (now migration `20260825130000`, daily 04:00 UTC).
+  **Meta console work DONE in the browser 2026-08-23:** redirect URI
+  `https://dragoncandy.com/instagram/callback` saved, and `instagram_business_content_publish`
+  **removed** — verified after a page **reload**, with the control that the other two permissions
+  survived, because the confirm dialog never names the permission it removes.
+  `manage_comments`/`manage_messages` turned out **never to have been added** despite an
+  "Add all required permissions" button that would add both. Corrects a claim made the same hour:
+  the field is **`OAuth redirect URIs`, plural** — a chip list, not the single box the first-run
+  dialog shows, so preview origins can be registered whenever wanted.
+  **Two branches picked the same migration version, and nothing noticed until they met (2026-08-24).**
+  `feat/verify-address-throttle` shipped `20260825100000_reserve_address_verification` while this
+  branch was open, and this branch's table carried the *same* stamp. It is recorded in prod's
+  ledger, so `db:apply` would have refused the Instagram table as already recorded, and forcing it
+  past that is precisely how `recorded != actual` happens — the failure this project has three
+  cases of. Renumbered to `20260825120000` (table) and `20260825130000` (cron). The durable half is
+  `supabase/migrations.test.ts`, which found **seven** collisions already in the tree; those are
+  **frozen rather than fixed** — none of the seven is in prod's ledger at all (0 rows, checked the
+  same day), so renumbering them would churn fourteen files and tell us nothing about prod. It
+  compares an exact set, so a third file joining a frozen version fails too, and a forced control
+  proved it fails and names both files. **A version is a timestamp a human picks, so two branches
+  open on one day will eventually pick the same round number — the check is worth more than the
+  fix.**
+  **The Lighthouse failure on this PR was variance, not the branch:** desktop performance measured
+  0.73 against the 0.90 gate on 2026-08-23 while every other PR that day passed, and a re-run after
+  merging main — with no change to any landing-page file — came back green. Codex clean at round 1
+  on the merge.
+  **Four items this clause listed are DONE and were verified by object, not by memory
+  (2026-08-24):** the three secrets are set; the Vault secret `instagram_refresh_sweep_url` exists
+  (this line read "confirmed absent — 12 vault rows, none of them this one"); the cron migration
+  `20260825130000` is applied, with `cron.job` showing `instagram-refresh-sweep` at `0 4 * * *`
+  and `active=true`; and both the deauthorize and data-deletion URLs are registered in Business
+  login settings, re-read after a full page reload because that panel stages edits.
+  **Pending (2026-08-24):** the sweep has **never fired** — `cron.job_run_details` holds **0 runs**
+  for it, so the schedule is proven to exist and not proven to work (first fire 04:00 UTC);
+  `app_details_user_data_deletion` in Meta's App settings → Basic, still
+  `https://www.facebook.com/` after four attempts; and App Review, which needs a demo video — note
+  the site-gate conflict in `docs/runbooks/google-oauth-demo-video.md` applies to Meta's review
+  too, since it also requires an anonymously reachable privacy policy.
+  → `docs/wiki/concepts/instagram-insights-connector.md`
 - **Content delivery system stabilization** — bug-fixing the creator→business content
   handoff and payment flow; gates production launch. → `docs/SHIPPED_LOG.md`
 - **Outstand social media integration** — IG/TikTok/YouTube linking + delegated posting;
@@ -628,12 +898,23 @@ holds no Toast credentials. See §6.
   all resolve extensionless specifiers. **Caught by the e2e smoke suite**, which drives a real
   browser against the preview. Fixed with `'./gate/decide.js'`. **Durable rule: a local toolchain
   that resolves imports for you cannot tell you whether the deployment target will.**
-  **Pending (2026-08-23):** merge PR #482; **a green `lighthouse-ci.yml` AND a green e2e smoke on it
-  are hard merge gates** (the Lighthouse 1.00 was measured locally, never by CI); then, in this
-  order, set the four Production-scope variables → deploy → run the runbook's checks → only then
-  disable Supabase signup.
+  **PR #482 is MERGED** (this line read "**Pending:** merge PR #482" until 2026-08-23); the gate
+  code is on `main` and prod is **not** gated — the apex returns 200, because `SITE_GATE_ENABLED`
+  is unset. **Pending (2026-08-23):** in this order, set the four Production-scope variables →
+  deploy → run the runbook's checks → only then disable Supabase signup.
   Note `/promo/:id` now challenges (founder confirmed no QR is live; documented, deliberately not
   allowlisted) and every Supabase invite must travel with the password or as a `?k=` link.
+  **Switching this on breaks every pending platform verification, and nothing else connects the
+  two.** The allowlist is exactly `/robots.txt` and `/favicon.ico`, so the homepage and `/privacy`
+  answer **401** to anyone not signed in — and Google's OAuth verification requires both reachable
+  by an anonymous reviewer ("hosted on a verified domain you own", privacy policy "hosted within
+  the domain that hosts your homepage"), as do TikTok's, Meta's and X's app reviews, each of which
+  needs a public privacy-policy URL. **Allowlisting `/privacy` is not the fix** — it is an SPA
+  route, and this gate's own header records that allowlisting a path with no backing file serves
+  the entire bundle to an anonymous browser. The only shape the gate permits is real static files
+  (`public/legal/privacy.html`, `public/legal/terms.html`) allowlisted by path; the alternative is
+  to sequence the gate around the review windows, which are measured in weeks. A decision, not a
+  task. See `docs/runbooks/google-oauth-demo-video.md`.
   → `docs/wiki/concepts/site-access-lockdown.md` · `docs/runbooks/site-access-lockdown.md`
 - **Identity & verification (slice 2 of 4, onboarding redesign)** — gives `phone_verified`/
   `identity_verified`/`address` real writers, closes a `profiles` email/phone read exposure (4th
@@ -643,13 +924,64 @@ holds no Toast credentials. See §6.
   real, clean at round 7; two of the nine were defects a previous fix in the same loop introduced.
   It moved the SMS throttle out of TypeScript into an atomic SQL RPC
   (`reserve_phone_verification_send`), so that control now has **no automated coverage at all**, only
-  a hand-run rolled-back prod proof. **Pending (2026-08-23):** three secrets unprovisioned
-  (`TWILIO_VERIFY_SERVICE_SID`, `PHONE_VERIFY_IP_SALT`, `GOOGLE_MAPS_SERVER_API_KEY`) so nothing is
-  verifiable end-to-end; merge, then a **four-migration + five-function** merge-time runbook; a
-  `READINESS_GATE_ENABLED` flag-row decision (founder call — and it now needs the Maps key first,
-  since until then no address can be verified and the `required` address item is display-only); and a
-  pre-existing unauthenticated IDOR (`get_user_conversations`) found in scope but left for an owner
-  outside this branch.
+  a hand-run rolled-back prod proof. **MERGED (#484), MIGRATIONS APPLIED AND ALL FIVE FUNCTIONS
+  DEPLOYED 2026-08-23.** This line previously listed three unprovisioned secrets, an unrun merge-time
+  runbook and a "four-migration + five-function" deploy; all of it landed the same day, and the
+  clause outlived its truth by hours in the usual way.
+  **Every prerequisite was verified by OBJECT, never by the ledger and never by this file** — which
+  matters, because the mandatory pre-deploy `edge-function-reviewer` pass filed a **high-severity
+  finding that the identity columns were not applied and `stripe-webhook` would throw on its first
+  Connect webhook**, and it got that from the very clause above. Refuted against prod: all 16
+  identity/address columns answer on `creator_profiles`, `business_profiles` and `org_units`;
+  `phone_verification_attempts` answers **42501**, so the table exists AND the lockdown holds; and
+  `reserve_phone_verification_send` answers 42501 rather than "not found". Each probe carried a
+  control that could have said no — an invented column name returned **42703**, an invented function
+  name returned **PGRST202**. **One control caught a false negative in my own probe:** calling the
+  5-parameter throttle RPC with `{}` returns PGRST202 whether or not it exists, because no
+  zero-argument overload can ever match, so the first reading ("absent") was an artefact of the
+  question, not a fact about prod. *A probe that cannot distinguish absent from unmatched is not
+  evidence; re-probe with the real signature.*
+  Two of the reviewer's four findings were real and are fixed (#485): the two
+  `STRIPE_IDENTITY_RESET` writes on the **automatic** Stripe-detach path checked no errors at all,
+  so the eraser could fail while the function returned 200 reporting "no account" and the row kept
+  `identity_verified_at` pointing at a deleted Stripe account — the exact failure this slice exists
+  to close, made silent one level up. Logged rather than thrown, deliberately, because the contract
+  differs from the manual disconnect: there a button lied, here a status READ heals opportunistically
+  and a 500 would black out the payout UI over a blip the caller cannot fix. And
+  `disconnect-stripe-account` had **no `config.toml` entry at all** — the only Stripe money function
+  without one — so its posture was an inherited default; probed live (unauthenticated POST returns
+  the GATEWAY's 401, so the live value is `true`) and now declared. Codex clean at round 1.
+  **All five boot-verified after deploy, not merely uploaded:** every one answers with OUR JSON body
+  rather than the platform's, with a nonexistent name returning 404 as the control, and the public
+  anon key gets through none of them.
+  **Pending (2026-08-23):** nobody has completed an SMS round trip, so the Twilio path is proven
+  against a stubbed provider and nothing else (and the Twilio **Primary Compliance Profile** is a
+  separate gate from funding); no address has been geocoded end to end; a
+  `READINESS_GATE_ENABLED` flag-row decision (founder call — **do not enable it until a real address
+  verifies**, since until then the `required` address item is display-only);
+  `send-promotion-notification` still reads the three Twilio secrets that were overwritten
+  with the new account's, and has not been re-checked; two functions surface an unauthenticated
+  request as **500 rather than 401** (pre-existing, confirmed live, deliberately not folded into a
+  deploy); and the pre-existing unauthenticated IDOR (`get_user_conversations`) found in scope but
+  left for an owner outside this branch.
+  **The "set a Google Cloud daily quota cap on Geocoding" item that stood here is DELETED because
+  the control does not exist.** It was written twice as "the only bound on that spend", and
+  checking it in the console refuted it: the Geocoding API's *v3 requests per day* quota reads
+  **Unlimited** with its edit control disabled — *"Quota is not adjustable"* — and a usage **alert**
+  cannot be attached either (*"Alerts can not be generated for unlimited quotas from the table"*).
+  Google removed per-day caps for Maps Platform; only a per-minute limit (3,000) remains, which
+  bounds burst rate and not daily spend. Spend was bounded only by the billing project
+  (`forward-deck-506417-g9`) still being on the **$300 / 90-day free trial**, which Google does not
+  auto-charge past — a bound nobody chose and that disappears on **Activate**. Closed properly by an
+  application-level throttle in `verify-address` (#490, **applied, deployed and verified on prod
+  2026-08-24**; caps 40/user/day, 6/user/min, 200/IP/day, so a fully abusive account costs
+  $0.20/day), mirroring
+  `verify-phone`'s atomic reservation RPC. *A remedy nobody has opened the console to confirm is a
+  hypothesis, and writing it down twice does not make it a control.*
+  Two related corrections while there: the Maps key lives in **My First Project**
+  (`forward-deck-506417-g9`), correctly restricted to Geocoding API — **not** in `dragoncandy-social`,
+  which has **no billing account at all** and is where the YouTube connector runs (harmless today,
+  since those APIs are free-tier, but it will bite the first billable thing added there).
   → `docs/wiki/concepts/identity-verification.md` · `docs/SHIPPED_LOG.md`
 - **Donny's `social_*` tools repaired (7 calls → 0 successes → 4 working tools)** — Donny told the
   founder he had "no visibility into which Instagram account is connected", sent him to find an
@@ -769,6 +1101,7 @@ holds no Toast credentials. See §6.
   memory system despite `CLAUDE.md` saying they do**; the Donny RAG sync; and slices 2-4 (identity &
   verification, entry experience, depth). **Slice 2 (identity & verification) built — see "Built —
   awaiting founder go-live" above**; this line previously named it only as a future slice.
+  **Slices 3 and 4 shipped 2026-08-24 — see the entry below.**
   → `docs/wiki/concepts/account-completeness-engine.md` · #472
 - **Every `href` in our transactional emails was caller-chosen — closed on prod (#442)** — ~30
   templates built every link from caller-supplied `data` with no check, reachable because

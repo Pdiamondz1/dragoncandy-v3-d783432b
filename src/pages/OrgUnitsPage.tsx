@@ -15,6 +15,11 @@ import {
 import { useAuth } from '@/hooks/useAuth';
 import { useOrgUnits, useMyOrgRole, useDeleteOrgUnit } from '@/hooks/useOrgData';
 import { AddEditUnitModal } from '@/components/org/AddEditUnitModal';
+import { AppStatusBadge } from '@/components/app/AppStatusBadge';
+import {
+  deriveUnitAddressStatus,
+  ADDRESS_STATUS_PRESENTATION,
+} from '@/lib/orgUnitAddressStatus';
 import { useToast } from '@/hooks/use-toast';
 import type { OrgUnit } from '@/types/org';
 import { useResolvedLogoUrl } from '@/hooks/useSignedUrl';
@@ -61,6 +66,9 @@ function UnitCard({ unit, canManage, isLastUnit, onEdit, onDelete }: UnitCardPro
   const [logoError, setLogoError] = useState(false);
   const subtext = getUnitSubtext(unit);
   const Icon = unit.unit_type === 'location' ? MapPin : Tag;
+  // Products have no address to verify — only locations carry this dimension, so a
+  // brand's product cards stay exactly as they were.
+  const addressStatus = unit.unit_type === 'location' ? deriveUnitAddressStatus(unit) : null;
 
   return (
     <AppCard className="p-0 hover:shadow-md transition-shadow">
@@ -87,11 +95,26 @@ function UnitCard({ unit, canManage, isLastUnit, onEdit, onDelete }: UnitCardPro
                 Primary
               </Badge>
             )}
+            {addressStatus && (
+              <AppStatusBadge tone={ADDRESS_STATUS_PRESENTATION[addressStatus].tone}>
+                {ADDRESS_STATUS_PRESENTATION[addressStatus].label}
+              </AppStatusBadge>
+            )}
           </div>
           {subtext && (
             <p className="text-sm text-gray-500 truncate flex items-center gap-1 mt-0.5">
               <Icon className="h-3 w-3 flex-shrink-0" />
               {subtext}
+            </p>
+          )}
+          {/*
+            The hint is what makes the badge actionable. The `address` requirement is
+            `required` tier and resolves to this page, so someone arriving from the
+            checklist has been told to confirm an address and needs to be told how.
+          */}
+          {addressStatus && ADDRESS_STATUS_PRESENTATION[addressStatus].hint && (
+            <p className="text-xs text-dc-text-muted mt-1">
+              {ADDRESS_STATUS_PRESENTATION[addressStatus].hint}
             </p>
           )}
         </div>
