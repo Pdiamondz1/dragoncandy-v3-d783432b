@@ -142,6 +142,16 @@ export function coreFingerprint(input: {
   bio: string;
   showInFeed: boolean;
   avatarFile: { name: string; size: number } | null;
+  /**
+   * The auto-detected city/country/timezone are in here even though no slide collects
+   * them, because the core save now runs at the collect/service boundary and can
+   * therefore beat `useAutoDetect` to the finish. Left out, a creator who tapped through
+   * quickly saved nulls, detection settled a second later, and nothing ever asked again —
+   * losing the location that nearby matching runs on, permanently and silently.
+   */
+  city: string | null;
+  country: string | null;
+  timezone: string | null;
 }): string {
   return JSON.stringify([
     input.name.trim(),
@@ -151,6 +161,9 @@ export function coreFingerprint(input: {
     input.bio.trim(),
     input.showInFeed,
     input.avatarFile ? [input.avatarFile.name, input.avatarFile.size] : null,
+    input.city || null,
+    input.country || null,
+    input.timezone || null,
   ]);
 }
 

@@ -102,6 +102,7 @@ describe('coreFingerprint', () => {
   const base = {
     name: 'Joe', industry: 'food', cuisines: ['italian'], skills: ['video'],
     bio: 'I cook.', showInFeed: true, avatarFile: null,
+    city: 'Hoboken', country: 'United States', timezone: 'America/New_York',
   };
 
   it('is stable for unchanged input', () => {
@@ -122,6 +123,9 @@ describe('coreFingerprint', () => {
     ['bio', { bio: 'I bake.' }],
     ['showInFeed', { showInFeed: false }],
     ['avatarFile', { avatarFile: { name: 'me.jpg', size: 1234 } }],
+    ['city', { city: 'Jersey City' }],
+    ['country', { country: 'Canada' }],
+    ['timezone', { timezone: 'America/Chicago' }],
   ])('changes when %s changes', (_field, patch) => {
     expect(coreFingerprint({ ...base, ...patch })).not.toBe(coreFingerprint(base));
   });
@@ -143,6 +147,23 @@ describe('coreFingerprint', () => {
     const a = { avatarFile: { name: 'me.jpg', size: 42 } };
     const b = { avatarFile: { name: 'me.jpg', size: 42 } };
     expect(coreFingerprint({ ...base, ...a })).toBe(coreFingerprint({ ...base, ...b }));
+  });
+
+  /**
+   * Auto-detection can land after the core save, since that save moved to the
+   * collect/service boundary. Left out of the fingerprint, a creator who tapped through
+   * quickly saved nulls and nothing ever asked again — losing the location that nearby
+   * matching runs on.
+   */
+  it('treats detection landing as a change worth saving', () => {
+    const before = coreFingerprint({ ...base, city: '', country: '', timezone: '' });
+    const after = coreFingerprint({ ...base, city: 'Hoboken', country: 'United States', timezone: 'America/New_York' });
+    expect(before).not.toBe(after);
+  });
+
+  it('does not treat empty and null detection results as different', () => {
+    expect(coreFingerprint({ ...base, city: '', country: '', timezone: '' }))
+      .toBe(coreFingerprint({ ...base, city: null, country: null, timezone: null }));
   });
 
   it('distinguishes a different picture with the same name', () => {

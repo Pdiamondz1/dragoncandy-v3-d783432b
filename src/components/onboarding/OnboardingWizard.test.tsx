@@ -10,9 +10,12 @@ vi.mock('@/hooks/useAuth', () => ({
   }),
 }));
 vi.mock('@/hooks/useAutoDetect', () => ({
-  useAutoDetect: () => ({ loading: false, city: '', country: '', timezone: '' }),
+  useAutoDetect: () => mocks.autoDetect,
 }));
-const mocks = vi.hoisted(() => ({ upsert: vi.fn().mockResolvedValue({ error: null }) }));
+const mocks = vi.hoisted(() => ({
+  upsert: vi.fn().mockResolvedValue({ error: null }),
+  autoDetect: { loading: false, city: '', country: '', timezone: '' },
+}));
 
 vi.mock('@/integrations/supabase/client', () => ({
   supabase: {
@@ -41,12 +44,16 @@ import { OnboardingWizard } from './OnboardingWizard';
 function renderWizard() {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   const refetchSpy = vi.spyOn(client, 'refetchQueries').mockResolvedValue(undefined);
-  const result = render(
+  const tree = () => (
     <QueryClientProvider client={client}>
       <OnboardingWizard />
-    </QueryClientProvider>,
+    </QueryClientProvider>
   );
-  return { ...result, refetchSpy };
+  const result = render(tree());
+  // Re-renders the SAME tree, so the component re-reads its mocked hooks. Passing a
+  // different element to `rerender` would unmount the wizard instead.
+  const rerenderWizard = () => result.rerender(tree());
+  return { ...result, refetchSpy, rerenderWizard };
 }
 
 /** Identity → name → Continue → cuisine → pick → Continue. Leaving the LAST collect
@@ -165,5 +172,51 @@ describe('OnboardingWizard — a double tap cannot skip a slide', () => {
 
     // The slide immediately after the last collect step, not the one after that.
     expect(await screen.findByRole('heading', { name: /What's your number\?/i })).toBeInTheDocument();
+  });
+});
+
+describe('OnboardingWizard — location detected after the core save', () => {
+  beforeEach(() => {
+    mocks.upsert.mockClear();
+    mocks.autoDetect = { loading: false, city: '', country: '', timezone: '' };
+  });
+
+  /**
+   * The core save moved to the collect/service boundary, so it can now beat
+   * `useAutoDetect` — which waits out a geolocation timeout. A creator who tapped through
+   * quickly saved nulls for city, country and timezone, detection landed a second later,
+   * and nothing ever asked again: the location that nearby matching runs on was lost
+   * silently and permanently.
+   */
+  it('saves again when detection lands after the first save', async () => {
+    mocks.autoDetect = { loading: true, city: '', country: '', timezone: '' };
+    const { rerenderWizard } = renderWizard();
+    await reachFirstServiceSlide();
+    await waitFor(() => expect(mocks.upsert).toHaveBeenCalled());
+    const firstRun = mocks.upsert.mock.calls.length;
+
+    mocks.autoDetect = { loading: false, city: 'Hoboken', country: 'United States', timezone: 'America/New_York' };
+    rerenderWizard();
+
+    await waitFor(() => expect(mocks.upsert.mock.calls.length).toBeGreaterThan(firstRun));
+  });
+
+  /**
+   * The control. The first version of this fix watched the WHOLE fingerprint, so walking
+   * back to a collect slide re-saved on every keystroke. Detection settling with nothing
+   * to report must change nothing.
+   */
+  it('does not save again when detection settles empty', async () => {
+    mocks.autoDetect = { loading: true, city: '', country: '', timezone: '' };
+    const { rerenderWizard } = renderWizard();
+    await reachFirstServiceSlide();
+    await waitFor(() => expect(mocks.upsert).toHaveBeenCalled());
+    const firstRun = mocks.upsert.mock.calls.length;
+
+    mocks.autoDetect = { loading: false, city: '', country: '', timezone: '' };
+    rerenderWizard();
+
+    await new Promise((r) => setTimeout(r, 50));
+    expect(mocks.upsert.mock.calls.length).toBe(firstRun);
   });
 });

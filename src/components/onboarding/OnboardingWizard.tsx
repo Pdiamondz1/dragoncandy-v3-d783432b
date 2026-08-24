@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from '@/lib/motion';
 import { useQueryClient } from '@tanstack/react-query';
@@ -110,6 +110,7 @@ export function OnboardingWizard() {
   // screen. A plain "have we saved once" boolean did the first job and not the second —
   // going back, correcting a field and continuing left the edit visible and unsaved.
   const [savedFingerprint, setSavedFingerprint] = useState<string | null>(null);
+  const [savedLocationKey, setSavedLocationKey] = useState<string | null>(null);
   const [phoneVerified, setPhoneVerified] = useState(false);
   const [address, setAddress] = useState('');
   const [addressSaving, setAddressSaving] = useState(false);
@@ -118,7 +119,12 @@ export function OnboardingWizard() {
   // Recomputed every render and compared by value — see coreFingerprint.
   const currentFingerprint = coreFingerprint({
     name, industry, cuisines, skills, bio, showInFeed, avatarFile,
+    city: autoDetect.city, country: autoDetect.country, timezone: autoDetect.timezone,
   });
+  // The detected half on its own — what the re-save effect below watches.
+  const currentLocationKey = JSON.stringify([
+    autoDetect.city || null, autoDetect.country || null, autoDetect.timezone || null,
+  ]);
   const uploadedAvatar = useRef<{ file: File; path: string } | null>(null);
   const advancing = useRef(false);
 
@@ -235,6 +241,7 @@ export function OnboardingWizard() {
     // stored on success means a field edited WHILE the save is in flight stays dirty and
     // gets saved again, rather than being marked clean by a save that never saw it.
     const fingerprintAtSave = currentFingerprint;
+    const locationKeyAtSave = currentLocationKey;
     setLoading(true);
 
     try {
@@ -369,6 +376,7 @@ export function OnboardingWizard() {
       // slide that needs it can be reached.
       await queryClient.refetchQueries({ queryKey: KEYS.orgFromProfile(user.id) });
       setSavedFingerprint(fingerprintAtSave);
+      setSavedLocationKey(locationKeyAtSave);
       return true;
     } catch (err) {
       console.error(err);
@@ -379,6 +387,25 @@ export function OnboardingWizard() {
     }
   };
 
+  // Auto-detection can finish AFTER the core save, because that save moved to the
+  // collect/service boundary and detection waits out a geolocation timeout. Left alone,
+  // a creator who tapped through quickly saved nulls and nothing ever asked again.
+  //
+  // Keyed on the DETECTED VALUES, not on the whole fingerprint. The first version
+  // watched the fingerprint and fired on every keystroke, because a user can walk back
+  // to a collect slide — a save per character, which the suite caught immediately.
+  //
+  // Through a ref so the effect need not list `saveCore`: a new closure every render
+  // would re-run it every render.
+  const saveCoreRef = useRef(saveCore);
+  saveCoreRef.current = saveCore;
+  useEffect(() => {
+    if (savedLocationKey === null) return;   // not saved yet — goNext owns the first save
+    if (loading) return;                     // a save is already running
+    if (autoDetect.loading) return;          // detection has not settled
+    if (currentLocationKey === savedLocationKey) return;
+    void saveCoreRef.current();
+  }, [savedLocationKey, currentLocationKey, loading, autoDetect.loading]);
   /** The address slide writes through the same mutation the settings UI uses, so the
    *  re-verification rules in useUpdateOrgUnit (which fire verify-address only when the
    *  stored address actually changed) apply here too rather than being re-derived. */
