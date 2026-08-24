@@ -1,5 +1,6 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
+import { HEADER_LOGO_CLASS, PUBLIC_LOGO_INTRINSIC } from "@/lib/brandLogo";
 
 export const Header: React.FC = () => {
   const navigate = useNavigate();
@@ -31,7 +32,15 @@ export const Header: React.FC = () => {
           onClick={() => handleNavigate("/")}
           className="cursor-pointer border-none bg-transparent p-0"
         >
-          <img src="/logo.webp" alt="DragonCandy" className="h-12 w-auto lg:h-14" />
+          {/* This header is where the app's one logo size comes from — every other header now
+              imports the same constant instead of keeping a copy in step by hand. */}
+          <img
+            src="/logo.webp"
+            alt="DragonCandy"
+            width={PUBLIC_LOGO_INTRINSIC.width}
+            height={PUBLIC_LOGO_INTRINSIC.height}
+            className={HEADER_LOGO_CLASS}
+          />
         </button>
 
         <button

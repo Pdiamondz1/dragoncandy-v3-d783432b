@@ -311,9 +311,66 @@ merely `main` — and the splash renders on **public** paths while auth resolves
 visitor, i.e. on the landing during every warm load, the exact scenario reported. The pin is
 therefore "**no `100vh` survives anywhere in `App.tsx`**", not "the shell is `h-[100dvh]`".
 
-**Still open:** if the jump survives on a real phone, the remaining candidate is iOS rubber-band
-overscroll — a different mechanism, wanting `overscroll-behavior-y: none` on `body`, which is an
-app-wide behavioural change and was deliberately not bundled here.
+**Was "still open":** *if the jump survives on a real phone, the remaining candidate is iOS
+rubber-band overscroll — a different mechanism, wanting `overscroll-behavior-y: none` on `body`,
+which is an app-wide behavioural change and was deliberately not bundled here.* It did survive, it
+was exactly that, and §10 closes it. Note the prediction was right about the mechanism and wrong
+about the surface: this is not iOS-only.
+
+## 10. A page with nothing to scroll can still be DRAGGED, and the gutter is white (2026-08-24)
+
+The day after §9 shipped, the same reviewer reported from the same phone: *"you can still move the
+page on mobile, looks buggy and would not be good when you add a wrapper."* Two screenshots, one
+showing white **above** the header, one white **below** the footer. The founder saw it on desktop
+too.
+
+**§9 is not wrong and this is not a regression — they are two mechanisms.** §9 removed the
+*scrollable gap* that made the screen **jump** mid-gesture. Rubber-band overscroll is separate: a
+scroll container with nothing to scroll still bounces. That also explains the one detail §9's
+prediction got wrong — it called this an iOS candidate, and a macOS trackpad rubber-bands too, which
+is why one report covered both viewports where the previous bug was iOS-only.
+
+**Why the band is white, and why nothing inside the app could have fixed it.** The elastic strip a
+bounce opens sits **outside the body box**, so no element under `#root` can paint it. The canvas
+takes its background from `<html>`, falling back to `<body>` only when the root is transparent — and
+`body` is `bg-background`, i.e. white. A page whose entire premise is one dark cinematic screen
+therefore opened a white gutter at both ends.
+
+**Two guards, because they fail differently.**
+
+1. `overscroll-behavior-y: none` on `html` **and** `body`. Both: body is the document's scroll
+   container (§9), while the value governing the viewport is read off the root. **Y axis only** —
+   the shorthand takes X with it, and X is where iOS Safari's edge-swipe-back gesture lives; there
+   is no horizontal scrolling to suppress anyway, since `overflow-x: hidden` is already set.
+   **Known cost, accepted:** pull-to-refresh goes away on Android Chrome.
+2. The landing paints the canvas: `LandingPage` adds `landing-surface` to `documentElement` for its
+   lifetime (`html.landing-surface { @apply bg-landing-grape }`), removed on unmount so it cannot
+   tint the white page the visitor opens next. Mirrors `InternalLayout`'s toggle, the only other
+   place the app touches `documentElement`. **This is not redundancy** — it covers precisely what
+   guard 1 cannot reach: Safari before 16, and the Capacitor WKWebView, whose bounce is a **native
+   scroll-view setting** no CSS property switches off. Any future full-bleed dark surface needs the
+   same treatment; it is per-surface, not global.
+
+**The simulator answered the question that mattered, and only that one.** A throwaway build with a
+computed-style readout injected into the *copied* `ios/App/App/public/index.html` (never source;
+restored with `npx cap sync ios`) reported, inside WKWebView: `html`/`body` `overscroll-behavior-y:
+none`, `html` background `rgb(36, 19, 50)`, `innerHeight` 874 `=== documentElement.clientHeight` 874
+(so §8's `contentInset: 'never'` invariant still holds), body overflow 0, safe-top 62px.
+
+So **WebKit does apply the property in a WKWebView** — the one fact unobtainable from Chrome. What
+this does **not** establish is the native scroll view refusing to bounce: *applied* and *suppressed*
+are different claims, and no drag could be synthesised (`cliclick` absent; `CGEvent` needs
+Accessibility permission an agent cannot grant itself). Recorded as unproven rather than assumed —
+the same discipline §9's forced-overflow control introduced, applied to the limits of the instrument
+instead of the reading.
+
+**Pinned** by `src/documentOverscroll.test.ts` as text assertions (jsdom has neither a layout engine
+nor a rubber-band), including a guard that nobody reaches for the `overscroll-behavior` shorthand
+and quietly takes the X axis with it.
+
+Shipped alongside: `AuthPage` and `AuthShell` moved off `min-h-screen`, the §9 defect one page over,
+on the page the landing's only CTA leads to. The other 113 `h-screen`/`min-h-screen` usages in
+`src/` are untouched — a sweep is a different change.
 
 ## Key Decisions
 
@@ -325,6 +382,13 @@ app-wide behavioural change and was deliberately not bundled here.
 - **Portal bottom-anchored mobile chrome to `<body>`:** it dodges *both* the transform trap
   (§1) and the iOS fixed-inside-scroller overscroll mis-paint (§3) in one move — the nav is
   viewport-anchored regardless of any transformed ancestor or scroll container.
+- **Closing a scroll and colouring a gutter are different jobs (§10).** Removing the overflow stops
+  the page moving; it does nothing about a bounce, and a bounce paints from `<html>`, outside
+  everything the app renders. Ship both, because the CSS guard cannot reach a native WebView and
+  the colour guard cannot stop the movement.
+- **Record what the instrument could not see.** The simulator proved WebKit *applies*
+  `overscroll-behavior`; it could not prove the native scroll view stops bouncing. Writing the
+  second sentence down is what stops the first being read as the whole answer.
 
 ## See Also
 

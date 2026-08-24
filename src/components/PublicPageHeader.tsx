@@ -4,6 +4,7 @@ import { Menu } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { useAuth } from '@/hooks/useAuth';
+import { HEADER_LOGO_CLASS, PUBLIC_LOGO_INTRINSIC } from '@/lib/brandLogo';
 
 export function PublicPageHeader() {
   const navigate = useNavigate();
@@ -18,24 +19,24 @@ export function PublicPageHeader() {
   return (
     // pt-[calc(...)] keeps py-4's 1rem and adds the notch inset on top — see DESIGN_SYSTEM.md.
     <header className="sticky top-0 z-50 flex items-center justify-between bg-white px-4 py-4 pt-[calc(1rem+env(safe-area-inset-top))] md:px-8">
-      {/* Sized by HEIGHT and matched to the landing header (h-12 / lg:h-14), because /logo.webp is
-          a stacked badge that is TALLER THAN WIDE — 280x326 intrinsic, aspect 0.859. Sizing it by
-          width, as this did (`w-[100px] md:w-[120px] lg:w-[140px] h-auto`), therefore multiplies
-          the height: 140 wide rendered 163 TALL against the landing's 56, and inflated this header
-          to 195px. Every public page but the landing carried it.
+      {/* Sized by HEIGHT, from the shared constant, because /logo.webp is a stacked badge that is
+          TALLER THAN WIDE — 280x326 intrinsic, aspect 0.859. Sizing it by width, as this did
+          (`w-[100px] md:w-[120px] lg:w-[140px] h-auto`), therefore multiplies the height: 140 wide
+          rendered 163 TALL against the landing's 56, and inflated this header to 195px. Every
+          public page but the landing carried it.
 
-          The width/height attributes are the intrinsic 280x326, not the 140x47 they were. Those
-          attributes exist to reserve the box before the image loads; at an aspect of 2.98 against
-          the real 0.859 they reserved the wrong shape and CAUSED the layout shift they are meant
-          to prevent. If the asset is ever replaced, re-read its real dimensions rather than
-          copying these. */}
+          It used to be kept in step with the landing header by hand, which is exactly how the
+          other three headers drifted; the size now lives in one place (@/lib/brandLogo). Likewise
+          the width/height attributes, which were 140x47 — an aspect of 2.98 against the real
+          0.859, so the attributes meant to prevent a layout shift reserved the wrong shape and
+          caused one. */}
       <img
         src="/logo.webp"
         alt="DragonCandy"
-        width={280}
-        height={326}
+        width={PUBLIC_LOGO_INTRINSIC.width}
+        height={PUBLIC_LOGO_INTRINSIC.height}
         fetchPriority="high"
-        className="h-12 w-auto lg:h-14 cursor-pointer transition-transform duration-200 hover:scale-105"
+        className={`${HEADER_LOGO_CLASS} cursor-pointer transition-transform duration-200 hover:scale-105`}
         onClick={() => navigate('/')}
       />
 

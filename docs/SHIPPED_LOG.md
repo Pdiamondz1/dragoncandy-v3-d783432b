@@ -144,6 +144,106 @@ need a public privacy-policy URL, which the site gate would break.
 → `docs/wiki/concepts/social-login.md` · `docs/runbooks/social-login-setup.md`
 
 ---
+## [2026-08-24] The page could still be dragged, and the logo had five sizes
+
+Two reports on the same day against the landing that shipped as #459 and had already been
+corrected once from Adrian Vella's feedback. Neither is a regression of that fix; one is the
+residual it named in writing and declined to take, and the other is the part of it that was
+never enumerated.
+
+### A page with nothing to scroll can still be DRAGGED
+
+*"Some feedback, you can still move the page on mobile, looks buggy and would not be good when
+you add a wrapper."* Two screenshots from a real phone: white **above** the header in one, white
+**below** the footer in the other. The founder confirmed the same on desktop.
+
+Sizing `AppShell` to `h-[100dvh]` removed the *scrollable gap* that made the screen **jump**
+mid-gesture. **Rubber-band overscroll is a separate mechanism** — a scroll container with nothing
+to scroll still bounces. That also corrects the earlier prediction, which called this an iOS
+candidate: a macOS trackpad rubber-bands too, which is why one report covered both viewports
+where the previous defect was iOS-only.
+
+**Why the band is white, and why nothing inside the app could have fixed it.** The elastic strip
+a bounce opens sits **outside the body box**, so no element under `#root` can paint it. The canvas
+takes its background from `<html>`, falling back to `<body>` only when the root is transparent —
+and `body` is `bg-background`, i.e. white. So the one page whose entire premise is a dark
+cinematic screen opened a white gutter at both ends.
+
+Two guards, because they fail differently:
+
+1. `overscroll-behavior-y: none` on `html` **and** `body`. Both, because body is this document's
+   scroll container (`height:100%` + `overflow-x:hidden` computes `overflow-y` to `auto`) while
+   the value governing the viewport is read off the root. **Y axis only** — the shorthand takes X
+   with it, and X is where iOS Safari's edge-swipe-back gesture lives; there is nothing horizontal
+   to suppress anyway. **Known cost, accepted:** pull-to-refresh goes away on Android Chrome.
+2. The landing paints the canvas — `landing-surface` on `documentElement` for the route's
+   lifetime, removed on unmount so it cannot tint the white page the visitor opens next. This is
+   not redundancy: it covers exactly what guard 1 cannot reach — Safari before 16, and the
+   Capacitor WKWebView, whose bounce is a **native scroll-view setting** that no CSS property
+   switches off.
+
+### The simulator answered one question, and the honest part is which one
+
+Built and run on an iPhone 17 Pro simulator with a **throwaway** computed-style readout injected
+into the *copied* `ios/App/App/public/index.html` (never source; restored with `npx cap sync
+ios`). Inside the WKWebView: `html`/`body` `overscroll-behavior-y: none`, `html` background
+`rgb(36, 19, 50)`, `innerHeight` 874 `=== documentElement.clientHeight` 874 — so the
+`contentInset: 'never'` invariant still holds — body overflow 0, safe-top 62px.
+
+**WebKit does apply the property in a WKWebView.** That fact is unobtainable from Chrome, and it
+is the whole reason the simulator was worth running.
+
+**What it does not establish** is the native scroll view refusing to bounce. *Applied* and
+*suppressed* are different claims. No drag could be synthesised — `cliclick` is not installed and
+posting `CGEvent`s needs Accessibility permission an agent cannot grant itself — so the
+investigation was stopped there and the gap written down rather than glossed.
+
+### The logo had five sizes, and the previous guard could not have caught it
+
+Landing and `PublicPageHeader` at 48/56px; `AuthPage` at **116/140/163px tall**; `MobileTopNav`
+at **74px**; the desktop sidebar at **116px**.
+
+**Sizing by width is the defect.** Both assets are stacked badges taller than wide —
+`public/logo.webp` 280x326 (aspect 0.859), `src/assets/Transparent_DragonCandy_logo.webp` 400x465
+(0.860) — so a width class does not cap the height, it multiplies it. Because the two aspects
+agree to within 0.001, one height class renders identically whichever file a surface imports,
+which is what made a single shared constant possible at all.
+
+**The durable lesson is the guard, not the CSS.** The 2026-08-23 pass fixed two files and pinned
+them **to each other by hand** — a test asserting both contained the same literal class string.
+That test reported green for a full day while three headers it never enumerated stayed wrong, and
+the founder reported the identical defect again. *A guard that watches the pair you already
+repaired cannot see the four you did not.* The size now lives in `src/lib/brandLogo.ts` and
+`brandLogo.test.ts` derives the header list rather than listing it — the same shape as
+`profilesWriteGrants.test.ts`, for the same reason.
+
+Also shipped: `AuthPage` and `AuthShell` off `min-h-screen`, the same dead-scroll defect on the
+page the landing's only CTA leads to. The other 113 `h-screen`/`min-h-screen` usages in `src/`
+are untouched — a sweep is a different change.
+
+### Verified, and not
+
+3056 tests, typecheck, lint (0 errors), production build; both CSS rules confirmed present in the
+**built** bundle rather than only in source. In the browser, with a **forced control** —
+`documentElement.style.overscrollBehaviorY='auto'` read back `auto`, then `none` after clearing,
+so the reading is a live style and not a constant the probe echoes: landing and auth logos both
+48x56, the class added on mount and removed on SPA-navigate away, canvas grape on the landing and
+white after it, zero overflow on html/body/main, no new console errors. Codex clean at round 1.
+
+**Not verified:** the bounce itself on real iOS Safari, or by drag in the simulator; and the two
+post-login headers on screen — reaching them needs a login and **no test-account credentials
+exist**, despite `CLAUDE.md` saying they are in the memory system. Those two rest on the identical
+class string and the matching aspect ratios.
+
+Three findings recorded rather than fixed: `capacitor.config.ts` names an Xcode scheme
+(`DragonCandy`) that **does not exist** in the workspace, so `npx cap run ios` fails and one must
+build `-scheme App`; a pre-existing RAG chunking test caught the doc rewrite deleting
+`PublicPageHeader.test.tsx`, a marker string it asserts survives chunking; and `npm run dev`
+cannot boot on this machine without `VITE_ALLOW_PROD_FROM_LOCAL=true`, where the crash leaves the
+static `index.html` shell on screen with unstyled computed values — a very convincing false
+reading.
+
+-> `docs/wiki/concepts/mobile-viewport-fixed-positioning.md` (Sec 10) - `docs/wiki/concepts/brand-logo-sizing.md`
 
 ## [2026-08-24] Onboarding slices 3 and 4 — a wizard that reads the registry, and two requirements no brand could satisfy
 

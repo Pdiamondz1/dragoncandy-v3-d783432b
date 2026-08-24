@@ -2,6 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { Menu, LogOut } from 'lucide-react';
 import dragonCandyLogo from '@/assets/Transparent_DragonCandy_logo.webp';
+import { APP_LOGO_INTRINSIC, HEADER_LOGO_CLASS } from '@/lib/brandLogo';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { useLogout } from '@/hooks/useLogout';
 import type { UserRole } from '@/types/user';
@@ -58,7 +59,18 @@ export const MobileTopNav: React.FC<MobileTopNavProps> = ({
     // space. Keeps py-2's 0.5rem and adds the inset on top. See DESIGN_SYSTEM.md.
     <header className={`sticky top-0 z-40 flex items-center justify-between px-4 py-2 pt-[calc(0.5rem+env(safe-area-inset-top))] ${bgClass} border-b border-border`}>
       <Link to="/" className="flex-shrink-0">
-        <img src={dragonCandyLogo} alt="DragonCandy" className="w-[64px] md:w-[120px] lg:w-[140px] h-auto" />
+        {/* Was `w-[64px] md:w-[120px] lg:w-[140px] h-auto` = 74px tall, and the md/lg steps were
+            dead code besides — DashboardLayout only renders this bar when `isMobile`. The mark is
+            now the app's one size (48px), which is a shrink here, as asked. This file's asset is
+            the 400x465 transparent one rather than /logo.webp, but the two share an aspect to
+            within 0.001, so the same height class renders the same size. */}
+        <img
+          src={dragonCandyLogo}
+          alt="DragonCandy"
+          width={APP_LOGO_INTRINSIC.width}
+          height={APP_LOGO_INTRINSIC.height}
+          className={HEADER_LOGO_CLASS}
+        />
       </Link>
 
       {locationSwitcher ? (
