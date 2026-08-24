@@ -14,6 +14,9 @@ vi.mock('@/hooks/useAutoDetect', () => ({
 }));
 const mocks = vi.hoisted(() => ({
   upsert: vi.fn().mockResolvedValue({ error: null }),
+  // The delayed-detection path writes only the three location columns, so it lands here
+  // rather than on `upsert` — which is exactly the distinction the tests below check.
+  update: vi.fn(() => ({ eq: vi.fn().mockResolvedValue({ error: null }) })),
   autoDetect: { loading: false, city: '', country: '', timezone: '' },
 }));
 
@@ -21,6 +24,7 @@ vi.mock('@/integrations/supabase/client', () => ({
   supabase: {
     from: () => ({
       upsert: mocks.upsert,
+      update: mocks.update,
       select: () => ({ eq: () => ({ maybeSingle: async () => ({ data: null, error: null }) }) }),
     }),
   },
@@ -178,6 +182,7 @@ describe('OnboardingWizard — a double tap cannot skip a slide', () => {
 describe('OnboardingWizard — location detected after the core save', () => {
   beforeEach(() => {
     mocks.upsert.mockClear();
+    mocks.update.mockClear();
     mocks.autoDetect = { loading: false, city: '', country: '', timezone: '' };
   });
 
@@ -198,7 +203,48 @@ describe('OnboardingWizard — location detected after the core save', () => {
     mocks.autoDetect = { loading: false, city: 'Hoboken', country: 'United States', timezone: 'America/New_York' };
     rerenderWizard();
 
-    await waitFor(() => expect(mocks.upsert.mock.calls.length).toBeGreaterThan(firstRun));
+    await waitFor(() => expect(mocks.update).toHaveBeenCalled());
+    expect(mocks.update).toHaveBeenCalledWith({
+      city: 'Hoboken', country: 'United States', timezone: 'America/New_York',
+    });
+
+    /**
+     * It writes ONLY those three columns. Re-running the whole core save here would
+     * persist whatever is in the form right now — including a half-edited name typed on a
+     * collect slide the user has walked back to, bypassing the validation Continue
+     * enforces.
+     */
+    expect(mocks.upsert.mock.calls.length).toBe(firstRun);
+  });
+
+  /**
+   * `loading` is an effect dependency, so leaving the key unchanged on failure re-fired
+   * the effect the moment the flag came back down — an unbounded loop of requests and
+   * toasts against any persistent failure. The key is recorded before the await, so a
+   * failing write is attempted once.
+   */
+  it('attempts a failing location write once, not in a loop', async () => {
+    mocks.autoDetect = { loading: true, city: '', country: '', timezone: '' };
+    mocks.update.mockImplementation(() => ({
+      eq: vi.fn().mockResolvedValue({ error: { message: 'network down' } }),
+    }));
+    const { rerenderWizard } = renderWizard();
+    await reachFirstServiceSlide();
+    await waitFor(() => expect(mocks.upsert).toHaveBeenCalled());
+
+    mocks.autoDetect = { loading: false, city: 'Hoboken', country: 'United States', timezone: 'America/New_York' };
+    rerenderWizard();
+
+    await waitFor(() => expect(mocks.update).toHaveBeenCalled());
+
+    // The retry needs a re-render to re-run the effect, so provoke several. Without the
+    // key being recorded up front, each one sees an unchanged `savedLocationKey` and
+    // fires the write again.
+    for (let i = 0; i < 3; i++) {
+      rerenderWizard();
+      await new Promise((r) => setTimeout(r, 10));
+    }
+    expect(mocks.update.mock.calls.length).toBe(1);
   });
 
   /**
@@ -218,5 +264,6 @@ describe('OnboardingWizard — location detected after the core save', () => {
 
     await new Promise((r) => setTimeout(r, 50));
     expect(mocks.upsert.mock.calls.length).toBe(firstRun);
+    expect(mocks.update).not.toHaveBeenCalled();
   });
 });

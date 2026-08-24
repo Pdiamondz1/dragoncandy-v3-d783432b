@@ -387,25 +387,54 @@ export function OnboardingWizard() {
     }
   };
 
-  // Auto-detection can finish AFTER the core save, because that save moved to the
-  // collect/service boundary and detection waits out a geolocation timeout. Left alone,
-  // a creator who tapped through quickly saved nulls and nothing ever asked again.
-  //
+  /**
+   * Writes ONLY the three auto-detected columns, for the case where detection finishes
+   * after the core save has already run — which the collect/service boundary made
+   * possible, since detection waits out a geolocation timeout.
+   *
+   * Deliberately NOT `saveCore`. Reusing it here was wrong twice over. It writes the
+   * whole profile from live form state, so detection landing while someone was mid-edit
+   * on a collect slide would persist that half-finished value — an emptied name saved as
+   * `full_name: ''` before they ever pressed Continue, bypassing the validation that
+   * Continue enforces. And it reports failure by toast, which is right for a save the
+   * user asked for and wrong for one they did not.
+   */
+  const saveDetectedLocation = useCallback(async (key: string) => {
+    if (!user) return;
+    const table = role === 'content_creator' ? 'creator_profiles' : 'business_profiles';
+    // Recorded BEFORE the await and regardless of the outcome. `loading` is an effect
+    // dependency, so leaving the key unchanged on failure meant the effect re-fired the
+    // moment the flag came back down — an unbounded loop of requests against any
+    // persistent network or permission failure. One attempt per detected value.
+    setSavedLocationKey(key);
+    const { error } = await supabase.from(table).update({
+      city: autoDetect.city || null,
+      country: autoDetect.country || null,
+      timezone: autoDetect.timezone || null,
+    }).eq('user_id', user.id);
+    if (error) {
+      // Silent by design: nobody asked for this write, and it costs them nothing to lose
+      // — the address requirement stays visible on the checklist either way.
+      console.error('Failed to save detected location:', error);
+      return;
+    }
+    if (role === 'content_creator') {
+      void requestCreatorAddressVerification({
+        city: autoDetect.city || null, country: autoDetect.country || null,
+      });
+    }
+  }, [user, role, autoDetect.city, autoDetect.country, autoDetect.timezone]);
+
   // Keyed on the DETECTED VALUES, not on the whole fingerprint. The first version
   // watched the fingerprint and fired on every keystroke, because a user can walk back
   // to a collect slide — a save per character, which the suite caught immediately.
-  //
-  // Through a ref so the effect need not list `saveCore`: a new closure every render
-  // would re-run it every render.
-  const saveCoreRef = useRef(saveCore);
-  saveCoreRef.current = saveCore;
   useEffect(() => {
     if (savedLocationKey === null) return;   // not saved yet — goNext owns the first save
-    if (loading) return;                     // a save is already running
+    if (loading) return;                     // the core save is running; let it finish
     if (autoDetect.loading) return;          // detection has not settled
     if (currentLocationKey === savedLocationKey) return;
-    void saveCoreRef.current();
-  }, [savedLocationKey, currentLocationKey, loading, autoDetect.loading]);
+    void saveDetectedLocation(currentLocationKey);
+  }, [savedLocationKey, currentLocationKey, loading, autoDetect.loading, saveDetectedLocation]);
   /** The address slide writes through the same mutation the settings UI uses, so the
    *  re-verification rules in useUpdateOrgUnit (which fire verify-address only when the
    *  stored address actually changed) apply here too rather than being re-derived. */
