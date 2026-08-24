@@ -95,3 +95,42 @@ describe('start', () => {
     expect(result.current.codeSent).toBe(false);
   });
 });
+
+
+describe('toE164 — numbers that already carry a country code', () => {
+  /**
+   * "1 (201) 555-0134" is an ordinary way to write a US number. Prefixing it blindly
+   * produced `+112015550134`, which isE164 accepts and Twilio rejects — so the SMS never
+   * arrived and nothing on screen said why.
+   */
+  it.each([
+    '1 (201) 555-0134',
+    '1-201-555-0134',
+    '12015550134',
+  ])('does not double the country code for %s', (input) => {
+    expect(toE164(input)).toBe('+12015550134');
+  });
+
+  it('still prefixes a plain 10-digit US number', () => {
+    expect(toE164('(201) 555-0134')).toBe('+12015550134');
+  });
+
+  /**
+   * The narrowing that keeps this from breaking the rest of the world: `1` is a
+   * legitimate first digit of a subscriber number outside the NANP, so the rule applies
+   * only where +1 is the assumed country.
+   */
+  it('leaves a leading 1 alone when the default country is not the NANP', () => {
+    expect(toE164('12015550134', '+44')).toBe('+4412015550134');
+  });
+
+  it('does not touch a number the user typed with an explicit +', () => {
+    expect(toE164('+44 1201 555013')).toBe('+441201555013');
+  });
+
+  it('produces a valid E.164 number for every form of the same US number', () => {
+    for (const input of ['1 (201) 555-0134', '(201) 555-0134', '201.555.0134']) {
+      expect(isE164(toE164(input))).toBe(true);
+    }
+  });
+});

@@ -43,6 +43,15 @@ export function toE164(input: string, defaultCountryCode = '+1'): string {
   if (trimmed.startsWith('+')) return trimmed.replace(/[^\d+]/g, '');
   const digits = trimmed.replace(/\D/g, '');
   if (!digits) return '';
+  // "1 (201) 555-0134" is an ordinary way to write a US number, and blindly prefixing it
+  // yields `+112015550134` — a shape `isE164` happily accepts and Twilio rejects, so the
+  // code simply never arrives and nothing on screen explains why. Dropping the duplicate
+  // country code is NANP-specific and is therefore gated on the NANP default: `1` is a
+  // legitimate first digit of a subscriber number elsewhere, and stripping it there would
+  // break numbers that are correct as typed.
+  if (defaultCountryCode === '+1' && digits.length === 11 && digits.startsWith('1')) {
+    return `+${digits}`;
+  }
   return `${defaultCountryCode}${digits}`;
 }
 
