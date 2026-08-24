@@ -116,8 +116,16 @@ function XLogo({ className }: { className?: string }) {
  * days old, so when the second is lower the impression figures describe a SUBSET
  * — and a card that showed one number would imply full coverage it does not have.
  */
-function InsightsSummary({ insights, cachedAt }: { insights: XInsights; cachedAt: string | null }) {
-  const refresh = useRefreshXInsights();
+function InsightsSummary({
+  insights,
+  cachedAt,
+  xUserId,
+}: {
+  insights: XInsights;
+  cachedAt: string | null;
+  xUserId: string;
+}) {
+  const refresh = useRefreshXInsights(xUserId);
   const partial =
     insights.posts_with_organic > 0 && insights.posts_with_organic < insights.posts_counted;
 
@@ -205,7 +213,9 @@ function InsightsSummary({ insights, cachedAt }: { insights: XInsights; cachedAt
 function ConnectionBody() {
   const { data: connection } = useXConnection();
   const needsReconnect = connection?.status === 'needs_reconnect';
-  const { data, isLoading, error } = useXInsights({ enabled: !needsReconnect });
+  const { data, isLoading, error } = useXInsights(connection?.x_user_id, {
+    enabled: !needsReconnect,
+  });
 
   if (needsReconnect) return null;
 
@@ -226,8 +236,14 @@ function ConnectionBody() {
     );
   }
 
-  if (!data) return null;
-  return <InsightsSummary insights={data.insights} cachedAt={data.cached_at} />;
+  if (!data || !connection) return null;
+  return (
+    <InsightsSummary
+      insights={data.insights}
+      cachedAt={data.cached_at}
+      xUserId={connection.x_user_id}
+    />
+  );
 }
 
 export function XAnalyticsCard() {

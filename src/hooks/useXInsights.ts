@@ -93,13 +93,32 @@ interface XInsightsResponse {
   cached_at: string | null;
 }
 
-export function useXInsights(options: { enabled?: boolean } = {}) {
+/**
+ * KEYED ON THE X ACCOUNT, NOT JUST THE USER — and that is a correctness fix, not
+ * a cache-tuning one.
+ *
+ * Under a user-only key, reconnecting to a DIFFERENT X account leaves the
+ * previous account's figures fresh for fifteen minutes under a key the new
+ * account also reads. The card then renders one account's metrics beneath
+ * another account's name, which is the same fabrication-by-attribution the
+ * server guards against on the stale-claim path: every number is real and the
+ * subject is wrong.
+ *
+ * That could be handled by remembering to invalidate on every path that changes
+ * the connection. Including the account in the key means there is nothing to
+ * remember: a different account is a different cache entry and structurally
+ * cannot read the old one.
+ */
+export function useXInsights(
+  xUserId: string | undefined,
+  options: { enabled?: boolean } = {},
+) {
   const { user } = useAuth();
   const queryClient = useQueryClient();
 
   return useQuery({
-    queryKey: ['x-insights', user?.id],
-    enabled: !!user?.id && options.enabled !== false,
+    queryKey: ['x-insights', user?.id, xUserId],
+    enabled: !!user?.id && !!xUserId && options.enabled !== false,
     // Matches the server's own cache window. A shorter one here would just make
     // requests the server answers from cache anyway; a longer one would show a
     // stale snapshot after the server had a fresher one.
@@ -125,6 +144,8 @@ export function useXInsights(options: { enabled?: boolean } = {}) {
           // Refetch both: the connection identity moved, so the card's name and
           // its figures are stale together.
           void queryClient.invalidateQueries({ queryKey: ['x-connection', user?.id] });
+          // Prefix match: the account segment varies, and after a change we do
+          // not know which entry is stale — only that any of them may be.
           void queryClient.invalidateQueries({ queryKey: ['x-insights', user?.id] });
         }
         throw new Error(await messageFromInvokeError(error, 'Could not read X analytics'));
@@ -144,7 +165,7 @@ export function useXInsights(options: { enabled?: boolean } = {}) {
  * behaviour — the alternative is a button whose cost is set by whoever is
  * clicking it.
  */
-export function useRefreshXInsights() {
+export function useRefreshXInsights(xUserId: string | undefined) {
   const { user } = useAuth();
   const queryClient = useQueryClient();
 
@@ -166,6 +187,8 @@ export function useRefreshXInsights() {
           void queryClient.invalidateQueries({ queryKey: ['x-connection', user?.id] });
         }
         if (CHANGED_CODES.has(code)) {
+          // Prefix match: the account segment varies, and after a change we do
+          // not know which entry is stale — only that any of them may be.
           void queryClient.invalidateQueries({ queryKey: ['x-insights', user?.id] });
         }
         throw new Error(await messageFromInvokeError(error, 'Could not refresh X analytics'));
@@ -177,7 +200,7 @@ export function useRefreshXInsights() {
       // Seed the cache directly rather than invalidating: we already have the
       // authoritative answer, and an invalidate would spend another request to
       // fetch what is in hand.
-      queryClient.setQueryData(['x-insights', user?.id], data);
+      queryClient.setQueryData(['x-insights', user?.id, xUserId], data);
       queryClient.invalidateQueries({ queryKey: ['x-connection', user?.id] });
     },
   });
