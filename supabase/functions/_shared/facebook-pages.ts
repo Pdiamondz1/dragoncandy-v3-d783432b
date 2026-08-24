@@ -261,6 +261,20 @@ export function buildAuthUrl(state: string, redirectUri: string): string {
     redirect_uri: redirectUri,
     state,
     response_type: 'code',
+    // NOT REDUNDANT with `response_type` above, and leaving it out is a live
+    // failure rather than a tidiness question.
+    //
+    // Under Facebook Login for Business the SAVED CONFIGURATION carries its own
+    // default response type, and it wins unless this override is present —
+    // Meta: with it set, "any response types passed in the response_type will
+    // take precedence over the default types". A configuration defaulting to a
+    // token would therefore redirect with a fragment while `/facebook/callback`
+    // waits for a `code`, and every connect would die immediately after
+    // consent, at the point where the user believes it worked.
+    //
+    // The whole exchange downstream is authorization-code: `exchangeCode` posts
+    // the code, and a fragment token never reaches the server at all.
+    override_default_response_type: 'true',
     // Fails CLOSED when unset rather than falling back to `scope`. A fallback
     // would produce a consent screen that succeeds while granting nothing, and
     // the connector would then store a token that cannot read insights and

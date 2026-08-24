@@ -44,6 +44,16 @@ describe('buildAuthUrl', () => {
     expect(body).not.toMatch(/FACEBOOK_SCOPES\.join/);
   });
 
+  it('overrides the configuration default so the code flow is guaranteed', () => {
+    // response_type alone is NOT enough under Facebook Login for Business: the
+    // saved configuration's own default wins without this. A config defaulting
+    // to a token would redirect with a fragment while /facebook/callback waits
+    // for a code — every connect dying right after consent, at the moment the
+    // user believes it worked.
+    expect(buildAuthUrlBody()).toMatch(/override_default_response_type:\s*'true'/);
+    expect(buildAuthUrlBody()).toMatch(/response_type:\s*'code'/);
+  });
+
   it('fails closed when the configuration id is missing', () => {
     // `env()` throws a 503 not_configured. A fallback to `scope` would produce a
     // consent screen that succeeds while granting nothing, and the connector
