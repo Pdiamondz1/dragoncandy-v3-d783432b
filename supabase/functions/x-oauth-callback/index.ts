@@ -110,19 +110,34 @@ serve(async (req: Request) => {
     // connection has been revoked. A rejected account switch would break the
     // connection the user already had. Capturing the token first means nothing
     // is handed back until the replacement has actually succeeded.
-    const { data: existing } = await supabase
-      .from(TABLE)
-      .select('x_user_id, access_token, refresh_token')
-      .eq('user_id', user.id)
-      .maybeSingle();
+    // The reconnect half of the same serialisation. A claim only disconnect
+    // respects is not a lock: this takes the same advisory key and REFUSES while
+    // a disconnect is mid-revoke, rather than storing a connection that revoke
+    // is about to invalidate.
+    const { data: connectClaim, error: connectClaimError } = await supabase.rpc(
+      'claim_x_connect',
+      { p_user_id: user.id, p_x_user_id: account.x_user_id },
+    );
 
-    const replacing =
-      existing && existing.x_user_id !== account.x_user_id
-        ? {
-            access: existing.access_token as string,
-            refresh: (existing.refresh_token as string | null) ?? null,
-          }
-        : null;
+    if (connectClaimError) {
+      throw new XError('storage_failed', connectClaimError.message, 500);
+    }
+
+    if (!connectClaim?.claimed) {
+      throw new XError(
+        'disconnect_in_progress',
+        'Your X account is being disconnected right now. Wait a moment and try connecting again.',
+        409,
+      );
+    }
+
+    const replacing = connectClaim.previous
+      ? {
+          x_user_id: connectClaim.previous.x_user_id as string,
+          access: connectClaim.previous.access_token as string,
+          refresh: (connectClaim.previous.refresh_token as string | null) ?? null,
+        }
+      : null;
 
     const { error: upsertError } = await supabase.from(TABLE).upsert(
       {
@@ -184,7 +199,7 @@ serve(async (req: Request) => {
     if (replacing) {
       const previous = await revokeGrant(replacing.access, replacing.refresh);
       console.error(
-        `[x-oauth-callback] replaced ${existing?.x_user_id}; previous grant: ${previous}`,
+        `[x-oauth-callback] replaced ${replacing.x_user_id}; previous grant: ${previous}`,
       );
     }
 

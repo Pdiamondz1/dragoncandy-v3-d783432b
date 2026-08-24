@@ -20,7 +20,8 @@ post — publishing stays with Outstand under the 2026-08-23 scope decision.
 **Current value** (set 2026-08-23):
 `https://zocahiffooqdybdhguqv.supabase.co/functions/v1/x-oauth-callback`
 
-**Change to:**
+**Change to** (the field takes several — see the note on registering all of them
+below):
 ```
 https://dragoncandy.com/x/callback
 ```
@@ -58,6 +59,41 @@ settings** → Callback URI / Redirect URL.
 > **Console quirk, already paid for once:** typing into `console.x.com` fields
 > silently strips spaces. Not an issue for a URL, but do not trust what you typed
 > — reload the page and read the saved value back.
+
+### Register every origin a connect can start from, or accept that only the apex works
+
+`safeReturnOrigin` accepts **eight** origins and `redirectUriFor` derives the
+callback from whichever one the user is actually on — so a connect started from a
+Lovable preview sends `https://dragoncandy-preview.lovable.app/x/callback`, and X
+requires an **exact** match against a registered value.
+
+The Codex review flagged this as code and runbook disagreeing, and it was right:
+this file registered one URL while the code can send eight.
+
+**Required** — without it nothing works:
+
+```
+https://dragoncandy.com/x/callback
+```
+
+**Optional**, and only if connects should work from those surfaces. Each is a
+real origin in `_shared/origins.ts`:
+
+```
+https://www.dragoncandy.com/x/callback
+https://dragoncandy.io/x/callback
+https://www.dragoncandy.io/x/callback
+https://internal.dragoncandy.com/x/callback
+https://internal.dragoncandy.io/x/callback
+https://dragoncandy-preview.lovable.app/x/callback
+https://dragoncandy-v3.lovable.app/x/callback
+```
+
+**Deriving per-origin is deliberate, not an oversight to "fix" by always sending
+the apex.** The callback is where the user comes back to, so forcing the apex
+would take someone who started on a preview and drop them on production, signed
+in as nobody they expected. An unregistered origin fails at consent with a
+redirect mismatch — closed, visible, and fixed by adding one line here.
 
 ---
 
@@ -234,7 +270,6 @@ and treat lowering it as a spending decision, not a tuning one.
   origins, as in all three sibling connectors. A native user completing this flow
   lands on the website and finishes there. Solving it properly needs a
   custom-scheme deep link registered in four provider consoles.
-- **Preview origins.** Only the apex is registered. `safeReturnOrigin` accepts
-  eight, so a connect started from a Lovable preview or `internal.` is refused at
-  consent. Fails closed, deliberately. X's callback field accepts several URLs if
-  preview connects are ever wanted.
+- **Preview origins.** Section 1 now lists all eight callbacks. Registering only
+  the apex is a supported choice — preview connects then fail closed at consent —
+  but it is a choice, not a default to arrive at by not reading this.

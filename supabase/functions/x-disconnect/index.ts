@@ -19,7 +19,7 @@ import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'npm:@supabase/supabase-js@2';
 import { corsHeaders } from '../_shared/cors.ts';
 import { revokeGrant, XError } from '../_shared/x-api.ts';
-import { loadConnection, TABLE } from '../_shared/x-connection.ts';
+import { loadConnection } from '../_shared/x-connection.ts';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
@@ -58,6 +58,38 @@ serve(async (req: Request) => {
       return json(req, { disconnected: true, revoked: 'already_gone' });
     }
 
+    // CLAIM BEFORE REVOKING, so a reconnect cannot land mid-revoke.
+    //
+    // Without this, disconnect reads the row, the user reconnects in another
+    // tab, and the revoke then fires on the OLD refresh token. Whether that
+    // kills the NEW grant depends on whether X treats an app<->user
+    // authorization as one grant or many, which it does not document — so it is
+    // designed for as if it does. The token predicate on the DELETE cannot help
+    // here: it stops us removing the wrong row, but a revoke that has already
+    // gone out cannot be taken back.
+    const { data: claim, error: claimError } = await supabase.rpc('claim_x_disconnect', {
+      p_user_id: user.id,
+      p_access_token: conn.access_token,
+    });
+
+    if (claimError) {
+      return json(req, { error: 'storage_failed', message: claimError.message }, 500);
+    }
+
+    if (!claim?.claimed) {
+      if (claim?.reason === 'no_connection') {
+        return json(req, { disconnected: true, revoked: 'already_gone' });
+      }
+      return json(
+        req,
+        {
+          error: 'retry',
+          message: 'Your X connection changed while we were disconnecting it. Please try again.',
+        },
+        409,
+      );
+    }
+
     // The REFRESH token first, because it is the one that carries the grant.
     //
     // This used to revoke only the access token, under a comment claiming that
@@ -69,12 +101,19 @@ serve(async (req: Request) => {
     // then destroy our only copy of the credential that could have withdrawn
     // it. The user would be told access was withdrawn while X still authorized
     // the app.
-    const outcome = await revokeGrant(conn.access_token, conn.refresh_token);
+    // Tokens come from the claim, not from the earlier read: the claim verified
+    // they are still the row's, under the lock.
+    const outcome = await revokeGrant(claim.access_token, claim.refresh_token ?? null);
 
     if (outcome === 'failed') {
       // Keep the row. It holds the only copy of the token, so deleting now would
-      // leave a live grant nothing can ever revoke. Only a token X itself
-      // reports as dead or revoked reaches the delete below.
+      // leave a live grant nothing can ever revoke. Release the claim too, or a
+      // retry waits out the whole TTL for no reason.
+      await supabase.rpc('commit_x_disconnect', {
+        p_user_id: user.id,
+        p_claim_id: claim.claim_id,
+        p_delete: false,
+      });
       return json(
         req,
         {
@@ -85,34 +124,18 @@ serve(async (req: Request) => {
       );
     }
 
-    // DELETE ONLY WHAT WE ACTUALLY REVOKED.
-    //
-    // The row can change between loading it and deleting it, and both ways it
-    // can change are harmful:
-    //
-    //   - A RECONNECT lands a new grant on the same row. Deleting by id alone
-    //     would remove the connection the user just made, while the grant we
-    //     revoked was already the old one.
-    //   - A REFRESH rotates the token. We would have revoked a token X now
-    //     reports as `already_invalid` — which reads like success — and then
-    //     deleted the row holding the LIVE credential, orphaning that grant with
-    //     nothing left to revoke it.
-    //
-    // Matching on the access token as well as the id makes the delete
-    // conditional on the row still being the one we revoked. Zero rows affected
-    // means it is not, and the honest answer is to change nothing and say so.
-    const { data: deleted, error: delError } = await supabase
-      .from(TABLE)
-      .delete()
-      .eq('id', conn.id)
-      .eq('access_token', conn.access_token)
-      .select('id');
+    // Claim-bound delete. Nothing else can have written this row while we held
+    // the claim, and a claim we no longer hold deletes nothing.
+    const { data: commit, error: commitError } = await supabase.rpc('commit_x_disconnect', {
+      p_user_id: user.id,
+      p_claim_id: claim.claim_id,
+    });
 
-    if (delError) {
-      return json(req, { error: 'storage_failed', message: delError.message }, 500);
+    if (commitError) {
+      return json(req, { error: 'storage_failed', message: commitError.message }, 500);
     }
 
-    if (!deleted || deleted.length === 0) {
+    if (!commit?.committed && commit?.reason === 'stale_claim') {
       return json(
         req,
         {

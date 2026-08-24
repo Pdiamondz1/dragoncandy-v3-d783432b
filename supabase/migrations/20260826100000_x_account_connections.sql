@@ -139,6 +139,22 @@ create table if not exists public.x_account_connections (
   insights_claimed_at timestamptz,
   insights_claim_id uuid,
 
+  -- A disconnect is mid-revoke. The THIRD claim on this row, and the same shape
+  -- as the other two on purpose.
+  --
+  -- Disconnect and reconnect both mutate the grant, and neither can hold a lock
+  -- across its own HTTP call to X. Without serialising them: disconnect reads
+  -- the row, the user reconnects in another tab, and disconnect then revokes
+  -- using the OLD refresh token. Whether that kills the NEW grant depends on
+  -- whether X treats an app<->user authorization as one grant or many, which it
+  -- does not document — so it is designed for as if it does, because the
+  -- outcome if it does is a connection the user just made and cannot use.
+  --
+  -- `x-oauth-callback` refuses while this is live rather than writing a row a
+  -- revoke in flight is about to invalidate.
+  disconnect_claimed_at timestamptz,
+  disconnect_claim_id uuid,
+
   status text not null default 'active',
   last_error text,
   connected_at timestamptz not null default now(),
@@ -590,3 +606,186 @@ revoke execute on function public.commit_x_insights_read(uuid, uuid, jsonb, text
   from public, anon, authenticated;
 grant execute on function public.commit_x_insights_read(uuid, uuid, jsonb, text, text, integer, integer, integer)
   to service_role;
+
+-- ---------------------------------------------------------------------------
+-- claim_x_disconnect — take the grant out of circulation before revoking it.
+--
+-- Returns the tokens to revoke, so the caller never has to re-read a row that
+-- could change under it. `p_access_token` is the row the caller believes it is
+-- disconnecting; a mismatch means something already changed and the caller must
+-- start again rather than revoke a credential it never read.
+-- ---------------------------------------------------------------------------
+
+create or replace function public.claim_x_disconnect(
+  p_user_id uuid,
+  p_access_token text,
+  p_claim_ttl_seconds integer default 60
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_conn public.x_account_connections%rowtype;
+  v_claim_id uuid;
+begin
+  if current_setting('request.jwt.claims', true)::jsonb->>'role' is distinct from 'service_role' then
+    raise exception 'claim_x_disconnect is service-role only';
+  end if;
+
+  -- Lock, THEN read. The Facebook disconnect race (`20260825160000`) was the
+  -- other order, and this is the same function in a different connector.
+  perform pg_advisory_xact_lock(hashtext('x_grant:' || p_user_id::text));
+
+  select * into v_conn from public.x_account_connections where user_id = p_user_id;
+  if not found then
+    return jsonb_build_object('claimed', false, 'reason', 'no_connection');
+  end if;
+
+  if v_conn.access_token is distinct from p_access_token then
+    return jsonb_build_object('claimed', false, 'reason', 'changed');
+  end if;
+
+  if v_conn.disconnect_claimed_at is not null
+     and v_conn.disconnect_claimed_at > now() - make_interval(secs => p_claim_ttl_seconds) then
+    return jsonb_build_object('claimed', false, 'reason', 'in_progress');
+  end if;
+
+  update public.x_account_connections
+  set disconnect_claimed_at = now(),
+      disconnect_claim_id = gen_random_uuid()
+  where id = v_conn.id
+  returning disconnect_claim_id into v_claim_id;
+
+  return jsonb_build_object(
+    'claimed', true,
+    'id', v_conn.id,
+    'claim_id', v_claim_id,
+    'access_token', v_conn.access_token,
+    'refresh_token', v_conn.refresh_token
+  );
+end;
+$$;
+
+revoke execute on function public.claim_x_disconnect(uuid, text, integer)
+  from public, anon, authenticated;
+grant execute on function public.claim_x_disconnect(uuid, text, integer) to service_role;
+
+-- ---------------------------------------------------------------------------
+-- commit_x_disconnect — delete the row we revoked, or release the claim.
+--
+-- `p_delete = false` releases without deleting, for a revoke that failed: the
+-- row still holds the only copy of the token, so keeping it is what lets the
+-- user retry. Never abandon a live grant.
+-- ---------------------------------------------------------------------------
+
+create or replace function public.commit_x_disconnect(
+  p_user_id uuid,
+  p_claim_id uuid,
+  p_delete boolean default true
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_conn public.x_account_connections%rowtype;
+begin
+  if current_setting('request.jwt.claims', true)::jsonb->>'role' is distinct from 'service_role' then
+    raise exception 'commit_x_disconnect is service-role only';
+  end if;
+
+  perform pg_advisory_xact_lock(hashtext('x_grant:' || p_user_id::text));
+
+  select * into v_conn from public.x_account_connections where user_id = p_user_id;
+  if not found then
+    return jsonb_build_object('committed', false, 'reason', 'no_connection');
+  end if;
+
+  if v_conn.disconnect_claim_id is distinct from p_claim_id then
+    return jsonb_build_object('committed', false, 'reason', 'stale_claim');
+  end if;
+
+  if not p_delete then
+    update public.x_account_connections
+    set disconnect_claimed_at = null, disconnect_claim_id = null
+    where id = v_conn.id;
+    return jsonb_build_object('committed', false, 'reason', 'released');
+  end if;
+
+  delete from public.x_account_connections where id = v_conn.id;
+  return jsonb_build_object('committed', true);
+end;
+$$;
+
+revoke execute on function public.commit_x_disconnect(uuid, uuid, boolean)
+  from public, anon, authenticated;
+grant execute on function public.commit_x_disconnect(uuid, uuid, boolean) to service_role;
+
+-- ---------------------------------------------------------------------------
+-- claim_x_connect — the OTHER half of the same serialisation.
+--
+-- A claim that only disconnect respects is not a lock. This is what makes
+-- reconnect participate: it takes the same advisory key, refuses while a
+-- disconnect is mid-revoke, and otherwise clears every outstanding claim so no
+-- worker from the previous grant can commit against the new one.
+--
+-- Returns the previous grant's tokens so the caller can revoke them AFTER the
+-- replacement is stored — nothing is handed back until the swap has succeeded.
+-- ---------------------------------------------------------------------------
+
+create or replace function public.claim_x_connect(
+  p_user_id uuid,
+  p_x_user_id text,
+  p_claim_ttl_seconds integer default 60
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_conn public.x_account_connections%rowtype;
+begin
+  if current_setting('request.jwt.claims', true)::jsonb->>'role' is distinct from 'service_role' then
+    raise exception 'claim_x_connect is service-role only';
+  end if;
+
+  perform pg_advisory_xact_lock(hashtext('x_grant:' || p_user_id::text));
+
+  select * into v_conn from public.x_account_connections where user_id = p_user_id;
+
+  if found
+     and v_conn.disconnect_claimed_at is not null
+     and v_conn.disconnect_claimed_at > now() - make_interval(secs => p_claim_ttl_seconds) then
+    -- A revoke is in flight against this grant. Writing a new row now would
+    -- store a connection that revoke is about to invalidate.
+    return jsonb_build_object('claimed', false, 'reason', 'disconnect_in_progress');
+  end if;
+
+  if not found then
+    return jsonb_build_object('claimed', true, 'previous', null);
+  end if;
+
+  if v_conn.x_user_id is not distinct from p_x_user_id then
+    -- Same account reconnecting. Nothing to revoke; the upsert replaces the
+    -- credentials in place.
+    return jsonb_build_object('claimed', true, 'previous', null);
+  end if;
+
+  return jsonb_build_object(
+    'claimed', true,
+    'previous', jsonb_build_object(
+      'x_user_id', v_conn.x_user_id,
+      'access_token', v_conn.access_token,
+      'refresh_token', v_conn.refresh_token
+    )
+  );
+end;
+$$;
+
+revoke execute on function public.claim_x_connect(uuid, text, integer)
+  from public, anon, authenticated;
+grant execute on function public.claim_x_connect(uuid, text, integer) to service_role;
