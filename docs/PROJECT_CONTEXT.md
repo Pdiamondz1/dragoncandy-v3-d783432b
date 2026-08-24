@@ -243,10 +243,33 @@ holds no Toast credentials. See §6.
   under the CTA in the **pale** mint `#B8ECDA` (small text needs 4.5:1; the slogan's `#7BE3C0`
   measures 3.91 at p90 there against 4.62 — *the "too pale for video" note is about headlines and
   inverts for small text*), and a "Learn more" pill pointing at a **new `/how-it-works`**, built
-  because the rebuild had deleted the only page explaining the product. **Pending:** the iOS-Safari
-  half is unverifiable in any browser, emulator or simulator — it needs a real phone, and the
-  residual candidate if it persists is rubber-band overscroll (`overscroll-behavior-y`), left out
-  as an app-wide behavioural change. → `feat/landing-adrian-feedback` · #459
+  because the rebuild had deleted the only page explaining the product.
+  **It did persist, it was exactly the residual this line predicted, and that is now closed
+  (2026-08-24).** This clause read "**Pending:** the iOS-Safari half is unverifiable in any
+  browser, emulator or simulator — it needs a real phone, and the residual candidate if it
+  persists is rubber-band overscroll (`overscroll-behavior-y`), left out as an app-wide
+  behavioural change." Adrian reported it again with screenshots: *"you can still move the page on
+  mobile"*, white above the header and below the footer. **Right about the mechanism, wrong about
+  the surface** — a macOS trackpad rubber-bands too, so it was never iOS-only. `h-[100dvh]` had
+  removed the scrollable gap that made the screen *jump*; a container with nothing to scroll still
+  **bounces**, and the elastic gutter is painted by the CANVAS from `<html>` — outside the body
+  box, so nothing the app renders could ever colour it, hence white. Closed with
+  `overscroll-behavior-y: none` on html+body (**Y only**: the shorthand takes X, where iOS
+  edge-swipe-back lives; accepted cost is Android Chrome pull-to-refresh) **plus** the landing
+  painting the canvas grape for its lifetime, for what CSS cannot reach — Safari <16, and the
+  WKWebView, whose bounce is a native scroll-view setting. **The simulator settled the one thing
+  only it could:** a throwaway computed-style readout proved WebKit *applies* the property inside
+  a WKWebView (and that `innerHeight === clientHeight`, so `contentInset:'never'` still holds) —
+  while *applied* is **not** *suppressed*, which needs a real drag and is recorded as unproven.
+  **Shipped with it: one logo size across every header** (`src/lib/brandLogo.ts`) — auth was
+  116/140/**163px** tall, the post-login mobile bar **74px**, the desktop sidebar **116px**,
+  against the landing's 56, because a width class on a taller-than-wide asset multiplies the
+  height. The durable half is the guard: the previous pass fixed two files and pinned them **to
+  each other by hand**, and that test reported green for a day while three unenumerated headers
+  stayed wrong. **Pending:** the drag itself on a real phone (Adrian) or by hand in the simulator;
+  and the two post-login headers on screen — reaching them needs a login and **no test-account
+  credentials exist**, so they are pinned at class level only.
+  → `worktree-DC-landing-page-fix3` · `feat/landing-adrian-feedback` · #459
 - **Google Workspace corporate setup (Wave 1)** — the company's own Workspace: two shared drives,
   nine Google Groups replacing personal aliases, brand assets, and email signatures that install
   themselves. **MERGED (#453, `d83fcbe3`, 2026-08-21) and the admin half is largely DONE** — this

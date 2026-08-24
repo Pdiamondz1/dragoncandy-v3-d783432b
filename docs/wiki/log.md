@@ -1,5 +1,37 @@
 # Wiki Log
 
+## [2026-08-24] ingest | The page could still be dragged, and the logo had five sizes
+
+**Created** [[Brand Logo Sizing]] (`concepts/brand-logo-sizing.md`) and
+`docs/wiki/raw/sessions/2026-08-24-page-drag-and-logo-size.md`.
+**Updated** [[Mobile Viewport & Fixed Positioning]] (new §10; §9's "still open" clause edited in
+place, since §10 is what closed it), `docs/DESIGN_SYSTEM.md`, `docs/wiki/index.md`,
+`docs/SHIPPED_LOG.md` and `docs/PROJECT_CONTEXT.md` §5.
+
+Two reports the day after #459's follow-up shipped. **The page could still be dragged**: sizing
+`AppShell` to `100dvh` removed the scrollable gap that made the screen *jump*, but rubber-band
+overscroll is a separate mechanism — a container with nothing to scroll still bounces, on a macOS
+trackpad as well as iOS, which is why this one was reported on both viewports. The white band is
+structural: the elastic strip sits **outside the body box**, so the canvas paints it from `<html>`,
+falling back to `<body>` — white. Closed with `overscroll-behavior-y: none` on html and body (Y
+axis only; X carries iOS edge-swipe-back) **plus** the landing painting the canvas grape for its
+lifetime, which covers what the property cannot reach: Safari before 16, and the WKWebView, whose
+bounce is a native scroll-view setting.
+
+The **iOS simulator** was the right instrument and settled exactly one thing: a throwaway
+computed-style readout showed WebKit applying `overscroll-behavior` inside a WKWebView, with
+`innerHeight === documentElement.clientHeight` confirming §8's `contentInset` invariant still
+holds. It did **not** show the native scroll view refusing to bounce — *applied* and *suppressed*
+are different claims — and that gap is recorded rather than glossed, since no drag could be
+synthesised without Accessibility permission.
+
+**The logo had five sizes** because a width class on a taller-than-wide asset multiplies the
+height rather than capping it (auth 163px, mobile bar 74px, sidebar 116px, against 56px). The
+durable half is the guard: the 2026-08-23 pass fixed two files and pinned them **to each other by
+hand**, and that test stayed green for a full day while three headers it never enumerated were
+wrong. A guard that watches the pair you already repaired cannot see the four you did not — so the
+new test derives the header list instead of listing it.
+
 ## [2026-08-24] ingest | Onboarding slices 3 and 4 — the wizard, and the depth dimensions
 
 **Created** [[Onboarding Wizard & Depth]] and `docs/wiki/raw/sessions/2026-08-24-onboarding-wizard-and-depth.md`.
