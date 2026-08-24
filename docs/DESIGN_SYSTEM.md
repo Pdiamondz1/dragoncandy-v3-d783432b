@@ -62,9 +62,14 @@ The real fallback for no-clips / a failed clip / `prefers-reduced-motion` is `Ro
 own poster-still path, not a flag. Pipeline for producing the reels:
 `docs/runbooks/landing-video-backdrop-kit.md`.
 
-**Login/sign-up + onboarding stay light, on the same `landing-*` token/font system as before —
-nothing about them changed.** `AuthShell` (`src/components/auth/AuthShell.tsx`) is still
-`bg-white`; the 6 auth pages and `OnboardingWizard` still render on it. So the `landing-*` token
+**Login/sign-up stay light on the `landing-*` token/font system. ONBOARDING NO LONGER DOES
+(2026-08-24)** — this passage said "login/sign-up + onboarding" and named `OnboardingWizard` among
+`AuthShell`'s consumers, and that half is now false. The wizard was moved onto the AUTHENTICATED
+app's identity — `dc-*` tokens, Outfit, `AppCard`, `Button variant="dc-primary"` — on the founder's
+instruction that onboarding should match the app it leads into. It renders its own white surface
+and no longer imports `AuthShell` or `LandingButton`. Both of those are UNCHANGED and still serve
+the six entry pages. `AuthShell` (`src/components/auth/AuthShell.tsx`) is still `bg-white`; the 6
+auth pages render on it. So the `landing-*` token
 system is still one shared identity across landing + entry — what changed is that the landing
 surface now paints those tokens **dark** while entry keeps painting them **light on white paper**.
 They are no longer one continuous visual surface, and that split is deliberate, not drift:
@@ -123,8 +128,8 @@ per-role static-hero design this replaced).
 ## Marketing + entry's own scoped identity (additive, never leaks into the app)
 
 The public landing (`src/pages/LandingPage.tsx` + `src/components/landing/*`) **and** the entry flow —
-login/sign-up (`src/pages/AuthPage.tsx` + the 5 siblings, `src/components/auth/*`) and onboarding
-(`src/components/onboarding/**`) — are **not** on the shared `dc-*`/Outfit system used by the
+login/sign-up (`src/pages/AuthPage.tsx` + the 5 siblings, `src/components/auth/*`) — but **NOT
+onboarding**, which moved to the app's `dc-*`/Outfit system on 2026-08-24 — are **not** on the shared `dc-*`/Outfit system used by the
 authenticated app — together they carry **one** marketing visual identity (tokens + fonts), kept
 strictly additive so it can never regress the authenticated app. **The landing now paints that
 identity dark; entry still paints it light** — see the Theme section above for the split and why
@@ -282,7 +287,8 @@ same token/font system, unaffected; `/internal` stays dark.
 |-|-|
 | All authenticated app pages (dashboards, campaigns, browse, messaging, settings, DragonShare, profiles, …) | White (`#FFFFFF`) |
 | Public landing (`/`, `/home`, `/landing`) | Dark (`landing-grape` `#241332`, full-bleed rotating video) |
-| Login/sign-up + onboarding | White paper (`#FFFFFF`, the shared `landing-*`/`AuthShell` token/font system) |
+| Login/sign-up | White paper (`#FFFFFF`, the shared `landing-*`/`AuthShell` token/font system) |
+| Onboarding wizard (`/profile/setup`) | White (`#FFFFFF`) on the APP's `dc-*`/Outfit kit — moved off the entry identity 2026-08-24 |
 | `/internal` (AIOS) | Dark charcoal (`#1A1A2A`) |
 
 ## Design Rules
