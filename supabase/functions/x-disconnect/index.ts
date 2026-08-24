@@ -124,6 +124,11 @@ serve(async (req: Request) => {
       // Keep the row. It holds the only copy of the token, so deleting now would
       // leave a live grant nothing can ever revoke. Release the claim too, or a
       // retry waits out the whole TTL for no reason.
+      //
+      // `failed` now covers every non-200 that does not name the token — bad
+      // client credentials, a malformed request, an unsupported token type. All
+      // of those mean the revoke did NOT happen, and all of them used to be read
+      // as success.
       await supabase.rpc('commit_x_disconnect', {
         p_user_id: user.id,
         p_claim_id: claim.claim_id,

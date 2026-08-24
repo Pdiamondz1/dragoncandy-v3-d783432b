@@ -164,7 +164,27 @@ describe('revoking the grant', () => {
     );
   });
 
-  it('treats a token X no longer recognises as already in the state we wanted', () => {
-    expect(bodyOf('export async function revokeToken')).toMatch(/already_invalid/);
+  it('treats ONLY 200 as a successful revoke', () => {
+    // This accepted 400 and 401 as "already invalid", which is backwards. RFC
+    // 7009 §2.2 returns 200 both when a token is revoked AND when the client
+    // submitted an invalid one -- so an already-dead token is a 200. The codes
+    // it used to forgive are the ones meaning the revoke did NOT happen: 401 is
+    // invalid_client, 400 is a malformed request.
+    //
+    // Reading those as success made disconnect delete the only stored refresh
+    // token and report "we withdrew access at X" over a live grant.
+    const body = bodyOf('export async function revokeToken');
+    expect(body).toMatch(/if \(res\.ok\) return 'revoked';/);
+    expect(body).not.toMatch(/res\.status === 400 \|\| res\.status === 401/);
+  });
+
+  it('only calls a token already-invalid when X names the token', () => {
+    // Kept narrow so a provider that does not follow §2.2 exactly cannot make
+    // disconnect impossible -- but anything vaguer stays `failed`, which keeps
+    // the row for a retry. Keeping a row costs a retry; deleting one strands a
+    // grant nothing can revoke.
+    const body = bodyOf('export async function revokeToken');
+    expect(body).toMatch(/invalid_token/);
+    expect(body).toMatch(/already_invalid/);
   });
 });

@@ -429,9 +429,33 @@ export async function revokeToken(
         client_id: env(CLIENT_ID_ENV),
       }),
     });
+
+    const text = await res.text();
+    // 200 IS THE ONLY SUCCESS, and this used to also accept 400 and 401 as
+    // "already invalid" — which is backwards.
+    //
+    // RFC 7009 §2.2: the server responds 200 "if the token has been revoked
+    // successfully OR IF THE CLIENT SUBMITTED AN INVALID TOKEN". So an
+    // already-dead token is a 200, not a 400. The codes this used to forgive are
+    // the ones that mean the revoke did NOT happen: 401 is `invalid_client` (our
+    // credentials are wrong) and 400 is a malformed request or an unsupported
+    // token type.
+    //
+    // Reading those as success made `x-disconnect` delete the only stored
+    // refresh token and report "we withdrew access at X" while the grant stayed
+    // live — the exact failure that function is built around.
     if (res.ok) return 'revoked';
-    // A token X no longer recognises is already in the state we wanted.
-    if (res.status === 400 || res.status === 401) return 'already_invalid';
+
+    // Kept as a narrow exception, because a provider that does not follow §2.2
+    // to the letter should not make disconnect impossible. It requires X to name
+    // the token specifically; anything vaguer stays `failed`, which keeps the
+    // row so the user can retry. Keeping a row costs a retry. Deleting one
+    // strands a grant nothing can revoke.
+    if (/invalid_token|token.*(not found|unknown|expired|revoked)/i.test(text)) {
+      return 'already_invalid';
+    }
+
+    console.error(`[x-api] revoke refused (${res.status}): ${text.slice(0, 200)}`);
     return 'failed';
   } catch {
     return 'failed';
