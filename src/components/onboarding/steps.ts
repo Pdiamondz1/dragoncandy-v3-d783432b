@@ -47,7 +47,9 @@ export const STEP_PHASE: Record<StepId, StepPhase> = {
 export const ROLE_STEPS: Record<AccountRole, readonly StepId[]> = {
   business_client: ['identity', 'cuisine', 'phone', 'address', 'payments', 'ready'],
   content_creator: ['identity', 'skills', 'bio', 'phone', 'payments', 'ready'],
-  brand: ['identity', 'industry', 'phone', 'address', 'payments', 'ready'],
+  // No address slide, matching the registry: a brand has no `address` requirement, and
+  // the slide would have written a street address onto a `product` row.
+  brand: ['identity', 'industry', 'phone', 'payments', 'ready'],
 };
 
 /**

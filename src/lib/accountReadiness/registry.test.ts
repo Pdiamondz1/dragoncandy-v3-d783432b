@@ -43,6 +43,24 @@ describe('registry consistency', () => {
     for (const action of ACTIONS) expect(ACTION_ROLES[action].length).toBeGreaterThan(0);
   });
 
+  /**
+   * Spec §4.4, in a form that fails rather than in prose nobody re-reads: "`address` is
+   * business-only. A brand's primary `org_unit` is a `product`, not a location; demanding
+   * a street address of it would be a requirement no brand can meaningfully satisfy."
+   *
+   * Slice 1 obeyed it, slice 2 quietly reversed it, and the result was live on production
+   * as a `required` row — undismissable by tier — that no brand could ever clear, pointing
+   * at a page with no address field. Written as a test because the comment beside the
+   * registry entry was not enough the first time.
+   */
+  it('does not demand an address of brands, whose units are products', () => {
+    const brandKeys = ROLE_REQUIREMENTS.brand.map((r) => r.key);
+    expect(brandKeys).not.toContain('address');
+    // Control: the requirement still exists where it CAN be satisfied, so this test is
+    // about the role and not about the key having quietly disappeared everywhere.
+    expect(ROLE_REQUIREMENTS.business_client.map((r) => r.key)).toContain('address');
+  });
+
   it('requirement keys are unique within a role', () => {
     for (const role of ROLES) {
       const keys = ROLE_REQUIREMENTS[role].map((r) => r.key);
