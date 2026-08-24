@@ -75,7 +75,19 @@ describe('SocialAuthButtons', () => {
     mocks.enabled = true;
     render(<SocialAuthButtons mode="signup" role="business_client" onError={vi.fn()} />);
     fireEvent.click(screen.getByRole('button', { name: /sign up with google/i }));
-    await waitFor(() => expect(mocks.start).toHaveBeenCalledWith('google', 'business_client'));
+    await waitFor(() => expect(mocks.start).toHaveBeenCalledWith('google', 'business_client', null));
+  });
+
+  /** The guarded destination travels with the role — see socialAuth's own tests. */
+  it('passes the guarded destination through to the redirect', async () => {
+    mocks.enabled = true;
+    render(
+      <SocialAuthButtons mode="login" role={null} returnPath="/dashboard/business" onError={vi.fn()} />,
+    );
+    fireEvent.click(screen.getByRole('button', { name: /log in with google/i }));
+    await waitFor(() =>
+      expect(mocks.start).toHaveBeenCalledWith('google', null, '/dashboard/business'),
+    );
   });
 
   it('surfaces a failure to start instead of leaving a dead button', async () => {
