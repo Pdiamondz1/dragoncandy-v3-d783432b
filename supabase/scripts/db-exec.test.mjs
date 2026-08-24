@@ -221,6 +221,14 @@ describe('findTransactionControl', () => {
     expect(findTransactionControl('update t set x = 1;\ncommit and chain;')).toBe('commit');
   });
 
+  it('finds PREPARE TRANSACTION but not an ordinary prepared statement', () => {
+    // Two-phase commit ends the transaction and leaves the work prepared, resolved by nobody.
+    expect(findTransactionControl("update t set x = 1;\nprepare transaction 'tx1';"))
+      .toBe('prepare transaction');
+    // The control: same leading keyword, entirely different statement.
+    expect(findTransactionControl('prepare p as select 1;')).toBeNull();
+  });
+
   it('finds real transaction control at statement level', () => {
     expect(findTransactionControl('begin;\nupdate t set x = 1;\ncommit;')).toBe('begin');
     expect(findTransactionControl('update t set x = 1;\ncommit;')).toBe('commit');

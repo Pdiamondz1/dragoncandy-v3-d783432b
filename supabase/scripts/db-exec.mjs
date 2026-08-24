@@ -240,8 +240,14 @@ export function findTransactionControl(sql) {
   // END [WORK|TRANSACTION] [AND [NO] CHAIN] — the only form needing a terminator, to keep it
   // apart from a CASE expression's END.
   const END = /end(?:\s+(?:transaction|work))?(?:\s+and(?:\s+no)?\s+chain)?\s*(?=;|$)/.source;
+  // PREPARE TRANSACTION ends the current transaction too (two-phase commit), leaving the work in
+  // a prepared state nobody resolves. `TRANSACTION` is required so an ordinary prepared statement
+  // (`prepare p as select ...`) is not swept up with it.
   const m = stripNonCode(sql).match(
-    new RegExp(`(?:^|;)\\s*(begin|start\\s+transaction|commit|rollback|abort|${END})`, 'i'),
+    new RegExp(
+      `(?:^|;)\\s*(begin|start\\s+transaction|prepare\\s+transaction|commit|rollback|abort|${END})`,
+      'i',
+    ),
   );
   return m ? m[1].trim().toLowerCase().replace(/\s+/g, ' ') : null;
 }
