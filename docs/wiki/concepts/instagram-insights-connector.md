@@ -3,7 +3,7 @@ title: Instagram Insights Connector
 type: concept
 created: 2026-08-23
 updated: 2026-08-24
-sources: [2026-08-24-instagram-connector-live.md]
+sources: [2026-08-24-instagram-connector-live.md, 2026-08-24-instagram-first-connection.md]
 tags: [instagram, meta, oauth, analytics, social, security]
 ---
 
@@ -215,6 +215,82 @@ fail-closed path — and it means the request never reaches the signature check,
 the forgery-rejection path is proven by its 8 unit tests and **not** by any live
 probe. It becomes provable when the secret exists.
 
+## First real connection (2026-08-24)
+
+`@areyouaman` (`ig_user_id` 17841400763893777) connected at 18:20:20 UTC. Read
+from the row rather than the card, because a card can render what it was handed:
+
+- `permissions` is exactly `instagram_business_basic` +
+  `instagram_business_manage_insights` — **nothing that can post**, which is the
+  scope decision made checkable rather than asserted.
+- `account_type` `BUSINESS`; `status=active`; `last_error=null`.
+- `token_expires_at` 2026-10-23 — 60 days out, so this is the long-lived token.
+- `last_synced_at` stamped **11 seconds after** `connected_at`. This is the
+  load-bearing one: a row can be written without the API ever being called, and
+  this timestamp cannot.
+
+The card reads **Reach 1, Views —, Interactions —**. The em dashes are
+[[Honest Analytics]] holding: Instagram returned no value for two metrics and the
+UI shows absent as `—`, not `0`. Three tidy zeros would have been the suspicious
+result. This build's own first draft had the inverse bug — `Number(null)` is `0`
+and `0` is finite — so a day with no data became a day with zero reach.
+
+### The forgery-rejection path is now proven live
+
+This page previously recorded, deliberately, that the two Meta callbacks answered
+`503 not_configured` — the correct fail-closed path, but one that returns *before*
+the signature check, leaving the HMAC rejection proven by its 8 unit tests and
+nothing else.
+
+With the app secret set, that caveat is retired. On prod: a forged
+`signed_request` to `instagram-data-deletion` returns **401**, the same to
+`instagram-deauthorize` returns **401**, and an invented function name returns
+**404**. The control is what makes the 401 mean anything — it separates "our code
+ran and rejected this" from a gateway answering identically for a function that
+does not exist. The 503 → 401 transition is itself evidence the secret is wired
+in.
+
+### Deployed is not reachable — the button was on the wrong page
+
+The founder connected Instagram through the live app and the consent screen said
+**"Outstand-IG"**. Our table stayed empty, correctly: he had never reached our
+connector. `LocationSettingsSections` rendered `ConnectedAccountsList` (Outstand,
+which publishes) and neither analytics card, and a multi-location business lands
+on the *location* page. The two integrations look alike, do opposite jobs, and
+neither button says which.
+
+**A page that offers one and hides the other does not present a choice; it
+misroutes.** Closed by #502, with copy saying the connections are account-wide —
+both key on `user_id`, so bare cards under a heading reading "This location's
+accounts" would assert a per-location relationship the schema does not have.
+
+The durable half is `analyticsCardsCoverage.test.ts`, which **derives** the
+surfaces rendering `ConnectedAccountsList` rather than naming them. Naming them is
+what produced this class the day before: the logo work pinned two files to each
+other by hand and reported green while three unenumerated headers stayed wrong.
+
+### An unpublished app has no users but its developers
+
+The first attempt then returned **"Insufficient Developer Role"**. An Unpublished
+Meta app can only be authorized by accounts holding a role on it. Fixed by adding
+the account as an **Instagram Tester** and accepting from the Instagram account —
+which is not in the mobile app and not under "Apps and websites", but at
+`https://www.instagram.com/accounts/manage_access/`.
+
+### Meta's App settings → Basic reports success and discards the write
+
+Changing four fields and pressing Save Changes returned Meta's **own**
+`{"success":true}` payload, captured off the wire, and reverted all four on
+reload. Saving **one field per Save click** persisted every time.
+
+**A vendor's success flag is not evidence the value stuck** — the same shape as
+this project's `recorded != actual` cases, one layer out: the authority reported
+the write and the write is not there. Reload and read the field back. Three landed
+this way (privacy policy, terms, category `Business and pages`);
+`app_details_user_data_deletion` still refuses after four attempts, and on the
+failing ones **no request carrying the value was sent at all**, so the form is not
+submitting that field rather than the server rejecting it.
+
 ## Two branches, one migration version
 
 `feat/verify-address-throttle` shipped `20260825100000_reserve_address_verification`
@@ -233,13 +309,16 @@ timestamp a human types, so two branches open on one day will collide eventually
 
 ## Known Issues
 
-- **The three secrets are still unprovisioned** — `INSTAGRAM_APP_ID`,
-  `INSTAGRAM_APP_SECRET`, `INSTAGRAM_OAUTH_STATE_SECRET` — so no real Instagram
-  account has ever connected. Every function is deployed and fails closed until
-  they exist. This line previously read "nothing is deployed"; the deploy landed
-  2026-08-24 and the credential gap is what remains.
-- The deauthorize and data-deletion URLs are **not yet registered** in Business
-  login settings — the endpoints had to exist first, and now do.
+- ~~The three secrets are still unprovisioned, so no real Instagram account has
+  ever connected.~~ **Both closed 2026-08-24** — all three secrets are set
+  (verified by name and digest, never value; `INSTAGRAM_OAUTH_STATE_SECRET`'s
+  digest differs from `GOOGLE_OAUTH_STATE_SECRET`'s, which is the point of
+  keeping them separate), and a real account is connected. See "First real
+  connection" above.
+- ~~The deauthorize and data-deletion URLs are not yet registered.~~ **Registered
+  2026-08-24** in Business login settings, verified after a full page reload
+  because that panel stages edits, with the OAuth redirect chip still present as
+  the control that nothing else was dropped.
 - The data-deletion response points at `/privacy`, which explains what this
   integration stores but is **not a per-request status page**. Deletion is
   synchronous so there is no pending state to show, but a page that acknowledged
@@ -248,7 +327,12 @@ timestamp a human types, so two branches open on one day will collide eventually
   review** — migration `20260825130000` schedules it daily at 04:00 UTC. It needs
   the Vault secret `instagram_refresh_sweep_url` per environment; absent that,
   `net.http_post` is called with a NULL url and the job fails quietly in
-  `cron.job_run_details` rather than anywhere anyone looks.
+  `cron.job_run_details` rather than anywhere anyone looks. **Applied on prod
+  2026-08-24**, with the Vault secret present and `cron.job` showing
+  `active=true` at `0 4 * * *`. **It has never fired** —
+  `cron.job_run_details` holds 0 runs for it — so the schedule is proven to
+  exist and is **not** proven to work. Those are different claims, and only
+  the first has evidence.
 - ~~The three anonymous functions relied on a comment telling the deployer to
   pass `--no-verify-jwt`.~~ **Closed by the same review** — all seven Instagram
   functions are now declared in `supabase/config.toml`, four `true` and three

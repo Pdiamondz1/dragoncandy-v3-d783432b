@@ -117,6 +117,97 @@ status, Adrian Vella's consent, a countable Hoboken restaurant number). The corr
 **$1,462,568** — inside the intended $500K–$1.5M pre-seed band by $37K; §11 says a budget that
 outgrows the band means cutting scope, not shaving the budget.
 → `docs/wiki/concepts/investor-pitch-deck.md` · `docs/wiki/concepts/build-time-confidentiality.md`
+## [2026-08-24] Instagram connector: the first real connection, and three things between deployed and usable
+
+The previous entry left the connector merged, applied, deployed — and unusable, because its
+three secrets were unprovisioned. This closed that. The interesting part is that the gap
+between *deployed* and *usable* held three separate defects and **none of them was in the
+connector's own code**.
+
+**A real account is connected.** `@areyouaman` (`ig_user_id` 17841400763893777), 18:20:20 UTC.
+Read from the row rather than the card, because a card renders whatever it was handed:
+`permissions` is exactly `instagram_business_basic` + `instagram_business_manage_insights` —
+**nothing that can post**, which is the scope decision made checkable instead of asserted;
+`account_type` BUSINESS, confirming the professional-account prerequisite from Meta rather than
+from us; `status=active`, `last_error=null`; a 60-day token expiring 2026-10-23; and
+`last_synced_at` stamped **11 seconds after** `connected_at`. That last one is load-bearing — a
+row can be written without the API ever being called, and that timestamp cannot.
+
+The card reads **Reach 1, Views —, Interactions —**. The em dashes are [[Honest Analytics]]
+working: Instagram returned no value for two metrics and the UI shows absent as `—`, not `0`.
+**Three tidy zeros would have been the suspicious result.** This build's own first draft had the
+inverse bug — `Number(null)` is `0` and `0` is finite — so a day Instagram said nothing about
+became a day with zero reach, with totals still adding up and only the day count betraying it.
+
+**The claim we deliberately withheld is now made.** Both Meta callbacks used to answer
+`503 not_configured`: the correct fail-closed path, but one that returns *before* the signature
+check, leaving forgery rejection proven by 8 unit tests and nothing else. With the app secret
+set, a forged `signed_request` returns **401** on both, where an invented function name returns
+**404** — the control that separates "our code ran and rejected this" from a gateway answering
+the same way for something that does not exist. **The 503 → 401 transition is itself the evidence
+the secret is wired in.** Secrets verified by name and digest, never value;
+`INSTAGRAM_OAUTH_STATE_SECRET`'s digest genuinely differs from `GOOGLE_OAUTH_STATE_SECRET`'s,
+which proves the separate-keys design rather than restating it.
+
+**Defect 1 — the button existed, on a page nobody uses.** The founder connected through the live
+app and the consent screen said **"Outstand-IG"**. Our table stayed empty, correctly: he had
+never reached our connector. `LocationSettingsSections` rendered `ConnectedAccountsList`
+(Outstand, which publishes) and neither analytics card, and a multi-location business lands on
+the *location* page. The two integrations look alike, do opposite jobs, and nothing on either
+button says which. **A page that offers one and hides the other does not present a choice; it
+misroutes.** Closed by #502, with copy stating the connections are account-wide — both key on
+`user_id`, so bare cards under a heading reading "This location's accounts" would assert a
+per-location relationship the schema does not have. The durable half is
+`analyticsCardsCoverage.test.ts`, which **derives** the surfaces rendering
+`ConnectedAccountsList` instead of naming them; naming them is precisely how the logo work the
+day before reported green while three unenumerated headers stayed wrong.
+
+**Defect 2 — an unpublished app has no users but its developers.** The next attempt returned
+**"Insufficient Developer Role"**. An Unpublished Meta app can only be authorized by accounts
+holding a role on it. Fixed by adding the account as an **Instagram Tester** and accepting from
+the Instagram account itself. Two dead ends worth recording because both cost time: the invite is
+not in the Instagram mobile app, and not under "Apps and websites" → App website permissions
+(which offers only Apps and websites / Message Links / Spotify). It lives at
+`instagram.com/accounts/manage_access/`.
+
+**Defect 3 — Meta reports success and discards the write.** App settings → Basic needed four
+fields corrected. Changing all four and pressing Save returned Meta's **own** `{"success":true}`
+payload, captured off the wire, and reverted all four on reload. Saving **one field per Save
+click** persisted every time. **A vendor's success flag is not evidence the value stuck** — the
+same shape as this project's `recorded != actual` cases, one layer out: the authority reported
+the write and the write is not there. Privacy policy, Terms and Category `Business and pages`
+landed that way. `app_details_user_data_deletion` still refuses after four attempts, including
+the exact sequence that worked for its neighbour; on the failing attempts **no request carrying
+the value was sent at all** (XHR and fetch both hooked), where successful saves did send one — so
+the form is not submitting that field rather than the server rejecting it.
+
+**Two shell traps, both of which reported success**, neither Instagram-specific. The deploy
+commands first ran **in the main checkout**, where this branch's files do not exist — which would
+have mattered more than it did, since `supabase functions deploy` reads `config.toml` from the
+*current directory* and the main checkout has no `instagram-*` entries, so the three anonymous
+functions would have deployed at `verify_jwt=true` and Meta's callbacks would have 401'd at the
+gateway before the signature check ever ran. Then the corrected commands carried Claude Code's
+`!` prefix into a plain zsh shell, where `!` is **pipeline negation**: `! cd X && cmd` parses as
+`(! cd X) && cmd`, so the `cd` succeeded, `!` inverted it, `&&` short-circuited, and the prompt
+changed directory while nothing else ran. **A shell printing nothing has not necessarily done
+nothing, and one printing success has not necessarily done anything — check the target, not the
+report.** Both were caught by probing prod.
+
+**A hypothesis withdrawn.** Mid-session, the missing privacy-policy URL was proposed as the cause
+of a "Something went wrong" screen during a connect attempt. The connect later succeeded with
+those fields still unset, so it is disproven — recorded because it was written down as a likely
+cause and would otherwise survive as one.
+
+**Verified done, by object rather than by memory:** all three secrets set; Vault secret
+`instagram_refresh_sweep_url` present (PROJECT_CONTEXT had it as "confirmed absent"); cron
+migration `20260825130000` applied, `instagram-refresh-sweep` at `0 4 * * *`, `active=true`; both
+Meta callbacks registered. **Pending:** the sweep has **never fired** (`cron.job_run_details`: 0
+runs), so the schedule is proven to exist and not proven to work; the one Meta field above; and
+App Review, which needs a demo video and inherits the site-gate conflict in
+`docs/runbooks/google-oauth-demo-video.md`.
+
+→ `docs/wiki/concepts/instagram-insights-connector.md` · #489, #502
+
 
 ## [2026-08-24] Social login — and the one-line fix that would have switched off the email gate
 
