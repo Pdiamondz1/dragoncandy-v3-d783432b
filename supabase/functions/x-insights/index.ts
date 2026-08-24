@@ -18,10 +18,8 @@ import { XError } from '../_shared/x-api.ts';
 import {
   getUsableAccessToken,
   INSIGHTS_CACHE_SECONDS,
-  isCacheUsable,
   loadConnection,
   markNeedsReconnect,
-  TABLE,
   XReconnectRequiredError,
 } from '../_shared/x-connection.ts';
 import { fetchInsights } from '../_shared/x-metrics.ts';
@@ -48,6 +46,11 @@ serve(async (req: Request) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders(req) });
   }
+
+  // Set once a claim is held, cleared once it is spent. Held in the outer scope
+  // so the catch can release it — the body stream is consumed by then, so
+  // re-reading the request there is not an option.
+  let releaseClaim: (() => Promise<void>) | null = null;
 
   try {
     const authHeader = req.headers.get('Authorization');
@@ -77,13 +80,58 @@ serve(async (req: Request) => {
     // for money.
     const cacheWindow = force ? FORCE_REFRESH_FLOOR_SECONDS : INSIGHTS_CACHE_SECONDS;
 
-    if (conn.insights && isCacheUsable(conn.insights_cached_at, cacheWindow)) {
-      return json(req, {
-        insights: conn.insights,
-        cached: true,
-        cached_at: conn.insights_cached_at,
-      });
+    // CLAIM, don't just check. A bare `isCacheUsable` read lets two callers
+    // arriving after the cache expires BOTH miss and BOTH call X — two tabs is
+    // enough — so the cache remembers an answer without preventing the question
+    // being asked twice, and every duplicate is billed. The claim serialises the
+    // FILL.
+    const { data: claim, error: claimError } = await supabase.rpc('claim_x_insights_read', {
+      p_user_id: user.id,
+      p_max_age_seconds: cacheWindow,
+    });
+
+    if (claimError) {
+      return json(req, { error: 'storage_failed', message: claimError.message }, 500);
     }
+
+    if (!claim?.claimed) {
+      if (claim?.reason === 'no_connection') {
+        return json(req, { error: 'not_connected', message: 'No X account is connected' }, 404);
+      }
+
+      // `fresh` — a usable snapshot exists, either because it never expired or
+      // because another caller filled it while we queued on the lock.
+      // `in_progress` — someone is calling X right now, so we serve whatever is
+      // on the row rather than paying for a duplicate read.
+      if (claim?.insights) {
+        return json(req, {
+          insights: claim.insights,
+          cached: true,
+          cached_at: claim.insights_cached_at ?? null,
+        });
+      }
+
+      // `in_progress` with nothing cached yet: the first-ever read for this
+      // account is in flight. Say so honestly rather than starting a second one.
+      return json(
+        req,
+        {
+          error: 'read_in_progress',
+          message: 'Your X analytics are being loaded. Try again in a moment.',
+        },
+        503,
+      );
+    }
+
+    releaseClaim = async () => {
+      releaseClaim = null;
+      // p_insights null => release without writing a snapshot.
+      const { error } = await supabase.rpc('commit_x_insights_read', {
+        p_user_id: user.id,
+        p_claim_id: claim.claim_id,
+      });
+      if (error) console.error('[x-insights] could not release read claim:', error.message);
+    };
 
     // THE STORED EXPIRY CANNOT SEE A REVOKED TOKEN. X invalidates immediately
     // when a user removes the app at x.com, while `access_token_expires_at` goes
@@ -122,21 +170,18 @@ serve(async (req: Request) => {
     }
 
     // Store the snapshot AND the account figures it carries, so the status card
-    // has a current follower count without a second billed read.
-    const { error: writeError } = await supabase
-      .from(TABLE)
-      .update({
-        insights,
-        insights_cached_at: new Date().toISOString(),
-        username: insights.account.username,
-        display_name: insights.account.display_name,
-        followers_count: insights.account.followers_count,
-        following_count: insights.account.following_count,
-        tweet_count: insights.account.tweet_count,
-        last_synced_at: new Date().toISOString(),
-        last_error: null,
-      })
-      .eq('id', conn.id);
+    // has a current follower count without a second billed read. Claim-bound,
+    // so a caller that stalled past the TTL cannot overwrite a newer snapshot.
+    const { error: writeError } = await supabase.rpc('commit_x_insights_read', {
+      p_user_id: user.id,
+      p_claim_id: claim.claim_id,
+      p_insights: insights,
+      p_username: insights.account.username,
+      p_display_name: insights.account.display_name,
+      p_followers_count: insights.account.followers_count,
+      p_following_count: insights.account.following_count,
+      p_tweet_count: insights.account.tweet_count,
+    });
 
     // The read already happened and was already billed, so failing the request
     // here would charge the user twice for one answer. Logged, not thrown — but
@@ -145,9 +190,17 @@ serve(async (req: Request) => {
     if (writeError) {
       console.error('[x-insights] could not cache snapshot:', writeError.message);
     }
+    // Spent, one way or the other — the commit above cleared it, and a failed
+    // commit is not something a release would fix.
+    releaseClaim = null;
 
     return json(req, { insights, cached: false, cached_at: new Date().toISOString() });
   } catch (err) {
+    // Release a claim we still hold. Without this a failed read blocks the next
+    // caller for the whole TTL — turning one transient error into a minute of
+    // "being loaded" for a user who did nothing wrong.
+    if (releaseClaim) await releaseClaim();
+
     if (err instanceof XReconnectRequiredError) {
       // 409 with a distinct code so the card shows the reconnect button rather
       // than a generic failure. The distinction matters: telling a user to

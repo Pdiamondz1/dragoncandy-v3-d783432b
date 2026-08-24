@@ -109,6 +109,19 @@ create table if not exists public.x_account_connections (
   -- ---------------------------------------------------------------------------
   refresh_claimed_at timestamptz,
 
+  -- WHICH claim is in flight, not merely THAT one is.
+  --
+  -- `pending_balance_flushes` keys its claim on a row id for exactly this
+  -- reason and this table originally kept only the timestamp, which is half the
+  -- pattern. Without an identity, a worker whose claim expired can still commit:
+  -- caller A claims and stalls past the TTL, caller B claims and rotates, then A
+  -- returns and overwrites B's newer token pair with one minted from a refresh
+  -- token B has already spent. The connection is then unrecoverable without
+  -- re-consent -- the exact failure the claim exists to prevent.
+  --
+  -- `commit_x_token_refresh` updates only when this still matches.
+  refresh_claim_id uuid,
+
   -- ---------------------------------------------------------------------------
   -- Cached insights snapshot. See note 3 — this is a cost control, not a perf
   -- tweak, and it is on the row rather than in the client so that a caller
@@ -116,6 +129,15 @@ create table if not exists public.x_account_connections (
   -- ---------------------------------------------------------------------------
   insights jsonb,
   insights_cached_at timestamptz,
+
+  -- The same claim pair again, for the READ rather than the refresh.
+  --
+  -- The cache alone does not bound spend, because two callers arriving after it
+  -- expires both miss and both call X. Two tabs is enough. The cost control has
+  -- to serialise the FILL, not just remember the result -- see
+  -- `claim_x_insights_read`.
+  insights_claimed_at timestamptz,
+  insights_claim_id uuid,
 
   status text not null default 'active',
   last_error text,
@@ -230,6 +252,7 @@ set search_path = public
 as $$
 declare
   v_conn public.x_account_connections%rowtype;
+  v_claim_id uuid;
 begin
   if current_setting('request.jwt.claims', true)::jsonb->>'role' is distinct from 'service_role' then
     raise exception 'claim_x_token_refresh is service-role only';
@@ -263,13 +286,18 @@ begin
     return jsonb_build_object('claimed', false, 'reason', 'in_progress');
   end if;
 
+  -- A fresh identity per claim. The caller hands it back at commit time, so a
+  -- worker whose claim has since been taken over cannot write.
   update public.x_account_connections
-  set refresh_claimed_at = now()
-  where id = v_conn.id;
+  set refresh_claimed_at = now(),
+      refresh_claim_id = gen_random_uuid()
+  where id = v_conn.id
+  returning refresh_claim_id into v_claim_id;
 
   return jsonb_build_object(
     'claimed', true,
     'id', v_conn.id,
+    'claim_id', v_claim_id,
     'refresh_token', v_conn.refresh_token
   );
 end;
@@ -293,6 +321,9 @@ grant execute on function public.claim_x_token_refresh(uuid, integer, integer) t
 
 create or replace function public.commit_x_token_refresh(
   p_user_id uuid,
+  -- The identity handed out by `claim_x_token_refresh`. Required, and checked:
+  -- a commit whose claim has since been taken over must change NOTHING.
+  p_claim_id uuid,
   p_access_token text default null,
   p_access_token_expires_at timestamptz default null,
   p_refresh_token text default null,
@@ -306,7 +337,7 @@ security definer
 set search_path = public
 as $$
 declare
-  v_id uuid;
+  v_conn public.x_account_connections%rowtype;
 begin
   if current_setting('request.jwt.claims', true)::jsonb->>'role' is distinct from 'service_role' then
     raise exception 'commit_x_token_refresh is service-role only';
@@ -314,9 +345,24 @@ begin
 
   perform pg_advisory_xact_lock(hashtext('x_token_refresh:' || p_user_id::text));
 
-  select id into v_id from public.x_account_connections where user_id = p_user_id;
+  select * into v_conn from public.x_account_connections where user_id = p_user_id;
   if not found then
     return jsonb_build_object('committed', false, 'reason', 'no_connection');
+  end if;
+
+  -- THE STALE-WORKER GUARD, and the reason `refresh_claim_id` exists.
+  --
+  -- A caller that stalled past the claim TTL comes back holding a token pair
+  -- minted from a refresh token a later caller has already spent and rotated
+  -- away. Writing it would replace a live credential with a dead one and end the
+  -- connection until the user re-consents. So a mismatched claim changes
+  -- nothing at all -- not the tokens, and not the newer caller's claim, which
+  -- clearing would hand a third caller the same race.
+  --
+  -- Reported rather than swallowed: the caller re-reads and uses the winner's
+  -- token.
+  if v_conn.refresh_claim_id is distinct from p_claim_id then
+    return jsonb_build_object('committed', false, 'reason', 'stale_claim');
   end if;
 
   if p_access_token is not null then
@@ -329,24 +375,190 @@ begin
         scopes = coalesce(p_scopes, scopes),
         status = 'active',
         last_error = null,
-        refresh_claimed_at = null
-    where id = v_id;
+        refresh_claimed_at = null,
+        refresh_claim_id = null
+    where id = v_conn.id;
 
     return jsonb_build_object('committed', true);
   end if;
 
   update public.x_account_connections
   set refresh_claimed_at = null,
+      refresh_claim_id = null,
       status = case when p_grant_invalid then 'needs_reconnect' else status end,
       last_error = coalesce(p_error, last_error)
-  where id = v_id;
+  where id = v_conn.id;
 
   return jsonb_build_object('committed', false, 'reason',
     case when p_grant_invalid then 'grant_invalid' else 'released' end);
 end;
 $$;
 
-revoke execute on function public.commit_x_token_refresh(uuid, text, timestamptz, text, text[], boolean, text)
+revoke execute on function public.commit_x_token_refresh(uuid, uuid, text, timestamptz, text, text[], boolean, text)
   from public, anon, authenticated;
-grant execute on function public.commit_x_token_refresh(uuid, text, timestamptz, text, text[], boolean, text)
+grant execute on function public.commit_x_token_refresh(uuid, uuid, text, timestamptz, text, text[], boolean, text)
+  to service_role;
+
+-- ---------------------------------------------------------------------------
+-- claim_x_insights_read — serialise the CACHE FILL, not just the result.
+--
+-- The cache on this row is the connector's cost control, and on its own it does
+-- not work: two callers arriving after it expires both miss and both call X, so
+-- N tabs cost N billed reads. Remembering an answer is not the same as
+-- preventing the question being asked twice.
+--
+-- Outcomes:
+--   {claimed: false, reason: 'no_connection'}
+--   {claimed: false, reason: 'fresh', insights, insights_cached_at}
+--        a usable snapshot exists -- either it never expired, or another caller
+--        filled it while we queued on the lock. Serve it; do not call X.
+--   {claimed: false, reason: 'in_progress'}
+--        someone else is calling X right now. The caller serves whatever it has
+--        rather than paying for a duplicate read.
+--   {claimed: true, claim_id}
+--        go and read, then commit with that id.
+--
+-- `p_max_age_seconds` is passed in rather than hardcoded so the caller's own
+-- constant stays the single definition, and a forced refresh can narrow it to a
+-- floor without a second function.
+-- ---------------------------------------------------------------------------
+
+create or replace function public.claim_x_insights_read(
+  p_user_id uuid,
+  p_max_age_seconds integer default 900,
+  -- Generous relative to the two X calls it covers. Expiring a LIVE claim is
+  -- worse than waiting: it re-introduces the duplicate paid read this prevents.
+  p_claim_ttl_seconds integer default 60
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_conn public.x_account_connections%rowtype;
+  v_claim_id uuid;
+begin
+  if current_setting('request.jwt.claims', true)::jsonb->>'role' is distinct from 'service_role' then
+    raise exception 'claim_x_insights_read is service-role only';
+  end if;
+
+  -- Lock first, THEN read. The Facebook disconnect race (`20260825160000`) was
+  -- exactly the other order.
+  perform pg_advisory_xact_lock(hashtext('x_insights_read:' || p_user_id::text));
+
+  select * into v_conn from public.x_account_connections where user_id = p_user_id;
+  if not found then
+    return jsonb_build_object('claimed', false, 'reason', 'no_connection');
+  end if;
+
+  if v_conn.insights is not null
+     and v_conn.insights_cached_at is not null
+     and v_conn.insights_cached_at > now() - make_interval(secs => p_max_age_seconds) then
+    return jsonb_build_object(
+      'claimed', false,
+      'reason', 'fresh',
+      'insights', v_conn.insights,
+      'insights_cached_at', v_conn.insights_cached_at
+    );
+  end if;
+
+  if v_conn.insights_claimed_at is not null
+     and v_conn.insights_claimed_at > now() - make_interval(secs => p_claim_ttl_seconds) then
+    return jsonb_build_object(
+      'claimed', false,
+      'reason', 'in_progress',
+      'insights', v_conn.insights,
+      'insights_cached_at', v_conn.insights_cached_at
+    );
+  end if;
+
+  update public.x_account_connections
+  set insights_claimed_at = now(),
+      insights_claim_id = gen_random_uuid()
+  where id = v_conn.id
+  returning insights_claim_id into v_claim_id;
+
+  return jsonb_build_object('claimed', true, 'claim_id', v_claim_id);
+end;
+$$;
+
+revoke execute on function public.claim_x_insights_read(uuid, integer, integer)
+  from public, anon, authenticated;
+grant execute on function public.claim_x_insights_read(uuid, integer, integer) to service_role;
+
+-- ---------------------------------------------------------------------------
+-- commit_x_insights_read — store the snapshot, or release the claim.
+--
+-- Same stale-worker guard as the refresh commit: a caller whose claim has been
+-- taken over writes nothing. Here the cost of getting it wrong is smaller
+-- (a slightly older snapshot rather than a dead credential), and the guard is
+-- the same shape on purpose -- two claim mechanisms that behave differently is
+-- how one of them ends up wrong.
+-- ---------------------------------------------------------------------------
+
+create or replace function public.commit_x_insights_read(
+  p_user_id uuid,
+  p_claim_id uuid,
+  p_insights jsonb default null,
+  p_username text default null,
+  p_display_name text default null,
+  p_followers_count integer default null,
+  p_following_count integer default null,
+  p_tweet_count integer default null
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_conn public.x_account_connections%rowtype;
+begin
+  if current_setting('request.jwt.claims', true)::jsonb->>'role' is distinct from 'service_role' then
+    raise exception 'commit_x_insights_read is service-role only';
+  end if;
+
+  perform pg_advisory_xact_lock(hashtext('x_insights_read:' || p_user_id::text));
+
+  select * into v_conn from public.x_account_connections where user_id = p_user_id;
+  if not found then
+    return jsonb_build_object('committed', false, 'reason', 'no_connection');
+  end if;
+
+  if v_conn.insights_claim_id is distinct from p_claim_id then
+    return jsonb_build_object('committed', false, 'reason', 'stale_claim');
+  end if;
+
+  if p_insights is null then
+    update public.x_account_connections
+    set insights_claimed_at = null, insights_claim_id = null
+    where id = v_conn.id;
+    return jsonb_build_object('committed', false, 'reason', 'released');
+  end if;
+
+  update public.x_account_connections
+  set insights = p_insights,
+      insights_cached_at = now(),
+      insights_claimed_at = null,
+      insights_claim_id = null,
+      -- coalesce throughout: a metric X did not report must not overwrite a
+      -- figure we already hold with null. Absent is not zero, and it is not
+      -- "forget what you knew" either.
+      username = coalesce(p_username, username),
+      display_name = coalesce(p_display_name, display_name),
+      followers_count = coalesce(p_followers_count, followers_count),
+      following_count = coalesce(p_following_count, following_count),
+      tweet_count = coalesce(p_tweet_count, tweet_count),
+      last_synced_at = now(),
+      last_error = null
+  where id = v_conn.id;
+
+  return jsonb_build_object('committed', true);
+end;
+$$;
+
+revoke execute on function public.commit_x_insights_read(uuid, uuid, jsonb, text, text, integer, integer, integer)
+  from public, anon, authenticated;
+grant execute on function public.commit_x_insights_read(uuid, uuid, jsonb, text, text, integer, integer, integer)
   to service_role;

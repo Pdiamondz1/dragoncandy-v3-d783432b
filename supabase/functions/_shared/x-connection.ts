@@ -201,8 +201,11 @@ export async function getUsableAccessToken(
   try {
     const tokens = await refreshAccessToken(claim.refresh_token);
 
-    const { error: commitError } = await supabase.rpc('commit_x_token_refresh', {
+    const { data: commit, error: commitError } = await supabase.rpc('commit_x_token_refresh', {
       p_user_id: conn.user_id,
+      // Bound to the claim that produced it. A commit whose claim has since been
+      // taken over must write nothing — see the guard in the RPC.
+      p_claim_id: claim.claim_id,
       p_access_token: tokens.access_token,
       p_access_token_expires_at: tokens.expires_at,
       p_refresh_token: tokens.refresh_token,
@@ -222,6 +225,16 @@ export async function getUsableAccessToken(
       );
     }
 
+    if (commit?.reason === 'stale_claim') {
+      // We stalled past the claim TTL and someone else refreshed meanwhile. Our
+      // token pair is real but was minted from a refresh token they have since
+      // rotated away, so it is the loser. Use the winner's — never our own,
+      // which is exactly the write the RPC just refused.
+      const latest = await loadConnection(supabase, conn.user_id);
+      if (latest) return latest.access_token;
+      throw new XError('not_connected', 'No X account is connected', 404);
+    }
+
     return tokens.access_token;
   } catch (e) {
     const grantInvalid = e instanceof XGrantInvalidError;
@@ -231,6 +244,9 @@ export async function getUsableAccessToken(
     // that is fine, and `commit_x_token_refresh` leaves status alone unless told.
     const { error: releaseError } = await supabase.rpc('commit_x_token_refresh', {
       p_user_id: conn.user_id,
+      // Claim-bound too: a stalled worker releasing a claim it no longer holds
+      // would hand a third caller the same race it just lost.
+      p_claim_id: claim.claim_id,
       p_grant_invalid: grantInvalid,
       p_error: (e as Error).message.slice(0, 500),
     });

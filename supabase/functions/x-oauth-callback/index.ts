@@ -92,6 +92,31 @@ serve(async (req: Request) => {
     // account identity has to come from the token itself.
     const account = await fetchAccount(tokens.access_token);
 
+    // SWAPPING ACCOUNTS MUST NOT ORPHAN THE OLD GRANT.
+    //
+    // One row per user, so connecting a DIFFERENT X account overwrites the only
+    // copy of the previous account's tokens. Without this the old grant stays
+    // live at X, invisible in our UI and impossible for us to revoke — the
+    // user's only route is to find it themselves under Connected apps. That is
+    // precisely the "never abandon a live grant" invariant this connector
+    // claims to keep, and an upsert alone breaks it silently.
+    //
+    // Best-effort, and deliberately not fatal: the new grant is already minted
+    // and refusing here would leave the user with two live grants instead of
+    // one. A revoke that fails is logged and the connect proceeds.
+    const { data: existing } = await supabase
+      .from(TABLE)
+      .select('x_user_id, access_token')
+      .eq('user_id', user.id)
+      .maybeSingle();
+
+    if (existing && existing.x_user_id !== account.x_user_id) {
+      const previous = await revokeToken(existing.access_token as string);
+      console.error(
+        `[x-oauth-callback] replacing account ${existing.x_user_id}; previous grant: ${previous}`,
+      );
+    }
+
     const { error: upsertError } = await supabase.from(TABLE).upsert(
       {
         user_id: user.id,
