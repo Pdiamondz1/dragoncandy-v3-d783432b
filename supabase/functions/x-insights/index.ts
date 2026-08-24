@@ -152,6 +152,25 @@ serve(async (req: Request) => {
       if (!(e instanceof XError) || e.code !== 'unauthorized') throw e;
 
       const refreshed = await getUsableAccessToken(supabase, conn, { force: true });
+
+      // A forced refresh can legitimately hand back a token belonging to a
+      // DIFFERENT account: the 401 may have been caused by the user reconnecting
+      // elsewhere. Retrying with the new token against the OLD x_user_id asks X
+      // for someone else's timeline, which it refuses — surfacing a confusing
+      // error instead of the connection-changed recovery the client already
+      // knows how to handle.
+      const current = await loadConnection(supabase, user.id);
+      if (!current || current.x_user_id !== conn.x_user_id) {
+        return json(
+          req,
+          {
+            error: 'connection_changed',
+            message: 'Your X connection changed while we were loading it. Reloading now.',
+          },
+          409,
+        );
+      }
+
       try {
         insights = await fetchInsights(refreshed, conn.x_user_id);
       } catch (retryError) {
@@ -183,20 +202,25 @@ serve(async (req: Request) => {
       p_tweet_count: insights.account.tweet_count,
     });
 
-    // A STALE CLAIM HERE MEANS THESE FIGURES BELONG TO A DIFFERENT ACCOUNT.
+    // ANY UNCOMMITTED RESULT MEANS THESE FIGURES ARE NOT OURS TO SHOW.
     //
-    // The user reconnected — possibly to another X account — while this paid
-    // read was in flight, and `store_x_connection` cleared our claim. The
-    // numbers in hand are real, and they are the OLD account's. Returning them
-    // would put one account's analytics under another account's name on the
-    // card, and React Query would cache that under an unchanged key for fifteen
-    // minutes.
+    // Two ways it happens, and both end the same:
+    //   `stale_claim`   — the user reconnected mid-read, possibly to another
+    //                     account, and `store_x_connection` cleared our claim.
+    //   `no_connection` — a disconnect deleted the row while the read was in
+    //                     flight.
     //
-    // So they are thrown away. The read is already billed either way; the only
-    // question is whether we also show something false. See [[Honest
-    // Analytics]] — attributing a real measurement to the wrong subject is a
-    // fabrication even though every figure in it is true.
-    if (!writeError && commit?.committed === false && commit?.reason === 'stale_claim') {
+    // Either way the numbers in hand describe a connection that no longer
+    // exists. Returning them would put one account's analytics under another
+    // account's name, and React Query would cache that for fifteen minutes.
+    //
+    // Checked as "not committed" rather than by enumerating reasons, because a
+    // reason added later would otherwise fall through to the success path by
+    // default — and the safe default here is to discard. The read is already
+    // billed either way; the only question is whether we also show something
+    // false. See [[Honest Analytics]] — attributing a real measurement to the
+    // wrong subject is a fabrication even though every figure in it is true.
+    if (!writeError && commit?.committed === false) {
       return json(
         req,
         {
