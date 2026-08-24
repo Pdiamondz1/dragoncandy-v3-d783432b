@@ -231,7 +231,7 @@ describe('upload', () => {
   });
 
   it('refuses to claim success when Drive reports no checksum', async () => {
-    const fetchImpl: FetchLike = async (url: string, init?: RequestInit) => {
+    const fetchImpl: FetchLike = async (url: string) => {
       if (url.startsWith('https://oauth2.googleapis.com/token'))
         return new Response(JSON.stringify({ access_token: 'tok' }), { status: 200 });
       if (url.includes('/drive/v3/files?q=')) return new Response(JSON.stringify({ files: [] }), { status: 200 });
