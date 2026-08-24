@@ -731,7 +731,9 @@ holds no Toast credentials. See §6.
   bounds burst rate and not daily spend. Spend was bounded only by the billing project
   (`forward-deck-506417-g9`) still being on the **$300 / 90-day free trial**, which Google does not
   auto-charge past — a bound nobody chose and that disappears on **Activate**. Closed properly by an
-  application-level throttle in `verify-address` (`feat/verify-address-throttle`), mirroring
+  application-level throttle in `verify-address` (#490, **applied, deployed and verified on prod
+  2026-08-24**; caps 40/user/day, 6/user/min, 200/IP/day, so a fully abusive account costs
+  $0.20/day), mirroring
   `verify-phone`'s atomic reservation RPC. *A remedy nobody has opened the console to confirm is a
   hypothesis, and writing it down twice does not make it a control.*
   Two related corrections while there: the Maps key lives in **My First Project**
