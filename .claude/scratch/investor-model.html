@@ -1,0 +1,1279 @@
+<title>The Assumptions Ledger</title>
+<style>
+  :root {
+    color-scheme: light;
+    --ink: #142623;
+    --ink-soft: #4B5F5A;
+    --ink-faint: #7C918B;
+    --paper: #F4F6F3;
+    --paper-raised: #FFFFFF;
+    --paper-sunk: #EAEEE9;
+    --line: #D9E0DA;
+    --line-strong: #C2CCC4;
+    --accent: #0E7C6B;
+    --accent-bright: #0A6656;
+    --accent-wash: rgba(14, 124, 107, 0.10);
+    --measured: #0E7C6B;
+    --measured-wash: rgba(14, 124, 107, 0.12);
+    --benchmarked: #94640A;
+    --benchmarked-wash: rgba(166, 116, 26, 0.14);
+    --modeled: #5B4C9C;
+    --modeled-wash: rgba(107, 92, 165, 0.13);
+    --scenario: #2E4A63;
+    --scenario-wash: rgba(59, 81, 105, 0.12);
+    --negative: #92243F;
+    --negative-wash: rgba(168, 50, 80, 0.12);
+    --focus: #0E7C6B;
+    --tier-free: #C7D1CB;
+    --tier-starter: #7FBFAF;
+    --tier-growth: #0E7C6B;
+    --tier-pro: #A6741A;
+    --shadow: 0 1px 2px rgba(20, 38, 35, 0.06), 0 8px 24px -12px rgba(20, 38, 35, 0.18);
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      color-scheme: dark;
+      --ink: #ECEFEA;
+      --ink-soft: #A9BAB4;
+      --ink-faint: #74897F;
+      --paper: #0D1A17;
+      --paper-raised: #142924;
+      --paper-sunk: #0A1512;
+      --line: #24413A;
+      --line-strong: #315549;
+      --accent: #38DBBC;
+      --accent-bright: #63E7CE;
+      --accent-wash: rgba(56, 219, 188, 0.14);
+      --measured: #38DBBC;
+      --measured-wash: rgba(56, 219, 188, 0.16);
+      --benchmarked: #E3A93E;
+      --benchmarked-wash: rgba(227, 169, 62, 0.16);
+      --modeled: #B3A4EE;
+      --modeled-wash: rgba(179, 164, 238, 0.16);
+      --scenario: #86AFD1;
+      --scenario-wash: rgba(134, 175, 209, 0.16);
+      --negative: #E8879B;
+      --negative-wash: rgba(232, 135, 155, 0.16);
+      --focus: #63E7CE;
+      --tier-free: #33453F;
+      --tier-starter: #3F8271;
+      --tier-growth: #38DBBC;
+      --tier-pro: #E3A93E;
+      --shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 8px 28px -12px rgba(0, 0, 0, 0.55);
+    }
+  }
+
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --ink: #ECEFEA;
+    --ink-soft: #A9BAB4;
+    --ink-faint: #74897F;
+    --paper: #0D1A17;
+    --paper-raised: #142924;
+    --paper-sunk: #0A1512;
+    --line: #24413A;
+    --line-strong: #315549;
+    --accent: #38DBBC;
+    --accent-bright: #63E7CE;
+    --accent-wash: rgba(56, 219, 188, 0.14);
+    --measured: #38DBBC;
+    --measured-wash: rgba(56, 219, 188, 0.16);
+    --benchmarked: #E3A93E;
+    --benchmarked-wash: rgba(227, 169, 62, 0.16);
+    --modeled: #B3A4EE;
+    --modeled-wash: rgba(179, 164, 238, 0.16);
+    --scenario: #86AFD1;
+    --scenario-wash: rgba(134, 175, 209, 0.16);
+    --negative: #E8879B;
+    --negative-wash: rgba(232, 135, 155, 0.16);
+    --focus: #63E7CE;
+    --tier-free: #33453F;
+    --tier-starter: #3F8271;
+    --tier-growth: #38DBBC;
+    --tier-pro: #E3A93E;
+    --shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 8px 28px -12px rgba(0, 0, 0, 0.55);
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body {
+    margin: 0;
+    padding: 0;
+  }
+
+  body {
+    background: var(--paper);
+    color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    font-size: 15px;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .serif {
+    font-family: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, "Times New Roman", serif;
+  }
+
+  .mono, .num {
+    font-family: ui-monospace, "SF Mono", "Cascadia Code", "Roboto Mono", Menlo, Consolas, monospace;
+    font-variant-numeric: tabular-nums;
+  }
+
+  a { color: var(--accent-bright); }
+
+  .page {
+    max-width: 1180px;
+    margin: 0 auto;
+    padding: 2.5rem 1.5rem 4rem;
+    display: flex;
+    flex-direction: column;
+    gap: 2.75rem;
+  }
+
+  /* ---------- Masthead ---------- */
+
+  .masthead {
+    display: flex;
+    flex-direction: column;
+    gap: 1.1rem;
+    padding-bottom: 1.75rem;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .kicker {
+    margin: 0;
+    font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    font-size: 0.72rem;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+  }
+
+  .masthead h1 {
+    margin: 0;
+    font-size: clamp(1.9rem, 4vw, 2.6rem);
+    font-weight: 500;
+    letter-spacing: -0.01em;
+    text-wrap: balance;
+  }
+
+  .dek {
+    margin: 0;
+    max-width: 62ch;
+    color: var(--ink-soft);
+    font-size: 1rem;
+  }
+
+  .masthead-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-top: 0.35rem;
+  }
+
+  .legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    align-items: center;
+  }
+
+  .legend-label {
+    font-size: 0.78rem;
+    color: var(--ink-faint);
+    margin-right: 0.15rem;
+  }
+
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35em;
+    font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    font-size: 0.66rem;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    padding: 0.28em 0.55em;
+    border-radius: 3px;
+    white-space: nowrap;
+    line-height: 1;
+  }
+
+  .badge::before {
+    content: "";
+    width: 0.5em;
+    height: 0.5em;
+    border-radius: 50%;
+    background: currentColor;
+    flex: none;
+  }
+
+  .badge-measured { color: var(--measured); background: var(--measured-wash); }
+  .badge-benchmarked { color: var(--benchmarked); background: var(--benchmarked-wash); }
+  .badge-modeled { color: var(--modeled); background: var(--modeled-wash); }
+  .badge-scenario { color: var(--scenario); background: var(--scenario-wash); }
+
+  .reset-btn {
+    font-family: inherit;
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: var(--paper-raised);
+    background: var(--ink);
+    border: 1px solid var(--ink);
+    border-radius: 999px;
+    padding: 0.55em 1.1em;
+    cursor: pointer;
+    transition: opacity 0.15s ease;
+  }
+  .reset-btn:hover { opacity: 0.82; }
+  .reset-btn:active { opacity: 0.68; }
+
+  :focus-visible {
+    outline: 2px solid var(--focus);
+    outline-offset: 2px;
+  }
+
+  /* ---------- Workspace ---------- */
+
+  .workspace {
+    display: grid;
+    grid-template-columns: minmax(0, 360px) minmax(0, 1fr);
+    gap: 1.5rem;
+    align-items: start;
+  }
+
+  @media (max-width: 860px) {
+    .workspace { grid-template-columns: 1fr; }
+  }
+
+  .panel {
+    background: var(--paper-raised);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    box-shadow: var(--shadow);
+  }
+
+  .controls {
+    padding: 1.4rem 1.4rem 1.6rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+    position: sticky;
+    top: 1.25rem;
+    max-height: calc(100vh - 2.5rem);
+    overflow-y: auto;
+  }
+
+  @media (max-width: 860px) {
+    .controls { position: static; max-height: none; }
+  }
+
+  .control-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.95rem;
+  }
+
+  .control-group + .control-group {
+    padding-top: 1.35rem;
+    border-top: 1px solid var(--line);
+  }
+
+  .group-title {
+    margin: 0;
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+  }
+
+  .control { display: flex; flex-direction: column; gap: 0.4rem; }
+
+  .control-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 0.6rem;
+  }
+
+  .control-head label {
+    font-size: 0.86rem;
+    font-weight: 600;
+    color: var(--ink);
+  }
+
+  .control-row {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+  }
+
+  .control-row output,
+  .control-value {
+    font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    font-variant-numeric: tabular-nums;
+    font-size: 0.86rem;
+    font-weight: 600;
+    color: var(--accent-bright);
+    min-width: 3.6em;
+    text-align: right;
+  }
+
+  .control-source {
+    margin: 0;
+    font-size: 0.72rem;
+    color: var(--ink-faint);
+    font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  }
+
+  .control-derived {
+    margin: 0;
+    font-size: 0.76rem;
+    font-weight: 600;
+    color: var(--accent-bright);
+    font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .disclosure-note {
+    margin: 0;
+    padding: 0.8rem 1rem;
+    border-left: 3px solid var(--benchmarked);
+    background: var(--benchmarked-wash);
+    border-radius: 0 8px 8px 0;
+    font-size: 0.85rem;
+    color: var(--ink-soft);
+    max-width: 74ch;
+  }
+  .disclosure-note b { color: var(--ink); font-weight: 700; }
+
+  input[type="range"] {
+    -webkit-appearance: none;
+    appearance: none;
+    flex: 1;
+    height: 4px;
+    border-radius: 999px;
+    background: var(--line-strong);
+    outline-offset: 4px;
+  }
+  input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: var(--accent);
+    border: 2px solid var(--paper-raised);
+    box-shadow: 0 0 0 1px var(--accent);
+    cursor: pointer;
+    margin-top: -6px;
+  }
+  input[type="range"]::-moz-range-thumb {
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: var(--accent);
+    border: 2px solid var(--paper-raised);
+    box-shadow: 0 0 0 1px var(--accent);
+    cursor: pointer;
+  }
+  input[type="range"]::-moz-range-track {
+    height: 4px;
+    border-radius: 999px;
+    background: var(--line-strong);
+  }
+
+  .tier-ref {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.74rem;
+  }
+  .tier-ref th, .tier-ref td {
+    text-align: right;
+    padding: 0.28em 0.4em;
+    font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    font-variant-numeric: tabular-nums;
+  }
+  .tier-ref th:first-child, .tier-ref td:first-child {
+    text-align: left;
+    font-family: inherit;
+  }
+  .tier-ref thead th {
+    color: var(--ink-faint);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    font-size: 0.62rem;
+    border-bottom: 1px solid var(--line);
+    padding-bottom: 0.5em;
+  }
+  .tier-ref tbody td { color: var(--ink-soft); }
+
+  .mix-bar {
+    display: flex;
+    width: 100%;
+    height: 10px;
+    border-radius: 999px;
+    overflow: hidden;
+    border: 1px solid var(--line);
+    background: var(--paper-sunk);
+  }
+  .mix-bar span { display: block; height: 100%; }
+  .mix-swatch { display: inline-block; width: 0.6em; height: 0.6em; border-radius: 2px; margin-right: 0.4em; vertical-align: -0.05em; }
+  .mix-key { display: flex; flex-wrap: wrap; gap: 0.5rem 1rem; font-size: 0.72rem; color: var(--ink-soft); }
+
+  /* ---------- Outputs panel ---------- */
+
+  .outputs { padding: 1.4rem; display: flex; flex-direction: column; gap: 1.5rem; }
+
+  .stat-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1px;
+    background: var(--line);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    overflow: hidden;
+  }
+
+  .stat-tile {
+    background: var(--paper-raised);
+    padding: 1.1rem 1.15rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+  }
+
+  .stat-label {
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+  }
+
+  .stat-value {
+    font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    font-variant-numeric: tabular-nums;
+    font-size: 1.55rem;
+    font-weight: 600;
+    color: var(--ink);
+    letter-spacing: -0.01em;
+  }
+
+  .stat-value.accent { color: var(--accent-bright); }
+  .stat-value.negative { color: var(--negative); }
+
+  .stat-sub { font-size: 0.76rem; color: var(--ink-soft); }
+
+  .liquidity-card {
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 1.1rem 1.2rem;
+    background: var(--paper-sunk);
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+  }
+
+  .liquidity-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+  }
+
+  .liquidity-title { font-size: 0.86rem; font-weight: 700; }
+
+  .liquidity-pill {
+    font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    font-size: 0.78rem;
+    font-weight: 700;
+    padding: 0.3em 0.75em;
+    border-radius: 999px;
+  }
+  .liquidity-pill.liquid { color: var(--measured); background: var(--measured-wash); }
+  .liquidity-pill.neutral { color: var(--scenario); background: var(--scenario-wash); }
+
+  .liquidity-detail { font-size: 0.8rem; color: var(--ink-soft); }
+  .liquidity-detail b { color: var(--ink); font-weight: 600; }
+
+  .ramp-track {
+    position: relative;
+    height: 10px;
+    border-radius: 999px;
+    background: var(--line);
+    overflow: hidden;
+  }
+  .ramp-fill {
+    position: absolute;
+    inset: 0 auto 0 0;
+    background: var(--accent);
+    border-radius: 999px;
+  }
+  .ramp-fill.neutral { background: var(--scenario); }
+
+  /* ---------- Ledger sections ---------- */
+
+  .ledger-section {
+    display: flex;
+    flex-direction: column;
+    gap: 0.85rem;
+  }
+
+  .ledger-section h2 {
+    margin: 0;
+    font-size: 1.3rem;
+    font-weight: 500;
+    text-wrap: balance;
+  }
+
+  .section-note {
+    margin: 0;
+    max-width: 74ch;
+    color: var(--ink-soft);
+    font-size: 0.9rem;
+  }
+
+  .table-scroll {
+    overflow-x: auto;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    background: var(--paper-raised);
+    box-shadow: var(--shadow);
+  }
+
+  table.ledger {
+    width: 100%;
+    border-collapse: collapse;
+    min-width: 560px;
+  }
+
+  table.ledger th, table.ledger td {
+    padding: 0.7em 1em;
+    text-align: right;
+    border-bottom: 1px solid var(--line);
+    white-space: nowrap;
+  }
+
+  table.ledger th:first-child, table.ledger td:first-child {
+    text-align: left;
+    white-space: normal;
+  }
+
+  table.ledger thead th {
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    background: var(--paper-sunk);
+  }
+
+  table.ledger tbody td {
+    font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    font-variant-numeric: tabular-nums;
+    font-size: 0.86rem;
+    color: var(--ink);
+  }
+  table.ledger tbody td:first-child { font-family: inherit; font-weight: 600; }
+  table.ledger tbody tr:last-child td { border-bottom: none; }
+  table.ledger tbody tr:hover td { background: var(--accent-wash); }
+
+  /* ---------- Trajectory chart ---------- */
+
+  .trajectory-chart {
+    display: flex;
+    flex-direction: column;
+    gap: 1.1rem;
+    padding: 1.3rem 1.4rem;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    background: var(--paper-raised);
+    box-shadow: var(--shadow);
+  }
+
+  .traj-row { display: flex; flex-direction: column; gap: 0.35rem; }
+
+  .traj-row-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    font-size: 0.8rem;
+  }
+  .traj-row-head .year { font-weight: 700; }
+  .traj-row-head .band {
+    font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    font-variant-numeric: tabular-nums;
+    color: var(--ink-soft);
+    font-size: 0.78rem;
+  }
+
+  .traj-track {
+    position: relative;
+    height: 22px;
+    border-radius: 6px;
+    background: var(--paper-sunk);
+    border: 1px solid var(--line);
+    overflow: hidden;
+  }
+  .traj-fill {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    border-radius: 4px;
+  }
+  .traj-fill.revenue { background: linear-gradient(90deg, var(--measured), var(--accent-bright)); opacity: 0.9; }
+  .traj-fill.cost { background: var(--ink-faint); opacity: 0.55; }
+  .traj-fill.ebitda-pos { background: var(--measured); }
+  .traj-fill.ebitda-neg { background: var(--negative); }
+  .traj-zero {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 1px;
+    background: var(--ink-faint);
+    opacity: 0.6;
+  }
+
+  .traj-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+    font-size: 0.74rem;
+    color: var(--ink-soft);
+    padding-top: 0.2rem;
+    border-top: 1px solid var(--line);
+  }
+  .traj-legend span { display: inline-flex; align-items: center; gap: 0.4em; }
+  .traj-legend i { width: 0.7em; height: 0.7em; border-radius: 2px; display: inline-block; }
+
+  /* ---------- Footer ---------- */
+
+  .page-footer {
+    padding-top: 1.5rem;
+    border-top: 1px solid var(--line);
+    font-size: 0.78rem;
+    color: var(--ink-faint);
+  }
+  .page-footer code {
+    font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    background: var(--paper-sunk);
+    padding: 0.1em 0.35em;
+    border-radius: 3px;
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    .traj-fill, .ramp-fill, .mix-bar span { transition: width 0.25s ease, left 0.25s ease; }
+  }
+</style>
+
+<div class="page">
+
+  <header class="masthead">
+    <p class="kicker">DragonCandy · Investor Model</p>
+    <h1 class="serif">The Assumptions Ledger</h1>
+    <p class="dek">Move a driver and every figure downstream — revenue, margin, months to a liquid Hoboken marketplace — recomputes from the same formulas behind the static model. Nothing here moves except what a source doesn't already fix in place.</p>
+    <div class="masthead-row">
+      <div class="legend" aria-label="Provenance key">
+        <span class="legend-label">Provenance:</span>
+        <span class="badge badge-measured">Measured</span>
+        <span class="badge badge-benchmarked">Benchmarked</span>
+        <span class="badge badge-modeled">Modeled</span>
+        <span class="badge badge-scenario">Scenario</span>
+      </div>
+      <button type="button" id="resetBtn" class="reset-btn">Reset to committed model</button>
+    </div>
+  </header>
+
+  <main class="workspace">
+    <section class="panel controls" aria-label="Assumptions">
+
+      <div class="control-group">
+        <p class="group-title">Business scale</p>
+        <div class="control">
+          <div class="control-head">
+            <label for="businesses">Businesses on the platform</label>
+            <span class="badge badge-scenario">Scenario</span>
+          </div>
+          <div class="control-row">
+            <input type="range" id="businesses" min="0" max="300" step="1" value="100" list="businessTicks">
+            <output for="businesses" id="businessesOut">100</output>
+          </div>
+          <datalist id="businessTicks"><option value="0"></option><option value="100"></option><option value="200"></option><option value="300"></option></datalist>
+          <p class="control-source">the number you're choosing to inspect — not asserted anywhere</p>
+        </div>
+      </div>
+
+      <div class="control-group">
+        <p class="group-title">Campaign engine</p>
+
+        <div class="control">
+          <div class="control-head">
+            <label for="campaigns">Campaigns / restaurant / month</label>
+            <span class="badge badge-modeled">Modeled</span>
+          </div>
+          <div class="control-row">
+            <input type="range" id="campaigns" min="0.5" max="6" step="0.1" value="2.5">
+            <output for="campaigns" id="campaignsOut">2.5</output>
+          </div>
+          <p class="control-source">src/pitch/model/assumptions.ts</p>
+        </div>
+
+        <div class="control">
+          <div class="control-head">
+            <label for="deliverables">Deliverables / campaign</label>
+            <span class="badge badge-modeled">Modeled</span>
+          </div>
+          <div class="control-row">
+            <input type="range" id="deliverables" min="1" max="8" step="1" value="3">
+            <output for="deliverables" id="deliverablesOut">3</output>
+          </div>
+          <p class="control-source">src/pitch/model/assumptions.ts</p>
+          <p class="control-derived" id="avgCampaignValueOut">→ $337.50 avg. campaign value — derived: ($75 + $150) ÷ 2 × 3 deliverables</p>
+        </div>
+
+        <div class="control">
+          <div class="control-head">
+            <label for="creators">Creators / restaurant</label>
+            <span class="badge badge-benchmarked">Benchmarked</span>
+          </div>
+          <div class="control-row">
+            <input type="range" id="creators" min="1" max="10" step="1" value="4">
+            <output for="creators" id="creatorsOut">4</output>
+          </div>
+          <p class="control-source">Pricing &amp; Profitability Briefing v2, §5</p>
+        </div>
+      </div>
+
+      <div class="control-group">
+        <p class="group-title">Subscription tier mix <span class="badge badge-modeled" style="margin-left:0.4em;">Modeled</span></p>
+
+        <table class="tier-ref">
+          <thead><tr><th>Tier</th><th>Price/mo</th><th>Take rate</th></tr></thead>
+          <tbody>
+            <tr><td>Free</td><td>$0</td><td>10.0%</td></tr>
+            <tr><td>Starter</td><td>$149</td><td>7.0%</td></tr>
+            <tr><td>Growth</td><td>$449</td><td>5.0%</td></tr>
+            <tr><td>Pro</td><td>$899</td><td>3.0%</td></tr>
+          </tbody>
+        </table>
+        <p class="control-source">prices &amp; take rates are MEASURED — docs/STRIPE_PRICES.md, stripe-webhook — only the mix below is assumed</p>
+
+        <div class="mix-bar" id="mixBar" aria-hidden="true">
+          <span style="width:30%;background:var(--tier-free)"></span><span style="width:40%;background:var(--tier-starter)"></span><span style="width:25%;background:var(--tier-growth)"></span><span style="width:5%;background:var(--tier-pro)"></span>
+        </div>
+        <div class="mix-key">
+          <span><i class="mix-swatch" style="background:var(--tier-free)"></i>Free</span>
+          <span><i class="mix-swatch" style="background:var(--tier-starter)"></i>Starter</span>
+          <span><i class="mix-swatch" style="background:var(--tier-growth)"></i>Growth</span>
+          <span><i class="mix-swatch" style="background:var(--tier-pro)"></i>Pro</span>
+        </div>
+
+        <div class="control">
+          <div class="control-head"><label for="mixFree">Free share</label></div>
+          <div class="control-row"><input type="range" id="mixFree" min="0" max="100" step="1" value="30"><output for="mixFree" id="mixFreeOut">30%</output></div>
+        </div>
+        <div class="control">
+          <div class="control-head"><label for="mixStarter">Starter share</label></div>
+          <div class="control-row"><input type="range" id="mixStarter" min="0" max="100" step="1" value="40"><output for="mixStarter" id="mixStarterOut">40%</output></div>
+        </div>
+        <div class="control">
+          <div class="control-head"><label for="mixGrowth">Growth share</label></div>
+          <div class="control-row"><input type="range" id="mixGrowth" min="0" max="100" step="1" value="25"><output for="mixGrowth" id="mixGrowthOut">25%</output></div>
+        </div>
+        <div class="control">
+          <div class="control-head"><label for="mixPro">Pro share</label></div>
+          <div class="control-row"><input type="range" id="mixPro" min="0" max="100" step="1" value="5"><output for="mixPro" id="mixProOut">5%</output></div>
+        </div>
+        <p class="control-source">moving one share redistributes the rest proportionally — always sums to 100%</p>
+      </div>
+
+      <div class="control-group">
+        <p class="group-title">Liquidity ramp — Hoboken</p>
+        <div class="control">
+          <div class="control-head">
+            <label for="restaurantsAdded">Restaurants added / month</label>
+            <span class="badge badge-modeled">Modeled</span>
+          </div>
+          <div class="control-row">
+            <input type="range" id="restaurantsAdded" min="0" max="20" step="1" value="2">
+            <output for="restaurantsAdded" id="restaurantsAddedOut">2</output>
+          </div>
+        </div>
+        <div class="control">
+          <div class="control-head">
+            <label for="creatorsAdded">Creators added / month</label>
+            <span class="badge badge-modeled">Modeled</span>
+          </div>
+          <div class="control-row">
+            <input type="range" id="creatorsAdded" min="0" max="40" step="1" value="8">
+            <output for="creatorsAdded" id="creatorsAddedOut">8</output>
+          </div>
+          <p class="control-source">Investor Model, §Marketplace liquidity</p>
+        </div>
+      </div>
+
+      <div class="control-group">
+        <p class="group-title">Operating expense</p>
+        <div class="control">
+          <div class="control-head">
+            <label for="opex">Monthly operating expense</label>
+            <span class="badge badge-modeled">Modeled</span>
+          </div>
+          <div class="control-row">
+            <input type="range" id="opex" min="0" max="500000" step="5000" value="0">
+            <output for="opex" id="opexOut">$0</output>
+          </div>
+          <p class="control-source">payroll, marketing, legal — everything below the gross-profit line; defaults to $0 because none of it is sourced per month</p>
+        </div>
+      </div>
+
+    </section>
+
+    <section class="panel outputs" aria-label="Live outputs">
+      <div class="stat-grid">
+        <div class="stat-tile">
+          <span class="stat-label">Monthly revenue</span>
+          <span class="stat-value accent num" id="outMonthlyRevenue">$27,755</span>
+          <span class="stat-sub" id="outBusinessesLabel">at 100 businesses</span>
+        </div>
+        <div class="stat-tile">
+          <span class="stat-label">Annual revenue</span>
+          <span class="stat-value num" id="outAnnualRevenue">$333,060</span>
+          <span class="stat-sub">monthly × 12</span>
+        </div>
+        <div class="stat-tile">
+          <span class="stat-label">Gross margin</span>
+          <span class="stat-value num" id="outGrossMargin">90.4%</span>
+          <span class="stat-sub" id="outGrossProfit">$25,093 gross profit / mo</span>
+        </div>
+        <div class="stat-tile">
+          <span class="stat-label">Monthly campaign volume (GMV)</span>
+          <span class="stat-value num" id="outGmv">$84,375</span>
+          <span class="stat-sub" id="outCampaignCount">250 campaigns / mo</span>
+        </div>
+        <div class="stat-tile">
+          <span class="stat-label">EBITDA / month</span>
+          <span class="stat-value num" id="outEbitda">$25,093</span>
+          <span class="stat-sub" id="outEbitdaNote">gross profit − $0 opex = gross profit, since opex is $0</span>
+        </div>
+      </div>
+
+      <div class="liquidity-card">
+        <div class="liquidity-head">
+          <span class="liquidity-title">Months to Hoboken liquidity</span>
+          <span class="liquidity-pill liquid" id="liquidityPill">Liquid in month 3</span>
+        </div>
+        <div class="ramp-track" aria-hidden="true"><span class="ramp-fill" id="ramFill" style="width:8.3%"></span></div>
+        <p class="liquidity-detail" id="liquidityDetail">
+          Liquid means ≥5 campaigns open at once and ≥3 applicants per campaign over its open window (14 days) — not within any fixed hours-since-posted slice; we don't have arrival-curve data yet to compute that honestly. At <b>2</b> restaurants and <b>8</b> creators added per month, both clear in month <b>3</b>.
+        </p>
+      </div>
+    </section>
+  </main>
+
+  <section class="ledger-section" aria-label="Scale table">
+    <h2 class="serif">What 100 / 1,000 / 10,000 businesses looks like</h2>
+    <p class="section-note">Steady-state economics at a fixed business count for one month, annualized — not a calendar-time projection of when we reach that count. Recomputes from the campaign-engine and tier-mix controls above; independent of the "businesses" scenario slider.</p>
+    <p class="disclosure-note">Monthly churn is <b>benchmarked at 4%</b> (kill-switch threshold 6% — docs/PROJECT_CONTEXT.md §3), but it is <b>not modelled</b> in any figure below. No formula on this page applies a churn drag. So read this table as what the business looks like while holding a business count, not as a forecast net of the customers who leave along the way — a reader who assumes churn is already baked in is reading these numbers more favorably than they should.</p>
+    <div class="table-scroll">
+      <table class="ledger">
+        <thead>
+          <tr><th>Businesses</th><th>Creators</th><th>Monthly campaign volume</th><th>Monthly revenue</th><th>Annual revenue</th><th>Gross margin</th></tr>
+        </thead>
+        <tbody id="scaleTableBody"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="ledger-section" aria-label="Three-year trajectory">
+    <h2 class="serif">Three-year trajectory</h2>
+    <p class="section-note">Fixed bands — MODELED, not slider-dependent. Cost is all-in (Stripe, AI, infrastructure, payroll, marketing, legal). Low EBITDA pairs low revenue with high cost; high EBITDA pairs high revenue with low cost.</p>
+    <div class="trajectory-chart" id="trajectoryChart"></div>
+    <div class="table-scroll">
+      <table class="ledger">
+        <thead><tr><th>Year</th><th>Revenue</th><th>Total cost</th><th>EBITDA</th></tr></thead>
+        <tbody id="trajectoryTableBody"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <footer class="page-footer">
+    <p>Generated to agree with <code>docs/DragonCandy_Investor_Model.md</code>, itself produced by <code>npm run model:doc</code> from <code>src/pitch/model/</code>. Public-safe: pre-seed budget lines and the raise figure are omitted.</p>
+  </footer>
+
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  var TIER_PRICES = { free: 0, starter: 149, growth: 449, pro: 899 };
+  var TIER_RATES = { free: 0.10, starter: 0.07, growth: 0.05, pro: 0.03 };
+  var TIER_KEYS = ["free", "starter", "growth", "pro"];
+
+  var DEFAULTS = {
+    businessesPos: 100,
+    campaigns: 2.5,
+    deliverables: 3,
+    creators: 4,
+    mix: { free: 30, starter: 40, growth: 25, pro: 5 },
+    restaurantsAdded: 2,
+    creatorsAdded: 8,
+    opex: 0
+  };
+
+  var state = {
+    businessesPos: DEFAULTS.businessesPos,
+    campaigns: DEFAULTS.campaigns,
+    deliverables: DEFAULTS.deliverables,
+    creators: DEFAULTS.creators,
+    mix: Object.assign({}, DEFAULTS.mix),
+    restaurantsAdded: DEFAULTS.restaurantsAdded,
+    creatorsAdded: DEFAULTS.creatorsAdded,
+    opex: DEFAULTS.opex
+  };
+
+  // ---------- formatting ----------
+
+  var currencyFmt = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 });
+  var intFmt = new Intl.NumberFormat("en-US");
+
+  function money(n) { return currencyFmt.format(Math.round(n)); }
+  function intg(n) { return intFmt.format(Math.round(n)); }
+  function pct1(n) { return n.toFixed(1) + "%"; }
+
+  // ---------- businesses slider mapping (0..300 -> 0..10,000, log-ish) ----------
+
+  function posToBusinesses(v) {
+    v = Math.max(0, Math.min(300, v));
+    if (v <= 100) return Math.round(v);
+    if (v <= 200) {
+      var t = (v - 100) / 100;
+      return Math.round(100 * Math.pow(10, t));
+    }
+    var t2 = (v - 200) / 100;
+    return Math.round(1000 * Math.pow(10, t2));
+  }
+
+  // ---------- core formulas (exactly as specified in the model doc) ----------
+
+  function coreFactors() {
+    var avgCampaignValue = ((75 + 150) / 2) * state.deliverables;
+    var mixFrac = {};
+    TIER_KEYS.forEach(function (k) { mixFrac[k] = state.mix[k] / 100; });
+    var blendedSubscription = 0, blendedTakeRate = 0;
+    TIER_KEYS.forEach(function (k) {
+      blendedSubscription += mixFrac[k] * TIER_PRICES[k];
+      blendedTakeRate += mixFrac[k] * TIER_RATES[k];
+    });
+    return { avgCampaignValue: avgCampaignValue, blendedSubscription: blendedSubscription, blendedTakeRate: blendedTakeRate };
+  }
+
+  function atRestaurants(restaurants) {
+    var f = coreFactors();
+    var campaigns = restaurants * state.campaigns;
+    var gmv = campaigns * f.avgCampaignValue;
+    var subscriptionRevenue = restaurants * f.blendedSubscription;
+    var takeRateRevenue = gmv * f.blendedTakeRate;
+    var totalRevenue = subscriptionRevenue + takeRateRevenue;
+    var costOfRevenue = gmv * 0.029 + campaigns * 0.30 + restaurants * (1.20 + 0.20);
+    var grossProfit = totalRevenue - costOfRevenue;
+    var grossMarginPct = totalRevenue === 0 ? 0 : (grossProfit / totalRevenue) * 100;
+    return {
+      campaigns: campaigns, gmv: gmv, subscriptionRevenue: subscriptionRevenue,
+      takeRateRevenue: takeRateRevenue, totalRevenue: totalRevenue,
+      costOfRevenue: costOfRevenue, grossProfit: grossProfit, grossMarginPct: grossMarginPct
+    };
+  }
+
+  function computeLiquidity(capMonths) {
+    capMonths = capMonths || 36;
+    for (var m = 1; m <= capMonths; m++) {
+      var restaurants = state.restaurantsAdded * m;
+      var creators = state.creatorsAdded * m;
+      var campaigns = restaurants * state.campaigns;
+      var openCampaigns = campaigns * (14 / 30);
+      var applicantsPerCampaign = campaigns === 0 ? 0 : (creators * 2) / campaigns;
+      if (openCampaigns >= 5 && applicantsPerCampaign >= 3) {
+        return { liquid: true, month: m };
+      }
+    }
+    return { liquid: false, month: null };
+  }
+
+  // ---------- fixed three-year trajectory (MODELED, not slider-dependent) ----------
+
+  var TRAJECTORY = [
+    { year: 1, revenueLow: 300000, revenueHigh: 600000, costLow: 590000, costHigh: 830000 },
+    { year: 2, revenueLow: 2000000, revenueHigh: 4500000, costLow: 1100000, costHigh: 1800000 },
+    { year: 3, revenueLow: 7000000, revenueHigh: 12000000, costLow: 2200000, costHigh: 3800000 }
+  ].map(function (r) {
+    return Object.assign({}, r, {
+      ebitdaLow: r.revenueLow - r.costHigh,
+      ebitdaHigh: r.revenueHigh - r.costLow
+    });
+  });
+
+  // ---------- DOM refs ----------
+
+  var $ = function (id) { return document.getElementById(id); };
+
+  var businessesEl = $("businesses"), businessesOut = $("businessesOut");
+  var campaignsEl = $("campaigns"), campaignsOut = $("campaignsOut");
+  var deliverablesEl = $("deliverables"), deliverablesOut = $("deliverablesOut");
+  var creatorsEl = $("creators"), creatorsOut = $("creatorsOut");
+  var mixEls = { free: $("mixFree"), starter: $("mixStarter"), growth: $("mixGrowth"), pro: $("mixPro") };
+  var mixOuts = { free: $("mixFreeOut"), starter: $("mixStarterOut"), growth: $("mixGrowthOut"), pro: $("mixProOut") };
+  var restaurantsAddedEl = $("restaurantsAdded"), restaurantsAddedOut = $("restaurantsAddedOut");
+  var creatorsAddedEl = $("creatorsAdded"), creatorsAddedOut = $("creatorsAddedOut");
+  var opexEl = $("opex"), opexOut = $("opexOut");
+
+  var mixBar = $("mixBar");
+
+  // ---------- render ----------
+
+  function renderControlsOut() {
+    var biz = posToBusinesses(state.businessesPos);
+    businessesOut.textContent = intg(biz);
+    campaignsOut.textContent = state.campaigns.toFixed(1);
+    deliverablesOut.textContent = String(state.deliverables);
+    creatorsOut.textContent = String(state.creators);
+    TIER_KEYS.forEach(function (k) {
+      mixOuts[k].textContent = Math.round(state.mix[k]) + "%";
+    });
+    restaurantsAddedOut.textContent = String(state.restaurantsAdded);
+    creatorsAddedOut.textContent = String(state.creatorsAdded);
+    opexOut.textContent = money(state.opex);
+
+    var spans = mixBar.querySelectorAll("span");
+    TIER_KEYS.forEach(function (k, i) {
+      spans[i].style.width = state.mix[k] + "%";
+    });
+
+    var avgCampaignValue = ((75 + 150) / 2) * state.deliverables;
+    $("avgCampaignValueOut").textContent = "→ " + avgCampaignValue.toLocaleString("en-US", { style: "currency", currency: "USD", minimumFractionDigits: 2 }) +
+      " avg. campaign value — derived: ($75 + $150) ÷ 2 × " + state.deliverables + " deliverable" + (state.deliverables === 1 ? "" : "s");
+  }
+
+  function renderOutputs() {
+    var biz = posToBusinesses(state.businessesPos);
+    var r = atRestaurants(biz);
+
+    $("outMonthlyRevenue").textContent = money(r.totalRevenue);
+    $("outBusinessesLabel").textContent = "at " + intg(biz) + " business" + (biz === 1 ? "" : "es");
+    $("outAnnualRevenue").textContent = money(r.totalRevenue * 12);
+    $("outGrossMargin").textContent = pct1(r.grossMarginPct);
+    $("outGrossProfit").textContent = money(r.grossProfit) + " gross profit / mo";
+    $("outGmv").textContent = money(r.gmv);
+    $("outCampaignCount").textContent = intg(r.campaigns) + " campaigns / mo";
+
+    var gm = $("outGrossMargin");
+    gm.parentElement.querySelector(".stat-value") === gm && (gm.className = "stat-value num" + (r.grossMarginPct < 0 ? " negative" : ""));
+
+    // EBITDA = gross profit minus operating expense. At opex $0 this equals gross profit —
+    // shown explicitly so it never reads as gross profit quietly relabelled.
+    var ebitda = r.grossProfit - state.opex;
+    var ebitdaEl = $("outEbitda");
+    ebitdaEl.textContent = money(ebitda);
+    ebitdaEl.className = "stat-value num" + (ebitda < 0 ? " negative" : "");
+    $("outEbitdaNote").textContent = state.opex === 0
+      ? "= gross profit (" + money(r.grossProfit) + "), since opex is $0"
+      : money(r.grossProfit) + " gross profit − " + money(state.opex) + " opex";
+
+    // liquidity
+    var liq = computeLiquidity(36);
+    var pill = $("liquidityPill");
+    var detail = $("liquidityDetail");
+    var fill = $("ramFill");
+    if (liq.liquid) {
+      pill.textContent = "Liquid in month " + liq.month;
+      pill.className = "liquidity-pill liquid";
+      fill.className = "ramp-fill";
+      fill.style.width = Math.max(4, (liq.month / 36) * 100) + "%";
+      detail.innerHTML = "Liquid means ≥ 5 campaigns open at once and ≥ 3 applicants per campaign over its open window (14 days) — not within any fixed hours-since-posted slice. At <b>" +
+        state.restaurantsAdded + "</b> restaurant" + (state.restaurantsAdded === 1 ? "" : "s") + " and <b>" +
+        state.creatorsAdded + "</b> creator" + (state.creatorsAdded === 1 ? "" : "s") +
+        " added per month, both clear in month <b>" + liq.month + "</b>.";
+    } else {
+      pill.textContent = "Never liquid within 36 months";
+      pill.className = "liquidity-pill neutral";
+      fill.className = "ramp-fill neutral";
+      fill.style.width = "100%";
+      detail.innerHTML = "Liquid means ≥ 5 campaigns open at once and ≥ 3 applicants per campaign over its open window (14 days) — not within any fixed hours-since-posted slice. At <b>" +
+        state.restaurantsAdded + "</b> restaurant" + (state.restaurantsAdded === 1 ? "" : "s") + " and <b>" +
+        state.creatorsAdded + "</b> creator" + (state.creatorsAdded === 1 ? "" : "s") +
+        " added per month, creator supply never catches up — more restaurants makes the shortage worse, not better. That's a real answer at this ratio, not an error.";
+    }
+  }
+
+  function renderScaleTable() {
+    var rows = [100, 1000, 10000];
+    var body = $("scaleTableBody");
+    body.innerHTML = "";
+    rows.forEach(function (n) {
+      var r = atRestaurants(n);
+      var creators = n * state.creators;
+      var tr = document.createElement("tr");
+      tr.innerHTML =
+        "<td>" + intg(n) + "</td>" +
+        "<td>" + intg(creators) + "</td>" +
+        "<td>" + money(r.gmv) + "</td>" +
+        "<td>" + money(r.totalRevenue) + "</td>" +
+        "<td>" + money(r.totalRevenue * 12) + "</td>" +
+        "<td>" + pct1(r.grossMarginPct) + "</td>";
+      body.appendChild(tr);
+    });
+  }
+
+  function renderTrajectory() {
+    var body = $("trajectoryTableBody");
+    body.innerHTML = "";
+    var chart = $("trajectoryChart");
+    chart.innerHTML = "";
+
+    var revMax = 12000000; // shared linear scale across years, both bars positive
+    var ebMax = 9800000;   // symmetric diverging scale for EBITDA (max |value| across years)
+
+    TRAJECTORY.forEach(function (r) {
+      var tr = document.createElement("tr");
+      tr.innerHTML =
+        "<td>Year " + r.year + "</td>" +
+        "<td>" + money(r.revenueLow) + "–" + money(r.revenueHigh) + "</td>" +
+        "<td>" + money(r.costLow) + "–" + money(r.costHigh) + "</td>" +
+        "<td>" + money(r.ebitdaLow) + "–" + money(r.ebitdaHigh) + "</td>";
+      body.appendChild(tr);
+
+      var row = document.createElement("div");
+      row.className = "traj-row";
+
+      // Revenue bar
+      var revLeft = (r.revenueLow / revMax) * 100;
+      var revWidth = ((r.revenueHigh - r.revenueLow) / revMax) * 100;
+      // Cost bar
+      var costLeft = (r.costLow / revMax) * 100;
+      var costWidth = ((r.costHigh - r.costLow) / revMax) * 100;
+      // EBITDA diverging bar, zero at 50%
+      var ebLeftPct = 50 + (r.ebitdaLow / ebMax) * 50;
+      var ebRightPct = 50 + (r.ebitdaHigh / ebMax) * 50;
+      var ebNeg = r.ebitdaLow < 0;
+      var ebPos = r.ebitdaHigh > 0;
+
+      row.innerHTML =
+        '<div class="traj-row-head"><span class="year">Year ' + r.year + '</span>' +
+        '<span class="band">Revenue ' + money(r.revenueLow) + '–' + money(r.revenueHigh) + '</span></div>' +
+        '<div class="traj-track" aria-hidden="true"><div class="traj-fill revenue" style="left:' + revLeft + '%;width:' + revWidth + '%"></div></div>' +
+        '<div class="traj-row-head"><span></span><span class="band">Cost ' + money(r.costLow) + '–' + money(r.costHigh) + '</span></div>' +
+        '<div class="traj-track" aria-hidden="true"><div class="traj-fill cost" style="left:' + costLeft + '%;width:' + costWidth + '%"></div></div>' +
+        '<div class="traj-row-head"><span></span><span class="band">EBITDA ' + money(r.ebitdaLow) + '–' + money(r.ebitdaHigh) + '</span></div>' +
+        '<div class="traj-track" aria-hidden="true">' +
+          (ebNeg ? '<div class="traj-fill ebitda-neg" style="left:' + ebLeftPct + '%;width:' + (50 - ebLeftPct) + '%"></div>' : '') +
+          (ebPos ? '<div class="traj-fill ebitda-pos" style="left:50%;width:' + (ebRightPct - 50) + '%"></div>' : '') +
+          '<div class="traj-zero" style="left:50%"></div>' +
+        '</div>';
+
+      chart.appendChild(row);
+    });
+
+    var legend = document.createElement("div");
+    legend.className = "traj-legend";
+    legend.innerHTML =
+      '<span><i style="background:var(--measured)"></i>Revenue / positive EBITDA</span>' +
+      '<span><i style="background:var(--ink-faint);opacity:.55"></i>Total cost</span>' +
+      '<span><i style="background:var(--negative)"></i>Negative EBITDA</span>';
+    chart.appendChild(legend);
+  }
+
+  function renderAll() {
+    renderControlsOut();
+    renderOutputs();
+    renderScaleTable();
+    renderTrajectory();
+  }
+
+  // ---------- tier mix linked-slider logic ----------
+
+  function adjustMix(changedKey, newValue) {
+    newValue = Math.max(0, Math.min(100, newValue));
+    var others = TIER_KEYS.filter(function (k) { return k !== changedKey; });
+    var oldOthersSum = others.reduce(function (s, k) { return s + state.mix[k]; }, 0);
+    var remaining = 100 - newValue;
+    var updated = {};
+    updated[changedKey] = newValue;
+    if (oldOthersSum <= 0) {
+      others.forEach(function (k) { updated[k] = remaining / others.length; });
+    } else {
+      others.forEach(function (k) { updated[k] = (state.mix[k] / oldOthersSum) * remaining; });
+    }
+    state.mix = updated;
+  }
+
+  // ---------- wire events ----------
+
+  businessesEl.addEventListener("input", function () {
+    state.businessesPos = Number(businessesEl.value);
+    renderAll();
+  });
+  campaignsEl.addEventListener("input", function () {
+    state.campaigns = Number(campaignsEl.value);
+    renderAll();
+  });
+  deliverablesEl.addEventListener("input", function () {
+    state.deliverables = Number(deliverablesEl.value);
+    renderAll();
+  });
+  creatorsEl.addEventListener("input", function () {
+    state.creators = Number(creatorsEl.value);
+    renderAll();
+  });
+  TIER_KEYS.forEach(function (k) {
+    mixEls[k].addEventListener("input", function () {
+      adjustMix(k, Number(mixEls[k].value));
+      TIER_KEYS.forEach(function (kk) { mixEls[kk].value = state.mix[kk]; });
+      renderAll();
+    });
+  });
+  restaurantsAddedEl.addEventListener("input", function () {
+    state.restaurantsAdded = Number(restaurantsAddedEl.value);
+    renderAll();
+  });
+  creatorsAddedEl.addEventListener("input", function () {
+    state.creatorsAdded = Number(creatorsAddedEl.value);
+    renderAll();
+  });
+  opexEl.addEventListener("input", function () {
+    state.opex = Number(opexEl.value);
+    renderAll();
+  });
+
+  $("resetBtn").addEventListener("click", function () {
+    state = {
+      businessesPos: DEFAULTS.businessesPos,
+      campaigns: DEFAULTS.campaigns,
+      deliverables: DEFAULTS.deliverables,
+      creators: DEFAULTS.creators,
+      mix: Object.assign({}, DEFAULTS.mix),
+      restaurantsAdded: DEFAULTS.restaurantsAdded,
+      creatorsAdded: DEFAULTS.creatorsAdded,
+      opex: DEFAULTS.opex
+    };
+    businessesEl.value = state.businessesPos;
+    campaignsEl.value = state.campaigns;
+    deliverablesEl.value = state.deliverables;
+    creatorsEl.value = state.creators;
+    TIER_KEYS.forEach(function (k) { mixEls[k].value = state.mix[k]; });
+    restaurantsAddedEl.value = state.restaurantsAdded;
+    creatorsAddedEl.value = state.creatorsAdded;
+    opexEl.value = state.opex;
+    renderAll();
+  });
+
+  renderAll();
+})();
+</script>

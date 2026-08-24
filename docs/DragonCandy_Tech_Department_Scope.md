@@ -67,8 +67,10 @@ reviews, private creator crews, a rewards system, and publishing to Instagram, T
 The iPhone app runs on a real phone.
 
 **What isn't true yet.** No paying customers. About 30 users, all organic. Stripe is still in test
-mode. We spend about $390 a month to run everything. We haven't set a launch date, because the
-content delivery and payment flows aren't finished.
+mode. We spend about $569 a month to run everything (as of 2026-08-23: Lovable $50, Anthropic $200,
+Outstand $249, Supabase $45, OpenAI $25 — this said $390 until Outstand raised its price to $249;
+correcting it here because this document has already been sent to external vendors). We haven't
+set a launch date, because the content delivery and payment flows aren't finished.
 
 **The real problem: one person can't hold this anymore.**
 
