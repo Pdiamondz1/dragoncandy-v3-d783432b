@@ -600,7 +600,21 @@ export function OnboardingWizard() {
      */
     <div className="min-h-[100dvh] w-full overflow-x-hidden bg-white text-dc-text flex items-center justify-center">
       <AppCard className="w-full md:max-w-lg md:my-8 border-0 shadow-none md:border md:shadow-dc-sm md:rounded-3xl p-0">
-      <div className="flex flex-col min-h-[100dvh] md:min-h-[580px] max-w-md mx-auto px-5 py-6 md:py-8">
+      {/*
+        `pt-[calc(1.5rem+env(safe-area-inset-top))]` — the progress bar is the topmost
+        thing on this screen, and `index.html` sets `viewport-fit=cover`, so the layout
+        viewport runs UNDER the status bar and Dynamic Island. Without paying the inset
+        back, the bar and its "Step N of M" label are drawn behind the island and simply
+        are not there for the user. `md:` resets it: the desktop card is centred in the
+        page and never touches the top of the viewport, so an inset there is just a gap.
+
+        Found on an iPhone 17 Pro simulator, and it is only findable there — mobile
+        Safari's URL bar occupies exactly this space, so the web is structurally incapable
+        of showing it. Confirmed PRE-EXISTING by building the previous commit against the
+        same shell: it clips identically, so this is not fallout from moving off AuthShell.
+        Same class as the `MobileTopNav` / landing-header fixes in DESIGN_SYSTEM.md.
+      */}
+      <div className="flex flex-col min-h-[100dvh] md:min-h-[580px] max-w-md mx-auto px-5 pt-[calc(1.5rem+env(safe-area-inset-top))] pb-6 md:pt-8 md:pb-8">
         {/* Header */}
         {!isReady && (
           <motion.div
