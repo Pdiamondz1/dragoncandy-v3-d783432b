@@ -115,8 +115,11 @@ export interface FacebookDisconnectResult {
    * - `expired` — we could not tell Meta, because the USER token that revokes
    *   lasts ~60 days while the Page token that reads never expires. The card
    *   must say this plainly rather than implying the grant is gone.
+   * - `kept_for_other_pages` — the grant is SHARED. Revoking it would invalidate
+   *   every other connected Page's token at once, so it is handed back only when
+   *   the last Page on it goes. The card must not claim a withdrawal here.
    */
-  revoked?: 'revoked' | 'already_invalid' | 'already_gone' | 'expired';
+  revoked?: 'revoked' | 'already_invalid' | 'already_gone' | 'expired' | 'kept_for_other_pages';
   message?: string;
 }
 

@@ -274,6 +274,31 @@ describe('fetchPageInsights — degrading without lying', () => {
     expect(s.unavailable_metrics).toEqual(['a', 'b']);
   });
 
+  it('returns the empty summary when the LAST metric is dropped on the final attempt', async () => {
+    // The boundary Codex found, and it sits at exactly the size of the default
+    // list: with MAX_METRIC_RETRIES + 1 metrics, the last permitted request
+    // drops the final metric, and the emptiness check at the TOP of the loop is
+    // never reached because the loop has ended. The result was a thrown
+    // `metrics_unavailable` when we already had the real answer in hand.
+    //
+    // Forced control: PAGE_DAILY_METRICS.length must equal the retry budget + 1,
+    // or this test silently stops covering the case it was written for.
+    expect(PAGE_DAILY_METRICS.length).toBe(MAX_METRIC_RETRIES + 1);
+
+    const metrics = [...PAGE_DAILY_METRICS];
+    const { impl } = stubFetch(
+      metrics.map((m) => ({
+        status: 400,
+        body: { error: { code: 100, message: `(#100) ${m} is invalid` } },
+      })),
+    );
+    const s = await fetchPageInsights({ ...base, metrics, fetchImpl: impl });
+
+    expect(s.days_with_data).toBe(0);
+    expect(s.totals).toEqual({});
+    expect(s.unavailable_metrics).toEqual([...metrics].sort());
+  });
+
   it('is bounded — it cannot retry more than MAX_METRIC_RETRIES + 1 times', async () => {
     // Every response names a metric, so without the bound this would keep going
     // until the candidate list emptied. With more candidates than the budget,

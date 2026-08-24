@@ -14,7 +14,12 @@ import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'npm:@supabase/supabase-js@2';
 import { corsHeaders } from '../_shared/cors.ts';
 import { FacebookError, revokePermissions } from '../_shared/facebook-pages.ts';
-import { canRevoke, loadConnection, TABLE } from '../_shared/facebook-connection.ts';
+import {
+  canRevoke,
+  countConnectionsForFacebookUser,
+  loadConnection,
+  TABLE,
+} from '../_shared/facebook-connection.ts';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
@@ -58,6 +63,38 @@ serve(async (req: Request) => {
       // dropped response, must not report a failure for a state the caller was
       // trying to reach.
       return json(req, { disconnected: true, revoked: 'already_gone' });
+    }
+
+    // ONE GRANT, MANY PAGES — so revoking is not always the right move.
+    //
+    // `DELETE /me/permissions` withdraws the USER-level grant, which invalidates
+    // every Page token minted from it. With several Pages connected, revoking
+    // while disconnecting one would silently kill the rest: they would keep
+    // reading "Connected" until each one's next insights call failed. That is
+    // the multi-Page design contradicting itself (found by the Codex second
+    // review, and it was mine).
+    //
+    // So the grant is handed back only when the LAST Page on it goes. Counted by
+    // `fb_user_id` across DragonCandy accounts, not within one, because the
+    // grant belongs to a (Facebook user, app) pair — a second DragonCandy user
+    // who linked the same Facebook account holds rows this revoke would break.
+    const remaining = await countConnectionsForFacebookUser(supabase, conn.fb_user_id);
+    const isLastPageOnGrant = remaining <= 1;
+
+    if (!isLastPageOnGrant) {
+      const { error: delError } = await supabase.from(TABLE).delete().eq('id', conn.id);
+      if (delError) {
+        return json(req, { error: 'storage_failed', message: delError.message }, 500);
+      }
+      // Says exactly what happened. Claiming we withdrew access at Facebook here
+      // would be false, and falsely reassuring in the direction that matters.
+      return json(req, {
+        disconnected: true,
+        revoked: 'kept_for_other_pages',
+        message:
+          'Removed this Page. Facebook access stays in place because your other connected ' +
+          'Pages still use it — disconnect those too to withdraw it completely.',
+      });
     }
 
     // The asymmetry this connector lives with: the Page token that reads

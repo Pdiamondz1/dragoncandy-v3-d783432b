@@ -294,13 +294,21 @@ export function FacebookPageInsightsCard() {
         // the honest awkward case: we deleted our copy but could not tell
         // Facebook, because the permission that does that lapses while the Page
         // token does not.
+        // Only claim a withdrawal when one happened. Two outcomes mean the grant
+        // is still live — `expired` (we could not tell Facebook) and
+        // `kept_for_other_pages` (revoking would kill the user's other Pages) —
+        // and both carry their own sentence from the server.
+        const grantStillLive =
+          result?.revoked === 'expired' || result?.revoked === 'kept_for_other_pages';
         toast({
-          title: 'Facebook Page disconnected',
-          description:
-            result?.revoked === 'expired'
-              ? (result.message ??
-                'Disconnected here, but Facebook could not be told. Remove DragonCandy under Facebook Settings → Business Integrations.')
-              : 'We withdrew access at Facebook and deleted the stored token.',
+          title:
+            result?.revoked === 'kept_for_other_pages'
+              ? 'Page removed'
+              : 'Facebook Page disconnected',
+          description: grantStillLive
+            ? (result?.message ??
+              'Removed here. Facebook still holds the authorization — remove DragonCandy under Facebook Settings → Business Integrations.')
+            : 'We withdrew access at Facebook and deleted the stored token.',
         });
       },
       onError: (err: unknown) => {

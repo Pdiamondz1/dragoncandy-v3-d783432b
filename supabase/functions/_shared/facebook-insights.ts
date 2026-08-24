@@ -337,6 +337,14 @@ export async function fetchPageInsights(
     if (typeof bad === 'string') {
       live = live.filter((m) => m !== bad);
       unavailable.push(bad);
+      // Checked HERE, not only at the top of the next iteration. Dropping the
+      // last metric on the final permitted attempt would otherwise fall out of
+      // the loop and throw `metrics_unavailable`, even though we had the real
+      // answer in hand: every metric is gone. That boundary sits at exactly
+      // `MAX_METRIC_RETRIES + 1` metrics, which is the size of the default list,
+      // so it is the most likely case rather than a corner. (Codex, round 1 —
+      // the module's own tests used 2 and 9 metrics and stepped over 5.)
+      if (live.length === 0) return summarize(null, opts.days, unavailable);
       continue;
     }
 

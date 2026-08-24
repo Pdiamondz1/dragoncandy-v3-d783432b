@@ -19,6 +19,7 @@ export const TABLE = 'facebook_page_connections';
 export interface StoredConnection {
   id: string;
   user_id: string;
+  fb_user_id: string;
   page_id: string;
   page_name: string | null;
   page_access_token: string;
@@ -39,7 +40,7 @@ export async function loadConnection(
   const { data, error } = await db
     .from(TABLE)
     .select(
-      'id, user_id, page_id, page_name, page_access_token, user_access_token, ' +
+      'id, user_id, fb_user_id, page_id, page_name, page_access_token, user_access_token, ' +
         'user_token_expires_at, permissions, tasks, status',
     )
     .eq('user_id', userId)
@@ -56,7 +57,7 @@ export async function listConnections(db: Db, userId: string): Promise<StoredCon
   const { data, error } = await db
     .from(TABLE)
     .select(
-      'id, user_id, page_id, page_name, page_access_token, user_access_token, ' +
+      'id, user_id, fb_user_id, page_id, page_name, page_access_token, user_access_token, ' +
         'user_token_expires_at, permissions, tasks, status',
     )
     .eq('user_id', userId)
@@ -127,3 +128,26 @@ export function canReadInsights(conn: Pick<StoredConnection, 'tasks'>): boolean 
 export const MISSING_TASK_MESSAGE =
   'This Facebook Page did not grant analytics access. Reconnect and make sure the ' +
   'account you use has the Analyze permission on the Page.';
+
+/**
+ * How many stored Pages share this Facebook grant.
+ *
+ * Load-bearing for disconnect, and the scope is the subtle part: this counts by
+ * `fb_user_id` ACROSS DragonCandy accounts, not within one. The grant belongs to
+ * a (Facebook user, app) pair, so `DELETE /me/permissions` invalidates every Page
+ * token minted from it — including rows belonging to a different DragonCandy user
+ * who linked the same Facebook account. Scoping this count to `user_id` would
+ * miss exactly those rows and revoke a grant still in use.
+ */
+export async function countConnectionsForFacebookUser(
+  db: Db,
+  fbUserId: string,
+): Promise<number> {
+  const { count, error } = await db
+    .from(TABLE)
+    .select('id', { count: 'exact', head: true })
+    .eq('fb_user_id', fbUserId);
+
+  if (error) throw new Error(`Could not count Facebook connections: ${error.message}`);
+  return count ?? 0;
+}
