@@ -80,7 +80,7 @@ export default function LandingPage() {
       {/* Transparent by design — no background, no top border. Both would re-draw the seam this
           footer was changed to remove. Legibility comes from the scrim above, measured against
           each reel's brightest frame rather than assumed. */}
-      <footer className="shrink-0 py-6 pb-[calc(1.5rem+env(safe-area-inset-bottom))]">
+      <footer className="shrink-0 py-6 pb-[calc(1.5rem+env(safe-area-inset-bottom))] short:py-2 short:pb-[calc(0.5rem+env(safe-area-inset-bottom))]">
         <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-3 px-5 text-xs sm:flex-row sm:px-8 lg:px-12">
           <p className="text-white/70">
             © {new Date().getFullYear()} {LEGAL_ENTITY_NAME} · {LEGAL_ENTITY_LOCALITY}

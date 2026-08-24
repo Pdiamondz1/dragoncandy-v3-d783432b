@@ -20,7 +20,11 @@ export function LandingHero() {
     <section className="relative flex flex-1 flex-col items-center justify-center px-5 text-center sm:px-8">
       <Eyebrow className="text-white/65">People-Driven · Donny-Assisted</Eyebrow>
 
-      <h1 className="mt-5 max-w-3xl font-display text-4xl font-extrabold leading-[1.06] tracking-tight text-white sm:text-5xl lg:text-6xl">
+      {/* `short:` is a HEIGHT query (max-height 430px), not a width one — the constraint in
+          landscape is vertical space, which no width breakpoint can see. Without this the hero's
+          natural content (277px at landscape width) plus the footer exceeds the ~310px a phone
+          actually leaves once Safari's toolbars are showing, and the page scrolls. */}
+      <h1 className="mt-5 max-w-3xl font-display text-4xl font-extrabold leading-[1.06] tracking-tight text-white short:mt-2 short:text-2xl sm:text-5xl lg:text-6xl">
         Where <span className="text-landing-pink-line">Restaurants</span> &amp;{" "}
         <span className="text-landing-mint-line-bright">Creators</span> build content together.
       </h1>
@@ -28,7 +32,7 @@ export function LandingHero() {
       <LandingButton
         variant="pink"
         href="/auth?mode=signup"
-        className="mt-9 px-10 py-4 text-lg"
+        className="mt-9 px-10 py-4 text-lg short:mt-4 short:py-2.5 short:text-base"
       >
         Get started
       </LandingButton>
@@ -46,7 +50,7 @@ export function LandingHero() {
           pale against skin/food tones on video" — true of a 60px headline word, and backwards
           here: paler means more contrast against a bright frame, which is what small text needs.
           The lead-in is white/90 (worst 5.27 p90). Re-measure if the reel library changes. */}
-      <p className="mt-6 text-base text-white/90">
+      <p className="mt-6 text-base text-white/90 short:mt-3 short:text-sm">
         Already have an account?{" "}
         <a
           href="/auth?mode=login"
