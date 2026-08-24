@@ -266,10 +266,27 @@ holds no Toast credentials. See §6.
   against the landing's 56, because a width class on a taller-than-wide asset multiplies the
   height. The durable half is the guard: the previous pass fixed two files and pinned them **to
   each other by hand**, and that test reported green for a day while three unenumerated headers
-  stayed wrong. **Pending:** the drag itself on a real phone (Adrian) or by hand in the simulator;
-  and the two post-login headers on screen — reaching them needs a login and **no test-account
-  credentials exist**, so they are pinned at class level only.
-  → `worktree-DC-landing-page-fix3` · `feat/landing-adrian-feedback` · #459
+  stayed wrong.
+  **The scrolling was NOT the rubber-band, and #501 did not fix it — #504 did (2026-08-24).** This
+  clause read "**Pending:** the drag itself on a real phone" and was answered the same day: the
+  landing still scrolled, with white below the footer, a little in portrait and a lot in landscape.
+  The white sat **below the app shell**, which rules out every mechanism inside the page at once.
+  Cause: `src/index.css` pinned `html, body { height: 100% }`, and a percentage resolves against
+  the initial containing block — on iOS Safari the **small** viewport — while the shell's `100dvh`
+  is the **current** one and GROWS as Safari collapses its toolbars. The shell outgrew body's box,
+  body scrolled by the difference, and the strip below painted body's white. **§9 had already
+  measured the disagreement** (body `clientHeight` 753 vs `100vh` 833), fixed the *shell's* unit and
+  left the other side on `%` — *a height comparison has two sides, and fixing one is not fixing it*.
+  Closed by sizing html/body in `dvh`, locking the document while the landing is mounted (`main`
+  deliberately left scrollable so the CTA can never be clipped), and a **height** breakpoint
+  `short:` for landscape, where the content genuinely did not fit (355px needed vs ~310 available →
+  195). **CONFIRMED WORKING on a real phone by the founder**, which is the only instrument that
+  could confirm it: Chrome, device emulation and the Capacitor WebView all report this family
+  absent, because none has a collapsing toolbar. Three diagnoses were needed — content overflow
+  (refuted by measurement), the rubber-band (plausible, shipped as #501, did not fix it), then this.
+  **Pending:** the two post-login headers on screen — reaching them needs a login and **no
+  test-account credentials exist**, so they are pinned at class level only.
+  → `docs/wiki/concepts/mobile-viewport-fixed-positioning.md` (§10-11) · #459, #501, #504
 - **Google Workspace corporate setup (Wave 1)** — the company's own Workspace: two shared drives,
   nine Google Groups replacing personal aliases, brand assets, and email signatures that install
   themselves. **MERGED (#453, `d83fcbe3`, 2026-08-21) and the admin half is largely DONE** — this
