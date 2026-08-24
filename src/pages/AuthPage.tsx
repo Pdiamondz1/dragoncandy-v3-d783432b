@@ -12,7 +12,7 @@ import { AuthShell } from "@/components/auth/AuthShell";
 import { Eyebrow } from "@/components/landing/Eyebrow";
 import { ALLOWED_REDIRECT_ORIGINS } from "@/lib/allowedOrigins";
 import { SocialAuthButtons } from "@/components/auth/SocialAuthButtons";
-import { applyPendingRole } from "@/lib/socialAuth";
+import { applyPendingRole, syncOauthVerification } from "@/lib/socialAuth";
 
 type SignupStep = "role-selection" | "signup-form";
 
@@ -87,7 +87,12 @@ const AuthPage = () => {
       // by the trigger's default (`content_creator`) for exactly one visit, landing
       // a restaurant on the creator dashboard. Resolves to null and does nothing
       // for every password login, which stash nothing.
-      await applyPendingRole();
+      //
+      // The verification sync runs alongside it and for a different account: the
+      // trigger fires on INSERT, so it misses a password account that never
+      // verified and whose owner has now signed in with Google. Both are no-ops
+      // for an ordinary password login.
+      await Promise.all([syncOauthVerification(), applyPendingRole()]);
 
       const { data: profile } = await supabase
         .from('profiles')

@@ -156,6 +156,28 @@ export async function startSocialSignIn(
  * one. The RPC refuses by returning `claimed: false` with a reason rather than
  * raising, so a refusal is not an error either.
  */
+/**
+ * Marks the caller verified when a provider has authenticated their address.
+ *
+ * `handle_new_user` only fires on INSERT, so it covers accounts OAuth CREATES and
+ * not the other realistic path: a password account that never verified, whose
+ * owner later signs in with Google using the same address. Supabase links the
+ * identity to the existing row, no insert happens, and the app's gate rejects a
+ * sign-in a provider just completed.
+ *
+ * Swallows failures for the same reason the role claim does — the session is
+ * valid either way, and the honest fallback is the verification screen the user
+ * would have seen anyway.
+ */
+export async function syncOauthVerification(): Promise<void> {
+  try {
+    const { error } = await supabase.rpc('sync_oauth_email_verification');
+    if (error) console.error('sync_oauth_email_verification failed:', error);
+  } catch (err) {
+    console.error('sync_oauth_email_verification threw:', err);
+  }
+}
+
 export async function applyPendingRole(search?: string): Promise<AccountRole | null> {
   // The URL first: it is the copy that survives an origin change, and it is the
   // one present when storage was unavailable or belongs to a different origin.

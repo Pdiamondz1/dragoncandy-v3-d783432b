@@ -274,3 +274,45 @@ describe('the role survives an origin change', () => {
     },
   );
 });
+
+describe('sync_oauth_email_verification', () => {
+  const MIGRATION = 'supabase/migrations/20260825140000_social_login_support.sql';
+  const sql = () => readFileSync(join(process.cwd(), MIGRATION), 'utf8');
+
+  /**
+   * The mirror of the claim guard, and the same blind spot: `handle_new_user` is an
+   * INSERT trigger, so it never sees a password account whose owner later signs in
+   * with Google — GoTrue links the identity to the existing row.
+   *
+   * What this trusts is `auth.identities`, which GoTrue writes and no client can.
+   * Proven on prod, rolled back: a linked account goes false -> true, a
+   * password-only account gets `false` and stays unverified, and widening the
+   * provider list to `IS NOT NULL` makes that control fail — so the allowlist is
+   * doing the work, not decorating it.
+   */
+  it('keys off auth.identities with the same provider allowlist', () => {
+    const body = sql().slice(sql().indexOf('function public.sync_oauth_email_verification'));
+    expect(body).toContain('FROM auth.identities');
+    const match = body.match(/i\.provider IN \(([^)]*)\)/);
+    expect(match, 'provider allowlist not found').not.toBeNull();
+    const providers = [...match![1].matchAll(/'([a-z]+)'/g)].map((m) => m[1]).sort();
+    expect(providers).toEqual([...SOCIAL_PROVIDERS].sort());
+  });
+
+  /** One direction only. Nothing here may un-verify an account. */
+  it('only ever sets email_verified true', () => {
+    const body = sql().slice(sql().indexOf('function public.sync_oauth_email_verification'));
+    const code = body.split('\n').filter((l) => !l.trimStart().startsWith('--')).join('\n');
+    expect(code).toContain('SET email_verified = true');
+    expect(code).not.toContain('email_verified = false');
+  });
+
+  it('is revoked from anon and granted to authenticated', () => {
+    expect(sql()).toMatch(/revoke execute on function public\.sync_oauth_email_verification\(\) from public, anon;/);
+    expect(sql()).toMatch(/grant execute on function public\.sync_oauth_email_verification\(\) to authenticated;/);
+  });
+
+  it('takes no parameters, so there is no account to point it at', () => {
+    expect(sql()).toContain('function public.sync_oauth_email_verification()');
+  });
+});

@@ -213,3 +213,60 @@ $$;
 
 revoke execute on function public.claim_initial_role(user_role) from public, anon;
 grant execute on function public.claim_initial_role(user_role) to authenticated;
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- 3. sync_oauth_email_verification — the account the trigger never sees
+-- ─────────────────────────────────────────────────────────────────────────────
+--
+-- `handle_new_user` is an INSERT trigger, so it only ever runs for accounts OAuth
+-- creates. It does not run for the other realistic path: someone signed up by
+-- password, never clicked the verification link, and later signs in with Google
+-- using the same address. Supabase links the provider identity to the EXISTING
+-- `auth.users` row, no INSERT happens, `profiles.email_verified` stays false, and
+-- `AuthPage` rejects a sign-in a provider just authenticated.
+--
+-- The mirror of the `claim_initial_role` gap, and found the same way: an existing
+-- account is invisible to a trigger that only fires on creation.
+--
+-- The fact this trusts is `auth.identities`. A row there with an allowlisted
+-- provider means that provider authenticated this address for this account — it
+-- is written by GoTrue, is not client-writable, and a password-only account has
+-- an `email` identity and nothing else. So this cannot be used by someone who has
+-- never completed an OAuth flow, which is the whole property that matters.
+--
+-- One direction only: it can set `email_verified` true, never false. Nothing here
+-- can un-verify an account.
+create or replace function public.sync_oauth_email_verification()
+returns boolean
+language plpgsql
+security definer
+set search_path = public
+as $$
+DECLARE
+  v_uid uuid := auth.uid();
+  v_has_oauth boolean;
+BEGIN
+  IF v_uid IS NULL THEN
+    RAISE EXCEPTION 'forbidden: authentication required';
+  END IF;
+
+  SELECT EXISTS (
+    SELECT 1 FROM auth.identities i
+     WHERE i.user_id = v_uid
+       AND i.provider IN ('google', 'apple', 'facebook')
+  ) INTO v_has_oauth;
+
+  IF NOT v_has_oauth THEN
+    RETURN false;
+  END IF;
+
+  UPDATE public.profiles
+     SET email_verified = true
+   WHERE id = v_uid AND email_verified IS DISTINCT FROM true;
+
+  RETURN true;
+END;
+$$;
+
+revoke execute on function public.sync_oauth_email_verification() from public, anon;
+grant execute on function public.sync_oauth_email_verification() to authenticated;

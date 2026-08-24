@@ -18,13 +18,15 @@ npm run db:apply -- supabase/migrations/20260825140000_social_login_support.sql
 ```
 
 Backward-compatible with the frontend already on prod, so it can go before the merge.
-It changes `handle_new_user` and adds `claim_initial_role`; it drops nothing.
+It changes `handle_new_user` and adds `claim_initial_role` and
+`sync_oauth_email_verification`; it drops nothing.
 
 **Verify by object, never by the ledger** — this project has three recorded cases of
 `recorded ≠ actual`:
 
 ```sql
-select proname from pg_proc where proname in ('claim_initial_role','handle_new_user');
+select proname from pg_proc
+ where proname in ('claim_initial_role','sync_oauth_email_verification','handle_new_user');
 select prosrc like '%v_email_verified%' as trigger_updated from pg_proc where proname='handle_new_user';
 ```
 
@@ -136,6 +138,13 @@ where id = '<the id above>';
   and `account_not_new`, and it logs to the browser console. The last two are the
   guards against converting an account that already existed, so seeing them is
   correct behaviour, not a bug.
+
+Then check the linking case, which the INSERT trigger cannot reach: an account that
+signed up by password and never verified, whose owner now signs in with the same address
+through a provider. GoTrue links the identity to the existing row, so nothing is
+inserted — `sync_oauth_email_verification` is what verifies them, keyed on
+`auth.identities`. It should let them straight in rather than showing the verification
+screen.
 
 Then check the opposite case, because this is the one that costs something if it is
 wrong: **create a password account and confirm `email_verified` is FALSE** and that the
