@@ -327,7 +327,12 @@ timestamp a human types, so two branches open on one day will collide eventually
   review** — migration `20260825130000` schedules it daily at 04:00 UTC. It needs
   the Vault secret `instagram_refresh_sweep_url` per environment; absent that,
   `net.http_post` is called with a NULL url and the job fails quietly in
-  `cron.job_run_details` rather than anywhere anyone looks.
+  `cron.job_run_details` rather than anywhere anyone looks. **Applied on prod
+  2026-08-24**, with the Vault secret present and `cron.job` showing
+  `active=true` at `0 4 * * *`. **It has never fired** —
+  `cron.job_run_details` holds 0 runs for it — so the schedule is proven to
+  exist and is **not** proven to work. Those are different claims, and only
+  the first has evidence.
 - ~~The three anonymous functions relied on a comment telling the deployer to
   pass `--no-verify-jwt`.~~ **Closed by the same review** — all seven Instagram
   functions are now declared in `supabase/config.toml`, four `true` and three
