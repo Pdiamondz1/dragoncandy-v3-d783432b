@@ -137,8 +137,6 @@ The deck marks each of these on its slide. If asked, the honest answer is "not
 settled yet", not a number invented in the room.
 
 - **The ask** — What are the SAFE terms — target size within $500K–$1.5M, valuation cap, discount, MFN?
-- **Team & advisors** — What are the three founders' real track records, in the form an investor reads — "Ex-product at X", "Founding engineer at Y"?
-- **The three supply lines** — Has Uncle Rocco's agreed to USE the platform as a launch restaurant, or only to let us use their footage?
-- **Team & advisors** — Has Adrian Vella agreed in writing to be named as an advisor in a document sent to investors?
+- **Team & board** — What are the three founders' real track records, in the form an investor reads — "Ex-product at X", "Founding engineer at Y"?
 - **Hoboken liquidity** — How many restaurants are there in Hoboken — a countable number, with its source?
 

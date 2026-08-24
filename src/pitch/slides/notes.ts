@@ -83,9 +83,9 @@ export const NOTES = {
       'This is the slide for a technical investor. The key correction: a campaign is not one training example, it is a chain that yields many — a brief, a preference pair, a quality label, an outcome.\n\nIf they challenge the 1,000–5,000 threshold, they are right to, and the answer is that the number was defensible but the unit was wrong. We restated it. Nothing has been fine-tuned yet; this is what the data makes possible.',
   },
   team: {
-    title: 'Team & advisors',
+    title: 'Team & board',
     notes:
-      'Three people, honestly described. Do not inflate — an investor checks.\n\nThe strength here is that the CEO is the customer and the CTO built the thing on slide 6. If they ask about engineering capacity: three outside houses are already in conversation, which is why the budget is not four salaries.',
+      'Three people, honestly described. Do not inflate — an investor checks.\n\nThe strength here is that the CEO is the customer and the CTO built the thing on slide 6. If they ask about engineering capacity: three outside houses are already in conversation, which is why the budget is not four salaries.\n\nAdrian Vella sits on the BOARD, not as an advisor — he consented to be named. If asked what the board looks like, answer plainly; a board seat is a governance fact an investor may diligence, so say what is actually true of it rather than dressing it up.',
   },
   close: {
     title: 'Close',
