@@ -19,6 +19,14 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
  */
 const mocks = vi.hoisted(() => ({
   readError: null as { message: string } | null,
+  /**
+   * A single promise every read awaits, so the "still in flight" race is testable.
+   * Deliberately ONE hold rather than a per-call gate: `saveCore` issues a second select
+   * (the creator address pre-read), and a re-arming gate hung that one too — the upsert
+   * then never reached the creator branch and the assertion failed on the wrong write.
+   */
+  hold: null as null | Promise<void>,
+  release: null as null | (() => void),
   upsert: vi.fn().mockResolvedValue({ error: null }),
   row: {
     creator_name: 'Joey Smalls',
@@ -44,9 +52,10 @@ vi.mock('@/integrations/supabase/client', () => ({
     from: () => ({
       upsert: mocks.upsert,
       update: vi.fn(() => ({ eq: vi.fn().mockResolvedValue({ error: null }) })),
-      select: () => ({ eq: () => ({ maybeSingle: async () => ({
-        data: mocks.readError ? null : mocks.row, error: mocks.readError,
-      }) }) }),
+      select: () => ({ eq: () => ({ maybeSingle: async () => {
+        if (mocks.hold) await mocks.hold;
+        return { data: mocks.readError ? null : mocks.row, error: mocks.readError };
+      } }) }),
     }),
   },
 }));
@@ -116,6 +125,8 @@ describe('OnboardingWizard — resuming after Stripe', () => {
     setSearch('');
     mocks.readError = null;
     mocks.upsert.mockClear();
+    mocks.hold = null;
+    mocks.release = null;
   });
 
   it('lands on the payments slide, not slide 1, when Stripe sends the user back', async () => {
@@ -210,5 +221,30 @@ describe('OnboardingWizard — resuming after Stripe', () => {
     await waitFor(() => expect(mocks.upsert).toHaveBeenCalled());
     const written = mocks.upsert.mock.calls.at(-1)?.[0] as Record<string, unknown>;
     expect(written.avatar_url).toBe('u1/avatar-existing.jpg');
+  });
+
+  /**
+   * Codex P1, round 3. The failure flag is false while the read is still PENDING, so a
+   * user moving quickly could reach `saveCore` before hydration landed and overwrite a
+   * real profile with the blank values on screen — avatar included, since the hydrated
+   * path is not populated yet. The boundary now awaits the read rather than checking a
+   * flag that has not been set yet.
+   */
+  it('does not save while the profile read is still in flight', async () => {
+    mocks.hold = new Promise<void>(r => { mocks.release = r; });  // reads hang until released
+    mocks.row = { ...(mocks.row as Record<string, unknown>), avatar_url: 'u1/existing.jpg' };
+    renderWizard();
+    await screen.findByRole('heading', { name: /What should we call you\?/i });
+    await reachCollectBoundary();
+
+    // Still pending: nothing may have been written.
+    await waitFor(() => expect(mocks.upsert).not.toHaveBeenCalled());
+
+    mocks.release?.();                           // let the reads land
+    await waitFor(() => expect(mocks.upsert).toHaveBeenCalled());
+
+    // And when it does save, it saves the HYDRATED avatar, not null.
+    const written = mocks.upsert.mock.calls.at(-1)?.[0] as Record<string, unknown>;
+    expect(written.avatar_url).toBe('u1/existing.jpg');
   });
 });

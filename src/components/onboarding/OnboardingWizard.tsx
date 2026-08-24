@@ -109,9 +109,20 @@ export function OnboardingWizard() {
   // collect slide needs the profile rows to exist, AND needs them to match what is on
   // screen. A plain "have we saved once" boolean did the first job and not the second —
   // going back, correcting a field and continuing left the edit visible and unsaved.
-  // Set when the hydration read ERRORS. Blocks the collect→service boundary, because
-  // that is where the overwriting upsert runs and we cannot know what we would clobber.
-  const [hydrationFailed, setHydrationFailed] = useState(false);
+  /**
+   * The in-flight hydration read. The collect→service boundary AWAITS this before saving.
+   *
+   * A boolean "did it fail" is not enough and was the round-3 finding: while the read is
+   * still pending it is false, so a user moving quickly reaches `saveCore` before hydration
+   * lands and overwrites a real profile with the blank/default values on screen — and with
+   * a null avatar, since `hydratedAvatarPath` is not populated yet. Awaiting the promise
+   * removes the race instead of adding a second thing to check, and costs nothing in the
+   * normal case because the read finishes long before anyone crosses the boundary.
+   *
+   * A ref rather than state because `goNext` closes over the render it was created in, so a
+   * state flag set during the await is invisible to the very call that needs it.
+   */
+  const hydration = useRef<Promise<{ ok: boolean }> | null>(null);
   const [savedFingerprint, setSavedFingerprint] = useState<string | null>(null);
   const [savedLocationKey, setSavedLocationKey] = useState<string | null>(null);
   const [phoneVerified, setPhoneVerified] = useState(false);
@@ -166,8 +177,7 @@ export function OnboardingWizard() {
     if (hydrated.current || !user) return;
     hydrated.current = true;
 
-    let cancelled = false;
-    void (async () => {
+    hydration.current = (async (): Promise<{ ok: boolean }> => {
       // Branched rather than a dynamic column string: the generated Supabase types can only
       // resolve a LITERAL select list, and a variable one silently degrades to a parser
       // error type. Two queries with real field lists also keep the repo's
@@ -184,7 +194,6 @@ export function OnboardingWizard() {
             .eq('user_id', user.id)
             .maybeSingle();
 
-      if (cancelled) return;
 
       // A FAILED READ AND AN ABSENT ROW ARE OPPOSITE CASES, and an earlier draft of this
       // block treated them the same — the comment here even justified it, reasoning about
@@ -192,11 +201,8 @@ export function OnboardingWizard() {
       // errors we do not know whether a profile exists, so a blank form must not be allowed
       // to become an upsert over one. `maybeSingle` gives null for "no row", which IS the
       // ordinary new-signup case; an `error` is not. Codex P1, second review round.
-      if (error) {
-        setHydrationFailed(true);
-        return;
-      }
-      if (!data) return;
+      if (error) return { ok: false };
+      if (!data) return { ok: true };
       const row = data as unknown as Record<string, unknown>;
 
       const str = (v: unknown) => (typeof v === 'string' ? v : '');
@@ -232,9 +238,17 @@ export function OnboardingWizard() {
           setCurrentIndex(target);
         }
       }
+      return { ok: true };
     })();
 
-    return () => { cancelled = true; };
+    // NO cleanup cancellation, deliberately. `hydrated` already makes this run once, so
+    // a cleanup would fire on every RE-RENDER that re-runs the effect (the deps include
+    // `user`, whose identity is not guaranteed stable) and abort the single in-flight
+    // read — which then resolved `{ ok: true }` having applied nothing, so the boundary
+    // saved blank values and a null avatar over a real profile. That is the same data
+    // loss the await was added to prevent, reached by a different route, and it was the
+    // TEST for the pending-read race that exposed it. React 18 makes a state update
+    // after unmount a no-op, so there is nothing left for a cleanup to protect here.
   }, [user, role, steps]);
 
   const currentStep = steps[currentIndex];
@@ -294,11 +308,12 @@ export function OnboardingWizard() {
     advancing.current = true;
     try {
       if (currentStep === lastCollectStep(role) && currentFingerprint !== savedFingerprint) {
-        // Refuse rather than guess. If hydration failed we do not know whether this
-        // account already has a profile, and `saveCore`'s creator upsert carries no
-        // `ignoreDuplicates` — so continuing could write whatever is on screen (possibly
-        // blank) over real data. Reloading re-runs the read, which is the retry.
-        if (hydrationFailed) {
+        // Wait for the profile read, then refuse rather than guess. `saveCore`'s creator
+        // upsert carries no `ignoreDuplicates`, so saving before we know what is already
+        // there can write the blank values on screen over a real profile. Awaiting covers
+        // the pending case; the result covers the failed one. Reload is the retry.
+        const hydrated = await hydration.current;
+        if (hydrated && !hydrated.ok) {
           toast.error("We couldn't load your profile. Reload the page before continuing so we don't overwrite it.");
           return;
         }
