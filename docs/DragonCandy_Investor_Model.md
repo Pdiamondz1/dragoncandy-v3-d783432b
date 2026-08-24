@@ -25,15 +25,15 @@
 | Growth tier take rate (`takeRate_growth`) | 0.05 | fraction | MEASURED | `supabase/functions/stripe-webhook/index.ts (TIER_TAKE_RATES)` | 2026-08-23 |
 | Pro tier take rate (`takeRate_pro`) | 0.03 | fraction | MEASURED | `supabase/functions/stripe-webhook/index.ts (TIER_TAKE_RATES)` | 2026-08-23 |
 | Monthly operating cost (`burnMonthly`) | 569 | USD/month | MEASURED | `vendor invoices \| Lovable 50 + Anthropic 200 + Outstand 249 + Supabase 45 + OpenAI 25` | 2026-08-23 |
-| Paying customers (`payingCustomers`) | 0 | accounts | MEASURED | `docs/PROJECT_CONTEXT.md (section 4)` | 2026-08-23 |
-| Registered users (`registeredUsers`) | 30 | accounts | MEASURED | `docs/PROJECT_CONTEXT.md (section 4)` | 2026-08-23 |
-| Page components (`pageComponents`) | 95 | files | MEASURED | `find src/pages -name '*.tsx' \| wc -l` | 2026-08-23 |
-| React hooks (`hooks`) | 272 | files | MEASURED | `find src/hooks -name 'use*.ts' -o -name 'use*.tsx' \| wc -l` | 2026-08-23 |
-| Edge functions (`edgeFunctions`) | 104 | functions | MEASURED | `ls -d supabase/functions/*/ \| grep -v _shared \| wc -l` | 2026-08-23 |
-| TypeScript source files (`sourceFiles`) | 1193 | files | MEASURED | `find src -type f \( -name '*.ts' -o -name '*.tsx' \) \| wc -l` | 2026-08-23 |
-| Database migrations (`migrations`) | 402 | files | MEASURED | `ls supabase/migrations/*.sql \| wc -l` | 2026-08-23 |
-| Passing tests (`tests`) | 2923 | tests | MEASURED | `npx vitest run` | 2026-08-23 |
-| Test files (`testFiles`) | 268 | files | MEASURED | `npx vitest run` | 2026-08-23 |
+| Paying customers (`payingCustomers`) | 0 | accounts | MEASURED | `prod: select count(*) from organizations where take_rate is not null and stripe_subscription_id is not null` | 2026-08-24 |
+| Registered users (`registeredUsers`) | 45 | accounts | MEASURED | `prod: select count(*) from profiles` | 2026-08-24 |
+| Page components (`pageComponents`) | 96 | files | MEASURED | `find src/pages -name '*.tsx' \| wc -l` | 2026-08-24 |
+| React hooks (`hooks`) | 277 | files | MEASURED | `find src/hooks -name 'use*.ts' -o -name 'use*.tsx' \| wc -l` | 2026-08-24 |
+| Edge functions (`edgeFunctions`) | 111 | functions | MEASURED | `ls -d supabase/functions/*/ \| grep -v _shared \| wc -l` | 2026-08-24 |
+| TypeScript source files (`sourceFiles`) | 1230 | files | MEASURED | `find src -type f \( -name '*.ts' -o -name '*.tsx' \) \| wc -l` | 2026-08-24 |
+| Database migrations (`migrations`) | 406 | files | MEASURED | `ls supabase/migrations/*.sql \| wc -l` | 2026-08-24 |
+| Passing tests (`tests`) | 3228 | tests | MEASURED | `npx vitest run` | 2026-08-24 |
+| Test files (`testFiles`) | 291 | files | MEASURED | `npx vitest run` | 2026-08-24 |
 | AI spend cap as share of revenue (`aiCostCapPctOfRevenue`) | 0.15 | fraction | MEASURED | `docs/PROJECT_CONTEXT.md (section 8)` | 2026-08-23 |
 | Standard delivery, low band (`campaignPriceStandardLow`) | 75 | USD/deliverable | MEASURED | `src/lib/campaignPricing.ts (TIER_PRICE_BANDS)` | 2026-08-23 |
 | Standard delivery, high band (`campaignPriceStandardHigh`) | 150 | USD/deliverable | MEASURED | `src/lib/campaignPricing.ts (TIER_PRICE_BANDS)` | 2026-08-23 |

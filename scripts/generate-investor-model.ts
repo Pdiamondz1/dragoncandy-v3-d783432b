@@ -16,7 +16,7 @@
 import { writeFileSync } from 'node:fs';
 import { REGISTER, MARKET, UNIT_ECONOMICS, OPERATING } from '../src/pitch/model/assumptions';
 import { findStale, MAX_MEASURED_AGE_DAYS } from '../src/pitch/model/types';
-import { avgCampaignValue, projectMonth, type TierMix } from '../src/pitch/model/project';
+import { avgCampaignValue, projectMonth, REGISTERED_MIX, type TierMix } from '../src/pitch/model/project';
 import {
   businessStepTable,
   isLiquid,
@@ -30,7 +30,7 @@ import {
   PRE_SEED_BUDGET,
   PRE_SEED_HORIZON_MONTHS,
   budgetTotal,
-  requiredRaise,
+  preSeedRaise,
   buildFundsAllocation,
   USE_OF_FUNDS_SPLIT,
 } from '../src/pitch/model/confidential';
@@ -40,12 +40,9 @@ const OUT = 'docs/DragonCandy_Investor_Model.md';
 // Built from the register, not hardcoded — this constant used to be an untagged literal with no
 // provenance and no appearance in the document, despite driving 78% of headline revenue at 100
 // businesses ($21,680 of $27,755). See MARKET.tierMixFree/Starter/Growth/Pro in assumptions.ts.
-const MIX: TierMix = {
-  free: MARKET.tierMixFree.value,
-  starter: MARKET.tierMixStarter.value,
-  growth: MARKET.tierMixGrowth.value,
-  pro: MARKET.tierMixPro.value,
-};
+// Now shared with the deck slides via project.ts, so the document and the deck cannot quote
+// different revenue from the same register.
+const MIX: TierMix = REGISTERED_MIX;
 
 const stale = findStale(REGISTER, new Date(), MAX_MEASURED_AGE_DAYS);
 if (stale.length > 0) {
@@ -239,9 +236,9 @@ lines.push('prose summary.');
 lines.push('');
 
 if (confidential) {
-  const need = budgetTotal(PRE_SEED_BUDGET, PRE_SEED_HORIZON_MONTHS);
-  const endingBurn = PRE_SEED_BUDGET.reduce((s, l) => s + (l.endMonth >= PRE_SEED_HORIZON_MONTHS ? l.monthlyCost : 0), 0);
-  const raise = requiredRaise({ operatingNeed: need, bufferMonths: 6, endingMonthlyBurn: endingBurn });
+  // Shared with the deck slide — see preSeedRaise()'s header for what went wrong when
+  // each consumer computed this for itself.
+  const { operatingNeed: need, endingMonthlyBurn: endingBurn, bufferMonths, raise } = preSeedRaise();
 
   lines.push('## The round');
   lines.push('');
@@ -249,7 +246,7 @@ if (confidential) {
   lines.push('');
   lines.push(`- ${PRE_SEED_HORIZON_MONTHS}-month operating need: **${usd(need)}**`);
   lines.push(`- Monthly burn at month ${PRE_SEED_HORIZON_MONTHS}: **${usd(endingBurn)}**`);
-  lines.push(`- Six-month buffer: **${usd(raise - need)}**`);
+  lines.push(`- ${bufferMonths}-month buffer: **${usd(raise - need)}**`);
   lines.push(`- **Required raise: ${usd(raise)}**`);
   lines.push('- Committed to date: **$0**');
   lines.push('');

@@ -103,3 +103,55 @@ export function buildFundsAllocation(raise: number, split: UseOfFundsSplit): Fun
 }
 
 export const PRE_SEED_HORIZON_MONTHS = HORIZON_MONTHS;
+
+/** Months of runway past the horizon that the raise must also cover. */
+export const PRE_SEED_BUFFER_MONTHS = 6;
+
+export interface PreSeedRaise {
+  readonly operatingNeed: number;
+  /** Burn in the LAST month of the horizon — every line that is still running. */
+  readonly endingMonthlyBurn: number;
+  readonly bufferMonths: number;
+  readonly buffer: number;
+  readonly raise: number;
+}
+
+/**
+ * The one computation of the raise, shared by the generated document and the deck.
+ *
+ * It exists because they disagreed. The document already computed the ending burn
+ * correctly and applied a six-month buffer; the deck slide called
+ * `budgetTotal(PRE_SEED_BUDGET, 1)` and applied three. Two things were wrong with that,
+ * and the first is the one worth remembering:
+ *
+ * **`budgetTotal(lines, 1)` is the FIRST month's burn, not the last.** In month 1 the
+ * engineers have not started — the back-end hire begins in month 3 and the AI hire in
+ * month 4 — so it returns roughly 43% of what the company actually costs to run by the
+ * time the money runs out. Sizing a runway buffer on it understates the raise, and every
+ * use-of-funds bucket downstream of it, by about $110K. The name of the parameter
+ * (`endingMonthlyBurn`) said exactly what it wanted; the call site quietly handed it
+ * something else, and nothing checked because both are numbers.
+ *
+ * The second: a buffer is a judgement, and having two of them in one repo means the deck
+ * and the diligence document answer "how much are you raising" differently in the same
+ * meeting.
+ */
+export function preSeedRaise(): PreSeedRaise {
+  const operatingNeed = budgetTotal(PRE_SEED_BUDGET, HORIZON_MONTHS);
+  const endingMonthlyBurn = PRE_SEED_BUDGET.reduce(
+    (sum, line) => sum + (line.endMonth >= HORIZON_MONTHS ? line.monthlyCost : 0),
+    0,
+  );
+  const raise = requiredRaise({
+    operatingNeed,
+    bufferMonths: PRE_SEED_BUFFER_MONTHS,
+    endingMonthlyBurn,
+  });
+  return {
+    operatingNeed,
+    endingMonthlyBurn,
+    bufferMonths: PRE_SEED_BUFFER_MONTHS,
+    buffer: raise - operatingNeed,
+    raise,
+  };
+}
