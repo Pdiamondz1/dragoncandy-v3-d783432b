@@ -164,3 +164,89 @@ $$;
 
 revoke execute on function public.facebook_connection_status() from public, anon;
 grant execute on function public.facebook_connection_status() to authenticated, service_role;
+
+-- ---------------------------------------------------------------------------
+-- Disconnect decision, made atomically.
+--
+-- THE RACE THIS CLOSES. Disconnect must revoke the shared grant only when the
+-- LAST Page on it goes, so the caller has to count first. Counting and then
+-- acting is check-then-act: two Pages disconnected at once both read "2
+-- remaining", both take the not-last branch, both delete their row, and nobody
+-- revokes — leaving a live Facebook authorization with no stored token left to
+-- revoke it. That is exactly the "never abandon a live grant" invariant the
+-- revoke-before-delete ordering exists to hold, defeated one level up.
+-- (Codex second review, round 4.)
+--
+-- Same shape as `reserve_phone_verification_send` and `record_crew_activity`:
+-- the decision moves out of TypeScript and into SQL, under a
+-- `pg_advisory_xact_lock` keyed on the thing being contended — here the shared
+-- grant, `fb_user_id` — so concurrent callers queue instead of racing.
+--
+-- WHY IT DOES NOT DELETE THE LAST ROW. For the last Page the row must survive
+-- until Meta has accepted the revoke, because it holds the only copy of the
+-- token; deleting first is the failure this whole ordering prevents. So this
+-- function deletes only in the not-last case and otherwise just reports
+-- `is_last`, leaving the caller to revoke and then delete. A revoke that fails
+-- therefore leaves the row intact and retryable.
+--
+-- Scoped by `fb_user_id` ACROSS DragonCandy accounts, not within one: the grant
+-- belongs to a (Facebook user, app) pair, so a second DragonCandy user who
+-- linked the same Facebook account holds rows a revoke would break.
+-- ---------------------------------------------------------------------------
+
+create or replace function public.claim_facebook_page_disconnect(
+  p_user_id uuid,
+  p_page_id text
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_conn public.facebook_page_connections%rowtype;
+  v_remaining integer;
+begin
+  if current_setting('request.jwt.claims', true)::jsonb->>'role' is distinct from 'service_role' then
+    raise exception 'claim_facebook_page_disconnect is service-role only';
+  end if;
+
+  select * into v_conn
+  from public.facebook_page_connections
+  where user_id = p_user_id and page_id = p_page_id;
+
+  if not found then
+    return jsonb_build_object('found', false);
+  end if;
+
+  -- Serialises every disconnect touching this grant. hashtext is stable within a
+  -- database, which is all this needs — the lock is advisory, not a key.
+  perform pg_advisory_xact_lock(hashtext('facebook_disconnect:' || v_conn.fb_user_id));
+
+  select count(*) into v_remaining
+  from public.facebook_page_connections
+  where fb_user_id = v_conn.fb_user_id;
+
+  if v_remaining <= 1 then
+    -- Last Page on the grant. Leave the row alone: the caller revokes first,
+    -- then deletes, so a failed revoke keeps the token that can retry it.
+    return jsonb_build_object(
+      'found', true,
+      'is_last', true,
+      'id', v_conn.id,
+      'user_access_token', v_conn.user_access_token,
+      'user_token_expires_at', v_conn.user_token_expires_at
+    );
+  end if;
+
+  -- Other Pages still use this grant, so nothing is revoked and the row can go
+  -- now — inside the lock, so a concurrent caller sees the reduced count.
+  delete from public.facebook_page_connections where id = v_conn.id;
+
+  return jsonb_build_object('found', true, 'is_last', false, 'id', v_conn.id);
+end;
+$$;
+
+revoke execute on function public.claim_facebook_page_disconnect(uuid, text)
+  from public, anon, authenticated;
+grant execute on function public.claim_facebook_page_disconnect(uuid, text) to service_role;

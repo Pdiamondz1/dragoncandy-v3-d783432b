@@ -164,26 +164,3 @@ export const MISSING_TASK_MESSAGE =
 export const MISSING_PERMISSION_MESSAGE =
   'Analytics access was not granted for this Page. Reconnect and leave every permission ' +
   'ticked on the Facebook screen.';
-
-/**
- * How many stored Pages share this Facebook grant.
- *
- * Load-bearing for disconnect, and the scope is the subtle part: this counts by
- * `fb_user_id` ACROSS DragonCandy accounts, not within one. The grant belongs to
- * a (Facebook user, app) pair, so `DELETE /me/permissions` invalidates every Page
- * token minted from it — including rows belonging to a different DragonCandy user
- * who linked the same Facebook account. Scoping this count to `user_id` would
- * miss exactly those rows and revoke a grant still in use.
- */
-export async function countConnectionsForFacebookUser(
-  db: Db,
-  fbUserId: string,
-): Promise<number> {
-  const { count, error } = await db
-    .from(TABLE)
-    .select('id', { count: 'exact', head: true })
-    .eq('fb_user_id', fbUserId);
-
-  if (error) throw new Error(`Could not count Facebook connections: ${error.message}`);
-  return count ?? 0;
-}

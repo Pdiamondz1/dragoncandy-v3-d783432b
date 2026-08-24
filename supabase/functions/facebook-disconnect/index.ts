@@ -8,18 +8,22 @@
 // revoke it — the user is told they are disconnected while Meta still has a live
 // grant for them.
 //
+// ONE GRANT, MANY PAGES. `DELETE /me/permissions` withdraws the USER-level
+// grant, invalidating every Page token minted from it, so revoking while
+// disconnecting one of several Pages would silently kill the rest. The grant is
+// handed back only when the LAST Page on it goes — and that decision is made in
+// SQL, under an advisory lock, because counting here and acting on the count is
+// check-then-act: two concurrent disconnects both read "2 remaining", both skip
+// the revoke, and the grant is stranded with no token left to revoke it. See
+// `claim_facebook_page_disconnect`.
+//
 // ENV: SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY
 
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'npm:@supabase/supabase-js@2';
 import { corsHeaders } from '../_shared/cors.ts';
 import { FacebookError, revokePermissions } from '../_shared/facebook-pages.ts';
-import {
-  canRevoke,
-  countConnectionsForFacebookUser,
-  loadConnection,
-  TABLE,
-} from '../_shared/facebook-connection.ts';
+import { canRevoke, TABLE } from '../_shared/facebook-connection.ts';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
@@ -57,37 +61,31 @@ serve(async (req: Request) => {
       return json(req, { error: 'bad_request', message: 'Missing page_id' }, 400);
     }
 
-    const conn = await loadConnection(supabase, user.id, pageId);
-    if (!conn) {
+    // One atomic step: lock the grant, count what is left on it, and either
+    // delete this row (others remain, nothing to revoke) or report that this is
+    // the last one and leave the row — and its token — in place for the revoke
+    // below.
+    const { data: claim, error: claimError } = await supabase.rpc(
+      'claim_facebook_page_disconnect',
+      { p_user_id: user.id, p_page_id: pageId },
+    );
+
+    if (claimError) {
+      console.error('[facebook-disconnect] claim failed:', claimError.message);
+      return json(req, { error: 'storage_failed', message: claimError.message }, 500);
+    }
+
+    if (!claim?.found) {
       // Already gone. Idempotent on purpose: a second tap, or a retry after a
-      // dropped response, must not report a failure for a state the caller was
+      // dropped response, must not report failure for the state the caller was
       // trying to reach.
       return json(req, { disconnected: true, revoked: 'already_gone' });
     }
 
-    // ONE GRANT, MANY PAGES — so revoking is not always the right move.
-    //
-    // `DELETE /me/permissions` withdraws the USER-level grant, which invalidates
-    // every Page token minted from it. With several Pages connected, revoking
-    // while disconnecting one would silently kill the rest: they would keep
-    // reading "Connected" until each one's next insights call failed. That is
-    // the multi-Page design contradicting itself (found by the Codex second
-    // review, and it was mine).
-    //
-    // So the grant is handed back only when the LAST Page on it goes. Counted by
-    // `fb_user_id` across DragonCandy accounts, not within one, because the
-    // grant belongs to a (Facebook user, app) pair — a second DragonCandy user
-    // who linked the same Facebook account holds rows this revoke would break.
-    const remaining = await countConnectionsForFacebookUser(supabase, conn.fb_user_id);
-    const isLastPageOnGrant = remaining <= 1;
-
-    if (!isLastPageOnGrant) {
-      const { error: delError } = await supabase.from(TABLE).delete().eq('id', conn.id);
-      if (delError) {
-        return json(req, { error: 'storage_failed', message: delError.message }, 500);
-      }
-      // Says exactly what happened. Claiming we withdrew access at Facebook here
-      // would be false, and falsely reassuring in the direction that matters.
+    if (!claim.is_last) {
+      // Row already deleted inside the lock. Say exactly what happened —
+      // claiming we withdrew access at Facebook here would be false, and falsely
+      // reassuring in the direction that matters.
       return json(req, {
         disconnected: true,
         revoked: 'kept_for_other_pages',
@@ -99,10 +97,10 @@ serve(async (req: Request) => {
 
     // The asymmetry this connector lives with: the Page token that reads
     // insights never expires, while the USER token that revokes lasts ~60 days.
-    // A connection can therefore be perfectly healthy and simultaneously unable
-    // to hand its grant back. Saying which happened beats a generic failure.
-    if (!canRevoke(conn)) {
-      const { error: delError } = await supabase.from(TABLE).delete().eq('id', conn.id);
+    // A connection can be perfectly healthy for reading and unable to hand its
+    // grant back. Saying which happened beats a generic failure.
+    if (!canRevoke({ user_token_expires_at: claim.user_token_expires_at ?? null })) {
+      const { error: delError } = await supabase.from(TABLE).delete().eq('id', claim.id);
       if (delError) {
         return json(req, { error: 'storage_failed', message: delError.message }, 500);
       }
@@ -116,11 +114,12 @@ serve(async (req: Request) => {
       });
     }
 
-    const outcome = await revokePermissions(conn.user_access_token);
+    const outcome = await revokePermissions(claim.user_access_token);
 
     if (outcome === 'failed') {
       // Keep the row. It holds the only copy of the token, so deleting now would
-      // leave a live grant nothing can ever revoke. The user can retry.
+      // leave a live grant nothing can ever revoke. Only a token Meta itself
+      // reports as dead reaches the delete below.
       return json(
         req,
         {
@@ -131,9 +130,9 @@ serve(async (req: Request) => {
       );
     }
 
-    // Only now. Reaching this line means Meta reported the grant revoked or
-    // already invalid, so deleting the token cannot strand anything.
-    const { error: delError } = await supabase.from(TABLE).delete().eq('id', conn.id);
+    // Only now. Reaching this line means Meta reported the grant revoked or the
+    // token already dead, so deleting it cannot strand anything.
+    const { error: delError } = await supabase.from(TABLE).delete().eq('id', claim.id);
     if (delError) {
       return json(req, { error: 'storage_failed', message: delError.message }, 500);
     }

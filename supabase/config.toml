@@ -390,3 +390,11 @@ verify_jwt = true
 # function ever ran. A missing FACEBOOK_APP_SECRET fails closed (503).
 [functions.facebook-deauthorize]
 verify_jwt = false
+
+# Same posture and same reason as facebook-deauthorize: Meta POSTs with no
+# session, so the signed_request signature is the entire gate. Its own function
+# rather than a shared one because instagram-data-deletion matches rows on
+# ig_user_id, which appears in no Facebook row — pointing Meta here at that
+# function would delete nothing and return a confirmation code saying otherwise.
+[functions.facebook-data-deletion]
+verify_jwt = false
