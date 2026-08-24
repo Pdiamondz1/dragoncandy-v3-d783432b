@@ -32,6 +32,68 @@
 >
 > **Adding an entry:** prepend it (newest first). See `knowledge-sync` step 4.
 
+## [2026-08-24] Size body in dvh like the shell — a height comparison has two sides
+
+The follow-up to the entry below, which shipped a fix that did not resolve the report. Confirmed
+working on a real phone by the founder the same day.
+
+### Three diagnoses, the first two confident and wrong
+
+Adrian and the founder reported the landing still scrolling, with white below the footer — a little
+in portrait, a lot in landscape, scroll indicator visible in both.
+
+1. **"The content overflows."** Refuted by measuring: zero overflow at every viewport Chrome could
+   produce.
+2. **"It is the rubber-band."** Plausible, shipped as #501, did not fix it. The iOS simulator even
+   confirmed WebKit *applies* `overscroll-behavior` — a true fact that answered a question nobody
+   had asked, since *applied* was never the same claim as *suppressed*, and it was then read as
+   support for the wrong answer.
+3. **The screenshot settled it.** The white sat **below the app shell**, with a scrollbar. That one
+   observation eliminates every mechanism inside the page at once: nothing under `#root` can paint
+   outside the body box.
+
+### The cause
+
+`src/index.css` pinned `html, body { height: 100% }`. A percentage resolves against the **initial
+containing block**, which on iOS Safari is the **small** viewport (toolbars showing). `100dvh` is
+the **current** dynamic viewport and **grows** as Safari collapses or compacts its toolbars —
+aggressively in landscape. So with `AppShell` at `h-[100dvh]`, the shell outgrew body's fixed box
+the moment the toolbar moved, body scrolled by exactly that difference, and the strip below the
+shell painted body's own white background.
+
+**This project had already measured the disagreement and not read it that way.** The "screen jumps"
+fix recorded body `clientHeight` **753** against `100vh` **833**, then changed the **shell's** unit
+and left the other side of the comparison on `%`. That closed the always-80px case and left a gap
+that opens and shuts with the toolbar.
+
+> **A height comparison has two sides, and fixing one of them is not fixing it.**
+
+### What shipped
+
+- `html` and `body` sized `100dvh`, the same unit as the shell, so both move together. A
+  `height: 100%` fallback stays declared **before** it, and the test asserts declaration order —
+  if the fallback came last it would win and the bug would return with the guard still green.
+- While the landing is mounted, `html`/`body` are `overflow: hidden`. Independent of any unit
+  comparison, and the standard way to stop the iOS rubber-band, which cannot fire on a document
+  with no scrollable overflow. **`#main-content` deliberately NOT locked** — if content ever does
+  not fit, `main` can still scroll, so the only CTA can never become unreachable.
+- A **height** breakpoint, `short:` (`max-height: 430px`), because no width breakpoint can see that
+  a phone is held sideways. Landscape genuinely did not fit: hero 277px + footer 78px = **355**
+  against roughly **310** a phone leaves with toolbars showing. Now **195**.
+
+### Verified
+
+844x310 and 844x240: body and main overflow both 0, CTA fully visible. 500x760 and 1440x900:
+unchanged. iOS simulator with a throwaway readout: `innerHeight` 874, `html` **874px**, `body`
+**874px** — the three agreeing for the first time. The landing lock lifts on navigation, proven by
+setting `/how-it-works`' `scrollTop` to 300 and reading back 300 rather than trusting the overflow
+property. Prod CSS confirmed **byte-identical** to the measured build (`cmp`). 3063 tests,
+typecheck, lint clean, build; Codex clean. **Then confirmed on a real phone** — the only instrument
+that could, since Chrome, device emulation and the Capacitor WebView all lack a collapsing toolbar
+and so report this family of defects absent. Third such defect.
+
+-> `docs/wiki/concepts/mobile-viewport-fixed-positioning.md` (Sec 10-11) - #504
+
 ## [2026-08-24] The page could still be dragged, and the logo had five sizes
 
 Two reports on the same day against the landing that shipped as #459 and had already been

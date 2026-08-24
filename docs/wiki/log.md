@@ -1,5 +1,37 @@
 # Wiki Log
 
+## [2026-08-24] update | A height comparison has two sides
+
+**Created** `docs/wiki/raw/sessions/2026-08-24-body-height-unit-mismatch.md`.
+**Updated** [[Mobile Viewport & Fixed Positioning]] — new §11 (the real cause), and §10 marked in
+place as a **wrong diagnosis that shipped**, kept rather than rewritten because it is exactly what
+a plausible wrong answer looks like. Also `docs/DESIGN_SYSTEM.md`, `docs/SHIPPED_LOG.md` and
+`docs/PROJECT_CONTEXT.md` §5, whose `**Pending:** the drag on a real phone` clause was answered the
+same day it was written.
+
+The landing kept scrolling after #501, with white below the footer. Three diagnoses: content
+overflow (refuted by measurement), the rubber-band (plausible, shipped, did not fix it), and
+finally the real one — `html, body { height: 100% }` resolves against the initial containing block,
+which on iOS Safari is the SMALL viewport, while the shell's `100dvh` is the CURRENT one and grows
+as Safari collapses its toolbars. The shell outgrew body's box, body scrolled by the difference,
+and the strip below painted body's white.
+
+**§9 had already measured the disagreement** — body `clientHeight` 753 against `100vh` 833 — fixed
+the *shell's* unit and left the other side on `%`. A height comparison has two sides, and fixing
+one of them is not fixing it.
+
+Two lessons beyond the CSS. **Position rules out cause faster than any probe:** the white sitting
+*below the app shell* eliminated every mechanism inside the page at once, because nothing under
+`#root` can paint outside the body box. And **a true fact can confirm a false diagnosis** — the
+simulator's proof that WebKit *applies* `overscroll-behavior` answered a question nobody had asked,
+since applied was never the same claim as suppressed, and it was read as support for the wrong
+answer anyway.
+
+Confirmed working on a real phone, the only instrument that could: Chrome, device emulation and the
+Capacitor WebView all lack a collapsing toolbar, so this family of defects is structurally
+invisible there. Third such defect (§8, §9, §11).
+
+
 ## [2026-08-24] ingest | The page could still be dragged, and the logo had five sizes
 
 **Created** [[Brand Logo Sizing]] (`concepts/brand-logo-sizing.md`) and

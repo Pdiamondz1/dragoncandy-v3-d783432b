@@ -346,6 +346,11 @@ same token/font system, unaffected; `/internal` stays dark.
   one of them is not fixing it.** Invisible in Chrome, in device emulation and in the Capacitor
   WebView, all for the same reason: none has a collapsing toolbar, so ICB `===` dvh and the gap is
   structurally zero. Third defect in this family after the two rules below.
+  **Confirmed fixed on a real phone, 2026-08-24** — the only instrument that could confirm it. Note
+  the report took THREE diagnoses: content overflow (refuted by measurement), the rubber-band
+  (plausible, shipped, did not fix it), and finally this. What settled it was a screenshot showing
+  the white **below the app shell** — position rules out every mechanism inside the page at once,
+  since nothing under `#root` can paint outside the body box.
   Keep `height: 100%` only as a fallback declared **before** the `dvh` line; if it came after it
   would win. Pinned by `src/documentOverscroll.test.ts`, which checks the declaration order too.
 * **The landing locks the document while it is mounted, and scales down on SHORT viewports.**
