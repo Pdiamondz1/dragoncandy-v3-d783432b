@@ -55,6 +55,7 @@ const CreatorSettings = lazy(() => import("./pages/CreatorSettings"));
 const YouTubeCallback = lazy(() => import("./pages/YouTubeCallback"));
 const InstagramCallback = lazy(() => import("./pages/InstagramCallback"));
 const FacebookCallback = lazy(() => import("./pages/FacebookCallback"));
+const XCallback = lazy(() => import("./pages/XCallback"));
 const CampaignsPage = lazy(() => import("./pages/CampaignsPage"));
 const CampaignCreator = lazy(() => import("./pages/CampaignCreator"));
 const CampaignDetailsPage = lazy(() => import("./pages/CampaignDetailsPage"));
@@ -260,6 +261,7 @@ function AnimatedRoutes() {
           <Route path="/youtube/callback" element={<ProtectedRoute><YouTubeCallback /></ProtectedRoute>} />
           <Route path="/instagram/callback" element={<ProtectedRoute><InstagramCallback /></ProtectedRoute>} />
           <Route path="/facebook/callback" element={<ProtectedRoute><FacebookCallback /></ProtectedRoute>} />
+          <Route path="/x/callback" element={<ProtectedRoute><XCallback /></ProtectedRoute>} />
 
           {/* Campaign Routes */}
           <Route path="/dashboard/business/campaigns" element={<ProtectedRoute><BusinessRoute><CampaignsPage /></BusinessRoute></ProtectedRoute>} />

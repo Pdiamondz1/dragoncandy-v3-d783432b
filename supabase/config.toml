@@ -398,3 +398,32 @@ verify_jwt = false
 # function would delete nothing and return a confirmation code saying otherwise.
 [functions.facebook-data-deletion]
 verify_jwt = false
+
+# ---------------------------------------------------------------------------
+# X (Twitter) analytics connector — read-only.
+#
+# All four require a JWT. Unlike the Meta connectors there is no unauthenticated
+# callback here: X has no deauthorize or data-deletion webhook, so every X
+# function is called by our own app with the user's session.
+#
+# Declared here rather than left to `--no-verify-jwt` at deploy time, which was
+# a Codex P1 on the Instagram connector: a comment asking the deployer to
+# remember a flag is not a setting, and `supabase functions deploy` reads this
+# file from the CURRENT directory — deploying from the wrong checkout silently
+# applies the default.
+# ---------------------------------------------------------------------------
+[functions.x-oauth-start]
+verify_jwt = true
+
+# The browser lands on /x/callback INSIDE the app, which forwards the code with
+# the user's own JWT. That is what proves the browser completing consent is the
+# one that started the flow — an HMAC-signed state alone proves only that the
+# state is ours. See the header of x-oauth-callback.
+[functions.x-oauth-callback]
+verify_jwt = true
+
+[functions.x-insights]
+verify_jwt = true
+
+[functions.x-disconnect]
+verify_jwt = true
