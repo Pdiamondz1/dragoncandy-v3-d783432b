@@ -184,11 +184,28 @@ async function tiktokFetch(
   const err = (payload.error ?? {}) as Record<string, unknown>;
   const code = typeof err.code === 'string' ? err.code : null;
 
-  // ENUMERATE THE GOOD CASE. A guard that lists the bad codes treats every code
-  // it has not met as success — which for this envelope means rendering an empty
-  // card as though it were measured. Codex round 12 on the X connector was
-  // exactly this shape.
-  if (code !== null && code !== 'ok') {
+  // ENUMERATE THE GOOD CASE — AND THE FIRST DRAFT DID NOT, DIRECTLY BENEATH THIS
+  // COMMENT SAYING IT SHOULD.
+  //
+  // It read `code !== null && code !== 'ok'`, which lets a response with NO
+  // envelope at all fall through to success. `parseVideos({})` then yields an
+  // empty list, which is cached and rendered as "no recent videos" — an upstream
+  // failure presented as a fact about the account. Exactly the shape the comment
+  // was warning about, and a good reminder that a comment asserting a property is
+  // not the same as code having it.
+  //
+  // Now only `'ok'` proceeds. A missing code fails CLOSED, because TikTok
+  // documents the `{data, error}` envelope on every Display API response, and a
+  // response without one is not something to interpret.
+  if (code !== 'ok') {
+    if (code === null) {
+      throw new TikTokError(
+        'bad_response',
+        'TikTok returned a response we could not interpret',
+        502,
+      );
+    }
+
     const message = typeof err.message === 'string' ? err.message : code;
 
     if (['access_token_invalid', 'token_expired', 'scope_not_authorized'].includes(code)) {

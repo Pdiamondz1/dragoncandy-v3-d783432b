@@ -177,11 +177,28 @@ async function postForm(url: string, fields: Record<string, string>): Promise<Re
   }
 
   const text = await res.text();
+
+  // AN EMPTY BODY IS NOT A MALFORMED ONE, AND ON THE REVOKE ENDPOINT IT IS THE
+  // SUCCESS CASE. TikTok answers a successful revoke with 200 and no body at
+  // all, so parsing unconditionally turned every real revoke into
+  // `bad_response` -> `revoked: false` -> `revoke_failed`, and since disconnect
+  // deliberately KEEPS the row when a revoke is unconfirmed, disconnect could
+  // never complete. It failed in the direction that looks safe, which is why it
+  // survived the tests.
+  //
+  // Treating empty as `{}` is correct for the token endpoints too, and not by
+  // luck: `tokensFrom({})` still refuses with "TikTok returned no access token".
+  // The empty case stays an error where an access token was required, and
+  // becomes success only where nothing was expected back.
   let payload: Record<string, unknown>;
-  try {
-    payload = JSON.parse(text) as Record<string, unknown>;
-  } catch {
-    throw new TikTokError('bad_response', 'TikTok returned a non-JSON response', 502);
+  if (text.trim() === '') {
+    payload = {};
+  } else {
+    try {
+      payload = JSON.parse(text) as Record<string, unknown>;
+    } catch {
+      throw new TikTokError('bad_response', 'TikTok returned a non-JSON response', 502);
+    }
   }
 
   // TIKTOK REPORTS OAUTH FAILURES IN THE BODY, OFTEN WITH HTTP 200.

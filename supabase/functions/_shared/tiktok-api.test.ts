@@ -143,6 +143,16 @@ describe('the token exchange', () => {
     ).rejects.toBeInstanceOf(TikTokReconnectRequiredError);
   });
 
+  it('still refuses an EMPTY token response — the allowance is not blanket', async () => {
+    // Accepting an empty body is right for revoke, where nothing is expected
+    // back. It must not turn the token endpoint into a silent success storing an
+    // undefined access token.
+    vi.stubGlobal('fetch', vi.fn(async () => new Response('', { status: 200 })));
+    await expect(
+      exchangeCode({ clientKey: 'ck', clientSecret: 'cs', code: 'c', redirectUri: 'https://x/y' }),
+    ).rejects.toBeInstanceOf(TikTokError);
+  });
+
   it('refuses a response with no access token rather than storing undefined', async () => {
     vi.stubGlobal('fetch', vi.fn(async () => respond(200, { open_id: 'o' })));
     await expect(
@@ -204,6 +214,21 @@ describe('revokeToken', () => {
     const result = await revokeToken({ clientKey: 'ck', clientSecret: 'cs', token: 't' });
     expect(result.revoked).toBe(true);
     expect(result.detail).toBe('already_invalid');
+  });
+
+  it('treats an EMPTY body as a successful revoke', async () => {
+    // TikTok answers a successful revoke with 200 and no body at all. The first
+    // draft parsed unconditionally, so every real revoke became `bad_response`
+    // -> revoked:false -> `revoke_failed` — and because disconnect deliberately
+    // KEEPS the row when a revoke is unconfirmed, disconnect could never
+    // complete. It failed in the direction that looks safe.
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => new Response('', { status: 200 })),
+    );
+    const result = await revokeToken({ clientKey: 'ck', clientSecret: 'cs', token: 't' });
+    expect(result.revoked).toBe(true);
+    expect(result.detail).toBe('revoked');
   });
 
   it('reports a genuine failure as NOT revoked rather than throwing', async () => {

@@ -231,6 +231,18 @@ describe('the {data, error} envelope is the authority, not the status line', () 
     await expect(fetchVideos('token')).rejects.toBeInstanceOf(TikTokError);
   });
 
+  it('refuses a response with NO envelope rather than reading it as empty', async () => {
+    // The first draft guarded with `code !== null && code !== 'ok'`, so a
+    // response carrying no `error` object fell through to success — and
+    // parseVideos({}) yields an empty list, which was then cached and rendered
+    // as "no recent videos". An upstream failure presented as a fact about the
+    // account. Fails closed now.
+    vi.stubGlobal('fetch', vi.fn(async () => respond(200, { unexpected: true })));
+    const err = await fetchVideos('token').catch((e) => e);
+    expect(err).toBeInstanceOf(TikTokError);
+    expect((err as TikTokError).code).toBe('bad_response');
+  });
+
   it('reports a rate limit as rate-limited, never as a dead connection', async () => {
     // Telling a user to reauthorize over a rate limit is the mistake the YouTube
     // connector made with quota 403s.
