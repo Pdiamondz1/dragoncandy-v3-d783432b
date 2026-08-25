@@ -32,6 +32,115 @@
 >
 > **Adding an entry:** prepend it (newest first). See `knowledge-sync` step 4.
 
+## [2026-08-25] Onboarding, tested on production for the first time — and three defects only production could show
+
+The founder drove a real creator signup on prod (`dame+onboardtest@dragoncandy.com`) while an
+agent watched the database and the browser. PRs **#521** and **#523**.
+
+**Why prod, not staging.** The edge-function CORS allow-list admits only prod origins,
+`capacitor://localhost` and Lovable, so `verify-phone`, `verify-address` and the Stripe Connect
+functions are unreachable from localhost or a preview. Staging was investigated and rejected on
+evidence: the two ledgers have diverged in **both** directions (255 prod versions absent from
+staging, 125 staging versions prod never recorded), only **26 of the 156** repo migrations staging
+lacks are recorded on prod, and prod's schema was built partly by **229 versions with no file at
+all** — so replaying files reconstructs neither. A schema probe settled it: **staging has 4 of the
+33 objects onboarding needs; prod has 33** (prod's 33/33 being the control that proves the probe
+can return "present"). Staging also lacks the Twilio and Maps secrets and — the deciding fact —
+**shares prod's Stripe secret key**, identical SHA-256 digest, so it never offered payment
+isolation.
+
+**Proven working, for the first time on this platform.** Phone verification end to end: the
+attempt ledger reads `start/rejected` → `start/throttled` → `start/sent` → `check/approved`. The
+first row is Twilio error 21608 (no Primary Compliance Profile); the second is the atomic
+reservation RPC refusing a retry **58 seconds into a 60-second cooldown** — its first live proof,
+and it has no automated coverage because the decision is SQL and Vitest has no database. `phone`
+and `phone_verified_at` landed in the **same watcher tick**, which is the composite
+single-statement write the re-verification trigger depends on; split across statements the trigger
+would have nulled the stamp it was just handed. Stripe Connect account creation also worked, with
+#516's identity mirror firing on a row nobody had healed by hand.
+
+**Defect 1 — Stripe Connect ejected the user out of onboarding.** Both
+`create-*-connect-account` functions hardcoded the hosted link's return to
+`/dashboard/<role>/settings`, so "Complete Setup" on step 5 of 5 handed the user to Stripe and
+Stripe handed them to Settings. The tell was already in the code: the slide carried copy
+apologising for it, and a comment asserting the client could not influence it. Fixed via
+`_shared/connect-return.ts` — **the caller never sends a URL**, it sends a PATH, the origin stays
+server-side, and the path must *equal* an allow-list entry (not a prefix, so
+`/profile/setup/../../evil` cannot escape). **Fixing the return path alone would have been worse
+than the bug**: the wizard remounts blank and the creator write is an upsert with no
+`ignoreDuplicates`, so Continue would have overwritten name, bio and skills with empty strings —
+the original merely ended onboarding early and left data intact. Hydration and resume took three
+more Codex rounds, each its own data-loss path: a failed read treated as an absent row (and the
+comment justified it by reasoning about the first-time user, while the dangerous case is the
+returning one); a hydrated avatar reaching only the preview, so a later save wrote
+`avatar_url: null` and deleted a picture visible on screen throughout; and a failure flag that is
+false while the read is still *pending*, fixed by **awaiting** the read rather than adding a second
+flag. Writing that last test exposed a fourth defect in the fix itself — the effect's cleanup
+cancelled on every re-render while the once-only ref stopped it restarting, so the single in-flight
+read aborted partway and resolved `{ ok: true }` having applied nothing.
+
+**Defect 2 — the CSP geocoding fix had never worked.** An earlier session added
+`https://api.bigdatacloud.net` to `connect-src` and reported the failure fixed. That host answers
+**307 → `https://api-bdc.io`**, and CSP is enforced on **every hop of a redirect**, so the second
+hop was refused and `useAutoDetect`'s `catch { return null }` swallowed it. City and country were
+null for every user who ever signed up while `timezone` (from `Intl`, no network) kept working and
+made the hook look alive. Surfaced only because the watcher's baseline showed exactly that split on
+a brand-new account. A false lead worth keeping: the network panel showed no request, which read as
+"the call never fired" — **a CSP-blocked fetch never appears in the network panel at all**; the
+console is the only witness. And `cspConnectSrc.test.ts` **structurally could not catch this**,
+because it derives hosts from `fetch(...)` call sites and `api-bdc.io` exists nowhere in the
+source, only as a `Location` header. It reported green throughout.
+
+**Defect 3 — logging back in skipped onboarding.** The post-login redirect gated solely on
+`<role>_profiles.is_completed`, which `saveCore` sets when the user leaves the *last collect slide*
+— before phone, address, payments or ready — and sets early **on purpose**, so someone who quits
+inside Stripe still has a working dashboard. `AuthPage` read it as "onboarding is finished".
+**One column, two readers, two meanings**, the same class as `stripe_onboarding_complete`'s two
+disagreeing readers. The watcher timestamped the gap: `creator_done` true twelve minutes before the
+phone was verified. Replaced by `wizardResumeStep`, derived from the registry the wizard renders
+from, with the opposite failure guarded — routing on full readiness would trap a user for as long
+as a third party takes to answer, so anything unreadable stays `unknown` and never routes. Three
+Codex refinements changed the design: Stripe's `pending` covers **two situations with identical
+columns** (walked out of the hosted form, versus finished and being verified) separated only by
+`stripe_requirements_due`; **identity items in that column are user-actionable**, not Stripe
+deliberating, so excluding every identity-prefixed key sent exactly those people to the dashboard
+with an upload outstanding; and `maybeSingle()` on `org_units` **errors once an org has a second
+location**, which silently exempted every multi-location business from the required address step.
+Shipped with it: the redirect effect latched to fire once (it fired twice, and two chains racing
+through a `<Navigate>` hop 135 ms apart left the browser on a route rendering `null` — the blank
+page after login), the hop deleted rather than sequenced, creators landing on `/dashboard/creator`
+where the checklist actually renders rather than `/campaigns` which has none, and the resume step
+carried as `?step=` treated as untrusted (never `ready`, never another role's slide).
+
+**Honest limit, stated because it would be easy to imply otherwise:** for the reporting account the
+routing change altered only the *destination*. Its Stripe derives `pending`, its identity is unmet
+solely via `requirements.pending_verification`, and `address` is merely `recommended` for creators
+— so `wizardResumeStep` correctly returns null. Verified against the real row.
+
+**Method notes.** A continuous change-watcher (polling every 8s, logging only *changes*) caught two
+things no point-in-time query could. **Every serious find came from a control, not from reading**: a
+paired control exposed a P1 test passing through the wrong code path (a creator's save boundary is
+leaving *bio*, not identity, so one Continue never reached the save); a forced revert showed an
+identity guard failing **zero** tests — load-bearing in appearance, undetectable in fact; a console
+probe proved the listener was live before "no errors" was trusted. Three claims were corrected
+mid-session against the source: `check-restaurant-payout-status` only *clears* the identity columns,
+the first "it's deployed" had shipped old code because the command ran in the main checkout, and
+`phone_verified` is `recommended` in the registry, so a test assumption moved rather than the tier
+being promoted to fit it. A commit went in with a **red suite** and Codex caught it — those
+assertions match source strings, so a rename fails at run time, not at compile time. And a deployed
+edge-function body is an **ESZIP binary**, so a plain grep returns blank rather than `0`, which
+reads as "absent" if skimmed.
+
+**Left open, all owned outside this work:** the Twilio **Primary Compliance Profile** is
+unapproved, so no real user can verify a phone (launch-blocking; the test proceeded only via a
+Verified Caller ID, which unblocks one number); email verification **strands the signup tab** and
+forces a password re-entry on a user's very first experience (no `BroadcastChannel`, no storage
+listener, no realtime subscription, no poll — checked for all four); and the creator address slide,
+the ready slide and the entire restaurant flow are unexercised.
+
+→ `docs/wiki/concepts/onboarding-resume-and-routing.md` ·
+`docs/wiki/concepts/csp-redirect-hops.md` · #521, #523
+
 ## [2026-08-25] X connector: connected, charging, and measuring nothing
 
 The fourth direct platform connector under the 2026-08-23 scope decision (**Outstand publishes,

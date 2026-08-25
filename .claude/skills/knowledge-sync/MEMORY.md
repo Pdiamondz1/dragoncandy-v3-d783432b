@@ -50,6 +50,19 @@
   page, cross-linked both ways. Compounding a distinct subject onto a topical neighbour buries it
   as a retrieval key and pushes the host page toward `FAIL_CHARS`, where it is **skipped entirely**
   — paying a real cost for a principle that did not apply.
+- **[index-sections] `index.md` is SECTIONED, and one section starts out of order — never insert
+  by scanning the whole file.** It has `## Sources`, `## Entities`, `## Concepts`,
+  `## Flow Diagrams`, `## Analyses`; entries are alphabetical *within* a section only. Inserting
+  before "the first entry that sorts later" scans from the top and lands the page in
+  **`## Sources`**, which is where a concept page silently disappears. Scoping to the right
+  section is still not enough: `## Concepts` opens with `Toast Partner Integration`, which is
+  greater than almost anything, so a naive comparison matches it immediately and pins every new
+  page to the top of the section. Skip the section's first entry, then compare. **And resolve
+  every `[[Display Name]]` against `index.md` BEFORE committing** — the display names are curated
+  and routinely differ from the page's `title:` frontmatter (this run guessed
+  `Onboarding Wizard & Account Depth`; the index says `Onboarding Wizard & Depth`), and a wrong
+  one is a silently broken link, not an error. Cheap check: extract every `[[…]]` from the new
+  pages and `grep -F` each against `index.md`.
 - **[orphans] Run the orphan check every run — by PATH, not title.** The `wiki-save-answer`
   flow adds `analyses/` pages + syncs RAG but does NOT update `index.md`, so its pages land as
   catalog orphans (caught 2: [[Competitive Advantage]], [[Influencer/Creator Outreach]]). Before
@@ -277,6 +290,28 @@
   `[orphans]`, which matches on the `(path/to/file.md)` link target and does not have this problem.
 
 ## Run log (newest first — add each new entry at the TOP; never edit/delete past entries)
+
+### 2026-08-24 — Onboarding tested on production; two new concept pages
+- **Output:** `docs/wiki/concepts/onboarding-resume-and-routing.md` +
+  `docs/wiki/concepts/csp-redirect-hops.md`, indexed and logged
+  (`log.md` → `[2026-08-24] ingest | The first production test of onboarding`).
+- **Happened:** wrote the raw session, split it into TWO concept pages, corrected two
+  superseded claims in place on [[Onboarding Wizard & Depth]], prepended `SHIPPED_LOG.md`,
+  edited §5 in place. Codex clean at round 1.
+- **Worked:** `[superseded-mechanism]` earned its keep unprompted — the session had
+  *deleted* the constraint an existing page stated as fact ("the client cannot influence
+  [the Stripe return] without an edge-function change"), and that page also still claimed
+  nothing had been verified against production. Both were load-bearing and both were
+  corrected rather than appended to. `[orphans]` by link target: clean.
+- **Failed:** `index.md` is NOT a flat alphabetical list — it has `## Sources` / `## Entities`
+  / `## Concepts` / `## Flow Diagrams` / `## Analyses`. Inserting by "first entry that sorts
+  later" scattered both pages into `## Sources`. The second attempt scoped to `## Concepts`
+  and still put them at the TOP, because that section opens with an out-of-order line
+  (`Toast Partner Integration`) that every comparison matches first. Also wrote a wikilink
+  to a display name I assumed (`Onboarding Wizard & Account Depth`) rather than the real one
+  (`Onboarding Wizard & Depth`).
+- **Remember:** see the new `[index-sections]` lesson.
+
 
 ### [2026-08-24] Launch events, the Hoboken denominator, Drive delivery (PRs #513, #515, `docs/launch-events-and-drive-upload`)
 

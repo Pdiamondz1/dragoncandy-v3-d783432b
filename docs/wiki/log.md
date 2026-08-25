@@ -1,5 +1,31 @@
 # Wiki Log
 
+## [2026-08-24] ingest | The first production test of onboarding
+
+**Created** [[Onboarding Resume & Post-Login Routing]]
+(`concepts/onboarding-resume-and-routing.md`), [[CSP Applies To Every Redirect Hop]]
+(`concepts/csp-redirect-hops.md`) and
+`raw/sessions/2026-08-24-onboarding-prod-test.md`. **Updated** `index.md`,
+[[Onboarding Wizard & Depth]], `docs/SHIPPED_LOG.md`, `docs/PROJECT_CONTEXT.md` §5.
+
+The founder drove a real creator signup on production while an agent watched the database
+and the browser. Proven working for the first time: phone verification end to end (the
+attempt ledger reads `rejected → throttled → sent → approved`, the middle row being the
+atomic reservation RPC refusing a retry 58s into a 60s cooldown), and Stripe Connect
+account creation with #516's identity mirror firing on a row nobody had healed by hand.
+
+Three defects shipped. Stripe Connect ejected the user out of the wizard, and **fixing the
+return path alone would have been worse than the bug** — the wizard remounts blank and the
+creator write is an upsert with no `ignoreDuplicates`. The CSP geocoding fix had **never
+worked**: `api.bigdatacloud.net` 307s to `api-bdc.io` and CSP is enforced on every hop. And
+`is_completed` means "the core rows exist", not "onboarding is done", so logging back in
+skipped onboarding.
+
+Method notes that earned their keep: a continuous change-watcher caught two things no
+point-in-time query could; every serious find came from a **control**, not from reading —
+including a forced revert that showed a guard failing **zero** tests, load-bearing in
+appearance and undetectable in fact.
+
 ## [2026-08-25] ingest | X connector: connected, charging, and measuring nothing
 
 **Created** [[X Analytics Connector]] (`concepts/x-analytics-connector.md`) and
