@@ -42,6 +42,7 @@ describe('analytics connector coverage', () => {
     'YouTubeAnalyticsCard',
     'FacebookPageInsightsCard',
     'XAnalyticsCard',
+    'TikTokAnalyticsCard',
   ])(
     'renders %s on every surface that offers Outstand',
     (card) => {

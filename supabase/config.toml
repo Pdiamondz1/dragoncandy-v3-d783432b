@@ -427,3 +427,26 @@ verify_jwt = true
 
 [functions.x-disconnect]
 verify_jwt = true
+
+# TikTok read-only analytics connector. All four are called BY THE APP with the
+# user's own JWT, so all four verify it at the gateway.
+#
+# Note there are no anonymous entries in this family, unlike the Meta connectors:
+# TikTok has no deauthorize or data-deletion webhook to receive, so nothing here
+# is ever called by TikTok itself. The callback is a page inside the app that
+# forwards the code with the caller's JWT — which is exactly what lets
+# verifyState require the state to name that caller.
+#
+# Declared rather than left to the CLI default. An earlier connector relied on a
+# code comment asking the deployer to remember a flag, which is not a control.
+[functions.tiktok-oauth-start]
+verify_jwt = true
+
+[functions.tiktok-oauth-callback]
+verify_jwt = true
+
+[functions.tiktok-insights]
+verify_jwt = true
+
+[functions.tiktok-disconnect]
+verify_jwt = true
