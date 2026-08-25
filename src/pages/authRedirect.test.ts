@@ -31,7 +31,10 @@ describe('AuthPage post-login redirect', () => {
     for (const hop of ['/profile/creator', '/profile/business', '/profile/brand']) {
       expect(src).not.toContain(`navigate('${hop}')`);
     }
-    expect(src).toContain("navigate('/profile/setup', { replace: true })");
+    // The destination is a ternary now (`?step=` is carried when there is one), so match
+    // the FORM rather than one exact string — an exact match here silently went red the
+    // moment the step was added, and was committed that way.
+    expect(src).toMatch(/navigate\(\s*resumeAt\s*\?\s*`\/profile\/setup\?step=\$\{resumeAt\}`\s*:\s*'\/profile\/setup'/);
   });
 
   /**
@@ -50,12 +53,10 @@ describe('AuthPage post-login redirect', () => {
    * check of what the wizard still has to ask.
    */
   it('does not treat is_completed alone as "onboarding finished"', () => {
-    expect(src).toContain('wizardHasWorkLeft');
-    const gates = src.match(/if \(![a-zA-Z]+Profile\?\.is_completed/g) ?? [];
+    expect(src).toContain('wizardResumeStep');
+    const gates = src.match(/if \(![a-zA-Z]+Profile\?\.is_completed \|\| resumeAt\)/g) ?? [];
     expect(gates.length).toBe(3); // creator, business, brand
-    for (const g of gates) {
-      const i = src.indexOf(g);
-      expect(src.slice(i, i + 200)).toContain('wizardHasWorkLeft');
-    }
+    // Each gate must be preceded by its own resolve, not share one from another branch.
+    expect((src.match(/await wizardResumeStep\(user\.id, '/g) ?? []).length).toBe(3);
   });
 });
