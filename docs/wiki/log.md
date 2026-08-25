@@ -34,6 +34,23 @@ four writes on App settings → Basic **is** writable from Login for Business �
 controls are one field behind two forms, and only one form works — a broken form is a property of
 the form, not of the setting.
 
+## [2026-08-24] ingest | A service-account transport for Drive uploads
+
+**Created** `docs/wiki/raw/sessions/2026-08-24-drive-service-account.md`. **Updated**
+[[Drive Artifact Delivery]] (two transports; a DWD claim in an older section corrected in
+place) and `docs/PROJECT_CONTEXT.md` §5.
+
+**The premise needed correcting before the question could be answered.** rclone is not being
+retired — the OAuth client ID it *lends* every install is. And every alternative needs its
+own credential regardless, so switching tools does not avoid the work. Two decisions worth
+carrying: a service account reaches a shared drive by **membership**, not domain-wide
+delegation (membership grants one drive; DWD can impersonate the domain), and **a key that is
+present but broken must fail rather than fall back**, or a misconfigured secret becomes a
+green run that succeeded by a route nobody chose. Stated plainly on the page: the new path
+has **never completed a real upload** — true when written, and closed the same evening:
+the account was created, the key installed and the deck uploaded through it, replacing the
+file in place with a matching md5.
+
 ## [2026-08-24] ingest | Launch events, the Hoboken denominator, and Drive delivery
 
 **Created** [[Drive Artifact Delivery]] (`concepts/drive-artifact-delivery.md`) and
