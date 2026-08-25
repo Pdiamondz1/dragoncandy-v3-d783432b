@@ -219,12 +219,26 @@ holds no Toast credentials. See §6.
   findings, all real, all mine, clean at round 11 — nearly every one a consequence of an earlier
   change in the same session. Two forced controls changed a conclusion: the double-tap test pins a
   PAIR of guards, not the ref it looks like it tests, and the retry-loop test first asserted against
-  elapsed time while its control passed. **Pending:** both-viewport prod verification (still no
-  test-account credentials); the Donny RAG sync; and social login, blocked on a `handle_new_user`
-  migration — that trigger never sets `email_verified`, which defaults false while `AuthPage` gates
-  on it, so an OAuth user would be told to verify an email that is never sent, and `authenticated`
-  holds INSERT but no UPDATE on the column, so there is no client-side fix. Auth logic, so it needs
-  confirmation first. → `docs/wiki/concepts/onboarding-wizard-and-depth.md` · `feat/onboarding-slice-3`
+  elapsed time while its control passed.
+  **TESTED ON PRODUCTION 2026-08-24, and three defects only production could show (#521, #523).**
+  This line read "**Pending:** both-viewport prod verification (still no test-account credentials)"
+  — the founder drove a real creator signup instead, and signup, email verification, phone
+  verification and Stripe Connect account creation are now all proven end to end. Prod was the only
+  option: the edge-function CORS allow-list admits prod origins, `capacitor://localhost` and Lovable
+  only, and staging holds **4 of the 33 objects onboarding needs** against prod's 33, lacks the
+  Twilio and Maps secrets, and **shares prod's Stripe key**. Fixed: Stripe Connect ejected the user
+  out of the wizard (and the return path **could not ship alone** — the wizard remounts blank onto an
+  upsert with no `ignoreDuplicates`, so it would have overwritten name, bio and skills); the CSP
+  geocoding fix had **never worked**, because `api.bigdatacloud.net` 307s to `api-bdc.io` and CSP is
+  enforced on every hop, leaving city/country null for every user ever; and `is_completed` means
+  "the core rows exist", not "onboarding is done", so logging back in skipped onboarding.
+  **Pending:** the Donny RAG sync; the creator address slide, the ready slide and the entire
+  restaurant flow, all still unexercised; and the Twilio **Primary Compliance Profile**, which is
+  unapproved — error 21608 means **no real user can verify a phone**, so it is launch-blocking and
+  is founder action, not engineering. Social login is no longer blocked here — it shipped dark; see
+  its own entry. → `docs/wiki/concepts/onboarding-wizard-and-depth.md` ·
+  `docs/wiki/concepts/onboarding-resume-and-routing.md` ·
+  `docs/wiki/concepts/csp-redirect-hops.md` · #521, #523
 - **Retrieval quality measured, not assumed** — chunking proved the text was reachable; it did not
   prove Donny *finds* it. `npm run eval:rag` now answers that against **53 real queries** taken from
   `donny_tool_executions` (every internal search Donny has ever run — they predate the work and
