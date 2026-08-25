@@ -785,6 +785,7 @@ YouTube one had been live since 2026-08-23.
 |-|-|
 | `youtube_channel_connections` | One row per linked YouTube channel (`20260823170000`). `channel_id`, `channel_title`, `google_email`, `scopes`, `refresh_token` (NOT NULL — Google's refresh token is a separate, long-lived credential), `access_token` + `access_token_expires_at`, `status`, `last_error`, `connected_at`, `last_synced_at`. |
 | `instagram_account_connections` | One row per linked Instagram account (`20260825120000`, applied 2026-08-24). `ig_user_id`, `username`, `account_type`, `followers_count`, `permissions`, `access_token` (NOT NULL), `token_issued_at`, `token_expires_at`, `status`, `last_error`, `connected_at`, `last_synced_at`. |
+| `x_account_connections` | One row per linked X (Twitter) account (`20260826100000`, applied 2026-08-24). `x_user_id`, `username`, `display_name`, `followers_count`, `following_count`, `tweet_count`, `scopes`, `access_token` + `access_token_expires_at`, `refresh_token`, `status`, `last_error`, `connected_at`, `last_synced_at`, plus a cached `insights` / `insights_cached_at` snapshot and **three claim pairs** (`refresh_*`, `insights_*`, `disconnect_*`). |
 
 > **The column sets differ for a reason that is the whole design.** Instagram has **no refresh
 > token**: the 60-day access token *is* the credential, and `ig_refresh_token` extends that same
@@ -814,6 +815,37 @@ YouTube one had been live since 2026-08-23.
 > renumbered because `feat/verify-address-throttle` had already recorded that version in prod's
 > ledger. `supabase/migrations.test.ts` now fails CI on any new collision — see
 > [[Instagram Insights Connector]].
+
+
+> **X is the only one of the three that carries a cached snapshot, and that is a COST control.**
+> YouTube, Instagram and Facebook insights are free, so those connectors read on every card
+> render. X deleted its free tier in February 2026 and bills per read (~$0.005 a post read,
+> ~$0.010 a user read, no free path to a user timeline). The card renders on three settings
+> surfaces, so reading on every render would bill per render, per surface, per user. Keeping the
+> snapshot in the SCHEMA rather than in the client is what makes it something a caller cannot opt
+> out of. See [[X Analytics Connector]].
+>
+> **The three claim pairs exist because an advisory lock cannot span an HTTP call.**
+> `pg_advisory_xact_lock` is released when its transaction ends, so refresh, insights-read and
+> disconnect each follow claim → outbound call → commit, with the claim recorded on the row. All
+> seven lock sites take **one** key, `hashtext('x_grant:' || p_user_id::text)` — an earlier draft
+> used three different keys, so three operations on the same grant serialised against nothing.
+> Same lineage as `pending_balance_flushes`.
+>
+> **`refresh_token` is nullable here, unlike YouTube's NOT NULL.** X issues one only when the user
+> grants `offline.access`, and they may decline. Such a connection is real, usable, and dead in two
+> hours; `can_refresh` is derived server-side from whether a token is actually held rather than
+> stored as a boolean that could be set optimistically.
+>
+> Lockdown is identical to the sibling tables and was verified rather than assumed on prod
+> 2026-08-24: RLS enabled with **zero policies for any role**, plus TABLE-level revocation (a
+> column-level `REVOKE` is a documented no-op against Supabase's ambient table-wide `GRANT`).
+> Grants read back as exactly `postgres` + `service_role`. `x_connection_status()` is
+> `SECURITY DEFINER`, takes **no arguments** so identity can only come from `auth.uid()`, returns
+> **no token column**, and is granted to `authenticated` + `service_role` but never `anon`.
+> Proven by impersonating a real user in a rolled-back transaction: the status function returns an
+> empty set, while the same caller reading the table directly and calling a claim RPC both raise
+> **42501**.
 
 ## Social & Outstand Integration
 

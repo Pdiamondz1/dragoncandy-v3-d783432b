@@ -32,6 +32,99 @@
 >
 > **Adding an entry:** prepend it (newest first). See `knowledge-sync` step 4.
 
+## [2026-08-25] X connector: connected, charging, and measuring nothing
+
+The fourth direct platform connector under the 2026-08-23 scope decision (**Outstand publishes,
+direct APIs measure**) went live as #519, a real account connected, and it cannot read a single
+figure — because X now charges for the data and nobody has agreed to pay. Everything built works.
+
+**What the first real connection proved.** `@dragoncandyco` is stored with an access token, **a
+refresh token**, and scopes exactly `tweet.read` + `users.read` + `offline.access` — nothing that
+can post — with the access token expiring exactly two hours after connect, as X documents. That
+finally proved **`X_CLIENT_SECRET`**: the token exchange is HTTP Basic `client_id:client_secret`,
+so tokens coming back is the only evidence that secret is correct, and every check before it had
+proven only the client *ID*. The callback redesign, the PKCE derivation and the state check all
+work.
+
+**What it did not prove.** `last_synced_at` is **null**. The analytics read answered **402
+`credits-depleted`**: X discontinued its free tier in **February 2026** and moved to pay-per-use —
+~$0.005 a post read, ~$0.010 a user read, and **no free path to a user timeline at all**. The
+sibling connectors' acceptance signal is that stamp landing seconds after `connected_at`, which a
+row cannot fake, and it has not been met. ***"Connected" is not the same claim as "working"***, and
+this is the first connector with one and not the other. **Founder decision 2026-08-25: not funding
+credits at this time.**
+
+**The one real defect was ours (#522).** The 402 fell into the catch-all branch, which appends X's
+raw response body to the message — and the card renders `error.message` directly, so a settings
+page displayed `{"detail":"credits depleted","status":402,...}`. Accurate, unreadable, naming no
+action. Now its own case, with three deliberate details: **not** `needs_reconnect` (reconnecting
+cannot buy credits, and pushing someone through a consent flow that fails identically is the
+YouTube quota-403 mistake); worded **without naming our developer account**, because the card
+renders on Creator, Business and Location settings and a creator who connected their own account
+reads the same sentence; and the catch-all **still keeps X's body**, since that is what identified
+this in one read rather than several. The rule is narrower than "stop leaking bodies": *any status
+a user can actually encounter earns its own case before reaching the catch-all.* Codex clean at
+round 1.
+
+**A zero that deserved suspicion and survived it.** The card read **0 followers** — exactly the
+shape of the fabricated zero this codebase has shipped before, where `Number(null)` is `0` and `0`
+is finite, so an absent measurement becomes a real zero. It is genuine: `num()` returns `null`
+unless the value is a finite `number`, so X really reported 0 for a new account. **The guard held,
+and checking was still right**, because a working guard and a broken one produce identical output
+in that case.
+
+**Cost is a design input here, not a footnote.** X is the only one of the four connectors that
+bills. That is why the 15-minute snapshot cache lives in the **schema** — so a client cannot opt
+out of it — why a forced refresh keeps a 60-second floor under it, why pagination is deliberately
+absent, and why the organic-metrics retry was narrowed: *a retry is only worth paying for when the
+thing being removed is the thing that failed.* Bounded by the cache, the worst case is ~96 reads a
+day per account (~$1.44); realistically ~$2 a month per connected account. The per-read figures
+were read off `docs.x.com` while building and the production 402 confirmed them from the other
+direction.
+
+**Thirteen Codex rounds, fifteen real findings**, every one a race or a false claim in the grant
+lifecycle rather than a wrong calculation. Two worth carrying: **a guard that enumerates the bad
+cases treats every case it has not met as good** — enumerate the good one, because the safe default
+was to discard; and **a lock only helps while it is held**, which is why connect is a single atomic
+RPC rather than a claim followed by an upsert. Also **HTTP 200 means two opposite things**: RFC
+7009 requires a revoke endpoint to return it both for a successful revoke and for a token that was
+never valid. **One P1 was refuted** — it said to register `dragoncandy.io`, citing `AGENTS.md`, a
+stale duplicate of `CLAUDE.md`; taking it would have caused the exact failure it warned of, since
+we *send* a `redirect_uri` derived from the origin the user is on and X matches it exactly.
+
+**Deploy checks that were not decoration.** The migration was applied with `db:apply` and verified
+by OBJECT, never by the ledger. **The zero-policy count needed a control** — a query returning 0
+looks identical whether the answer is genuinely zero or the query is wrong, so the same query
+against `profiles` returned 7. `verify_jwt` was read back off the **platform**, not off
+`config.toml`, which is a claim about the deploy rather than a record of one. The boot control
+separates registered from absent (an invented name returns **404** where all four return **401**),
+and the two 401s differ in shape — the gateway's body without a header, **ours** with the public
+anon key, and the second is what proves the module loaded. The authenticated path was proven by
+impersonation in a rolled-back transaction, with both controls denied **42501**. **Ordering held**
+for once: the migration went first, where Instagram shipped that window at ~20 minutes and Facebook
+at ~70.
+
+**A 200 on an SPA route proves nothing.** `/x/callback` returning 200 is meaningless because
+`vercel.json` rewrites unmatched paths to `index.html` — an invented asset path returns 200 too,
+which is how the first content check read the SPA shell and looked like a failed deploy.
+Verification followed prod's own import graph to the real content-hashed chunk instead. Those
+hashes **cannot** be matched between a local build and prod, since prod builds with
+Production-scope env vars.
+
+**Deliberately not built:** graceful degradation to free account-level data. `/2/users/me` does
+succeed unfunded, but the connected account has 0 followers and 0 posts, so degrading would render
+three zeros and a caveat — building for a case that does not exist yet.
+
+**Two findings about the knowledge layer itself**, both surfaced by controls while verifying this:
+**`docs/runbooks/` is not synced into Donny's RAG at all** (0 rows of 472, against 250 concept and
+165 core-doc rows), so nothing load-bearing can live only in a runbook; and **`db:apply` leaves the
+ledger's `statements` column null**, so `CLAUDE.md`'s claim that the ledger stores each migration's
+SQL is true for CLI-pushed migrations and false for these — the repo file is the only copy that
+exists.
+
+→ `docs/wiki/concepts/x-analytics-connector.md` · #519, #522
+
+
 ## [2026-08-24] Launch events, the Hoboken denominator, and getting the deck onto Drive
 
 PRs **#513** and **#515**, both merged. Follows the deck rebuild (#506, #509) in the same day.

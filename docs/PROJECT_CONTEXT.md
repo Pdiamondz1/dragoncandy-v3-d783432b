@@ -771,6 +771,56 @@ holds no Toast credentials. See §6.
   the site-gate conflict in `docs/runbooks/google-oauth-demo-video.md` applies to Meta's review
   too, since it also requires an anonymously reachable privacy policy.
   → `docs/wiki/concepts/instagram-insights-connector.md`
+- **X (Twitter) read-only analytics connector — connected, and measuring nothing** — the fourth
+  direct platform API under the 2026-08-23 scope decision (Outstand publishes; direct APIs
+  measure). Per-user OAuth on `tweet.read` + `users.read` + `offline.access`, nothing that can
+  post. **MERGED, APPLIED AND DEPLOYED 2026-08-24** (#519): migration `20260826100000` applied
+  with `db:apply`, four functions `v1 ACTIVE` with `verify_jwt` read back off the **platform**
+  rather than off `config.toml` — the file is a claim about the deploy, not a record of one.
+  Verified by OBJECT: RLS on with **zero** policies, grants exactly `postgres` + `service_role`,
+  `x_connection_status` executable by `authenticated` but not `anon` and taking **no arguments**,
+  all seven token-touching RPCs `service_role` only. **The zero-policy count needed a control** —
+  the same query against `profiles` returns 7, because a 0 looks identical whether the answer is
+  zero or the query is wrong.
+  **A REAL ACCOUNT CONNECTED 2026-08-25, AND IT CANNOT READ.** `@dragoncandyco` is stored with an
+  access token, **a refresh token**, and exactly the three read scopes. That finally proved
+  **`X_CLIENT_SECRET`** — the token exchange is HTTP Basic with that secret, so tokens coming back
+  is the only evidence it is right, and every earlier check had proven only the client *ID*. But
+  the analytics read answered **402 `credits-depleted`**: **X deleted its free tier in February
+  2026** and moved to pay-per-use (~$0.005 a post read, ~$0.010 a user read, **no free path to a
+  user timeline at all**). `last_synced_at` is **null**, so the sibling connectors' acceptance
+  signal — that stamp landing seconds after `connected_at`, which a row cannot fake — is not met.
+  ***"Connected" is not the same claim as "working"***, and this is the first connector with one
+  and not the other. **Founder decision 2026-08-25: not funding credits at this time.**
+  **The one real defect was ours and is fixed (#522):** the 402 fell into the catch-all that
+  appends X's raw response body, and the card renders `error.message` directly, so a settings page
+  displayed `{"detail":"credits depleted",...}`. Now its own case — deliberately **not**
+  `needs_reconnect`, since reconnecting cannot buy credits and pushing someone through a consent
+  flow that fails identically is the YouTube quota-403 mistake; and worded without naming our
+  developer account, because the card renders on Creator, Business and Location settings and a
+  creator reads the same sentence. The catch-all still keeps X's body — that is what identified
+  this in one read — so the rule is narrower: *any status a user can encounter earns its own case
+  before reaching the catch-all.* Deployed and Codex-clean at round 1.
+  **The `0 followers` on that card is a GENUINE zero**, checked rather than assumed, because it is
+  exactly the shape of the fabricated zero this codebase has shipped before (`Number(null)` is 0
+  and 0 is finite). `num()` returns null unless the value is a finite number, so X really reported
+  0 — a new account.
+  **Thirteen Codex rounds, fifteen real findings**, every one a race or a false claim in the grant
+  lifecycle. Two worth carrying: **a guard that enumerates the bad cases treats every case it has
+  not met as good** (enumerate the good one), and **a lock only helps while it is held** — which is
+  why connect is a single atomic RPC rather than a claim plus an upsert. Also **HTTP 200 means two
+  opposite things**: RFC 7009 returns it for a successful revoke *and* for an invalid token.
+  **A Codex P1 was refuted** — it said to register `dragoncandy.io`, citing `AGENTS.md`, a stale
+  duplicate of `CLAUDE.md`; taking it would have caused the exact failure it warned of, since we
+  *send* the origin the user is on and X matches exactly.
+  **Pending:** funding credits is the only thing between this and working analytics — until then
+  the connector authenticates and honestly reports it cannot measure. Graceful degradation to the
+  free account-level data was considered and **deliberately not built**: `/2/users/me` does succeed
+  unfunded, but the connected account has 0 followers and 0 posts, so degrading would render three
+  zeros and a caveat. Only the apex callback is registered (seven other origins in `origins.ts`
+  would fail X's exact-match check), and app review needs an anonymously reachable privacy policy,
+  so the site gate breaks it exactly as it breaks Google's and Meta's.
+  → `docs/wiki/concepts/x-analytics-connector.md` · #519, #522
 - **Content delivery system stabilization** — bug-fixing the creator→business content
   handoff and payment flow; gates production launch. → `docs/SHIPPED_LOG.md`
 - **Outstand social media integration** — IG/TikTok/YouTube linking + delegated posting;
