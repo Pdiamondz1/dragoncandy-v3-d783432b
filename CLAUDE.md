@@ -47,8 +47,16 @@ the ban as guarding against **that**, not against bookkeeping. It diverges the o
 **190 recorded versions have no file** (was 229 — #496 recovered the 39 that existed nowhere else
 into `supabase/migrations-recovered/`, deliberately outside the replay path, because prod's version
 stamps do not interleave with the repo's own and would re-run later fixes backwards). Little is
-truly lost, though: the ledger stores each migration's SQL in `statements`, which is where
-`can_notify_user` was read back from. The CLI
+truly lost **for the older ones**: the ledger stores each migration's SQL in `statements`, which
+is where `can_notify_user` was read back from — but **that is only true of migrations the CLI
+pushed, and it stopped being true of anything recent.** Measured 2026-08-25: 382 of 404 rows carry
+`statements` and **22 are null**, of which **20 are 2026-08-23 or later** — i.e. the entire
+`db:apply` era; the newest row that carries SQL is `20260810205919`. `db:apply` records the version
+and nothing else. **So for every migration applied that way the repo file is the ONLY copy that
+exists**, and a recovery plan built on reading SQL back out of the ledger would fail exactly when
+it was needed. Two older nulls (`20260512100000`, `20260526200000`) predate `db:apply` and were
+applied by some other route (MCP or the dashboard), so the rule is really *the CLI populates
+`statements`; nothing else does*. The CLI
 has no `db execute` and psql is not installed. (The Supabase MCP works as of 2026-08-24, but
 **only when `SUPABASE_ACCESS_TOKEN` is in Claude Code's own environment** — `.mcp.json` runs the
 **local stdio** server on that PAT, `--read-only`, so it can read prod but not write it. Export it
