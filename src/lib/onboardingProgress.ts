@@ -1,5 +1,6 @@
 import { supabase } from '@/integrations/supabase/client';
 import { computeAccountReadiness, type ReadinessContext, type RequirementKey } from '@/lib/accountReadiness';
+import { identityRequirements } from '@/lib/accountReadiness/derivations';
 import { ROLE_STEPS, REQUIREMENT_STEP, type StepId } from '@/components/onboarding/steps';
 import type { AccountRole } from '@/lib/accountReadiness/types';
 
@@ -58,9 +59,29 @@ const AWAITS_A_THIRD_PARTY: readonly RequirementKey[] = ['identity_verified'];
 export function firstUnfinishedStep(ctx: ReadinessContext): StepId | null {
   const role: AccountRole = ctx.role;
   const readiness = computeAccountReadiness(ctx);
-  const unmet = new Set(
+
+  /**
+   * `pending` normally means "waiting on someone else", which must never route. Stripe is
+   * the exception, because ONE state produces `pending` for two different situations:
+   *   - the user walked out of Stripe's hosted form half way (account created, fields
+   *     outstanding) — entirely their move; and
+   *   - the user finished and Stripe is verifying — nothing they can do.
+   * The columns are identical. What separates them is `stripe_requirements_due`: a
+   * non-identity entry there (`external_account`, `tos_acceptance`, …) is Stripe asking the
+   * USER for something. Identity entries are excluded because those are the verdict case.
+   * Raised by the Codex second review; without it the abandon-inside-Stripe path — the very
+   * one the wizard's return-path work exists for — was never resumed.
+   */
+  const due = ctx.identity?.requirementsDue ?? [];
+  const stripeNeedsTheUser =
+    due.length > identityRequirements(due).length;
+
+  const actionable = new Set(
     readiness.requirements
-      .filter(r => r.tier === 'required' && r.state.status === 'unmet')
+      .filter(r => r.tier === 'required')
+      .filter(r =>
+        r.state.status === 'unmet' ||
+        (r.key === 'stripe' && r.state.status === 'pending' && stripeNeedsTheUser))
       .map(r => r.key),
   );
 
@@ -69,7 +90,7 @@ export function firstUnfinishedStep(ctx: ReadinessContext): StepId | null {
     const blocking = (Object.keys(REQUIREMENT_STEP) as RequirementKey[]).some(
       key =>
         REQUIREMENT_STEP[key] === step &&
-        unmet.has(key) &&
+        actionable.has(key) &&
         !AWAITS_A_THIRD_PARTY.includes(key),
     );
     if (blocking) return step;
@@ -94,7 +115,7 @@ export async function wizardHasWorkLeft(userId: string, role: AccountRole): Prom
   try {
     const { data: profile } = await supabase
       .from('profiles')
-      .select('phone_verified_at, dismissed_requirements, email_verified')
+      .select('phone_verified_at, dismissed_requirements, email_verified, org_id')
       .eq('id', userId)
       .maybeSingle();
 
@@ -162,10 +183,30 @@ export async function wizardHasWorkLeft(userId: string, role: AccountRole): Prom
           disabledReason: (r.stripe_disabled_reason as string | null) ?? null,
         };
       }
-      // `orgUnits` is left undefined on purpose. A business address lives per-location, and
-      // resolving it needs the org lookup this redirect has no business doing on a login
-      // path. Undefined reads as `unknown`, so the address step simply never routes — the
-      // conservative direction described above.
+      // A business address lives per-location on org_units, and `address` is a REQUIRED
+      // requirement for this role — so leaving `orgUnits` undefined (as an earlier draft
+      // did, calling it "conservative") meant a restaurant that abandoned on the address
+      // slide was never sent back. That is the same premature-completion bug this whole
+      // change exists to fix, just for the other role. Codex second review.
+      const orgId = (profile as Record<string, unknown> | null)?.org_id as string | null;
+      if (orgId) {
+        const { data: units } = await supabase
+          .from('org_units')
+          .select('id, address, lat, lng, is_primary, address_verified_at')
+          .eq('org_id', orgId)
+          .maybeSingle();
+        const u = (units ?? null) as Record<string, unknown> | null;
+        if (u) {
+          ctx.orgUnits = [{
+            id: u.id as string,
+            address: (u.address as string | null) ?? null,
+            lat: (u.lat as number | null) ?? null,
+            lng: (u.lng as number | null) ?? null,
+            isPrimary: u.is_primary === true,
+            addressVerifiedAt: (u.address_verified_at as string | null) ?? null,
+          }];
+        }
+      }
     }
 
     return firstUnfinishedStep(ctx) !== null;

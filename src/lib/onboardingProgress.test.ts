@@ -15,6 +15,7 @@ const rows = vi.hoisted(() => ({
   profiles: null as Record<string, unknown> | null,
   creator: null as Record<string, unknown> | null,
   business: null as Record<string, unknown> | null,
+  orgUnit: null as Record<string, unknown> | null,
   throwOn: null as string | null,
 }));
 
@@ -26,7 +27,8 @@ vi.mock('@/integrations/supabase/client', () => ({
           maybeSingle: async () => {
             if (rows.throwOn === table) throw new Error('read failed');
             const data =
-              table === 'profiles' ? rows.profiles
+              table === 'org_units' ? rows.orgUnit
+              : table === 'profiles' ? rows.profiles
               : table === 'creator_profiles' ? rows.creator
               : rows.business;
             return { data };
@@ -51,6 +53,7 @@ describe('wizardHasWorkLeft', () => {
     rows.profiles = { phone_verified_at: '2026-08-24T00:00:00Z', email_verified: true };
     rows.creator = { ...COMPLETE_CREATOR };
     rows.business = null;
+    rows.orgUnit = null;
     rows.throwOn = null;
   });
 
@@ -132,5 +135,50 @@ describe('wizardHasWorkLeft', () => {
   it('does not route a user whose identity is merely awaiting Stripe', async () => {
     rows.creator = { ...COMPLETE_CREATOR, identity_verified_at: null, stripe_requirements_due: [] };
     expect(await wizardHasWorkLeft('u1', 'content_creator')).toBe(false);
+  });
+
+  /**
+   * Codex P1, round 2. `deriveStripe` returns `pending` for TWO different situations with
+   * identical columns: the user walked out of Stripe's hosted form half way, and the user
+   * finished and Stripe is verifying. Only the first is theirs to act on, and
+   * `stripe_requirements_due` is what separates them — a non-identity entry there is Stripe
+   * asking the USER for something. Filtering on `unmet` alone missed the abandon-inside-
+   * Stripe path entirely, which is the very path the wizard return-path work exists for.
+   */
+  it('resumes a user who walked out of Stripe with fields still owed', async () => {
+    rows.creator = {
+      ...COMPLETE_CREATOR, stripe_onboarding_complete: false, identity_verified_at: null,
+      stripe_requirements_due: ['external_account', 'tos_acceptance'],
+    };
+    expect(await wizardHasWorkLeft('u1', 'content_creator')).toBe(true);
+  });
+
+  /** Control: the same pending state with only IDENTITY items due is Stripe's move. */
+  it('control — pending with only identity items due does not resume', async () => {
+    rows.creator = {
+      ...COMPLETE_CREATOR, stripe_onboarding_complete: false, identity_verified_at: null,
+      stripe_requirements_due: ['individual.id_number'],
+    };
+    expect(await wizardHasWorkLeft('u1', 'content_creator')).toBe(false);
+  });
+
+  /**
+   * Codex P1, round 2. `address` is REQUIRED for a business and lives per-location on
+   * org_units. Leaving `orgUnits` undefined made it permanently `unknown`, so a restaurant
+   * that abandoned on the address slide was never sent back — the same premature-completion
+   * bug, for the other role.
+   */
+  it('resumes a business whose location address is unverified', async () => {
+    rows.profiles = { phone_verified_at: null, email_verified: true, org_id: 'org1' };
+    rows.business = { business_name: 'B', logo_url: 'l.jpg', stripe_account_id: 'acct_1', stripe_onboarding_complete: true, identity_verified_at: '2026-08-24T00:00:00Z', stripe_requirements_due: [], stripe_disabled_reason: null };
+    rows.orgUnit = { id: 'u1', address: '1 Main St', lat: 1, lng: 2, is_primary: true, address_verified_at: null };
+    expect(await wizardHasWorkLeft('u1', 'business_client')).toBe(true);
+  });
+
+  it('control — a verified location address does not resume', async () => {
+    rows.profiles = { phone_verified_at: null, email_verified: true, org_id: 'org1' };
+    rows.business = { business_name: 'B', logo_url: 'l.jpg', stripe_account_id: 'acct_1', stripe_onboarding_complete: true, identity_verified_at: '2026-08-24T00:00:00Z', stripe_requirements_due: [], stripe_disabled_reason: null };
+    rows.orgUnit = { id: 'u1', address: '1 Main St', lat: 1, lng: 2, is_primary: true, address_verified_at: '2026-08-24T00:00:00Z' };
+    expect(await wizardHasWorkLeft('u1', 'business_client')).toBe(false);
   });
 });
