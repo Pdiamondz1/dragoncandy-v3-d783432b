@@ -49,11 +49,17 @@
  * command works in CI and on a new machine, and free of rclone's borrowed OAuth client ID,
  * which Google retires during 2026. See `lib/drive-service-account.ts`.
  *
- * **The service-account path has never completed a real upload.** No key exists on this
- * machine, so it is proven by unit tests over its pure parts and by nothing else; rclone
- * is what has actually put the deck on Drive. Do not describe it as working until it has.
- * A key that is present but broken **fails** rather than falling back, so the first real
- * run cannot quietly succeed by the old route and look like a passing test of the new one.
+ * **PROVEN END TO END 2026-08-24**, against `deck-uploader@dragoncandy-workspace`. This
+ * paragraph said it had "never completed a real upload" until the key existed; it replaced
+ * the file in place (one PDF in the folder afterwards, not two) with the md5 matching both
+ * ways. rclone remains as the fallback for a machine with no key.
+ *
+ * The order that proved it was worth keeping: the upload was run BEFORE granting Drive
+ * membership, so the 404 branch was exercised against real Google rather than a fake fetch.
+ * It reached the folder — meaning the JWT signed and Google accepted the credential — and
+ * returned the membership instruction naming the account. A key that is present but broken
+ * **fails** rather than falling back, so that first run could not quietly succeed by the old
+ * route and look like a passing test of the new one.
  */
 import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';

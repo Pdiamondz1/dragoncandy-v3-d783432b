@@ -55,10 +55,11 @@ No new dependency: the token is an RS256 JWT signed with `node:crypto` and one f
 about forty lines. Uploads are **resumable**, not multipart — multipart caps at 5 MB and
 the deck is already 4, which is a countdown rather than a margin.
 
-> **It has never completed a real upload.** No key exists on this machine yet, so the
-> service-account path is proven by unit tests over its pure parts and a fake `fetch`, and
-> by nothing else. rclone is what has actually put the deck on Drive. Do not describe it as
-> working until it has.
+> **Proven end to end 2026-08-24.** This block said it had "never completed a real upload"
+> until the key existed. It now has: `deck-uploader@dragoncandy-workspace` replaced the deck
+> in place — one PDF in the folder afterwards, not two — with the md5 matching on both sides,
+> confirmed through rclone as an independent reader. rclone stays as the fallback for a
+> machine with no key.
 
 ### What running the control found
 

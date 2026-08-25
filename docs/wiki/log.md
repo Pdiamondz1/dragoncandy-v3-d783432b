@@ -13,7 +13,9 @@ carrying: a service account reaches a shared drive by **membership**, not domain
 delegation (membership grants one drive; DWD can impersonate the domain), and **a key that is
 present but broken must fail rather than fall back**, or a misconfigured secret becomes a
 green run that succeeded by a route nobody chose. Stated plainly on the page: the new path
-has **never completed a real upload**.
+has **never completed a real upload** — true when written, and closed the same evening:
+the account was created, the key installed and the deck uploaded through it, replacing the
+file in place with a matching md5.
 
 ## [2026-08-24] ingest | Launch events, the Hoboken denominator, and Drive delivery
 

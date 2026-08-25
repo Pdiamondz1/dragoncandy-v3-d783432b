@@ -1,11 +1,11 @@
 /**
  * What can be proven without a Google credential, and what cannot.
  *
- * **No real upload has ever run through this module.** No service-account key exists on
- * this machine, so these tests cover the parts that are pure or that a fake `fetch` can
- * stand in for: key resolution, refusal to fall back, JWT shape, the shared-drive
- * parameters, replace-vs-create, and the post-upload read-back. They do not prove that
- * Drive accepts any of it.
+ * These tests cover the parts that are pure or that a fake `fetch` can stand in for: key
+ * resolution, refusal to fall back, JWT shape, the shared-drive parameters,
+ * replace-vs-create, and the post-upload read-back. **They still do not prove that Drive
+ * accepts any of it** — a real upload has since run (2026-08-24), but that was a manual
+ * run against production and nothing here re-checks it.
  *
  * That gap is stated in the uploader's header too, because the dangerous version of this
  * file is one that reads like coverage. A signature that a fake `fetch` accepts tells you
