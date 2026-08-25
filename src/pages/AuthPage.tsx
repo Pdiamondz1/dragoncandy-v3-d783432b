@@ -1,5 +1,6 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { SEO } from "@/components/SEO";
+import { wizardResumeStep } from "@/lib/onboardingProgress";
 import { useNavigate, useSearchParams, useLocation, Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -131,8 +132,20 @@ const AuthPage = () => {
           .eq('user_id', user.id)
           .single();
 
-        if (!businessProfile?.is_completed) {
-          navigate('/profile/business');
+        // `is_completed` is NOT "onboarding finished". `saveCore` sets it when the user
+        // leaves the last COLLECT slide — before phone, address, payments or ready — so
+        // that someone who quits inside Stripe still has a working dashboard. Reading it
+        // as "done" is what sent a half-onboarded user straight to their dashboard with
+        // required work outstanding and nothing on screen saying so.
+        //
+        // `/profile/setup` DIRECTLY, not `/profile/business`: those are
+        // `<Navigate>` redirect routes, and bouncing through one is the hop the blank-page
+        // race ran through. `replace` so Back does not return to /auth.
+        const resumeAt = await wizardResumeStep(user.id, 'business_client');
+        if (!businessProfile?.is_completed || resumeAt) {
+          // Carry the slide, so a returning user lands on the thing they still have to
+          // do rather than walking back through slides they already completed.
+          navigate(resumeAt ? `/profile/setup?step=${resumeAt}` : '/profile/setup', { replace: true });
           return;
         }
 
@@ -157,8 +170,20 @@ const AuthPage = () => {
           .eq('user_id', user.id)
           .single();
 
-        if (!creatorProfile?.is_completed) {
-          navigate('/profile/creator');
+        // `is_completed` is NOT "onboarding finished". `saveCore` sets it when the user
+        // leaves the last COLLECT slide — before phone, address, payments or ready — so
+        // that someone who quits inside Stripe still has a working dashboard. Reading it
+        // as "done" is what sent a half-onboarded user straight to their dashboard with
+        // required work outstanding and nothing on screen saying so.
+        //
+        // `/profile/setup` DIRECTLY, not `/profile/content`: those are
+        // `<Navigate>` redirect routes, and bouncing through one is the hop the blank-page
+        // race ran through. `replace` so Back does not return to /auth.
+        const resumeAt = await wizardResumeStep(user.id, 'content_creator');
+        if (!creatorProfile?.is_completed || resumeAt) {
+          // Carry the slide, so a returning user lands on the thing they still have to
+          // do rather than walking back through slides they already completed.
+          navigate(resumeAt ? `/profile/setup?step=${resumeAt}` : '/profile/setup', { replace: true });
           return;
         }
 
@@ -171,7 +196,12 @@ const AuthPage = () => {
           navigate(returnTo.pathname + (returnTo.search || ''), { replace: true });
           return;
         }
-        navigate('/dashboard/creator/campaigns', { replace: true });
+        // `/dashboard/creator`, not `/campaigns`. The readiness checklist renders in
+        // `CreatorDonnyHome`/`FirstRunDashboard` — i.e. the dashboard HOME — and the
+        // campaigns page has no checklist at all. Landing there is why a half-onboarded
+        // user saw a campaign list with required work outstanding and nothing on screen
+        // saying so. Founder-reported 2026-08-24.
+        navigate('/dashboard/creator', { replace: true });
         return;
       }
 
@@ -182,8 +212,20 @@ const AuthPage = () => {
           .eq('user_id', user.id)
           .single();
 
-        if (!brandProfile?.is_completed) {
-          navigate('/profile/brand');
+        // `is_completed` is NOT "onboarding finished". `saveCore` sets it when the user
+        // leaves the last COLLECT slide — before phone, address, payments or ready — so
+        // that someone who quits inside Stripe still has a working dashboard. Reading it
+        // as "done" is what sent a half-onboarded user straight to their dashboard with
+        // required work outstanding and nothing on screen saying so.
+        //
+        // `/profile/setup` DIRECTLY, not `/profile/brand`: those are
+        // `<Navigate>` redirect routes, and bouncing through one is the hop the blank-page
+        // race ran through. `replace` so Back does not return to /auth.
+        const resumeAt = await wizardResumeStep(user.id, 'brand');
+        if (!brandProfile?.is_completed || resumeAt) {
+          // Carry the slide, so a returning user lands on the thing they still have to
+          // do rather than walking back through slides they already completed.
+          navigate(resumeAt ? `/profile/setup?step=${resumeAt}` : '/profile/setup', { replace: true });
           return;
         }
 
@@ -209,9 +251,25 @@ const AuthPage = () => {
     }
   }, [user, navigate, migrateCampaignData, returnTo]);
 
-  // Redirect if already authenticated
+  /**
+   * Runs ONCE per authenticated session.
+   *
+   * Without the latch this effect fires repeatedly: its deps include `searchParams` and two
+   * `useCallback`s whose own identities change as auth state resolves. Each firing starts a
+   * fresh redirect, and two of them racing through the wizard hop left the browser parked on
+   * a route rendering `null` — a blank page after login, reproduced on production with a
+   * cold cache as two chains 135 ms apart. Founder-reported 2026-08-24.
+   *
+   * A ref, not state: the guard has to be visible to a second call arriving in the SAME
+   * tick, before React has re-rendered. Reset when the session goes away so a sign-out then
+   * sign-in still redirects.
+   */
+  const redirected = useRef(false);
   useEffect(() => {
-    if (isAuthenticated) {
+    if (!isAuthenticated) { redirected.current = false; return; }
+    if (redirected.current) return;
+    redirected.current = true;
+    {
       const returnTo = searchParams.get('returnTo');
       if (returnTo) {
         try {

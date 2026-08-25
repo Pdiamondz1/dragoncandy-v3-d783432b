@@ -247,4 +247,32 @@ describe('OnboardingWizard — resuming after Stripe', () => {
     const written = mocks.upsert.mock.calls.at(-1)?.[0] as Record<string, unknown>;
     expect(written.avatar_url).toBe('u1/existing.jpg');
   });
+
+  /**
+   * Codex P2, round 4. The post-login redirect computes the first slide with actionable
+   * work and passes it as `?step=`. Without the wizard honouring it, a routed user starts at
+   * slide 1 and walks back through everything they already finished.
+   */
+  it('starts at the slide named by ?step=', async () => {
+    setSearch('?step=phone');
+    renderWizard();
+    expect(await screen.findByRole('heading', { name: /What's your number\?/i })).toBeInTheDocument();
+  });
+
+  /**
+   * The parameter arrives in a URL, so it is untrusted. `ready` is the wizard's END —
+   * honouring it would let a hand-typed link skip onboarding entirely, which is the very
+   * bug this whole change exists to fix.
+   */
+  it('refuses ?step=ready and starts at the beginning', async () => {
+    setSearch('?step=ready');
+    renderWizard();
+    expect(await screen.findByRole('heading', { name: /What should we call you\?/i })).toBeInTheDocument();
+  });
+
+  it('ignores a slide this role does not have', async () => {
+    setSearch('?step=cuisine');          // a restaurant slide; this account is a creator
+    renderWizard();
+    expect(await screen.findByRole('heading', { name: /What should we call you\?/i })).toBeInTheDocument();
+  });
 });
