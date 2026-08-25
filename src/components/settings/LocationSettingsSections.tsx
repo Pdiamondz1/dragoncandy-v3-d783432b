@@ -11,6 +11,7 @@ import { YouTubeAnalyticsCard } from '@/features/settings/YouTubeAnalyticsCard';
 import { InstagramInsightsCard } from '@/features/settings/InstagramInsightsCard';
 import { FacebookPageInsightsCard } from '@/features/settings/FacebookPageInsightsCard';
 import { XAnalyticsCard } from '@/features/settings/XAnalyticsCard';
+import { TikTokAnalyticsCard } from '@/features/settings/TikTokAnalyticsCard';
 import { FileUploadSection } from '@/components/business-profile/FileUploadSection';
 import type { LocationProfileFormData } from '@/hooks/useLocationProfileForm';
 
@@ -173,6 +174,7 @@ export function LocationSettingsSections({
           <InstagramInsightsCard />
           <FacebookPageInsightsCard />
           <XAnalyticsCard />
+      <TikTokAnalyticsCard />
         </div>
 
         <div className="border-t border-dc-teal/10 pt-4 mt-4">
