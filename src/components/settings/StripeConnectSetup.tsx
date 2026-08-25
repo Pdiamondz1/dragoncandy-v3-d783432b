@@ -41,6 +41,13 @@ interface PreviousAccount {
 
 interface StripeConnectSetupProps {
   role: 'creator' | 'business';
+  /**
+   * Where Stripe should return the user after hosted onboarding. Omitted means the role's
+   * settings page, which is right when the user started there and wrong in the onboarding
+   * wizard — Stripe used to hand them to settings from step 5 of 5, abandoning the flow.
+   * Validated server-side against an exact allow-list; this is a path, never a URL.
+   */
+  returnPath?: string;
 }
 
 const ROLE_CONFIG = {
@@ -60,7 +67,7 @@ const ROLE_CONFIG = {
   },
 };
 
-export function StripeConnectSetup({ role }: StripeConnectSetupProps) {
+export function StripeConnectSetup({ role, returnPath }: StripeConnectSetupProps) {
   const { user, activeOrgUnit, activeOrg, refreshActiveOrgUnit } = useAuth();
   const { data: orgUnits = [] } = useOrgUnits(activeOrg?.id);
   const hasMultipleLocations = orgUnits.length > 1;
@@ -112,7 +119,7 @@ export function StripeConnectSetup({ role }: StripeConnectSetupProps) {
     setPreviousAccount(null);
     try {
       const { data, error } = await supabase.functions.invoke(config.createFn, {
-        body: { org_unit_id: activeOrgUnit?.id ?? null, action: action ?? null },
+        body: { org_unit_id: activeOrgUnit?.id ?? null, action: action ?? null, returnPath: returnPath ?? null },
       });
       if (error) throw error;
       if (data?.previousAccount) {

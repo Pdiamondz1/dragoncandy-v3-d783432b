@@ -109,6 +109,20 @@ export function OnboardingWizard() {
   // collect slide needs the profile rows to exist, AND needs them to match what is on
   // screen. A plain "have we saved once" boolean did the first job and not the second —
   // going back, correcting a field and continuing left the edit visible and unsaved.
+  /**
+   * The in-flight hydration read. The collect→service boundary AWAITS this before saving.
+   *
+   * A boolean "did it fail" is not enough and was the round-3 finding: while the read is
+   * still pending it is false, so a user moving quickly reaches `saveCore` before hydration
+   * lands and overwrites a real profile with the blank/default values on screen — and with
+   * a null avatar, since `hydratedAvatarPath` is not populated yet. Awaiting the promise
+   * removes the race instead of adding a second thing to check, and costs nothing in the
+   * normal case because the read finishes long before anyone crosses the boundary.
+   *
+   * A ref rather than state because `goNext` closes over the render it was created in, so a
+   * state flag set during the await is invisible to the very call that needs it.
+   */
+  const hydration = useRef<Promise<{ ok: boolean }> | null>(null);
   const [savedFingerprint, setSavedFingerprint] = useState<string | null>(null);
   const [savedLocationKey, setSavedLocationKey] = useState<string | null>(null);
   const [phoneVerified, setPhoneVerified] = useState(false);
@@ -126,6 +140,13 @@ export function OnboardingWizard() {
     autoDetect.city || null, autoDetect.country || null, autoDetect.timezone || null,
   ]);
   const uploadedAvatar = useRef<{ file: File; path: string } | null>(null);
+  /**
+   * The avatar this account ALREADY has, read back during hydration. `saveCore` derives
+   * `avatarUrl` from a freshly uploaded file only, so without this a returning user who
+   * edits any collect field and continues would upsert `avatar_url: null` and delete the
+   * picture still visible on screen. Codex P2, second review round.
+   */
+  const hydratedAvatarPath = useRef<string | null>(null);
   const advancing = useRef(false);
 
   const queryClient = useQueryClient();
@@ -134,6 +155,101 @@ export function OnboardingWizard() {
     useOrgUnits(orgFromProfile?.org?.id);
   const updateOrgUnit = useUpdateOrgUnit();
   const primaryUnit = orgUnits.find(u => u.is_primary) ?? orgUnits[0];
+
+  /**
+   * RESUME AFTER STRIPE. Hosted Connect onboarding is a full page navigation off-site and
+   * back, so returning to `/profile/setup` remounts this component with every field at its
+   * initial value and `currentIndex` at 0.
+   *
+   * That is not merely untidy, and it is why the return-path change could not ship alone.
+   * The creator write is `upsert(..., { onConflict: 'user_id' })` with NO `ignoreDuplicates`,
+   * so a user who came back to a blank slide 1 and pressed Continue would overwrite their
+   * own name, bio and skills with empty strings. The bug this replaced merely ended
+   * onboarding; this one would have destroyed data. Raised as a P1 by the Codex second
+   * review and confirmed against both files before acting on it.
+   *
+   * So: rehydrate from the rows that already exist, then land on the slide the user left.
+   * Runs at most once, and never overwrites something already on screen — if the user has
+   * begun typing, their input wins.
+   */
+  const hydrated = useRef(false);
+  useEffect(() => {
+    if (hydrated.current || !user) return;
+    hydrated.current = true;
+
+    hydration.current = (async (): Promise<{ ok: boolean }> => {
+      // Branched rather than a dynamic column string: the generated Supabase types can only
+      // resolve a LITERAL select list, and a variable one silently degrades to a parser
+      // error type. Two queries with real field lists also keep the repo's
+      // "never select *" rule checkable.
+      const { data, error } = role === 'content_creator'
+        ? await supabase
+            .from('creator_profiles')
+            .select('creator_name, bio, skills, avatar_url, allow_portfolio_in_feed, is_completed')
+            .eq('user_id', user.id)
+            .maybeSingle()
+        : await supabase
+            .from('business_profiles')
+            .select('business_name, industry, cuisines, logo_url, is_completed')
+            .eq('user_id', user.id)
+            .maybeSingle();
+
+
+      // A FAILED READ AND AN ABSENT ROW ARE OPPOSITE CASES, and an earlier draft of this
+      // block treated them the same — the comment here even justified it, reasoning about
+      // the first-time user while the dangerous case is the returning one. If the read
+      // errors we do not know whether a profile exists, so a blank form must not be allowed
+      // to become an upsert over one. `maybeSingle` gives null for "no row", which IS the
+      // ordinary new-signup case; an `error` is not. Codex P1, second review round.
+      if (error) return { ok: false };
+      if (!data) return { ok: true };
+      const row = data as unknown as Record<string, unknown>;
+
+      const str = (v: unknown) => (typeof v === 'string' ? v : '');
+      const arr = (v: unknown) => (Array.isArray(v) ? (v as string[]) : []);
+
+      if (role === 'content_creator') {
+        setName(prev => prev || str(row.creator_name));
+        setBio(prev => prev || str(row.bio));
+        setSkills(prev => (prev.length ? prev : arr(row.skills)));
+        hydratedAvatarPath.current = str(row.avatar_url) || null;
+        setAvatarPreview(prev => prev || str(row.avatar_url) || null);
+        if (typeof row.allow_portfolio_in_feed === 'boolean') setShowInFeed(row.allow_portfolio_in_feed);
+      } else {
+        setName(prev => prev || str(row.business_name));
+        setIndustry(prev => prev || str(row.industry));
+        setCuisines(prev => (prev.length ? prev : arr(row.cuisines)));
+        hydratedAvatarPath.current = str(row.logo_url) || null;
+        setAvatarPreview(prev => prev || str(row.logo_url) || null);
+      }
+
+      // Only jump when Stripe actually sent them back AND the profile is complete — a
+      // half-finished wizard must still start where the user left off, not at the end.
+      // The query flag is deliberately NOT cleared here: `StripeConnectSetup` reads the
+      // same flag to refresh its status and clears it itself, and clearing it first would
+      // silently break that refresh.
+      const params = new URLSearchParams(window.location.search);
+      const backFromStripe =
+        params.get('stripe_onboarding') === 'complete' || params.get('stripe_refresh') === 'true';
+      if (backFromStripe && row.is_completed === true) {
+        const target = steps.indexOf('payments');
+        if (target > -1) {
+          setDirection(1);
+          setCurrentIndex(target);
+        }
+      }
+      return { ok: true };
+    })();
+
+    // NO cleanup cancellation, deliberately. `hydrated` already makes this run once, so
+    // a cleanup would fire on every RE-RENDER that re-runs the effect (the deps include
+    // `user`, whose identity is not guaranteed stable) and abort the single in-flight
+    // read — which then resolved `{ ok: true }` having applied nothing, so the boundary
+    // saved blank values and a null avatar over a real profile. That is the same data
+    // loss the await was added to prevent, reached by a different route, and it was the
+    // TEST for the pending-read race that exposed it. React 18 makes a state update
+    // after unmount a no-op, so there is nothing left for a cleanup to protect here.
+  }, [user, role, steps]);
 
   const currentStep = steps[currentIndex];
   const isReady = currentStep === 'ready';
@@ -192,6 +308,15 @@ export function OnboardingWizard() {
     advancing.current = true;
     try {
       if (currentStep === lastCollectStep(role) && currentFingerprint !== savedFingerprint) {
+        // Wait for the profile read, then refuse rather than guess. `saveCore`'s creator
+        // upsert carries no `ignoreDuplicates`, so saving before we know what is already
+        // there can write the blank values on screen over a real profile. Awaiting covers
+        // the pending case; the result covers the failed one. Reload is the retry.
+        const hydrated = await hydration.current;
+        if (hydrated && !hydrated.ok) {
+          toast.error("We couldn't load your profile. Reload the page before continuing so we don't overwrite it.");
+          return;
+        }
         const ok = await saveCore();
         if (!ok) return;
       }
@@ -248,7 +373,7 @@ export function OnboardingWizard() {
       // Reuse the path from a previous save rather than uploading the same picture twice.
       // Only the FILE changing is worth another upload; a second save triggered by an
       // edited name would otherwise leave an orphaned object in storage every time.
-      let avatarUrl: string | null = uploadedAvatar.current?.path ?? null;
+      let avatarUrl: string | null = uploadedAvatar.current?.path ?? hydratedAvatarPath.current ?? null;
       if (avatarFile && uploadedAvatar.current?.file !== avatarFile) {
         const isCreator = role === 'content_creator';
         const result = await uploadProfileAsset({
