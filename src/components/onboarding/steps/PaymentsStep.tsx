@@ -33,12 +33,21 @@ const COPY: Record<AccountRole, string> = {
  * onboarding slide. The brand `stripe` requirement therefore stays on the checklist and
  * stays unsatisfiable — recorded rather than hidden.
  *
- * Leaving for Stripe leaves the wizard, for every role. The hosted link's `return_url`
- * and `refresh_url` are built server-side and point at `/dashboard/<role>/settings`;
- * the client cannot influence them without an edge-function change. That is survivable
- * only because the core save now runs when the LAST COLLECT slide is left rather than at
- * the end — so anyone who disappears into Stripe already has complete profile rows and a
- * working dashboard. The copy below says so instead of implying they will come back here.
+ * Leaving for Stripe used to leave the WIZARD: the hosted link's `return_url` and
+ * `refresh_url` were built server-side and hardcoded to `/dashboard/<role>/settings`, so
+ * "Complete Setup" on the last slide ended onboarding and the `ready` slide was never
+ * reached. Founder-reported 2026-08-24 as "the UX here doesn't make sense", and they were
+ * right — the copy under this component had grown into an apology for it.
+ *
+ * The client can now say where it wants the user back, via `returnPath`, resolved by
+ * `_shared/connect-return.ts` against an exact allow-list (a PATH only — the origin stays
+ * server-side, so no value here can point at another host). Pinned by
+ * `PaymentsStep.test.tsx`, because dropping the prop breaks nothing observable until a
+ * user has made a round trip through Stripe.
+ *
+ * The core save still runs when the LAST COLLECT slide is left rather than at the end, so
+ * anyone who abandons the flow inside Stripe keeps complete profile rows and a working
+ * dashboard. That safety net stays; it is simply no longer the plan.
  */
 export function PaymentsStep({ role }: PaymentsStepProps) {
   return (
@@ -48,9 +57,18 @@ export function PaymentsStep({ role }: PaymentsStepProps) {
       animate={{ opacity: 1, y: 0 }}
     >
       <p className="text-sm text-center text-dc-text-muted">{COPY[role]}</p>
-      <StripeConnectSetup role={role === 'content_creator' ? 'creator' : 'business'} />
+      {/*
+        `returnPath` is what stops Stripe from ending onboarding. Without it the Connect
+        link returns to the role's SETTINGS page, so "Complete Setup" on step 5 of 5 sent
+        the user out of the wizard and the final slide was never reached. The copy below
+        used to apologise for exactly that; it now describes what happens instead.
+      */}
+      <StripeConnectSetup
+        role={role === 'content_creator' ? 'creator' : 'business'}
+        returnPath="/profile/setup"
+      />
       <p className="text-xs text-center text-dc-text-muted">
-        Stripe takes over from here and returns you to your settings, not to this page.
+        Stripe opens in this window and brings you back here when you're done.
         Everything you have entered is already saved.
       </p>
     </motion.div>
