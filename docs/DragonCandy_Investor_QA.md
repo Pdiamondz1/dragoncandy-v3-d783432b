@@ -95,6 +95,22 @@ Tier mix assumed: 30% free / 40% starter / 25% growth / 5% pro — i.e. 70% of r
 
 **"Is churn in these numbers?"** — **No.** Churn is benchmarked at 4.0% a month and no formula applies a drag. This is what the business looks like holding that customer count, not a forecast net of leavers. Say so unprompted.
 
+**"How do you actually get the first ones?"** — Three launch events are planned: Hoboken, NJ at Antique Lofts; Palm Beach, FL at The Colony Hotel; Montauk, NY at a venue not yet chosen.
+Source: founder statement, Damon Williams (CTO), in session, 2026-08-24. Dates, whether the
+venues are booked, and the budget are **not settled**; the deck marks that on the slide.
+
+Say what these are and what they are not. They are **events**, not three market launches: the
+metro sequence is Hoboken, then Manhattan, then Palm Beach, each gated on density before the
+next, and Montauk is a night rather than a market.
+
+**The reason the three hang together is an argument, not a finding, and must be said that way.**
+The seasons are complementary and that part is just true of the towns — Montauk peaks in summer,
+Palm Beach in winter, Hoboken is year-round. What is *unmeasured* is the bit that matters: that
+our own Hoboken and New York network is the one that travels to both, so all three events feed
+one market rather than three. That is our reasoning for choosing these cities. We have not
+measured the overlap and should not imply we have — offer it as why we picked them, and if
+pressed, say plainly that the first event is what tests it.
+
 ## Slide 12 — the trajectory
 
 | Year | Revenue | Total cost | EBITDA |
@@ -145,4 +161,5 @@ settled yet", not a number invented in the room.
 - **The ask** — What are the SAFE terms — target size within $500K–$1.5M, valuation cap, discount, MFN?
 - **Team & board** — What are the three founders' real track records, in the form an investor reads — "Ex-product at X", "Founding engineer at Y"?
 - **Hoboken liquidity** — How many restaurants operate in Hoboken IN TOTAL — the town-wide denominator, with its source? (Our own count is not this number: that is two.)
+- **Hoboken → NYC** — For the three launch events: what dates, are the venues booked or only intended, and what is the budget for all three?
 

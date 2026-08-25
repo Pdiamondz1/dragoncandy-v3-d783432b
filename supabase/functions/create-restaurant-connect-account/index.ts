@@ -2,6 +2,7 @@ import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@18.5.0";
 import { createClient } from "npm:@supabase/supabase-js@2.57.2";
 import { corsHeaders } from "../_shared/cors.ts";
+import { resolveConnectReturnUrls } from "../_shared/connect-return.ts";
 import { isTestKey } from "../_shared/stripe-mode.ts";
 import { createTestModeEnabledAccount } from "../_shared/test-mode-connect.ts";
 
@@ -40,7 +41,7 @@ serve(async (req) => {
     logStep("User authenticated", { userId: user.id, email: user.email });
 
     const body = await req.json().catch(() => ({}));
-    const { org_unit_id, action, previous_account_id } = body;
+    const { org_unit_id, action, previous_account_id, returnPath } = body;
     logStep("Request body parsed", { org_unit_id: org_unit_id ?? null, action: action ?? null });
 
     const { data: businessProfile, error: profileError } = await supabaseClient
@@ -296,10 +297,17 @@ serve(async (req) => {
     }
 
     // Always use Stripe's hosted onboarding (works in both test and live mode)
+    // The caller says where it wants the user back. Validated against an exact
+    // allow-list inside the helper, and only ever a PATH — the origin is ours.
+    const connectUrls = resolveConnectReturnUrls(origin, returnPath, "/dashboard/business/settings");
+    if (connectUrls.rejected) {
+      logStep("returnPath rejected, using default", { requested: connectUrls.rejected });
+    }
+
     const accountLink = await stripe.accountLinks.create({
       account: accountId,
-      refresh_url: `${origin}/dashboard/business/settings?stripe_refresh=true`,
-      return_url: `${origin}/dashboard/business/settings?stripe_onboarding=complete`,
+      refresh_url: connectUrls.refreshUrl,
+      return_url: connectUrls.returnUrl,
       type: 'account_onboarding',
     });
 

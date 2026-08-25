@@ -191,6 +191,111 @@ a Lovable preview or `internal.` is refused at consent, which fails CLOSED and i
 
 -> `docs/wiki/concepts/facebook-page-insights-connector.md` · #510, #512
 
+## [2026-08-24] Launch events, the Hoboken denominator, and getting the deck onto Drive
+
+PRs **#513** and **#515**, both merged. Follows the deck rebuild (#506, #509) in the same day.
+
+### A mark asked one question and got the answer to another (#513)
+
+The liquidity slide carried a founder mark labelled **"Restaurants in Hoboken:"**. Standing beside
+a liquidity model, that phrase says *our supply* as naturally as it says *the town's total*. The
+founder answered with ours — **two: Antique Bar & Bakery and Uncle Rocco's**. The model needs the
+**denominator**: "liquid in month 3 at 2 restaurants a month" means nothing until you know whether
+the town holds forty restaurants or four hundred.
+
+The hole stayed open, but the wrong answer was the label's fault. The label now reads "Restaurants
+in Hoboken, **town-wide**:" and the question states what the answer is not — *"Our own count is not
+this number: that is two."* **The durable half is that a plausible answer to the wrong question
+looks exactly like progress**; nothing about the reply flagged itself.
+
+The founder's answer was recorded in a new **`FOUNDER_FACTS`**, deliberately *not* the assumptions
+register: its vocabulary is `MEASURED` / `BENCHMARKED` / `MODELED`, and a founder saying a thing is
+none of the three. Tagging it `MEASURED` because it came from someone who would know is exactly the
+failure Codex caught days earlier on the registered-user count. `FounderFact` carries its own
+`source` and `asOf`, and every consumer prints them. The Q&A document now answers *"so how many
+restaurants do you actually have?"* with **two**, beside the **45 registered accounts** and the
+**0 paying customers**, saying outright that the three describe different things.
+
+**The test's first draft was worthless.** It asserted the *slide's* text contained "town-wide" and
+**passed against the old label**, because `PendingMark` renders the question and the question says
+town-wide. A whole-slide text search cannot tell a label from the thing standing next to it. It now
+reads the label element, with a forced control run both ways.
+
+### Three launch events, recorded and unpriced (#515)
+
+Founders stated three: **Hoboken at Antique Lofts**, **Palm Beach at the Colony Hotel**, **Montauk
+at a venue not yet chosen**. Recorded as cities and venues and nothing else, because that is all
+that was said.
+
+**They are events, not a change to the metro sequence.** The plan of record is Hoboken → Manhattan
+→ Palm Beach, each gated on density before the next, and Montauk is not a metro by anyone's
+definition. Read as three simultaneous market launches they would contradict the deck's own
+liquidity slide, which argues that creator-side lag is what kills local marketplaces. Read as
+events they cohere: one network in three places across the year — Montauk peaks in summer, Palm
+Beach in winter, Hoboken is year-round.
+
+**That last clause is an argument, not a finding**, and the Q&A document says so in as many words.
+An earlier draft asserted the seasonal audience overlap as fact, cited to a founder statement that
+says no such thing — our own inference dressed as their evidence, in a diligence document. Codex
+caught it. The seasons stay (true of the towns); the claim that *our* network travels is labelled
+as reasoning, with the line that we have not measured it and should not imply we have.
+
+**Nobody has priced them, and the ask is derived.** The budget's marketing provision is scoped to
+one city. Pricing the events moves the raise; omitting them asks for a plan that has not been
+costed. Both are founder decisions, so `launchEventPlan` marks the hole rather than inventing a
+number.
+
+Explaining that collision in `deck/pending.ts` **failed the confidentiality build**: that module is
+in the public bundle's module graph, so its **strings** ship — and so would a **comment**, via the
+sourcemap, minification notwithstanding. The arithmetic moved to `confidential.ts`, beside the line
+it is about, which the public build never resolves.
+
+Codex ran three rounds on this PR. Beyond the inference above: the slide rendered only the *pending
+question*, so it read as "we have not decided anything" while three cities and two rooms were
+settled (the cities now render beside the mark, derived from `LAUNCH_EVENTS`, with `venue: null`
+showing as "venue to be chosen" — a city without a room is a different state from no event); and
+the slide printed a founder fact without saying it was one, so three cities read exactly like the
+`MEASURED` rows in the table above them. Slide 11 took **four PDF exports** to fit; the first three
+pushed the footer off the 1280×720 canvas, which no text assertion can see.
+
+### `npm run pitch:upload` (#515)
+
+The founder asked for the deck in Google Drive. The Drive MCP could not do it: `create_file` takes
+content **inline as base64**, and 4 MB of PDF becomes ~5.4 MB of it — larger than a context window.
+No Drive CLI, no service-account key and no Drive-for-Desktop folder existed on the machine.
+
+**rclone** was installed (1.75.0, remote `dcdrive`), chosen over the alternatives because
+everything here lives on a **shared drive** and most Drive CLIs assume My Drive. The deck now goes
+to `DragonCandy — Confidential › 11 · Finance` in one command.
+
+**The guard worth keeping refuses the wrong build by its contents, not its name.** Two builds exist
+and only one may leave: `PITCH_NOTES=1` interleaves the speaker notes written for Joe. Refusing
+`*-notes.pdf` would be worthless — a rename defeats it, and renaming is what happens when someone
+tidies a downloads folder. The notes build has one page per slide plus one per note, so the check
+is page count against the deck's slide count. Proven by renaming the notes build to
+`dragoncandy-pitch.pdf`: still refused.
+
+**Codex found the one that was live.** The file first uploaded was the **public** build —
+`npm run pitch:pdf` builds with the confidentiality gate off — so the ask slide read *"Amount in
+the confidential build"* three times, under a filename saying CONFIDENTIAL. Nothing in the artifact
+could have caught it: both builds have the same page count and every page is a JPEG, so a PDF text
+search has nothing to read. The exporter now writes a manifest recording which build it captured,
+asked of the **rendered page** rather than of `process.env.VITE_PITCH_CONFIDENTIAL` (the two are
+separate commands, so the variable describes intent while the page describes what exists) and bound
+to the PDF by **md5**, because a file in the same directory is not evidence about the file beside
+it. The remote name is derived from that flag, so a mislabel is unreachable. Codex's second finding
+widened the staleness guard beyond `src/pitch` to the stylesheet, tokens, Vite config and exporter
+— and it blocked an upload the moment the exporter was edited.
+
+Uploads are verified by **MD5 against the bytes Drive holds**, never by rclone's exit code. The
+Investor Q&A also went up as a Google Doc via the MCP, verified by reading it back — its API
+response reported `fileSize: 1`, which looks exactly like an empty file and was not one.
+
+**A dated hazard, recorded rather than fixed:** rclone's default config uses its *shared* Google
+client ID, which is being retired and **stops working during 2026**, announced only as a one-line
+`NOTICE` that a `grep -v` removes forever. The fix is a project-owned OAuth client ID. Not done.
+
+→ `docs/wiki/concepts/investor-pitch-deck.md` · `docs/wiki/concepts/drive-artifact-delivery.md` · #513, #515
 
 ## [2026-08-24] The investor deck, rebuilt on the model — and the confidential half provably absent
 

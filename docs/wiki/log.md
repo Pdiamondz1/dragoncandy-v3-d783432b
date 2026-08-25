@@ -34,6 +34,25 @@ four writes on App settings → Basic **is** writable from Login for Business �
 controls are one field behind two forms, and only one form works — a broken form is a property of
 the form, not of the setting.
 
+## [2026-08-24] ingest | Launch events, the Hoboken denominator, and Drive delivery
+
+**Created** [[Drive Artifact Delivery]] (`concepts/drive-artifact-delivery.md`) and
+`docs/wiki/raw/sessions/2026-08-24-launch-events-and-drive-delivery.md`. **Updated**
+[[Investor Pitch Deck & Capital Raise]] (the "both open, neither merged" banner was stale;
+new sections for the denominator label, the launch events and delivery; outstanding inputs
+five → four), `index.md`, `docs/SHIPPED_LOG.md` and `docs/PROJECT_CONTEXT.md` §5.
+
+Three things worth carrying. **A plausible answer to the wrong question looks exactly like
+progress** — a mark labelled "Restaurants in Hoboken:" was answered with our own count, and
+nothing about the reply flagged it. **A founder saying a thing is not MEASURED, BENCHMARKED
+or MODELED**, so founder-supplied facts live in their own record carrying their own source
+and date, and every consumer prints them; an earlier draft of the Q&A document stated an
+unmeasured seasonal audience overlap as a sourced fact, which Codex caught. **A filename is
+not evidence of contents** — the deck's upload guard refuses the speaker-notes build by page
+count, and the *first* upload still put the redacted deck on the Confidential drive under a
+name promising the complete one, because both builds have the same page count and every page
+is a JPEG.
+
 ## [2026-08-24] ingest | The investor deck, rebuilt on the model
 
 **Created** [[Build-Time Confidentiality]] (`concepts/build-time-confidentiality.md`) and

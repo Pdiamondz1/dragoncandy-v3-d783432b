@@ -39,6 +39,12 @@ export const PRE_SEED_BUDGET: readonly BudgetLine[] = [
   { key: 'bookkeeper', label: 'Bookkeeper (part-time contract)', monthlyCost: 2_000, startMonth: 1, endMonth: 18 },
   // Infrastructure: today's measured burn, grown for launch load.
   { key: 'infra', label: 'Infrastructure and tooling', monthlyCost: OPERATING.burnMonthly.value * 3, startMonth: 1, endMonth: 18 },
+  // One city. Founders stated three launch events on 2026-08-24 — Hoboken (Antique Lofts),
+  // Palm Beach (the Colony Hotel) and Montauk (venue not chosen) — and this line does not
+  // cover them: $3,000/month over months 2-18 is $51,000 for Hoboken alone, and neither a
+  // Colony Hotel evening nor a Montauk room in season is a $3,000 night. Nothing has been
+  // added here, because the raise is derived from this array and inventing a number would
+  // move the ask by whatever I guessed. Blocked on `launchEventPlan` in deck/pending.ts.
   { key: 'marketing', label: 'Hoboken launch marketing', monthlyCost: 3_000, startMonth: 2, endMonth: 18 },
   { key: 'legal', label: 'Legal, IP and accounting', monthlyCost: 1_800, startMonth: 1, endMonth: 18 },
 ];

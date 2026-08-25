@@ -131,11 +131,28 @@ holds no Toast credentials. See §6.
   a text assertion proves a string is present, never that a human can read it; the ask slide's gloss
   rendered as invisible text while its test passed. Delivery is the **PDF**, not the URL —
   `PITCH_NOTES=1` adds facing speaker notes under a different filename, deliberately opt-in, because
-  the coaching written for Joe must never reach an investor. **Pending:** merge #506 then #509; the
-  five §8 founder inputs (SAFE terms, team bios, Uncle Rocco's status, Adrian's consent, a Hoboken
-  restaurant count), each marked on its slide and printed by the exporter; and note the corrected
-  raise of **$1,462,568** sits inside the $500K–$1.5M band by $37K.
-  → `docs/wiki/concepts/investor-pitch-deck.md` · `docs/wiki/concepts/build-time-confidentiality.md` · #506, #509
+  the coaching written for Joe must never reach an investor. **All four PRs are MERGED** — this line
+  said "**Pending:** merge #506 then #509" until 2026-08-24, and #513/#515 have landed since. Three
+  more lessons from those two. **A plausible answer to the wrong question looks exactly like
+  progress:** a mark labelled "Restaurants in Hoboken:" was answered with OUR count (two — ABB and
+  Uncle Rocco's) rather than the town's denominator, and nothing about the reply flagged it; the
+  label and the question now both say *town-wide*. **A founder saying a thing is not MEASURED,
+  BENCHMARKED or MODELED**, so founder facts live in their own `FOUNDER_FACTS` record carrying their
+  own source and date — and an early draft of the Q&A doc stated an *unmeasured* seasonal audience
+  overlap as a sourced fact, which is our inference dressed as their evidence in a diligence
+  document. **A filename is not evidence of contents:** `npm run pitch:upload` (rclone → `DragonCandy
+  — Confidential › 11 · Finance`) refuses the speaker-notes build by **page count**, since a rename
+  defeats a name check — and the first upload still put the **redacted** deck there under a name
+  promising the complete one, undetectable because both builds have the same page count and every
+  page is a JPEG. Three launch events are recorded (Antique Lofts, the Colony Hotel, a Montauk venue
+  not yet chosen) as **events, not a change to the Hoboken → Manhattan → Palm Beach metro sequence**,
+  and deliberately **unpriced**, because the ask is derived from a budget scoped to one city.
+  **Pending:** four §8 founder inputs — SAFE terms, team bios, a town-wide Hoboken restaurant count,
+  and the launch-event dates/venue bookings/budget — each marked on its slide and printed by the
+  exporter; and **rclone's shared Google client ID retires during 2026**, warned only as a one-line
+  NOTICE, so the remote needs a project-owned OAuth client ID. Note the corrected raise of
+  **$1,462,568** sits inside the $500K–$1.5M band by $37K.
+  → `docs/wiki/concepts/investor-pitch-deck.md` · `docs/wiki/concepts/build-time-confidentiality.md` · `docs/wiki/concepts/drive-artifact-delivery.md` · #506, #509, #513, #515
 - **Social login (Google/Apple/Facebook) — shipped dark, and a one-line fix that would have
   switched off the email gate** — two blockers first: an OAuth user would have been told to
   verify an email nothing ever sends (`profiles.email_verified` defaults false, the trigger
