@@ -49,7 +49,7 @@ vi.mock('@/integrations/supabase/client', () => ({
   },
 }));
 
-import { wizardHasWorkLeft } from './onboardingProgress';
+import { wizardResumeStep } from './onboardingProgress';
 
 const COMPLETE_CREATOR = {
   creator_name: 'Joey', avatar_url: 'a.jpg', bio: 'I shoot food.',
@@ -68,7 +68,7 @@ describe('wizardHasWorkLeft', () => {
   });
 
   it('says there is nothing left when every wizard step is satisfied', async () => {
-    expect(await wizardHasWorkLeft('u1', 'content_creator')).toBe(false);
+    expect(await wizardResumeStep('u1', 'content_creator')).toBeNull();
   });
 
   /**
@@ -80,17 +80,17 @@ describe('wizardHasWorkLeft', () => {
    */
   it('does NOT route on an unverified phone — it is recommended, not required', async () => {
     rows.profiles = { phone_verified_at: null, email_verified: true };
-    expect(await wizardHasWorkLeft('u1', 'content_creator')).toBe(false);
+    expect(await wizardResumeStep('u1', 'content_creator')).toBeNull();
   });
 
   it('sends the user back when Stripe was never connected', async () => {
     rows.creator = { ...COMPLETE_CREATOR, stripe_account_id: null, stripe_onboarding_complete: false };
-    expect(await wizardHasWorkLeft('u1', 'content_creator')).toBe(true);
+    expect(await wizardResumeStep('u1', 'content_creator')).not.toBeNull();
   });
 
   it('sends the user back when the collect slides are unfilled', async () => {
     rows.creator = { ...COMPLETE_CREATOR, bio: null, skills: [] };
-    expect(await wizardHasWorkLeft('u1', 'content_creator')).toBe(true);
+    expect(await wizardResumeStep('u1', 'content_creator')).not.toBeNull();
   });
 
   /**
@@ -100,7 +100,7 @@ describe('wizardHasWorkLeft', () => {
    */
   it('does NOT trap the user while Stripe is still verifying their identity', async () => {
     rows.creator = { ...COMPLETE_CREATOR }; // connected, onboarding complete, identity NOT verified
-    expect(await wizardHasWorkLeft('u1', 'content_creator')).toBe(false);
+    expect(await wizardResumeStep('u1', 'content_creator')).toBeNull();
   });
 
   /**
@@ -109,13 +109,13 @@ describe('wizardHasWorkLeft', () => {
    */
   it('does not route anyone when the profile read fails', async () => {
     rows.throwOn = 'creator_profiles';
-    expect(await wizardHasWorkLeft('u1', 'content_creator')).toBe(false);
+    expect(await wizardResumeStep('u1', 'content_creator')).toBeNull();
   });
 
   it('does not route anyone when there is no row at all', async () => {
     rows.creator = null;
     rows.profiles = null;
-    expect(await wizardHasWorkLeft('u1', 'content_creator')).toBe(false);
+    expect(await wizardResumeStep('u1', 'content_creator')).toBeNull();
   });
 
   /** Brands have no address or payments slide, so neither can ever route them. */
@@ -128,12 +128,12 @@ describe('wizardHasWorkLeft', () => {
    */
   it('does not route a brand once profile basics are set', async () => {
     rows.business = { business_name: 'B', logo_url: 'l.jpg', stripe_account_id: null, stripe_onboarding_complete: false };
-    expect(await wizardHasWorkLeft('u1', 'brand')).toBe(false);
+    expect(await wizardResumeStep('u1', 'brand')).toBeNull();
   });
 
   it('control — a brand missing profile basics IS routed', async () => {
     rows.business = { business_name: null, logo_url: null, stripe_account_id: null, stripe_onboarding_complete: false };
-    expect(await wizardHasWorkLeft('u1', 'brand')).toBe(true);
+    expect(await wizardResumeStep('u1', 'brand')).not.toBeNull();
   });
 
   /**
@@ -144,7 +144,7 @@ describe('wizardHasWorkLeft', () => {
    */
   it('does not route a user whose identity is merely awaiting Stripe', async () => {
     rows.creator = { ...COMPLETE_CREATOR, identity_verified_at: null, stripe_requirements_due: [] };
-    expect(await wizardHasWorkLeft('u1', 'content_creator')).toBe(false);
+    expect(await wizardResumeStep('u1', 'content_creator')).toBeNull();
   });
 
   /**
@@ -160,7 +160,7 @@ describe('wizardHasWorkLeft', () => {
       ...COMPLETE_CREATOR, stripe_onboarding_complete: false, identity_verified_at: null,
       stripe_requirements_due: ['external_account', 'tos_acceptance'],
     };
-    expect(await wizardHasWorkLeft('u1', 'content_creator')).toBe(true);
+    expect(await wizardResumeStep('u1', 'content_creator')).not.toBeNull();
   });
 
   /**
@@ -175,7 +175,7 @@ describe('wizardHasWorkLeft', () => {
       ...COMPLETE_CREATOR, stripe_onboarding_complete: false, identity_verified_at: null,
       stripe_requirements_due: ['individual.id_number'],
     };
-    expect(await wizardHasWorkLeft('u1', 'content_creator')).toBe(true);
+    expect(await wizardResumeStep('u1', 'content_creator')).not.toBeNull();
   });
 
   /**
@@ -188,14 +188,14 @@ describe('wizardHasWorkLeft', () => {
     rows.profiles = { phone_verified_at: null, email_verified: true, org_id: 'org1' };
     rows.business = { business_name: 'B', logo_url: 'l.jpg', stripe_account_id: 'acct_1', stripe_onboarding_complete: true, identity_verified_at: '2026-08-24T00:00:00Z', stripe_requirements_due: [], stripe_disabled_reason: null };
     rows.orgUnits = [{ id: 'u1', address: '1 Main St', lat: 1, lng: 2, is_primary: true, address_verified_at: null }];
-    expect(await wizardHasWorkLeft('u1', 'business_client')).toBe(true);
+    expect(await wizardResumeStep('u1', 'business_client')).not.toBeNull();
   });
 
   it('control — a verified location address does not resume', async () => {
     rows.profiles = { phone_verified_at: null, email_verified: true, org_id: 'org1' };
     rows.business = { business_name: 'B', logo_url: 'l.jpg', stripe_account_id: 'acct_1', stripe_onboarding_complete: true, identity_verified_at: '2026-08-24T00:00:00Z', stripe_requirements_due: [], stripe_disabled_reason: null };
     rows.orgUnits = [{ id: 'u1', address: '1 Main St', lat: 1, lng: 2, is_primary: true, address_verified_at: '2026-08-24T00:00:00Z' }];
-    expect(await wizardHasWorkLeft('u1', 'business_client')).toBe(false);
+    expect(await wizardResumeStep('u1', 'business_client')).toBeNull();
   });
 
   /**
@@ -209,7 +209,7 @@ describe('wizardHasWorkLeft', () => {
       ...COMPLETE_CREATOR, stripe_onboarding_complete: false, identity_verified_at: null,
       stripe_requirements_due: ['individual.id_number'],
     };
-    expect(await wizardHasWorkLeft('u1', 'content_creator')).toBe(true);
+    expect(await wizardResumeStep('u1', 'content_creator')).not.toBeNull();
   });
 
   /** Control: nothing due at all IS Stripe's turn, and must still not resume. */
@@ -218,7 +218,7 @@ describe('wizardHasWorkLeft', () => {
       ...COMPLETE_CREATOR, stripe_onboarding_complete: false, identity_verified_at: null,
       stripe_requirements_due: [], stripe_disabled_reason: 'requirements.pending_verification',
     };
-    expect(await wizardHasWorkLeft('u1', 'content_creator')).toBe(false);
+    expect(await wizardResumeStep('u1', 'content_creator')).toBeNull();
   });
 
   /**
@@ -233,7 +233,7 @@ describe('wizardHasWorkLeft', () => {
       { id: 'u1', address: '1 Main St', lat: 1, lng: 2, is_primary: true, address_verified_at: null },
       { id: 'u2', address: '2 Main St', lat: 1, lng: 2, is_primary: false, address_verified_at: '2026-08-24T00:00:00Z' },
     ];
-    expect(await wizardHasWorkLeft('u1', 'business_client')).toBe(true);
+    expect(await wizardResumeStep('u1', 'business_client')).not.toBeNull();
   });
 
   /**
@@ -251,7 +251,7 @@ describe('wizardHasWorkLeft', () => {
       identity_verified_at: null,
       stripe_requirements_due: ['individual.verification.document'],
     };
-    expect(await wizardHasWorkLeft('u1', 'content_creator')).toBe(true);
+    expect(await wizardResumeStep('u1', 'content_creator')).not.toBeNull();
   });
 
   /** Control: same shape, nothing due — Stripe's verdict, so no resume. */
@@ -260,6 +260,23 @@ describe('wizardHasWorkLeft', () => {
       ...COMPLETE_CREATOR, stripe_onboarding_complete: true, identity_verified_at: null,
       stripe_requirements_due: [],
     };
-    expect(await wizardHasWorkLeft('u1', 'content_creator')).toBe(false);
+    expect(await wizardResumeStep('u1', 'content_creator')).toBeNull();
+  });
+
+  /**
+   * Codex P2, round 4. The step was being computed and then discarded as a boolean, so
+   * `AuthPage` sent every routed user to slide 1 and walked them back through slides they
+   * had already completed. Asserting the STEP, not just that one exists, is what stops that
+   * regressing — "not null" would have passed the whole time it was broken.
+   */
+  it('names the slide to resume at, not merely that one exists', async () => {
+    rows.creator = { ...COMPLETE_CREATOR, stripe_account_id: null, stripe_onboarding_complete: false };
+    expect(await wizardResumeStep('u1', 'content_creator')).toBe('payments');
+
+    rows.creator = { ...COMPLETE_CREATOR, bio: null };
+    expect(await wizardResumeStep('u1', 'content_creator')).toBe('bio');
+
+    rows.creator = { ...COMPLETE_CREATOR, creator_name: null, avatar_url: null };
+    expect(await wizardResumeStep('u1', 'content_creator')).toBe('identity');
   });
 });

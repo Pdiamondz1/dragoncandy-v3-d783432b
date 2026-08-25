@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { SEO } from "@/components/SEO";
-import { wizardHasWorkLeft } from "@/lib/onboardingProgress";
+import { wizardResumeStep } from "@/lib/onboardingProgress";
 import { useNavigate, useSearchParams, useLocation, Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -141,8 +141,11 @@ const AuthPage = () => {
         // `/profile/setup` DIRECTLY, not `/profile/business`: those are
         // `<Navigate>` redirect routes, and bouncing through one is the hop the blank-page
         // race ran through. `replace` so Back does not return to /auth.
-        if (!businessProfile?.is_completed || (await wizardHasWorkLeft(user.id, 'business_client'))) {
-          navigate('/profile/setup', { replace: true });
+        const resumeAt = await wizardResumeStep(user.id, 'business_client');
+        if (!businessProfile?.is_completed || resumeAt) {
+          // Carry the slide, so a returning user lands on the thing they still have to
+          // do rather than walking back through slides they already completed.
+          navigate(resumeAt ? `/profile/setup?step=${resumeAt}` : '/profile/setup', { replace: true });
           return;
         }
 
@@ -176,8 +179,11 @@ const AuthPage = () => {
         // `/profile/setup` DIRECTLY, not `/profile/content`: those are
         // `<Navigate>` redirect routes, and bouncing through one is the hop the blank-page
         // race ran through. `replace` so Back does not return to /auth.
-        if (!creatorProfile?.is_completed || (await wizardHasWorkLeft(user.id, 'content_creator'))) {
-          navigate('/profile/setup', { replace: true });
+        const resumeAt = await wizardResumeStep(user.id, 'content_creator');
+        if (!creatorProfile?.is_completed || resumeAt) {
+          // Carry the slide, so a returning user lands on the thing they still have to
+          // do rather than walking back through slides they already completed.
+          navigate(resumeAt ? `/profile/setup?step=${resumeAt}` : '/profile/setup', { replace: true });
           return;
         }
 
@@ -215,8 +221,11 @@ const AuthPage = () => {
         // `/profile/setup` DIRECTLY, not `/profile/brand`: those are
         // `<Navigate>` redirect routes, and bouncing through one is the hop the blank-page
         // race ran through. `replace` so Back does not return to /auth.
-        if (!brandProfile?.is_completed || (await wizardHasWorkLeft(user.id, 'brand'))) {
-          navigate('/profile/setup', { replace: true });
+        const resumeAt = await wizardResumeStep(user.id, 'brand');
+        if (!brandProfile?.is_completed || resumeAt) {
+          // Carry the slide, so a returning user lands on the thing they still have to
+          // do rather than walking back through slides they already completed.
+          navigate(resumeAt ? `/profile/setup?step=${resumeAt}` : '/profile/setup', { replace: true });
           return;
         }
 

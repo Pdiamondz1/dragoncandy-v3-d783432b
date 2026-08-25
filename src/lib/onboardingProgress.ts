@@ -83,8 +83,12 @@ export function firstUnfinishedStep(ctx: ReadinessContext): StepId | null {
 }
 
 /**
- * Reads the facts the wizard's own slides depend on and answers the one question the
- * post-login redirect needs: is there required, user-actionable work left in the wizard?
+ * Reads the facts the wizard's own slides depend on and returns the SLIDE to resume at,
+ * or null when the wizard has nothing more to ask.
+ *
+ * Returns the step rather than a boolean because the caller needs both answers from one
+ * read: whether to route, and where to. An earlier version reduced it to a boolean and
+ * `AuthPage` sent everyone to slide 1, walking them back through completed collect slides.
  *
  * DELIBERATELY CONSERVATIVE, and the asymmetry is the point. Any fact we cannot read is
  * left `undefined`, which the readiness engine resolves to `unknown`, which never counts
@@ -95,7 +99,7 @@ export function firstUnfinishedStep(ctx: ReadinessContext): StepId | null {
  * Errors are swallowed to `false` for the same reason: a failed read must not stand
  * between a user and their account.
  */
-export async function wizardHasWorkLeft(userId: string, role: AccountRole): Promise<boolean> {
+export async function wizardResumeStep(userId: string, role: AccountRole): Promise<StepId | null> {
   try {
     const { data: profile } = await supabase
       .from('profiles')
@@ -198,8 +202,8 @@ export async function wizardHasWorkLeft(userId: string, role: AccountRole): Prom
       }
     }
 
-    return firstUnfinishedStep(ctx) !== null;
+    return firstUnfinishedStep(ctx);
   } catch {
-    return false;
+    return null;
   }
 }

@@ -21,7 +21,7 @@ import { PhoneStep } from './steps/PhoneStep';
 import { AddressStep } from './steps/AddressStep';
 import { PaymentsStep } from './steps/PaymentsStep';
 import { ReadyStep } from './steps/ReadyStep';
-import { ROLE_STEPS, STEP_PHASE, lastCollectStep, coreFingerprint } from './steps';
+import { ROLE_STEPS, STEP_PHASE, lastCollectStep, coreFingerprint, type StepId } from './steps';
 import { useOrgFromProfile, useOrgUnits, useUpdateOrgUnit, KEYS } from '@/hooks/useOrgData';
 import type { Database } from '@/integrations/supabase/types';
 
@@ -231,12 +231,22 @@ export function OnboardingWizard() {
       const params = new URLSearchParams(window.location.search);
       const backFromStripe =
         params.get('stripe_onboarding') === 'complete' || params.get('stripe_refresh') === 'true';
-      if (backFromStripe && row.is_completed === true) {
-        const target = steps.indexOf('payments');
-        if (target > -1) {
-          setDirection(1);
-          setCurrentIndex(target);
-        }
+
+      // `?step=` is set by the post-login redirect, which has already worked out the first
+      // slide with actionable work. Honoured only for a slide THIS role actually has, and
+      // never `ready` — an untrusted value must not be able to skip the wizard to its end.
+      const asked = params.get('step') as StepId | null;
+      const askedIndex =
+        asked && asked !== 'ready' ? steps.indexOf(asked) : -1;
+
+      const target =
+        askedIndex > -1 ? askedIndex
+        : backFromStripe && row.is_completed === true ? steps.indexOf('payments')
+        : -1;
+
+      if (target > -1) {
+        setDirection(1);
+        setCurrentIndex(target);
       }
       return { ok: true };
     })();
