@@ -1,6 +1,5 @@
 import { supabase } from '@/integrations/supabase/client';
 import { computeAccountReadiness, type ReadinessContext, type RequirementKey } from '@/lib/accountReadiness';
-import { identityRequirements } from '@/lib/accountReadiness/derivations';
 import { ROLE_STEPS, REQUIREMENT_STEP, type StepId } from '@/components/onboarding/steps';
 import type { AccountRole } from '@/lib/accountReadiness/types';
 
@@ -21,41 +20,27 @@ import type { AccountRole } from '@/lib/accountReadiness/types';
  */
 
 /**
- * Requirements a wizard slide exists for but which the user CANNOT clear by acting now,
- * because they wait on someone else's verdict. Sending someone back to the wizard for one
- * of these is a loop with no exit — they would arrive, find nothing to do, and be sent
- * back on the next login.
+ * Whether a requirement is waiting on SOMEONE ELSE, in which case routing the user back to
+ * the wizard is a loop with no exit: they arrive, find nothing to do, and are sent back on
+ * the next login.
  *
- * `identity_verified` is mirrored from Stripe's decision, which can take days and which
- * no action on the payments slide advances. `stripe` is deliberately NOT here: "has this
- * user connected an account" is entirely within their control, and connecting one is
- * exactly what that slide is for.
+ * This started as a flat list containing `identity_verified`, and that was wrong in a way
+ * worth recording. `stripe_requirements_due` mirrors Stripe's `currently_due` and
+ * `past_due` — and an identity entry there (`individual.id_number`,
+ * `company.verification.document`) is Stripe asking the USER to upload something, not
+ * Stripe deliberating. Excluding every identity-prefixed key sent exactly those people to
+ * the dashboard. Codex second review, round 3.
+ *
+ * The honest rule is simpler than the one it replaces: **anything outstanding is the
+ * user's to fill; only an empty due list is Stripe's turn.** A live `disabled_reason` with
+ * nothing due is terminal (`rejected.fraud`) or deliberative
+ * (`requirements.pending_verification`) — either way the payments slide offers no action.
  */
-const AWAITS_A_THIRD_PARTY: readonly RequirementKey[] = ['identity_verified'];
+function awaitsSomeoneElse(key: RequirementKey, ctx: ReadinessContext): boolean {
+  if (key !== 'identity_verified') return false;
+  return (ctx.identity?.requirementsDue?.length ?? 0) === 0;
+}
 
-/**
- * A note on what is NOT in that list, because the difference is not obvious and was checked
- * rather than assumed. `deriveStripe` returns **`pending`** — not `unmet` — for a connected
- * account whose onboarding Stripe has not finished, and only `unmet` counts below, so the
- * "waiting on Stripe" case is already excluded by the engine itself. `deriveIdentityVerified`
- * does NOT do that: with nothing due and no verdict yet it returns a plain `unmet`, which is
- * why the entry above has to exist. Two derivations, two different answers to what looks like
- * the same question.
- */
-
-/**
- * The first wizard slide with required, user-actionable work left — or `null` when the
- * wizard has nothing more to ask, which is the signal to send them to their dashboard.
- *
- * Derived from the same registry the wizard renders from (`ROLE_STEPS` +
- * `REQUIREMENT_STEP`) rather than from a hand-listed set, because this registry has
- * already drifted from its spec twice in the same direction and a second hand-maintained
- * copy is how it happens a third time.
- *
- * `unknown` never routes anyone anywhere. That is the readiness engine's documented
- * contract and it matters most here: a failed read must not be able to trap a user in
- * onboarding, so only an explicit `unmet` counts.
- */
 export function firstUnfinishedStep(ctx: ReadinessContext): StepId | null {
   const role: AccountRole = ctx.role;
   const readiness = computeAccountReadiness(ctx);
@@ -72,9 +57,8 @@ export function firstUnfinishedStep(ctx: ReadinessContext): StepId | null {
    * Raised by the Codex second review; without it the abandon-inside-Stripe path — the very
    * one the wizard's return-path work exists for — was never resumed.
    */
-  const due = ctx.identity?.requirementsDue ?? [];
-  const stripeNeedsTheUser =
-    due.length > identityRequirements(due).length;
+  // Anything Stripe still lists is the user's to supply — identity documents included.
+  const stripeNeedsTheUser = (ctx.identity?.requirementsDue?.length ?? 0) > 0;
 
   const actionable = new Set(
     readiness.requirements
@@ -91,7 +75,7 @@ export function firstUnfinishedStep(ctx: ReadinessContext): StepId | null {
       key =>
         REQUIREMENT_STEP[key] === step &&
         actionable.has(key) &&
-        !AWAITS_A_THIRD_PARTY.includes(key),
+        !awaitsSomeoneElse(key, ctx),
     );
     if (blocking) return step;
   }
@@ -190,21 +174,26 @@ export async function wizardHasWorkLeft(userId: string, role: AccountRole): Prom
       // change exists to fix, just for the other role. Codex second review.
       const orgId = (profile as Record<string, unknown> | null)?.org_id as string | null;
       if (orgId) {
-        const { data: units } = await supabase
+        // ALL units, and no `maybeSingle`. An org may have many locations, and
+        // `maybeSingle` returns a PostgREST ERROR the moment a second row matches — which,
+        // swallowed, left `orgUnits` undefined and let every multi-location business skip
+        // the address step. Codex second review, round 3. The error is checked rather than
+        // ignored: on failure the field stays undefined, which reads as `unknown` and
+        // routes nobody, because a failed read must not stand between a user and their
+        // account.
+        const { data: units, error: unitsError } = await supabase
           .from('org_units')
           .select('id, address, lat, lng, is_primary, address_verified_at')
-          .eq('org_id', orgId)
-          .maybeSingle();
-        const u = (units ?? null) as Record<string, unknown> | null;
-        if (u) {
-          ctx.orgUnits = [{
+          .eq('org_id', orgId);
+        if (!unitsError && Array.isArray(units)) {
+          ctx.orgUnits = (units as Record<string, unknown>[]).map(u => ({
             id: u.id as string,
             address: (u.address as string | null) ?? null,
             lat: (u.lat as number | null) ?? null,
             lng: (u.lng as number | null) ?? null,
             isPrimary: u.is_primary === true,
             addressVerifiedAt: (u.address_verified_at as string | null) ?? null,
-          }];
+          }));
         }
       }
     }

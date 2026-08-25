@@ -15,7 +15,7 @@ const rows = vi.hoisted(() => ({
   profiles: null as Record<string, unknown> | null,
   creator: null as Record<string, unknown> | null,
   business: null as Record<string, unknown> | null,
-  orgUnit: null as Record<string, unknown> | null,
+  orgUnits: null as Record<string, unknown>[] | null,
   throwOn: null as string | null,
 }));
 
@@ -23,17 +23,27 @@ vi.mock('@/integrations/supabase/client', () => ({
   supabase: {
     from: (table: string) => ({
       select: () => ({
-        eq: () => ({
-          maybeSingle: async () => {
+        // `org_units` is awaited directly (a list); everything else goes through
+        // `maybeSingle`. The eq() result is BOTH thenable and maybeSingle-bearing so the
+        // mock cannot quietly diverge from whichever shape the code actually uses.
+        eq: () => {
+          const read = async () => {
             if (rows.throwOn === table) throw new Error('read failed');
             const data =
-              table === 'org_units' ? rows.orgUnit
+              table === 'org_units' ? rows.orgUnits
               : table === 'profiles' ? rows.profiles
               : table === 'creator_profiles' ? rows.creator
               : rows.business;
-            return { data };
-          },
-        }),
+            return { data, error: null };
+          };
+          const p = read() as Promise<{ data: unknown; error: null }> & { maybeSingle: () => Promise<unknown> };
+          // The thenable is built eagerly, so a throwing read would surface as an UNHANDLED
+          // rejection whenever the code takes the `maybeSingle` branch and never awaits it.
+          // Swallow it here only; `maybeSingle` re-runs and rejects into the real call site.
+          p.catch(() => {});
+          p.maybeSingle = read;
+          return p;
+        },
       }),
     }),
   },
@@ -53,7 +63,7 @@ describe('wizardHasWorkLeft', () => {
     rows.profiles = { phone_verified_at: '2026-08-24T00:00:00Z', email_verified: true };
     rows.creator = { ...COMPLETE_CREATOR };
     rows.business = null;
-    rows.orgUnit = null;
+    rows.orgUnits = null;
     rows.throwOn = null;
   });
 
@@ -153,13 +163,19 @@ describe('wizardHasWorkLeft', () => {
     expect(await wizardHasWorkLeft('u1', 'content_creator')).toBe(true);
   });
 
-  /** Control: the same pending state with only IDENTITY items due is Stripe's move. */
-  it('control — pending with only identity items due does not resume', async () => {
+  /**
+   * CORRECTED IN ROUND 3. This test used to assert `false`, on the belief that an identity
+   * entry in `stripe_requirements_due` meant Stripe was deliberating. It does not:
+   * `currently_due`/`past_due` are fields Stripe wants FROM THE USER, identity documents
+   * included. The belief was wrong, so the test moved — the code did not bend to keep it
+   * green.
+   */
+  it('resumes when identity items are due, because those are the user\'s to supply', async () => {
     rows.creator = {
       ...COMPLETE_CREATOR, stripe_onboarding_complete: false, identity_verified_at: null,
       stripe_requirements_due: ['individual.id_number'],
     };
-    expect(await wizardHasWorkLeft('u1', 'content_creator')).toBe(false);
+    expect(await wizardHasWorkLeft('u1', 'content_creator')).toBe(true);
   });
 
   /**
@@ -171,14 +187,79 @@ describe('wizardHasWorkLeft', () => {
   it('resumes a business whose location address is unverified', async () => {
     rows.profiles = { phone_verified_at: null, email_verified: true, org_id: 'org1' };
     rows.business = { business_name: 'B', logo_url: 'l.jpg', stripe_account_id: 'acct_1', stripe_onboarding_complete: true, identity_verified_at: '2026-08-24T00:00:00Z', stripe_requirements_due: [], stripe_disabled_reason: null };
-    rows.orgUnit = { id: 'u1', address: '1 Main St', lat: 1, lng: 2, is_primary: true, address_verified_at: null };
+    rows.orgUnits = [{ id: 'u1', address: '1 Main St', lat: 1, lng: 2, is_primary: true, address_verified_at: null }];
     expect(await wizardHasWorkLeft('u1', 'business_client')).toBe(true);
   });
 
   it('control — a verified location address does not resume', async () => {
     rows.profiles = { phone_verified_at: null, email_verified: true, org_id: 'org1' };
     rows.business = { business_name: 'B', logo_url: 'l.jpg', stripe_account_id: 'acct_1', stripe_onboarding_complete: true, identity_verified_at: '2026-08-24T00:00:00Z', stripe_requirements_due: [], stripe_disabled_reason: null };
-    rows.orgUnit = { id: 'u1', address: '1 Main St', lat: 1, lng: 2, is_primary: true, address_verified_at: '2026-08-24T00:00:00Z' };
+    rows.orgUnits = [{ id: 'u1', address: '1 Main St', lat: 1, lng: 2, is_primary: true, address_verified_at: '2026-08-24T00:00:00Z' }];
     expect(await wizardHasWorkLeft('u1', 'business_client')).toBe(false);
+  });
+
+  /**
+   * Codex P1, round 3. `stripe_requirements_due` mirrors `currently_due`/`past_due`, and an
+   * identity entry there is Stripe asking the USER to upload a document — not Stripe
+   * deliberating. The first version excluded every identity-prefixed key and so sent
+   * exactly those people to the dashboard.
+   */
+  it('resumes a user with an identity document still owed to Stripe', async () => {
+    rows.creator = {
+      ...COMPLETE_CREATOR, stripe_onboarding_complete: false, identity_verified_at: null,
+      stripe_requirements_due: ['individual.id_number'],
+    };
+    expect(await wizardHasWorkLeft('u1', 'content_creator')).toBe(true);
+  });
+
+  /** Control: nothing due at all IS Stripe's turn, and must still not resume. */
+  it('control — nothing due means Stripe is deliberating, so no resume', async () => {
+    rows.creator = {
+      ...COMPLETE_CREATOR, stripe_onboarding_complete: false, identity_verified_at: null,
+      stripe_requirements_due: [], stripe_disabled_reason: 'requirements.pending_verification',
+    };
+    expect(await wizardHasWorkLeft('u1', 'content_creator')).toBe(false);
+  });
+
+  /**
+   * Codex P1, round 3. An org may have many locations. `maybeSingle` returns a PostgREST
+   * ERROR once a second row matches, which — swallowed — left `orgUnits` undefined and let
+   * every multi-location business skip the address step entirely.
+   */
+  it('checks addresses across MULTIPLE locations, not just one', async () => {
+    rows.profiles = { phone_verified_at: null, email_verified: true, org_id: 'org1' };
+    rows.business = { business_name: 'B', logo_url: 'l.jpg', stripe_account_id: 'acct_1', stripe_onboarding_complete: true, identity_verified_at: '2026-08-24T00:00:00Z', stripe_requirements_due: [], stripe_disabled_reason: null };
+    rows.orgUnits = [
+      { id: 'u1', address: '1 Main St', lat: 1, lng: 2, is_primary: true, address_verified_at: null },
+      { id: 'u2', address: '2 Main St', lat: 1, lng: 2, is_primary: false, address_verified_at: '2026-08-24T00:00:00Z' },
+    ];
+    expect(await wizardHasWorkLeft('u1', 'business_client')).toBe(true);
+  });
+
+  /**
+   * ISOLATES THE IDENTITY PATH. The test above passes even with the identity guard
+   * reverted, because `stripe` is pending there and routes on its own — a forced control
+   * proved it, which is the only reason this gap was visible. Here Stripe onboarding is
+   * COMPLETE (so `stripe` derives `met` and cannot route), and the only outstanding thing
+   * is an identity document Stripe wants from the user. Stripe can finish onboarding and
+   * later raise a `past_due` identity item, so this is a real state, not a contrived one.
+   */
+  it('resumes on an identity document alone, with Stripe otherwise complete', async () => {
+    rows.creator = {
+      ...COMPLETE_CREATOR,
+      stripe_onboarding_complete: true,
+      identity_verified_at: null,
+      stripe_requirements_due: ['individual.verification.document'],
+    };
+    expect(await wizardHasWorkLeft('u1', 'content_creator')).toBe(true);
+  });
+
+  /** Control: same shape, nothing due — Stripe's verdict, so no resume. */
+  it('control — Stripe complete and nothing due does not resume', async () => {
+    rows.creator = {
+      ...COMPLETE_CREATOR, stripe_onboarding_complete: true, identity_verified_at: null,
+      stripe_requirements_due: [],
+    };
+    expect(await wizardHasWorkLeft('u1', 'content_creator')).toBe(false);
   });
 });
