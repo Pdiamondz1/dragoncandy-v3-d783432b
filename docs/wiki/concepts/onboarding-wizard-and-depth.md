@@ -127,13 +127,22 @@ NANP default, because `1` is a legitimate first digit of a subscriber number els
 
 ## Known Issues
 
-- **Nothing here has been verified against production by a human.** Every changed surface is behind
-  auth and no test-account credentials exist. Same gap slice 1 and slice 2 recorded.
+- **VERIFIED ON PRODUCTION 2026-08-24** — this bullet read "Nothing here has been verified against
+  production by a human" until the founder drove a real creator signup end to end while an agent
+  watched the database. The gap slices 1 and 2 recorded is closed for the creator path: signup,
+  email verification, phone verification and Stripe Connect account creation all exercised against
+  prod. Still unexercised: the creator address slide, the ready slide, and the entire restaurant
+  flow. See [[Onboarding Resume & Post-Login Routing]].
 - **The brand `stripe` requirement remains unsatisfiable by design** — see above.
-- **Stripe leaves the wizard.** The hosted link's `return_url` and `refresh_url` are built
-  server-side and point at `/dashboard/<role>/settings`; the client cannot influence them without an
-  edge-function change. Survivable only because the core save now runs before the service slides, so
-  anyone who disappears into Stripe already has complete rows.
+- **Stripe NO LONGER leaves the wizard (PR #521).** This bullet said the client "cannot influence
+  them without an edge-function change" — which was true, and was the change that got made. The
+  caller now sends a PATH (never a URL; the origin stays server-side) resolved against an exact
+  allow-list in `_shared/connect-return.ts`, and the wizard rehydrates and resumes on return.
+  **The return path could not ship alone**: the wizard remounts blank and the creator write is an
+  upsert with no `ignoreDuplicates`, so Continue would have overwritten name, bio and skills with
+  empty strings — worse than the bug it fixed. The core save still running before the service slides
+  remains the safety net for anyone who abandons inside Stripe; it is simply no longer the plan.
+  See [[Onboarding Resume & Post-Login Routing]].
 - **Social login is not built.** It is blocked on a `handle_new_user` migration: that trigger is the
   only one on `auth.users` and never sets `email_verified`, which defaults false, while `AuthPage`
   gates on it — so an OAuth user would be told to verify an email that is never sent. `authenticated`
@@ -146,3 +155,7 @@ NANP default, because `1` is a legitimate first digit of a subscriber number els
 - [[Identity & Address Verification]] — slice 2; the writers behind phone, identity and address.
 - [[Honest Analytics]] — the same refusal to report a result the data does not support.
 - [[Updated-At Trigger Drift]] — the "recorded ≠ actual" class the fingerprint fix belongs to.
+- [[Onboarding Resume & Post-Login Routing]] — the production test of this work, and the three
+  defects it surfaced on the way in, out and back in.
+- [[CSP Applies To Every Redirect Hop]] — why the wizard's auto-detected city and country were
+  empty for every user, despite a fix that reported success.
