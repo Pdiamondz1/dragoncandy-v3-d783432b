@@ -1,5 +1,81 @@
 # Wiki Log
 
+## [2026-08-25] ingest | X connector: connected, charging, and measuring nothing
+
+**Created** [[X Analytics Connector]] (`concepts/x-analytics-connector.md`) and
+`raw/sessions/2026-08-24-x-analytics-connector.md`. **Updated** `docs/wiki/index.md`,
+`docs/PROJECT_CONTEXT.md` §4 + §5, `docs/SHIPPED_LOG.md`.
+
+The fourth direct connector went live (#519) and the first real account connected on
+prod — proving `X_CLIENT_SECRET`, which nothing before it could, since the token
+exchange is HTTP Basic with that secret. The analytics read then answered **402
+credits-depleted**: X deleted its free tier in February 2026 and there is no free path
+to a user timeline. `last_synced_at` is null, so the connector authenticates and does
+not measure. Founder decision 2026-08-25: **not funding credits at this time.**
+
+Durable lessons recorded: *"Connected" is not the same claim as "working"*; a 402 is
+billing, not a fault, so it must never be `needs_reconnect`; the catch-all that appends
+an upstream body is right for diagnosis and wrong for a user's screen, so any status a
+user can encounter earns its own case; and a forced control that failed only one of
+three tests showed the other two pin an *earlier* fix — a block that looks stronger
+than it is gets trusted more than it deserves.
+
+Two findings about the knowledge layer itself, both surfaced by controls:
+`docs/runbooks/` is not synced into the RAG at all (0 rows of 472), and `db:apply`
+leaves the ledger's `statements` column null, so the repo file is the only copy of
+those migrations.
+
+## [2026-08-24] ingest | Facebook Page Insights connector — deployed, and stopped by the absence of a Page
+
+**Created** [[Facebook Page Insights Connector]] (`concepts/facebook-page-insights-connector.md`)
+and `docs/wiki/raw/sessions/2026-08-24-facebook-page-insights-connector.md`. **Updated**
+`docs/wiki/index.md`, `docs/PROJECT_CONTEXT.md` (§5 entry + a stale social-login Pending clause
+corrected against prod), `docs/DATABASE_SCHEMA.md` and `docs/SHIPPED_LOG.md`.
+
+Third direct platform connector under the *Outstand publishes, direct APIs measure* split (#510,
+#512). Everything is deployed and object-verified on prod; nothing has ever connected, because the
+account has no Facebook Page — two independent sources say so, and the flow therefore never reaches
+the token exchange, leaving `FACEBOOK_APP_SECRET` **present but unproven** (a wrong key and a forged
+signature fail identically as 401).
+
+Four things worth carrying. **(1) `config_id`, not `scope`** — this app uses Facebook Login for
+Business, where the two are mutually exclusive; the connector shipped with `scope` and the failure
+shape is the lesson, since a dialog requesting nothing surfaces as *"the user declined"*, blaming
+the user for our bug. It needs `override_default_response_type` alongside it, or the saved
+configuration's own default response type wins and every connect dies right after consent.
+**(2) Copying the sibling connector would have been wrong three times** — the Page token never
+expires while the *revoke* token lasts 60 days, so Instagram's refresh machinery would guard an
+impossible failure and disconnect can expire while reading works forever; there are many rows per
+user; and Facebook has a revoke endpoint, so the YouTube ordering returns. **(3) One grant covers
+every Page**, so the last-Page count happens in SQL under an advisory lock — counting in TypeScript
+and acting on the count is check-then-act, and two concurrent disconnects would strand the grant.
+**(4) The ordering defect repeated at 3.5x the blast radius**: the frontend merged 70 minutes ahead
+of its migration, rendering the card's error branch on three surfaces. Instagram had produced this
+two days earlier and its lesson was written down verbatim. *A rule recorded after an incident is not
+a control.*
+
+Also closed a Meta console finding from the Instagram session: the data-deletion field that refused
+four writes on App settings → Basic **is** writable from Login for Business → Settings. The two
+controls are one field behind two forms, and only one form works — a broken form is a property of
+the form, not of the setting.
+
+## [2026-08-24] ingest | A service-account transport for Drive uploads
+
+**Created** `docs/wiki/raw/sessions/2026-08-24-drive-service-account.md`. **Updated**
+[[Drive Artifact Delivery]] (two transports; a DWD claim in an older section corrected in
+place) and `docs/PROJECT_CONTEXT.md` §5.
+
+**The premise needed correcting before the question could be answered.** rclone is not being
+retired — the OAuth client ID it *lends* every install is. And every alternative needs its
+own credential regardless, so switching tools does not avoid the work. Two decisions worth
+carrying: a service account reaches a shared drive by **membership**, not domain-wide
+delegation (membership grants one drive; DWD can impersonate the domain), and **a key that is
+present but broken must fail rather than fall back**, or a misconfigured secret becomes a
+green run that succeeded by a route nobody chose. Stated plainly on the page: the new path
+has **never completed a real upload** — true when written, and closed the same evening:
+the account was created, the key installed and the deck uploaded through it, replacing the
+file in place with a matching md5.
+
 ## [2026-08-24] ingest | Launch events, the Hoboken denominator, and Drive delivery
 
 **Created** [[Drive Artifact Delivery]] (`concepts/drive-artifact-delivery.md`) and

@@ -142,11 +142,49 @@ async function xGet(path: string, accessToken: string): Promise<Record<string, u
       429,
     );
   }
+  if (res.status === 402) {
+    // X BILLS FOR THIS, AND THE ACCOUNT HAS NO CREDITS.
+    //
+    // X discontinued its free tier in February 2026 and moved to pay-per-use:
+    // ~$0.005 a post read, ~$0.010 a user read, and no free path to a user
+    // timeline at all. So a 402 is not a fault, a permission problem, or
+    // anything the user can fix by reconnecting — it is an unfunded developer
+    // account, and the only remedy is buying credits in X's console.
+    //
+    // Carved out of the catch-all below because that branch appends X's raw
+    // JSON body to the message, and the card renders `error.message` directly.
+    // A user was shown `{"detail":"credits depleted","status":402,...}` on a
+    // settings page, which is accurate, unreadable, and names no action.
+    //
+    // Deliberately NOT `needs_reconnect`: reconnecting cannot buy credits, and
+    // sending someone through a consent flow that will fail identically is the
+    // mistake the YouTube connector made when it read a quota 403 as
+    // "reauthorize". The connection is healthy; the account is unfunded.
+    //
+    // WORDED FOR THE PERSON WHO SEES IT, WHICH IS NOT ALWAYS US. This card
+    // renders on Creator, Business and Location settings, so a creator who
+    // connected their own account reads this too. It must say three things: you
+    // did nothing wrong, your connection is intact, and this is ours to fix.
+    // Naming our developer account would be accurate and would read to them
+    // like a problem they are supposed to act on.
+    throw new XError(
+      'credits_depleted',
+      'X analytics is paused — X charges for this data and our API credits ' +
+        'have run out. Your connection is still fine and nothing has been ' +
+        'lost; the numbers return once we top up.',
+      402,
+    );
+  }
   if (!res.ok) {
     // The UPSTREAM status, not a flat 502. A caller deciding whether a retry
     // could possibly help needs to know what X actually said — flattening every
     // failure into one code is how a 5xx outage ends up being treated as a
     // permission problem and retried for money.
+    //
+    // Note this branch put X's raw body on a user's screen the first time it
+    // fired. Keeping the body is still right for diagnosis — it is how the 402
+    // above was identified in one read rather than several — but any status a
+    // user can actually encounter deserves its own case before reaching here.
     throw new XError('x_error', `X returned ${res.status}: ${text.slice(0, 200)}`, res.status);
   }
 

@@ -778,13 +778,19 @@ predicate. See `docs/wiki/concepts/synthetic-weight-engine.md`.
 ## Direct platform connectors (analytics only)
 
 Per-user OAuth links to a platform's own API, under the 2026-08-23 scope decision: **Outstand
-publishes, direct APIs measure**. Neither table was documented here before 2026-08-24 — the
-YouTube one had been live since 2026-08-23.
+publishes, direct APIs measure**. None of these tables was documented here before 2026-08-24 —
+the YouTube one had been live since 2026-08-23.
+
+**They share a lockdown and almost nothing else.** Each platform was read from its own docs rather
+than inferred from the sibling that shipped the week before, and the column sets diverge because
+the token models do. Read the notes under the table before assuming a pattern carries.
 
 | Table | Purpose |
 |-|-|
 | `youtube_channel_connections` | One row per linked YouTube channel (`20260823170000`). `channel_id`, `channel_title`, `google_email`, `scopes`, `refresh_token` (NOT NULL — Google's refresh token is a separate, long-lived credential), `access_token` + `access_token_expires_at`, `status`, `last_error`, `connected_at`, `last_synced_at`. |
 | `instagram_account_connections` | One row per linked Instagram account (`20260825120000`, applied 2026-08-24). `ig_user_id`, `username`, `account_type`, `followers_count`, `permissions`, `access_token` (NOT NULL), `token_issued_at`, `token_expires_at`, `status`, `last_error`, `connected_at`, `last_synced_at`. |
+| `facebook_page_connections` | One row per linked Facebook **Page** — many per user, unique on `(user_id, page_id)` (`20260825150000`, applied 2026-08-24). `fb_user_id` (Meta's **app-scoped** user id; the deauthorize callback sends nothing else we hold), `page_id`, `page_name`, `category`, `followers_count`, **`page_access_token`** (NOT NULL, reads insights, never expires), **`user_access_token`** (NOT NULL, exists only to revoke, ~60 days), `user_token_expires_at`, `permissions`, `tasks`, `status`, `last_error`, `connected_at`, `last_synced_at`. |
+| `x_account_connections` | One row per linked X (Twitter) account (`20260826100000`, applied 2026-08-24). `x_user_id`, `username`, `display_name`, `followers_count`, `following_count`, `tweet_count`, `scopes`, `access_token` + `access_token_expires_at`, `refresh_token`, `status`, `last_error`, `connected_at`, `last_synced_at`, plus a cached `insights` / `insights_cached_at` snapshot and **three claim pairs** (`refresh_*`, `insights_*`, `disconnect_*`). |
 
 > **The column sets differ for a reason that is the whole design.** Instagram has **no refresh
 > token**: the 60-day access token *is* the credential, and `ig_refresh_token` extends that same
@@ -795,7 +801,42 @@ YouTube one had been live since 2026-08-23.
 > refresh at 15 days remaining plus a daily sweep (`instagram-refresh-sweep`, cron migration
 > `20260825130000`). See [[Instagram Insights Connector]].
 >
-> **Both tables are service-role-only by construction, and verified so rather than assumed.**
+> **Facebook differs again, and in the opposite direction — it carries TWO tokens with opposite
+> lifetimes.** `page_access_token` reads insights and **does not expire**; `user_access_token`
+> exists for exactly one purpose, revoking the grant on disconnect, and lasts ~60 days. So there
+> is no expiry-driven refresh, no proactive refresh and no dormancy sweep here — Instagram's
+> machinery would guard a failure that cannot happen. The awkward consequence is recorded rather
+> than hidden: after ~60 days insights still work forever while disconnect can no longer revoke,
+> which is why `user_token_expires_at` is stored at all. **It is not a health signal and nothing
+> should mark a connection stale from it.** `fb_user_id` is stored because Meta's deauthorize
+> callback identifies the person by that id and nothing else we hold — without it a user-side
+> removal would strand every row it should delete. See [[Facebook Page Insights Connector]].
+>
+> **One Facebook grant covers every Page on it**, so `DELETE /me/permissions` invalidates every
+> Page token minted from it at once. The grant is handed back only when the LAST Page goes, and
+> that decision is made in **`claim_facebook_page_disconnect`** (SECURITY DEFINER,
+> `search_path=public`, service-role only) under a `pg_advisory_xact_lock` on `fb_user_id` —
+> never in the edge function. Counting there and acting on the count is check-then-act: two
+> concurrent disconnects both read "2 remaining", both skip the revoke, and the grant is
+> stranded with no token left to revoke it. On `is_last` the RPC deliberately **leaves the row
+> and its token in place** so the caller can revoke first — deleting first would abandon a live
+> grant, the same rule [[YouTube Analytics Connector]] follows and Instagram structurally cannot.
+>
+> **`20260825150000` put the lock in the right place and the READ in the wrong one; corrected by
+> `20260825160000`.** The original read the target row *before* taking the lock, so the lock
+> serialised the count but not the row the count was about. Two disconnects of the **same** Page
+> (a double tap, or a retry after a dropped response) could have the second one re-count after the
+> first committed its delete, see 1 remaining, and return `is_last=true` carrying the **deleted
+> row's stale token** — whereupon the revoke killed the *other* Page's token while its row survived
+> reading "Connected". The fix narrows the unlocked read to `fb_user_id` alone (needed only for the
+> lock key) and re-reads the row **inside** the lock; a row that vanished returns `found=false`,
+> which the caller already treats as the idempotent "already gone" success. A grant replaced
+> between the key read and the lock raises `40001`, which `facebook-disconnect` maps to a **409
+> retry**, because an advisory xact lock cannot be swapped mid-transaction and a rare honest
+> failure beats a silent wrong answer. **Found by the Codex second review reading the wiki prose
+> that claimed the function was safe** — the claim is what made the code checkable.
+>
+> **All three tables are service-role-only by construction, and verified so rather than assumed.**
 > RLS enabled with **zero policies for any role**, PLUS the ambient grants revoked at TABLE level
 > (a column-level `REVOKE` is a documented no-op against Supabase's table-wide `GRANT` — the same
 > lesson `20260804174854` / `20260805163247` record). Grants and RLS are independent gates, so a
@@ -803,8 +844,8 @@ YouTube one had been live since 2026-08-23.
 > 2026-08-24 for `instagram_account_connections`: grants are exactly `postgres` + `service_role`,
 > `relrowsecurity` is true, and `pg_policies` returns 0 rows.
 >
-> **The UI never reads either table.** It calls `instagram_connection_status()` /
-> `youtube_connection_status()` — `SECURITY DEFINER`, `search_path=public`, taking **no arguments**
+> **The UI never reads any of these tables.** It calls `instagram_connection_status()` /
+> `youtube_connection_status()` / `facebook_connection_status()` — `SECURITY DEFINER`, `search_path=public`, taking **no arguments**
 > so identity can only come from `auth.uid()` (the `dre_my_standing` pattern), EXECUTE granted to
 > `authenticated` + `service_role` and revoked from `PUBLIC`/`anon`, and returning **no token
 > column**. A bare `REVOKE ... FROM PUBLIC` does not lock down a definer function against
@@ -814,6 +855,37 @@ YouTube one had been live since 2026-08-23.
 > renumbered because `feat/verify-address-throttle` had already recorded that version in prod's
 > ledger. `supabase/migrations.test.ts` now fails CI on any new collision — see
 > [[Instagram Insights Connector]].
+
+
+> **X is the only one of the three that carries a cached snapshot, and that is a COST control.**
+> YouTube, Instagram and Facebook insights are free, so those connectors read on every card
+> render. X deleted its free tier in February 2026 and bills per read (~$0.005 a post read,
+> ~$0.010 a user read, no free path to a user timeline). The card renders on three settings
+> surfaces, so reading on every render would bill per render, per surface, per user. Keeping the
+> snapshot in the SCHEMA rather than in the client is what makes it something a caller cannot opt
+> out of. See [[X Analytics Connector]].
+>
+> **The three claim pairs exist because an advisory lock cannot span an HTTP call.**
+> `pg_advisory_xact_lock` is released when its transaction ends, so refresh, insights-read and
+> disconnect each follow claim → outbound call → commit, with the claim recorded on the row. All
+> seven lock sites take **one** key, `hashtext('x_grant:' || p_user_id::text)` — an earlier draft
+> used three different keys, so three operations on the same grant serialised against nothing.
+> Same lineage as `pending_balance_flushes`.
+>
+> **`refresh_token` is nullable here, unlike YouTube's NOT NULL.** X issues one only when the user
+> grants `offline.access`, and they may decline. Such a connection is real, usable, and dead in two
+> hours; `can_refresh` is derived server-side from whether a token is actually held rather than
+> stored as a boolean that could be set optimistically.
+>
+> Lockdown is identical to the sibling tables and was verified rather than assumed on prod
+> 2026-08-24: RLS enabled with **zero policies for any role**, plus TABLE-level revocation (a
+> column-level `REVOKE` is a documented no-op against Supabase's ambient table-wide `GRANT`).
+> Grants read back as exactly `postgres` + `service_role`. `x_connection_status()` is
+> `SECURITY DEFINER`, takes **no arguments** so identity can only come from `auth.uid()`, returns
+> **no token column**, and is granted to `authenticated` + `service_role` but never `anon`.
+> Proven by impersonating a real user in a rolled-back transaction: the status function returns an
+> empty set, while the same caller reading the table directly and calling a claim RPC both raise
+> **42501**.
 
 ## Social & Outstand Integration
 

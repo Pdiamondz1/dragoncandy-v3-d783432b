@@ -10,7 +10,7 @@ tags: [instagram, meta, oauth, analytics, social, security]
 # Instagram Insights Connector
 
 A per-user, **read-only** link to a business's or creator's Instagram account,
-supplying the analytics [[Outstand Social Media Integration]] never shipped. Built on the
+supplying the analytics [[Outstand]] never shipped. Built on the
 [[YouTube Analytics Connector]]'s pattern — and this page is mostly about the
 places where copying that pattern would have been **wrong**.
 
@@ -350,4 +350,4 @@ timestamp a human types, so two branches open on one day will collide eventually
 
 - [[YouTube Analytics Connector]] — the template, and the three departures above
 - [[Honest Analytics]] — the rules the insights layer follows
-- [[Outstand Social Media Integration]] — what still does the publishing
+- [[Outstand]] — what still does the publishing

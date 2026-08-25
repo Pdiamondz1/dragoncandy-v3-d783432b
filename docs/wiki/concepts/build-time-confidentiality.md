@@ -74,5 +74,5 @@ one that found nothing.
 ## See Also
 
 - [[Investor Pitch Deck & Capital Raise]] · [[Site Access Lockdown]]
-- [[Anon Key Is Not Authorization]] — the same shape one layer down: a check that looks like a
+- [[verify_jwt Is Not Authorization]] — the same shape one layer down: a check that looks like a
   control and is not.

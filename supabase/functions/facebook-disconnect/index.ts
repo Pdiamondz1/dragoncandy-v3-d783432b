@@ -71,6 +71,21 @@ serve(async (req: Request) => {
     );
 
     if (claimError) {
+      // 40001 is raised deliberately by the RPC when the grant was replaced
+      // between deriving the lock key and taking the lock — a disconnect racing
+      // a full reconnect. It is retryable and it is not our bug, so it must not
+      // read as one: a 500 tells the user something is broken when the correct
+      // action is to tap again.
+      if (claimError.code === '40001') {
+        return json(
+          req,
+          {
+            error: 'retry',
+            message: 'That Page was reconnected while we were disconnecting it. Please try again.',
+          },
+          409,
+        );
+      }
       console.error('[facebook-disconnect] claim failed:', claimError.message);
       return json(req, { error: 'storage_failed', message: claimError.message }, 500);
     }
