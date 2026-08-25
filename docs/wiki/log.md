@@ -1,5 +1,30 @@
 # Wiki Log
 
+## [2026-08-25] ingest | X connector: connected, charging, and measuring nothing
+
+**Created** [[X Analytics Connector]] (`concepts/x-analytics-connector.md`) and
+`raw/sessions/2026-08-24-x-analytics-connector.md`. **Updated** `docs/wiki/index.md`,
+`docs/PROJECT_CONTEXT.md` §4 + §5, `docs/SHIPPED_LOG.md`.
+
+The fourth direct connector went live (#519) and the first real account connected on
+prod — proving `X_CLIENT_SECRET`, which nothing before it could, since the token
+exchange is HTTP Basic with that secret. The analytics read then answered **402
+credits-depleted**: X deleted its free tier in February 2026 and there is no free path
+to a user timeline. `last_synced_at` is null, so the connector authenticates and does
+not measure. Founder decision 2026-08-25: **not funding credits at this time.**
+
+Durable lessons recorded: *"Connected" is not the same claim as "working"*; a 402 is
+billing, not a fault, so it must never be `needs_reconnect`; the catch-all that appends
+an upstream body is right for diagnosis and wrong for a user's screen, so any status a
+user can encounter earns its own case; and a forced control that failed only one of
+three tests showed the other two pin an *earlier* fix — a block that looks stronger
+than it is gets trusted more than it deserves.
+
+Two findings about the knowledge layer itself, both surfaced by controls:
+`docs/runbooks/` is not synced into the RAG at all (0 rows of 472), and `db:apply`
+leaves the ledger's `statements` column null, so the repo file is the only copy of
+those migrations.
+
 ## [2026-08-24] ingest | Facebook Page Insights connector — deployed, and stopped by the absence of a Page
 
 **Created** [[Facebook Page Insights Connector]] (`concepts/facebook-page-insights-connector.md`)

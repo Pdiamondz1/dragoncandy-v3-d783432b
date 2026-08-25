@@ -1,5 +1,6 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
+  fetchPosts,
   MAX_POSTS,
   parsePosts,
   summarize,
@@ -8,6 +9,7 @@ import {
   type XAccountSummary,
   type XPostMetrics,
 } from './x-metrics.ts';
+import { XError } from './x-api.ts';
 
 /**
  * Real execution tests. Every rule below is an [[Honest Analytics]] rule, and
@@ -182,5 +184,77 @@ describe('the constants are decisions, not defaults', () => {
   it('reads at most one page', () => {
     // Each extra page is another billed read. X caps this endpoint at 100.
     expect(MAX_POSTS).toBe(100);
+  });
+});
+
+
+/**
+ * X BILLS PER READ, SO A FAILURE THAT RETRIES IS A FAILURE THAT COSTS TWICE.
+ *
+ * Observed on prod 2026-08-25, minutes after the first real account connected:
+ * X answered `402 {"detail":"credits depleted",...}` because X discontinued its
+ * free tier in February 2026. The card renders `error.message` directly, so the
+ * raw JSON body went on a settings page.
+ *
+ * Two separate properties are pinned here, and the second needs a control.
+ */
+describe('a 402 from X is unfunded billing, not a fault', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  const respond = (status: number, body: string) =>
+    new Response(body, { status, headers: { 'Content-Type': 'application/json' } });
+
+  it('says something a human can act on, and leaks no raw JSON', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () =>
+        respond(402, '{"detail":"credits depleted","status":402,"title":"Payment Required"}'),
+      ),
+    );
+
+    const err = await fetchPosts('token', '123').catch((e) => e);
+
+    expect(err).toBeInstanceOf(XError);
+    expect((err as XError).code).toBe('credits_depleted');
+    expect((err as XError).status).toBe(402);
+    // The defect that put this on screen: the catch-all appends X's body.
+    expect((err as XError).message).not.toContain('{');
+    expect((err as XError).message).not.toContain('detail');
+    expect((err as XError).message).toMatch(/credits/i);
+  });
+
+  // NOTE ON WHAT THIS ONE ACTUALLY PROTECTS. Deleting the 402 branch above
+  // fails the message test and leaves this one GREEN — because a 402 falling
+  // through to the catch-all still matches neither retry condition (403, or 400
+  // naming organic metrics). So this pins round 11's narrowing of the retry, not
+  // the 402 branch. Both are worth pinning; conflating them would make this
+  // block look stronger than it is.
+  it('does NOT buy a second billed read', async () => {
+    const spy = vi.fn(async () => respond(402, '{"detail":"credits depleted"}'));
+    vi.stubGlobal('fetch', spy);
+
+    await fetchPosts('token', '123').catch(() => undefined);
+
+    expect(spy).toHaveBeenCalledTimes(1);
+  });
+
+  it('CONTROL: a 403 does retry, so the assertion above can actually fail', async () => {
+    // Without this, "called once" would pass even if the retry were broken
+    // outright — and the test would be pinning nothing. A 403 is the genuine
+    // organic-metrics permission refusal, which SHOULD spend a second read to
+    // return a smaller honest card.
+    const spy = vi.fn(async (url: string) =>
+      String(url).includes('organic_metrics')
+        ? respond(403, '{"detail":"not permitted"}')
+        : respond(200, '{"data":[]}'),
+    );
+    vi.stubGlobal('fetch', spy);
+
+    const result = await fetchPosts('token', '123');
+
+    expect(spy).toHaveBeenCalledTimes(2);
+    expect(result.organicAvailable).toBe(false);
   });
 });
