@@ -1,5 +1,39 @@
 # Wiki Log
 
+## [2026-08-24] ingest | Facebook Page Insights connector — deployed, and stopped by the absence of a Page
+
+**Created** [[Facebook Page Insights Connector]] (`concepts/facebook-page-insights-connector.md`)
+and `docs/wiki/raw/sessions/2026-08-24-facebook-page-insights-connector.md`. **Updated**
+`docs/wiki/index.md`, `docs/PROJECT_CONTEXT.md` (§5 entry + a stale social-login Pending clause
+corrected against prod), `docs/DATABASE_SCHEMA.md` and `docs/SHIPPED_LOG.md`.
+
+Third direct platform connector under the *Outstand publishes, direct APIs measure* split (#510,
+#512). Everything is deployed and object-verified on prod; nothing has ever connected, because the
+account has no Facebook Page — two independent sources say so, and the flow therefore never reaches
+the token exchange, leaving `FACEBOOK_APP_SECRET` **present but unproven** (a wrong key and a forged
+signature fail identically as 401).
+
+Four things worth carrying. **(1) `config_id`, not `scope`** — this app uses Facebook Login for
+Business, where the two are mutually exclusive; the connector shipped with `scope` and the failure
+shape is the lesson, since a dialog requesting nothing surfaces as *"the user declined"*, blaming
+the user for our bug. It needs `override_default_response_type` alongside it, or the saved
+configuration's own default response type wins and every connect dies right after consent.
+**(2) Copying the sibling connector would have been wrong three times** — the Page token never
+expires while the *revoke* token lasts 60 days, so Instagram's refresh machinery would guard an
+impossible failure and disconnect can expire while reading works forever; there are many rows per
+user; and Facebook has a revoke endpoint, so the YouTube ordering returns. **(3) One grant covers
+every Page**, so the last-Page count happens in SQL under an advisory lock — counting in TypeScript
+and acting on the count is check-then-act, and two concurrent disconnects would strand the grant.
+**(4) The ordering defect repeated at 3.5x the blast radius**: the frontend merged 70 minutes ahead
+of its migration, rendering the card's error branch on three surfaces. Instagram had produced this
+two days earlier and its lesson was written down verbatim. *A rule recorded after an incident is not
+a control.*
+
+Also closed a Meta console finding from the Instagram session: the data-deletion field that refused
+four writes on App settings → Basic **is** writable from Login for Business → Settings. The two
+controls are one field behind two forms, and only one form works — a broken form is a property of
+the form, not of the setting.
+
 ## [2026-08-24] ingest | A service-account transport for Drive uploads
 
 **Created** `docs/wiki/raw/sessions/2026-08-24-drive-service-account.md`. **Updated**

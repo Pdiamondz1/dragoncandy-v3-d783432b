@@ -103,6 +103,6 @@ calendars — which is the argument for applying long before the code is ready, 
 
 ## See Also
 
-- [[Anon Key Is Not Authorization]] — the other case where a platform default was mistaken
+- [[verify_jwt Is Not Authorization]] — the other case where a platform default was mistaken
   for a guarantee.
 - [[Updated-At Trigger Drift]] — the canonical `recorded ≠ actual` failure in this project.
