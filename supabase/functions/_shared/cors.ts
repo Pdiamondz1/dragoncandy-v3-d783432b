@@ -33,6 +33,30 @@ const ALLOWED = new Set<string>([
  * boundary in either form — the browser blocks a response whose ACAO does not
  * match the caller regardless — but it keeps one shape across the fleet.
  */
+/**
+ * Vercel preview origins are deliberately NOT allow-listed. Raised by the Codex
+ * second review on 2026-08-26 as a regression, and declined on evidence:
+ *
+ *   - `*.vercel.app` is a SHARED domain. Any Vercel user can deploy to it, so
+ *     allow-listing the suffix makes an arbitrary third party's page an allowed
+ *     origin — strictly worse than the `'*'` this change removes, because that
+ *     wildcard at least carried no credentials. A project-scoped pattern is
+ *     tighter but still leans on Vercel's naming to be unguessable.
+ *   - Preview deployments point at the STAGING Supabase project (Vercel env
+ *     scopes: Production -> prod, Preview -> staging), so a preview never calls
+ *     these functions on prod at all.
+ *   - The smoke suite that runs against preview URLs contains no social or
+ *     Outstand coverage — `tests/` greps clean for both — so nothing automated
+ *     depends on this.
+ *   - 123 of the fleet's 125 functions already refuse preview origins. These
+ *     two were the exception, not the rule.
+ *
+ * What it DOES cost: a human manually clicking through social features on a
+ * preview build will now see them fail. If that workflow turns out to matter,
+ * add the narrowest possible project-scoped pattern here — one place, and every
+ * consumer picks it up — rather than reintroducing a wildcard in a function.
+ */
+
 export const resolveAllowedOrigin = (req: Request): string => {
   const origin = req.headers.get('origin') ?? '';
   return ALLOWED.has(origin) ? origin : DEFAULT_ORIGIN;
