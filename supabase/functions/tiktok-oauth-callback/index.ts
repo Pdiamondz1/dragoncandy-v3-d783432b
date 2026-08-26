@@ -84,6 +84,11 @@ serve(async (req: Request) => {
     // Read the profile BEFORE storing, so the row is written with a display name,
     // handle and stats already in it. A row that appears with everything null and
     // fills in a second later reads like a broken connect.
+    //
+    // The stats half of that sentence was a LIE until 20260826210000: the fetch
+    // returned them and the store call did not pass them, so the first real
+    // connection landed with four null columns. Whatever this comment claims,
+    // the argument list below is the thing that decides.
     let account;
     try {
       account = await fetchAccount(tokens.access_token);
@@ -104,6 +109,12 @@ serve(async (req: Request) => {
       p_username: account.username,
       p_avatar_url: account.avatar_url,
       p_profile_deep_link: account.profile_deep_link,
+      // `num()` in tiktok-metrics has already made these null-or-a-real-number,
+      // so an absent stat stays absent rather than becoming a zero.
+      p_follower_count: account.follower_count,
+      p_following_count: account.following_count,
+      p_likes_count: account.likes_count,
+      p_video_count: account.video_count,
       p_scopes: tokens.scopes,
       p_access_token: tokens.access_token,
       p_access_token_expires_at: tokens.access_token_expires_at,
