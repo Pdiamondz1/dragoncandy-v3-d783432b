@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { buildWorkbookSpec, SHEET_ORDER, FINANCING_SHEET } from './workbook';
 import { REGISTER } from './assumptions';
-import { METRO_ASSUMPTIONS } from './metros';
+import { METRO_ASSUMPTIONS, METROS, addressableBand } from './metros';
 
 describe('the workbook spec', () => {
   const confidential = buildWorkbookSpec({ confidential: true });
@@ -49,6 +49,57 @@ describe('the workbook spec', () => {
     const text = sheet.rows.flat().map((c) => String(c.v ?? '')).join(' ');
     expect(text).toMatch(/Addressable venues/);
     expect(text).toMatch(/food service/i);
+  });
+
+  /**
+   * A floor printed as if it were a count is a lie by formatting, and the lie is invisible
+   * exactly where it matters -- a reader sees "97" beside Hoboken's "123" and has no way to
+   * know one of them is a lower bound. So the range must travel with the figure to EVERY
+   * sheet that prints it, not just to the one someone remembered.
+   *
+   * The search is over sheets that actually contain the number, derived from the model, not
+   * over a hand-listed pair of sheet names -- a list is the thing that goes stale when a
+   * fifth surface starts showing the count.
+   */
+  describe('a floored addressable count never appears without its range', () => {
+    const floored = METROS.filter((m) => addressableBand(m.id).suppressedCells > 0);
+
+    it('CONTROL: at least one metro has a floored count, so this checks something', () => {
+      // Without this, every assertion below is vacuously true the day the Hamptons is
+      // removed or its suppression disappears -- a green test inspecting an empty list.
+      expect(floored.map((m) => m.id)).toEqual(['montauk-hamptons']);
+    });
+
+    it.each(floored.map((m) => [m.id] as const))(
+      'states the range on every sheet showing %s\'s addressable count',
+      (metroId) => {
+        const band = addressableBand(metroId);
+        const showing = confidential.filter((sheet) =>
+          sheet.rows.some((r) =>
+            r.some((c) => c.f === undefined && c.v === band.value),
+          ),
+        );
+        expect(showing.length, `no sheet prints ${metroId}'s count at all`).toBeGreaterThan(0);
+
+        const silent = showing
+          .filter((sheet) => {
+            const text = sheet.rows.flat().map((c) => String(c.v ?? '')).join(' ');
+            return !(
+              text.includes(`at least ${band.value}`) &&
+              text.includes(`${band.suppressedCells} suppressed`)
+            );
+          })
+          .map((s) => s.name);
+
+        expect(
+          silent,
+          `These sheets print ${metroId}'s addressable count as a bare number. It is a FLOOR ` +
+            `(${band.suppressedCells} suppressed Census cells excluded), so the range must ` +
+            `travel with it -- use describeAddressable() from metros.ts rather than writing ` +
+            `the wording again.`,
+        ).toEqual([]);
+      },
+    );
   });
 
   it('omits the Financing sheet from a public build', () => {

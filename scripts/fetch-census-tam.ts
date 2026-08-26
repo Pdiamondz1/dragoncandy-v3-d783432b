@@ -13,7 +13,12 @@ import { execFileSync } from 'node:child_process';
 import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { SIZE_BUCKETS, type CensusGeography, type NaicsRow } from '../src/pitch/model/censusTam';
+import {
+  SIZE_BUCKETS,
+  type CensusGeography,
+  type CensusPart,
+  type NaicsRow,
+} from '../src/pitch/model/censusTam';
 
 const OUT = 'src/pitch/model/censusTam.json';
 
@@ -27,7 +32,52 @@ const GEOGRAPHIES: ReadonlyArray<{ metroId: string; geography: CensusGeography }
     metroId: 'palm-beach',
     geography: { kind: 'county', code: '12099', label: 'Palm Beach County, FL' },
   },
+  {
+    metroId: 'montauk-hamptons',
+    geography: {
+      kind: 'zipset',
+      // Every ZIP on the South Fork, listed in full. Two of them (11959 Quogue, 11962
+      // Sagaponack) have NO rows in the ZBP at all; they stay in this list so the snapshot
+      // records that the constituent list was fourteen and twelve answered. Dropping them
+      // would make "absent" indistinguishable from "never asked about."
+      codes: [
+        '11930', // Amagansett
+        '11932', // Bridgehampton
+        '11937', // East Hampton
+        '11942', // East Quogue
+        '11946', // Hampton Bays
+        '11954', // Montauk
+        '11959', // Quogue
+        '11962', // Sagaponack
+        '11963', // Sag Harbor
+        '11968', // Southampton
+        '11975', // Wainscott
+        '11976', // Water Mill
+        '11977', // Westhampton
+        '11978', // Westhampton Beach
+      ],
+      label: 'Montauk + the Hamptons, NY (14 ZIPs)',
+    },
+  },
 ];
+
+/** ZIP -> place name, for the `parts` list. The ZBP `name` column is inconsistently cased. */
+const ZIP_LABELS: Readonly<Record<string, string>> = {
+  '11930': 'Amagansett, NY',
+  '11932': 'Bridgehampton, NY',
+  '11937': 'East Hampton, NY',
+  '11942': 'East Quogue, NY',
+  '11946': 'Hampton Bays, NY',
+  '11954': 'Montauk, NY',
+  '11959': 'Quogue, NY',
+  '11962': 'Sagaponack, NY',
+  '11963': 'Sag Harbor, NY',
+  '11968': 'Southampton, NY',
+  '11975': 'Wainscott, NY',
+  '11976': 'Water Mill, NY',
+  '11977': 'Westhampton, NY',
+  '11978': 'Westhampton Beach, NY',
+};
 
 async function newestVintage(): Promise<number> {
   for (let year = new Date().getUTCFullYear(); year >= 2022; year -= 1) {
@@ -145,24 +195,49 @@ async function main(): Promise<void> {
   const zbpText = readFileSync(join(dir, `zbp${yy}detail.txt`), 'utf8');
   const cbpText = readFileSync(join(dir, `cbp${yy}co.txt`), 'utf8');
 
-  const metros = GEOGRAPHIES.map(({ metroId, geography }) => ({
-    metroId,
-    geography,
-    rows:
-      geography.kind === 'zip'
-        ? parseZbp(zbpText, geography.code)
-        : parseCbp(cbpText, geography.code),
-    vintage,
-    sourceUrl: geography.kind === 'zip' ? zbpUrl : cbpUrl,
-    fetchedAt,
-  }));
+  const metros = GEOGRAPHIES.map(({ metroId, geography }) => {
+    // A zipset's `rows` stay EMPTY and its per-ZIP raw rows go in `parts`. Writing a summed
+    // row here would bake the resolve-then-sum decision into a committed JSON, where no test
+    // can see it; censusTam.ts owns that arithmetic so CI checks it. Single-geography metros
+    // carry no `parts` key at all, so their snapshot entries are byte-identical to before.
+    const parts: CensusPart[] | undefined =
+      geography.kind === 'zipset'
+        ? geography.codes.map((code) => ({
+            code,
+            label: ZIP_LABELS[code] ?? code,
+            rows: parseZbp(zbpText, code),
+          }))
+        : undefined;
+
+    return {
+      metroId,
+      geography,
+      rows:
+        geography.kind === 'zip'
+          ? parseZbp(zbpText, geography.code)
+          : geography.kind === 'county'
+            ? parseCbp(cbpText, geography.code)
+            : [],
+      ...(parts ? { parts } : {}),
+      vintage,
+      sourceUrl: geography.kind === 'county' ? cbpUrl : zbpUrl,
+      fetchedAt,
+    };
+  });
 
   for (const m of metros) {
-    if (m.rows.length === 0) {
+    const answered = m.parts?.filter((p) => p.rows.length > 0).length ?? 0;
+    if (m.rows.length === 0 && answered === 0) {
       throw new Error(
         `No rows parsed for ${m.metroId} (${m.geography.label}). Either the geography code is ` +
           `wrong or the ${vintage} file layout moved. Refusing to write an empty TAM.`,
       );
+    }
+    if (m.parts) {
+      console.log(`  ${m.metroId}: ${answered}/${m.parts.length} constituent ZIPs have ZBP rows.`);
+      for (const p of m.parts) {
+        if (p.rows.length === 0) console.log(`    ABSENT (no ZBP rows at all): ${p.code} ${p.label}`);
+      }
     }
   }
 

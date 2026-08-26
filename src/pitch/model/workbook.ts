@@ -11,6 +11,8 @@ import {
   METROS,
   MODEL_YEARS,
   addressableVenues,
+  addressableBand,
+  describeAddressable,
   totalFoodServiceVenues,
   ADDRESSABLE_NAICS,
   ADDRESSABLE_BUCKETS,
@@ -59,6 +61,7 @@ export const SHEET_ORDER = [
   'Hoboken_Model',
   'Manhattan_Model',
   'PalmBeach_Model',
+  'MontaukHamptons_Model',
   'Metros_4toN',
   'Shared_Costs',
   'Totals',
@@ -75,6 +78,7 @@ const SHEET_BY_METRO: Readonly<Record<string, string>> = {
   hoboken: 'Hoboken_Model',
   manhattan: 'Manhattan_Model',
   'palm-beach': 'PalmBeach_Model',
+  'montauk-hamptons': 'MontaukHamptons_Model',
 };
 
 /**
@@ -136,6 +140,27 @@ function sourcesSheet(): SheetSpec {
   ];
   for (const m of snap.metros) {
     rows.push([t(m.metroId), t(m.geography.label), t(`vintage ${m.vintage}`), t(m.sourceUrl), t(`fetched ${m.fetchedAt}`)]);
+    // Written, not printed as a bare number: where the count is a floor this is the only
+    // place a reader learns it. `describeAddressable` owns the wording for every surface.
+    rows.push([blank, t(describeAddressable(m.metroId))]);
+    if (m.parts) {
+      const answered = m.parts.filter((p) => p.rows.length > 0).length;
+      rows.push([
+        blank,
+        t(
+          `${m.parts.length} constituent ZIPs, of which ${answered} appear in the ZBP at all. ` +
+            `The rest are ABSENT, which is not the same as zero and is recorded rather than dropped:`,
+        ),
+      ]);
+      for (const p of m.parts) {
+        const row722 = p.rows.find((r) => r.naics === '722');
+        rows.push([
+          blank,
+          t(`${p.code} ${p.label}`),
+          t(row722 ? `${row722.establishments} food service venues` : 'ABSENT — no ZBP rows'),
+        ]);
+      }
+    }
   }
   rows.push(
     [blank],
@@ -143,6 +168,15 @@ function sourcesSheet(): SheetSpec {
     [t('Cells marked "N" are suppressed to protect respondent confidentiality. They are treated')],
     [t('as unknown, never as zero. A bucket forced by the establishment total is recovered as')],
     [t('the residual; where more than one is suppressed the model states a range.')],
+    [t('Recovery runs PER GEOGRAPHY and BEFORE any summing. Montauk’s full-service row has one')],
+    [t('suppressed bucket, so its value is forced by the establishment total and is recovered;')],
+    [t('Water Mill’s has two and is not. Summing first would collapse both into "unknown" and')],
+    [t('lose the recoverable one for nothing.')],
+    [t('Across a SET of ZIPs the addressable count is then a FLOOR — the sum of what is known —')],
+    [t('rather than a refusal. Refusing is right for one geography (a hidden cell means the metro')],
+    [t('is not modelable, which is why Palm Beach moved from the town ZIP to the county); across')],
+    [t('fourteen ZIPs it would make a real market unmodelable over one hidden count in one hamlet.')],
+    [t('The bias is bounded, one-directional and stated: it can only UNDERSTATE, never overstate.')],
     [blank],
     [t('Rows in Adrian’s model that are OMITTED here, deliberately')],
     [t('Bonus costs'), t('no analogue — DragonCandy discounts nothing')],
@@ -181,7 +215,15 @@ function metroSheet(metroId: string): SheetSpec {
     [blank],
     [t('Market')],
     [t('Total food service venues'), ...years.map(() => n(totalFoodServiceVenues(metroId), '#,##0'))],
-    [t('Addressable venues'), ...years.map(() => n(addressableVenues(metroId), '#,##0'))],
+    // The disclosure rides in a trailing cell on the SAME row as the number, never on a row
+    // of its own: a new row here would shift every row index below it, and totalsSheet()'s
+    // REVENUE_ROW / EBITDA_ROW maps address this sheet by number. It is `describeAddressable`
+    // that decides the wording, so no surface can print a floor as if it were a count.
+    [
+      t('Addressable venues'),
+      ...years.map(() => n(addressableVenues(metroId), '#,##0')),
+      t(addressableBand(metroId).suppressedCells === 0 ? '' : describeAddressable(metroId)),
+    ],
   ];
   const addressableRow = rows.length;
   rows.push(line('Penetration of addressable', (y) => y.penetrationAtYearEnd, '0.0%'));
@@ -357,8 +399,12 @@ function totalsSheet(): SheetSpec {
   // Row of "Total revenue" / "Metro EBITDA" on each metro (or cohort) sheet, 1-indexed.
   // Metro sheets and the cohort sheet have different layouts, so each is looked up rather
   // than assumed — and the two rows are NOT at the same offset, so each gets its own map.
-  const REVENUE_ROW: Readonly<Record<string, number>> = { hoboken: 16, manhattan: 16, 'palm-beach': 16, cohort: 7 };
-  const EBITDA_ROW: Readonly<Record<string, number>> = { hoboken: 27, manhattan: 27, 'palm-beach': 27, cohort: 10 };
+  const REVENUE_ROW: Readonly<Record<string, number>> = {
+    hoboken: 16, manhattan: 16, 'palm-beach': 16, 'montauk-hamptons': 16, cohort: 7,
+  };
+  const EBITDA_ROW: Readonly<Record<string, number>> = {
+    hoboken: 27, manhattan: 27, 'palm-beach': 27, 'montauk-hamptons': 27, cohort: 10,
+  };
   // Every reference is sheet-qualified, even ones addressing this same Totals sheet — see
   // formulaEval.ts's header comment for why.
   const tref = (row: number, col: string) => `Totals!${col}${row}`;

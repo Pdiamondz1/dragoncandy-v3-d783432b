@@ -112,7 +112,10 @@ describe('rollup', () => {
   // (not re-derived from the implementation) so a regression to row-counting -- which would
   // read "4" for both 2027 and 2028 -- actually fails this test.
   it('counts metros live as actual metros, weighting the cohort by its metro count', () => {
-    const expected: Record<number, number> = { 2026: 2, 2027: 9, 2028: 20 };
+    // 2026: Hoboken + Manhattan. 2027: those two plus Palm Beach (month 12) and the
+    // Hamptons (month 17), plus 6 cohort metros = 10. 2028: 4 named + 17 cohort = 21,
+    // which is PROJECT_CONTEXT section 3's "20+ metros" reached by counting, not by claim.
+    const expected: Record<number, number> = { 2026: 2, 2027: 10, 2028: 21 };
     for (const y of years) {
       expect(y.metrosLive).toBe(expected[y.year]);
     }

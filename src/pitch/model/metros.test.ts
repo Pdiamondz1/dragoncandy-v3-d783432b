@@ -5,6 +5,8 @@ import {
   ADDRESSABLE_NAICS,
   ADDRESSABLE_BUCKETS,
   addressableVenues,
+  addressableBand,
+  describeAddressable,
   totalFoodServiceVenues,
   enabledMetros,
   METRO_ASSUMPTIONS,
@@ -46,8 +48,13 @@ describe('the metro registry', () => {
     expect(MODEL_YEARS).toEqual([2026, 2027, 2028]);
   });
 
-  it('names the three launch metros in rollout order', () => {
-    expect(METROS.map((m) => m.id)).toEqual(['hoboken', 'manhattan', 'palm-beach']);
+  it('names the four launch metros in rollout order', () => {
+    expect(METROS.map((m) => m.id)).toEqual([
+      'hoboken',
+      'manhattan',
+      'palm-beach',
+      'montauk-hamptons',
+    ]);
   });
 
   it('orders launch months by the rollout plan', () => {
@@ -84,16 +91,65 @@ describe('the metro registry', () => {
   // would throw rather than silently undercount. The label must read "Palm Beach County, FL",
   // never "Palm Beach, FL", so a reader can't mistake the county-wide denominator for the town.
   it('labels Palm Beach by its county geography, not the barrier-island town', () => {
-    const palmBeach = METROS.find((m) => m.id === 'palm-beach');
-    expect(palmBeach?.geography.kind).toBe('county');
-    expect(palmBeach?.geography.code).toBe('12099');
-    expect(palmBeach?.label).toBe('Palm Beach County, FL');
-    expect(palmBeach?.label).not.toBe('Palm Beach, FL');
+    const palmBeach = METROS.find((m) => m.id === 'palm-beach')!;
+    expect(palmBeach.geography.kind).toBe('county');
+    // Narrowed rather than asserted through: `CensusGeography` is a union now, and a
+    // `zipset` carries `codes`, not `code`. Reaching for `.code` unconditionally is exactly
+    // the mistake the union exists to make impossible.
+    expect(palmBeach.geography.kind === 'county' && palmBeach.geography.code).toBe('12099');
+    expect(palmBeach.label).toBe('Palm Beach County, FL');
+    expect(palmBeach.label).not.toBe('Palm Beach, FL');
     expect(addressableVenues('palm-beach')).toBeGreaterThan(0);
   });
 
   it('enables only metros marked enabled', () => {
     expect(enabledMetros().every((m) => m.enabled)).toBe(true);
+  });
+
+  /**
+   * Montauk alone is 11-17 addressable venues -- too thin to model -- so the geography is the
+   * South Fork as one market: fourteen ZIPs, of which twelve appear in the ZBP. The counts
+   * below were read by hand off the 2023 ZBP before this code existed, so they fail if the
+   * parser, the ZIP list or the vintage moves rather than restating whatever the code says.
+   */
+  it('models Montauk with the Hamptons, as a set of ZIPs, and states its floor', () => {
+    const hamptons = METROS.find((m) => m.id === 'montauk-hamptons')!;
+    expect(hamptons.geography.kind).toBe('zipset');
+    expect(hamptons.geography.kind === 'zipset' && hamptons.geography.codes.length).toBe(14);
+    expect(totalFoodServiceVenues('montauk-hamptons')).toBe(396);
+
+    const band = addressableBand('montauk-hamptons');
+    expect(band.value).toBe(97);
+    expect(band.suppressedCells).toBe(44);
+    // The floor is a floor, and it is never allowed to print as a bare count.
+    expect(describeAddressable('montauk-hamptons')).toContain('at least 97');
+    expect(describeAddressable('montauk-hamptons')).toContain('44 suppressed');
+    expect(describeAddressable('montauk-hamptons')).toContain('higher');
+  });
+
+  /**
+   * The control on the rule above: an EXACT count must NOT carry a range, or the disclosure
+   * becomes decoration that means nothing wherever it appears. Both branches are asserted so
+   * neither can be satisfied by a function that always says the same thing.
+   */
+  it('states an exact count plainly, with no range, where nothing is suppressed', () => {
+    expect(addressableBand('hoboken').suppressedCells).toBe(0);
+    expect(describeAddressable('hoboken')).toBe('123 addressable venues');
+    expect(describeAddressable('hoboken')).not.toMatch(/at least|suppressed/);
+  });
+
+  // Adding a fourth metro must not move the three that were already registered. Each was
+  // read off the committed 2023 snapshot before the zipset work started.
+  it('leaves the three existing metros\' Census counts exactly where they were', () => {
+    const expected: Readonly<Record<string, readonly [number, number]>> = {
+      hoboken: [258, 123],
+      manhattan: [9647, 3997],
+      'palm-beach': [3194, 1090],
+    };
+    for (const [id, [total, addressable]] of Object.entries(expected)) {
+      expect(totalFoodServiceVenues(id), id).toBe(total);
+      expect(addressableVenues(id), id).toBe(addressable);
+    }
   });
 
   it('registers every metro assumption for staleness checking', () => {

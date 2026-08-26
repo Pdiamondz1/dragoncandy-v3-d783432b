@@ -35,17 +35,51 @@ export interface NaicsRow {
   readonly buckets: Buckets;
 }
 
-export interface CensusGeography {
-  readonly kind: 'zip' | 'county';
-  /** ZIP code, or a 5-digit state+county FIPS. */
+/**
+ * One geography, or a set of them.
+ *
+ * `zipset` exists because a real market is not always one ZIP or one county. Montauk alone is
+ * 11-17 addressable venues — too thin to model — while the East End it sits on is a single
+ * commercial market spread across fourteen ZIPs. Modelling it needed a geography kind that is
+ * a SET, and a summing rule (see `bandFloorAcross` below) that survives Census suppression
+ * across a dozen small places.
+ */
+export type CensusGeography =
+  | {
+      readonly kind: 'zip' | 'county';
+      /** ZIP code, or a 5-digit state+county FIPS. */
+      readonly code: string;
+      readonly label: string;
+    }
+  | {
+      readonly kind: 'zipset';
+      /** Every ZIP in the set, INCLUDING any the Census file has no rows for. */
+      readonly codes: readonly string[];
+      readonly label: string;
+    };
+
+/**
+ * One constituent of a `zipset`, with its RAW rows.
+ *
+ * Raw, deliberately. Suppression recovery and summing happen in this file, where CI tests
+ * them, rather than being baked into a committed JSON nobody can re-derive. An empty `rows`
+ * means the Census file has no rows for that ZIP at all — it is recorded rather than dropped,
+ * because absent is not zero and a reader must be able to see that the constituent list was
+ * fourteen and twelve answered.
+ */
+export interface CensusPart {
   readonly code: string;
   readonly label: string;
+  readonly rows: readonly NaicsRow[];
 }
 
 export interface CensusMetroSnapshot {
   readonly metroId: string;
   readonly geography: CensusGeography;
+  /** The metro's own rows. Empty for a `zipset`, whose rows live in `parts`. */
   readonly rows: readonly NaicsRow[];
+  /** Present only for a `zipset`. Single-geography metros are byte-identical without it. */
+  readonly parts?: readonly CensusPart[];
   /** CBP/ZBP data year, e.g. 2022. */
   readonly vintage: number;
   readonly sourceUrl: string;
@@ -97,6 +131,73 @@ export function bucketSum(row: NaicsRow, buckets: readonly SizeBucket[]): number
     total += v;
   }
   return total;
+}
+
+/**
+ * A count that knows whether it is exact or a floor.
+ *
+ * The two are not interchangeable and must never be printed the same way — see
+ * `describeAddressable` in `metros.ts`, and the test that makes the disclosure travel with
+ * the number.
+ */
+export interface BandCount {
+  /** Sum of the buckets whose value is known after per-part suppression recovery. */
+  readonly value: number;
+  /** Cells still suppressed after recovery. `0` means `value` is exact, not a floor. */
+  readonly suppressedCells: number;
+}
+
+/**
+ * Sum the named buckets across MANY geographies, resolving suppression per geography first,
+ * and count the cells that stayed unknown.
+ *
+ * ## This diverges from `bucketSum`'s throw-rather-than-undercount rule, on purpose
+ *
+ * `bucketSum` throws when a needed bucket is still suppressed, and that is right for a single
+ * geography: one hidden cell there means the metro is not modelable, which is exactly why
+ * Palm Beach moved from ZIP 33480 to the county. Across fourteen ZIPs it is the wrong rule.
+ * Throwing would make a real 396-venue market unmodelable because one coffee-shop count in
+ * one hamlet is hidden — and the market does not stop existing when Census protects a
+ * respondent.
+ *
+ * So this returns the FLOOR: the sum of what is known, with a count of what is not. The bias
+ * is bounded (each missing cell hides at least 1 and at most the row's establishment total),
+ * ONE-DIRECTIONAL (it can only understate), and DISCLOSED (`suppressedCells` travels with the
+ * figure and every surface that prints the number must print the range). Understating revenue
+ * is the safe direction for an investor model; silently overstating it is not, and neither is
+ * refusing to model a market that plainly exists.
+ *
+ * ## Why resolution is per-part and happens BEFORE the sum
+ *
+ * Order is the whole point. `resolveSuppressed` recovers a bucket whose value is FORCED by
+ * its row's establishment total — which only holds when exactly one bucket in that row is
+ * unknown. Montauk's 722511 row has exactly one suppressed bucket, so its value is
+ * recoverable; Water Mill's has two, so it is not. Summing the raw rows first collapses both
+ * into a single row with several unknowns, and the recoverable one is lost for nothing.
+ */
+export function bandFloorAcross(
+  rowsPerGeography: ReadonlyArray<readonly NaicsRow[]>,
+  naicsCodes: readonly string[],
+  buckets: readonly SizeBucket[],
+): BandCount {
+  let value = 0;
+  let suppressedCells = 0;
+  for (const rows of rowsPerGeography) {
+    for (const naics of naicsCodes) {
+      const row = rows.find((r) => r.naics === naics);
+      // A NAICS with no row is not a suppressed cell — Census published nothing for it
+      // because there is nothing there. Counting it as unknown would inflate the disclosed
+      // uncertainty with places that genuinely have no bars.
+      if (!row) continue;
+      const resolved = resolveSuppressed(row);
+      for (const b of buckets) {
+        const v = resolved.buckets[b];
+        if (v === null) suppressedCells += 1;
+        else value += v;
+      }
+    }
+  }
+  return { value, suppressedCells };
 }
 
 export function loadCensusSnapshot(): CensusSnapshot {

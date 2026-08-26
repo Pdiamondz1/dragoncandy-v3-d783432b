@@ -309,6 +309,852 @@
       "vintage": 2023,
       "sourceUrl": "https://www2.census.gov/programs-surveys/cbp/datasets/2023/cbp23co.zip",
       "fetchedAt": "2026-08-26"
+    },
+    {
+      "metroId": "montauk-hamptons",
+      "geography": {
+        "kind": "zipset",
+        "codes": [
+          "11930",
+          "11932",
+          "11937",
+          "11942",
+          "11946",
+          "11954",
+          "11959",
+          "11962",
+          "11963",
+          "11968",
+          "11975",
+          "11976",
+          "11977",
+          "11978"
+        ],
+        "label": "Montauk + the Hamptons, NY (14 ZIPs)"
+      },
+      "rows": [],
+      "parts": [
+        {
+          "code": "11930",
+          "label": "Amagansett, NY",
+          "rows": [
+            {
+              "naics": "722",
+              "establishments": 19,
+              "buckets": {
+                "lt5": 8,
+                "b5_9": 5,
+                "b10_19": 4,
+                "b20_49": null,
+                "b50_99": null,
+                "b100_249": null,
+                "b250_499": null,
+                "b500_999": null,
+                "b1000": null
+              }
+            },
+            {
+              "naics": "722511",
+              "establishments": 6,
+              "buckets": {
+                "lt5": null,
+                "b5_9": null,
+                "b10_19": null,
+                "b20_49": null,
+                "b50_99": null,
+                "b100_249": null,
+                "b250_499": null,
+                "b500_999": null,
+                "b1000": null
+              }
+            },
+            {
+              "naics": "722513",
+              "establishments": 9,
+              "buckets": {
+                "lt5": 5,
+                "b5_9": null,
+                "b10_19": null,
+                "b20_49": null,
+                "b50_99": null,
+                "b100_249": null,
+                "b250_499": null,
+                "b500_999": null,
+                "b1000": null
+              }
+            }
+          ]
+        },
+        {
+          "code": "11932",
+          "label": "Bridgehampton, NY",
+          "rows": [
+            {
+              "naics": "722",
+              "establishments": 20,
+              "buckets": {
+                "lt5": 7,
+                "b5_9": 4,
+                "b10_19": 3,
+                "b20_49": 6,
+                "b50_99": null,
+                "b100_249": null,
+                "b250_499": null,
+                "b500_999": null,
+                "b1000": null
+              }
+            },
+            {
+              "naics": "7223",
+              "establishments": 3,
+              "buckets": {
+                "lt5": 3,
+                "b5_9": null,
+                "b10_19": null,
+                "b20_49": null,
+                "b50_99": null,
+                "b100_249": null,
+                "b250_499": null,
+                "b500_999": null,
+                "b1000": null
+              }
+            },
+            {
+              "naics": "722511",
+              "establishments": 8,
+              "buckets": {
+                "lt5": null,
+                "b5_9": null,
+                "b10_19": null,
+                "b20_49": 5,
+                "b50_99": null,
+                "b100_249": null,
+                "b250_499": null,
+                "b500_999": null,
+                "b1000": null
+              }
+            },
+            {
+              "naics": "722513",
+              "establishments": 4,
+              "buckets": {
+                "lt5": null,
+                "b5_9": null,
+                "b10_19": null,
+                "b20_49": null,
+                "b50_99": null,
+                "b100_249": null,
+                "b250_499": null,
+                "b500_999": null,
+                "b1000": null
+              }
+            },
+            {
+              "naics": "722515",
+              "establishments": 5,
+              "buckets": {
+                "lt5": null,
+                "b5_9": null,
+                "b10_19": null,
+                "b20_49": null,
+                "b50_99": null,
+                "b100_249": null,
+                "b250_499": null,
+                "b500_999": null,
+                "b1000": null
+              }
+            }
+          ]
+        },
+        {
+          "code": "11937",
+          "label": "East Hampton, NY",
+          "rows": [
+            {
+              "naics": "722",
+              "establishments": 59,
+              "buckets": {
+                "lt5": 28,
+                "b5_9": 12,
+                "b10_19": 8,
+                "b20_49": 11,
+                "b50_99": null,
+                "b100_249": null,
+                "b250_499": null,
+                "b500_999": null,
+                "b1000": null
+              }
+            },
+            {
+              "naics": "7223",
+              "establishments": 5,
+              "buckets": {
+                "lt5": 4,
+                "b5_9": null,
+                "b10_19": null,
+                "b20_49": null,
+                "b50_99": null,
+                "b100_249": null,
+                "b250_499": null,
+                "b500_999": null,
+                "b1000": null
+              }
+            },
+            {
+              "naics": "722511",
+              "establishments": 33,
+              "buckets": {
+                "lt5": 14,
+                "b5_9": 6,
+                "b10_19": 5,
+                "b20_49": 8,
+                "b50_99": null,
+                "b100_249": null,
+                "b250_499": null,
+                "b500_999": null,
+                "b1000": null
+              }
+            },
+            {
+              "naics": "722513",
+              "establishments": 9,
+              "buckets": {
+                "lt5": 4,
+                "b5_9": 4,
+                "b10_19": null,
+                "b20_49": null,
+                "b50_99": null,
+                "b100_249": null,
+                "b250_499": null,
+                "b500_999": null,
+                "b1000": null
+              }
+            },
+            {
+              "naics": "722515",
+              "establishments": 10,
+              "buckets": {
+                "lt5": 6,
+                "b5_9": null,
+                "b10_19": null,
+                "b20_49": null,
+                "b50_99": null,
+                "b100_249": null,
+                "b250_499": null,
+                "b500_999": null,
+                "b1000": null
+              }
+            }
+          ]
+        },
+        {
+          "code": "11942",
+          "label": "East Quogue, NY",
+          "rows": [
+            {
+              "naics": "722",
+              "establishments": 12,
+              "buckets": {
+                "lt5": 7,
+                "b5_9": null,
+                "b10_19": null,
+                "b20_49": null,
+                "b50_99": null,
+                "b100_249": null,
+                "b250_499": null,
+                "b500_999": null,
+                "b1000": null
+              }
+            },
+            {
+              "naics": "722511",
+              "establishments": 5,
+              "buckets": {
+                "lt5": null,
+                "b5_9": null,
+                "b10_19": null,
+                "b20_49": null,
+                "b50_99": null,
+                "b100_249": null,
+                "b250_499": null,
+                "b500_999": null,
+                "b1000": null
+              }
+            },
+            {
+              "naics": "722513",
+              "establishments": 5,
+              "buckets": {
+                "lt5": 4,
+                "b5_9": null,
+                "b10_19": null,
+                "b20_49": null,
+                "b50_99": null,
+                "b100_249": null,
+                "b250_499": null,
+                "b500_999": null,
+                "b1000": null
+              }
+            }
+          ]
+        },
+        {
+          "code": "11946",
+          "label": "Hampton Bays, NY",
+          "rows": [
+            {
+              "naics": "722",
+              "establishments": 56,
+              "buckets": {
+                "lt5": 25,
+                "b5_9": 13,
+                "b10_19": 8,
+                "b20_49": 10,
+                "b50_99": null,
+                "b100_249": null,
+                "b250_499": null,
+                "b500_999": null,
+                "b1000": null
+              }
+            },
+            {
+              "naics": "7223",
+              "establishments": 6,
+              "buckets": {
+                "lt5": 5,
+                "b5_9": null,
+                "b10_19": null,
+                "b20_49": null,
+                "b50_99": null,
+                "b100_249": null,
+                "b250_499": null,
+                "b500_999": null,
+                "b1000": null
+              }
+            },
+            {
+              "naics": "722410",
+              "establishments": 6,
+              "buckets": {
+                "lt5": 4,
+                "b5_9": null,
+                "b10_19": null,
+                "b20_49": null,
+                "b50_99": null,
+                "b100_249": null,
+                "b250_499": null,
+                "b500_999": null,
+                "b1000": null
+              }
+            },
+            {
+              "naics": "722511",
+              "establishments": 23,
+              "buckets": {
+                "lt5": 8,
+                "b5_9": 5,
+                "b10_19": 4,
+                "b20_49": 6,
+                "b50_99": null,
+                "b100_249": null,
+                "b250_499": null,
+                "b500_999": null,
+                "b1000": null
+              }
+            },
+            {
+              "naics": "722513",
+              "establishments": 16,
+              "buckets": {
+                "lt5": 6,
+                "b5_9": 5,
+                "b10_19": null,
+                "b20_49": 3,
+                "b50_99": null,
+                "b100_249": null,
+                "b250_499": null,
+                "b500_999": null,
+                "b1000": null
+              }
+            },
+            {
+              "naics": "722515",
+              "establishments": 5,
+              "buckets": {
+                "lt5": null,
+                "b5_9": null,
+                "b10_19": null,
+                "b20_49": null,
+                "b50_99": null,
+                "b100_249": null,
+                "b250_499": null,
+                "b500_999": null,
+                "b1000": null
+              }
+            }
+          ]
+        },
+        {
+          "code": "11954",
+          "label": "Montauk, NY",
+          "rows": [
+            {
+              "naics": "722",
+              "establishments": 62,
+              "buckets": {
+                "lt5": 45,
+                "b5_9": 9,
+                "b10_19": 3,
+                "b20_49": 5,
+                "b50_99": null,
+                "b100_249": null,
+                "b250_499": null,
+                "b500_999": null,
+                "b1000": null
+              }
+            },
+            {
+              "naics": "7223",
+              "establishments": 5,
+              "buckets": {
+                "lt5": 3,
+                "b5_9": null,
+                "b10_19": null,
+                "b20_49": null,
+                "b50_99": null,
+                "b100_249": null,
+                "b250_499": null,
+                "b500_999": null,
+                "b1000": null
+              }
+            },
+            {
+              "naics": "722410",
+              "establishments": 4,
+              "buckets": {
+                "lt5": null,
+                "b5_9": null,
+                "b10_19": null,
+                "b20_49": null,
+                "b50_99": null,
+                "b100_249": null,
+                "b250_499": null,
+                "b500_999": null,
+                "b1000": null
+              }
+            },
+            {
+              "naics": "722511",
+              "establishments": 30,
+              "buckets": {
+                "lt5": 24,
+                "b5_9": 3,
+                "b10_19": null,
+                "b20_49": 3,
+                "b50_99": null,
+                "b100_249": null,
+                "b250_499": null,
+                "b500_999": null,
+                "b1000": null
+              }
+            },
+            {
+              "naics": "722513",
+              "establishments": 17,
+              "buckets": {
+                "lt5": 11,
+                "b5_9": 4,
+                "b10_19": null,
+                "b20_49": null,
+                "b50_99": null,
+                "b100_249": null,
+                "b250_499": null,
+                "b500_999": null,
+                "b1000": null
+              }
+            },
+            {
+              "naics": "722515",
+              "establishments": 6,
+              "buckets": {
+                "lt5": 5,
+                "b5_9": null,
+                "b10_19": null,
+                "b20_49": null,
+                "b50_99": null,
+                "b100_249": null,
+                "b250_499": null,
+                "b500_999": null,
+                "b1000": null
+              }
+            }
+          ]
+        },
+        {
+          "code": "11959",
+          "label": "Quogue, NY",
+          "rows": []
+        },
+        {
+          "code": "11962",
+          "label": "Sagaponack, NY",
+          "rows": []
+        },
+        {
+          "code": "11963",
+          "label": "Sag Harbor, NY",
+          "rows": [
+            {
+              "naics": "722",
+              "establishments": 36,
+              "buckets": {
+                "lt5": 12,
+                "b5_9": 7,
+                "b10_19": 6,
+                "b20_49": 11,
+                "b50_99": null,
+                "b100_249": null,
+                "b250_499": null,
+                "b500_999": null,
+                "b1000": null
+              }
+            },
+            {
+              "naics": "722511",
+              "establishments": 22,
+              "buckets": {
+                "lt5": 5,
+                "b5_9": null,
+                "b10_19": 5,
+                "b20_49": 10,
+                "b50_99": null,
+                "b100_249": null,
+                "b250_499": null,
+                "b500_999": null,
+                "b1000": null
+              }
+            },
+            {
+              "naics": "722513",
+              "establishments": 5,
+              "buckets": {
+                "lt5": 3,
+                "b5_9": null,
+                "b10_19": null,
+                "b20_49": null,
+                "b50_99": null,
+                "b100_249": null,
+                "b250_499": null,
+                "b500_999": null,
+                "b1000": null
+              }
+            },
+            {
+              "naics": "722515",
+              "establishments": 6,
+              "buckets": {
+                "lt5": null,
+                "b5_9": 3,
+                "b10_19": null,
+                "b20_49": null,
+                "b50_99": null,
+                "b100_249": null,
+                "b250_499": null,
+                "b500_999": null,
+                "b1000": null
+              }
+            }
+          ]
+        },
+        {
+          "code": "11968",
+          "label": "Southampton, NY",
+          "rows": [
+            {
+              "naics": "722",
+              "establishments": 67,
+              "buckets": {
+                "lt5": 28,
+                "b5_9": 20,
+                "b10_19": 8,
+                "b20_49": 10,
+                "b50_99": null,
+                "b100_249": null,
+                "b250_499": null,
+                "b500_999": null,
+                "b1000": null
+              }
+            },
+            {
+              "naics": "7223",
+              "establishments": 6,
+              "buckets": {
+                "lt5": 5,
+                "b5_9": null,
+                "b10_19": null,
+                "b20_49": null,
+                "b50_99": null,
+                "b100_249": null,
+                "b250_499": null,
+                "b500_999": null,
+                "b1000": null
+              }
+            },
+            {
+              "naics": "722410",
+              "establishments": 3,
+              "buckets": {
+                "lt5": null,
+                "b5_9": null,
+                "b10_19": null,
+                "b20_49": null,
+                "b50_99": null,
+                "b100_249": null,
+                "b250_499": null,
+                "b500_999": null,
+                "b1000": null
+              }
+            },
+            {
+              "naics": "722511",
+              "establishments": 33,
+              "buckets": {
+                "lt5": 15,
+                "b5_9": 6,
+                "b10_19": 4,
+                "b20_49": 8,
+                "b50_99": null,
+                "b100_249": null,
+                "b250_499": null,
+                "b500_999": null,
+                "b1000": null
+              }
+            },
+            {
+              "naics": "722513",
+              "establishments": 17,
+              "buckets": {
+                "lt5": 5,
+                "b5_9": 8,
+                "b10_19": null,
+                "b20_49": null,
+                "b50_99": null,
+                "b100_249": null,
+                "b250_499": null,
+                "b500_999": null,
+                "b1000": null
+              }
+            },
+            {
+              "naics": "722515",
+              "establishments": 8,
+              "buckets": {
+                "lt5": null,
+                "b5_9": 4,
+                "b10_19": null,
+                "b20_49": null,
+                "b50_99": null,
+                "b100_249": null,
+                "b250_499": null,
+                "b500_999": null,
+                "b1000": null
+              }
+            }
+          ]
+        },
+        {
+          "code": "11975",
+          "label": "Wainscott, NY",
+          "rows": [
+            {
+              "naics": "722",
+              "establishments": 5,
+              "buckets": {
+                "lt5": null,
+                "b5_9": null,
+                "b10_19": null,
+                "b20_49": null,
+                "b50_99": null,
+                "b100_249": null,
+                "b250_499": null,
+                "b500_999": null,
+                "b1000": null
+              }
+            },
+            {
+              "naics": "722513",
+              "establishments": 4,
+              "buckets": {
+                "lt5": null,
+                "b5_9": null,
+                "b10_19": null,
+                "b20_49": null,
+                "b50_99": null,
+                "b100_249": null,
+                "b250_499": null,
+                "b500_999": null,
+                "b1000": null
+              }
+            }
+          ]
+        },
+        {
+          "code": "11976",
+          "label": "Water Mill, NY",
+          "rows": [
+            {
+              "naics": "722",
+              "establishments": 14,
+              "buckets": {
+                "lt5": 6,
+                "b5_9": null,
+                "b10_19": 5,
+                "b20_49": null,
+                "b50_99": null,
+                "b100_249": null,
+                "b250_499": null,
+                "b500_999": null,
+                "b1000": null
+              }
+            },
+            {
+              "naics": "722511",
+              "establishments": 9,
+              "buckets": {
+                "lt5": 3,
+                "b5_9": null,
+                "b10_19": 4,
+                "b20_49": null,
+                "b50_99": null,
+                "b100_249": null,
+                "b250_499": null,
+                "b500_999": null,
+                "b1000": null
+              }
+            },
+            {
+              "naics": "722513",
+              "establishments": 3,
+              "buckets": {
+                "lt5": null,
+                "b5_9": null,
+                "b10_19": null,
+                "b20_49": null,
+                "b50_99": null,
+                "b100_249": null,
+                "b250_499": null,
+                "b500_999": null,
+                "b1000": null
+              }
+            }
+          ]
+        },
+        {
+          "code": "11977",
+          "label": "Westhampton, NY",
+          "rows": [
+            {
+              "naics": "722",
+              "establishments": 6,
+              "buckets": {
+                "lt5": 3,
+                "b5_9": null,
+                "b10_19": null,
+                "b20_49": null,
+                "b50_99": null,
+                "b100_249": null,
+                "b250_499": null,
+                "b500_999": null,
+                "b1000": null
+              }
+            },
+            {
+              "naics": "722511",
+              "establishments": 3,
+              "buckets": {
+                "lt5": null,
+                "b5_9": null,
+                "b10_19": null,
+                "b20_49": null,
+                "b50_99": null,
+                "b100_249": null,
+                "b250_499": null,
+                "b500_999": null,
+                "b1000": null
+              }
+            }
+          ]
+        },
+        {
+          "code": "11978",
+          "label": "Westhampton Beach, NY",
+          "rows": [
+            {
+              "naics": "722",
+              "establishments": 40,
+              "buckets": {
+                "lt5": 22,
+                "b5_9": 7,
+                "b10_19": 5,
+                "b20_49": 6,
+                "b50_99": null,
+                "b100_249": null,
+                "b250_499": null,
+                "b500_999": null,
+                "b1000": null
+              }
+            },
+            {
+              "naics": "722511",
+              "establishments": 17,
+              "buckets": {
+                "lt5": 8,
+                "b5_9": 4,
+                "b10_19": null,
+                "b20_49": 4,
+                "b50_99": null,
+                "b100_249": null,
+                "b250_499": null,
+                "b500_999": null,
+                "b1000": null
+              }
+            },
+            {
+              "naics": "722513",
+              "establishments": 14,
+              "buckets": {
+                "lt5": 9,
+                "b5_9": 3,
+                "b10_19": null,
+                "b20_49": null,
+                "b50_99": null,
+                "b100_249": null,
+                "b250_499": null,
+                "b500_999": null,
+                "b1000": null
+              }
+            },
+            {
+              "naics": "722515",
+              "establishments": 7,
+              "buckets": {
+                "lt5": 4,
+                "b5_9": null,
+                "b10_19": null,
+                "b20_49": null,
+                "b50_99": null,
+                "b100_249": null,
+                "b250_499": null,
+                "b500_999": null,
+                "b1000": null
+              }
+            }
+          ]
+        }
+      ],
+      "vintage": 2023,
+      "sourceUrl": "https://www2.census.gov/programs-surveys/cbp/datasets/2023/zbp23detail.zip",
+      "fetchedAt": "2026-08-26"
     }
   ]
 }
