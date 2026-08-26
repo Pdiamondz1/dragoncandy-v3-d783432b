@@ -136,15 +136,6 @@ holds no Toast credentials. See §6.
 
 Engineering cannot close these. Ordered by what blocks launch.
 
-- **Twilio — CLEARED, and it was never what this list said it was (#531, 2026-08-26).** This
-  entry read "Primary Compliance Profile unapproved — error 21608 means no real user can verify
-  a phone. Launch-blocking." The profile is **Approved**, and **21608 was the *trial-account*
-  restriction all along** — a different door, already lifted (billing reads pay-as-you-go with
-  auto-recharge, which a trial account cannot be). The compliance profile gates A2P 10DLC and
-  toll-free registration instead. A real SMS round trip is recorded on prod from 2026-08-24
-  (`start/sent` → `check/approved`, matched by a Twilio Verify log, status Approved). **Residual,
-  not a blocker:** a send to a number never on the Verified Caller ID list is still unproven and
-  needs a real phone. → `docs/wiki/concepts/email-verification-routes.md`
 - **Site-gate go-live, in this order:** set the four Production-scope Vercel variables →
   deploy → run the runbook's checks → **only then** disable Supabase signup. `SITE_GATE_ENABLED`
   is the lever; deleting the variables is the wrong rollback, because it fails closed.
@@ -171,6 +162,11 @@ Engineering cannot close these. Ordered by what blocks launch.
   `.env` (needs Vercel-scope confirmation first — it may carry Maps/reCAPTCHA keys).
 - **Toast** — reply due ~2026-09-22; the license self-terminates 2027-02-23 if the application
   is neither accepted nor rejected first. See §6.
+- **Twilio — one residual check, NOT a blocker.** Send to a number that has never been on the
+  Verified Caller ID list; it needs a real phone, which is why it sits here. Listed last on
+  purpose: the Primary Compliance Profile is **Approved** and a real SMS round trip is recorded
+  on prod (2026-08-24). This list carried "compliance unapproved — launch-blocking" as its #1
+  item until #531 disproved it — see the identity slice-2 entry for what 21608 actually was.
 
 ### In flight
 
