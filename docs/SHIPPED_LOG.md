@@ -130,9 +130,17 @@ that refusal is exactly how `recorded != actual` happens.
 First connection 2026-08-26 13:56 UTC with exactly the four read scopes, `status=active`,
 `last_error=null`. **YouTube, Instagram and Facebook all stamp `last_synced_at` seconds after
 `connected_at`, and that gap is their proof the API was really called. TikTok's read fires when
-the card first renders** — measured gaps of **38 minutes**, then **89 seconds**. A null
-`last_synced_at` here means nobody opened the settings page. The runbook asserted the sibling rule
-and was wrong; corrected.
+the card first renders** — measured gaps of **38 minutes**, then **89 seconds**. The runbook
+asserted the sibling rule and was wrong; corrected.
+
+**The first correction was also wrong**, and Codex caught it against the code. It said a null
+stamp meant nobody had opened the page. `tiktok-insights` returns the figures it fetched **even
+when `cache_tiktok_insights` errors** — deliberately, since the read already happened and losing
+a real answer over a bookkeeping failure is worse — so the card can render correct numbers while
+the stamp stays null. That is exactly what the `int4` overflow did: `22003` inside the cache RPC,
+figures on screen, stamp frozen. **The wording would have hidden this connector's own headline
+bug.** A null is *inconclusive*; open the card, and if figures render while the stamp stays null,
+grep the logs for `[tiktok-insights] could not cache snapshot`.
 
 After #529 the reconnect proved the fix on prod: `follower_count 10`, `likes_count 4`,
 `video_count 1` written **at connect time**, where before they landed null. The card's `0
