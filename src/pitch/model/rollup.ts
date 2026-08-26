@@ -10,10 +10,16 @@
  * rather than by consumer, and why pointing this file at `@pitch/confidential` instead would
  * have silently zeroed shared cost under vitest.
  *
- * The top-down band from PROJECT_CONTEXT section 3 travels alongside the bottom-up build as
- * a cross-check. They are expected to disagree. See the spec, section 10: the gap is
- * reported and never closed, because tuning penetration until they match is fitting the
+ * The prior top-down plan from PROJECT_CONTEXT section 3 travels alongside the bottom-up
+ * build as a cross-check. They are expected to disagree. See the spec, section 10: the gap
+ * is reported and never closed, because tuning penetration until they match is fitting the
  * assumptions to a desired answer.
+ *
+ * **The cross-check compares EXIT ARR against that band, not booked revenue.** The band is
+ * stated as ARR -- annual RECURRING revenue, a year-end run rate -- and `revenue` here is
+ * revenue BOOKED during the year, summed month by month while customers ramp. Those are
+ * different quantities separated by a real mechanism, and the ratio divided one by the other
+ * until 2026-08-26. See `MetroYear.exitArr`.
  */
 import { modeled, type Assumption } from './types';
 import { MODEL_YEARS, enabledMetros, type ModelYear } from './metros';
@@ -40,6 +46,11 @@ export const COHORT_METRO_COUNTS: Readonly<Record<ModelYear, Assumption<number>>
 export interface RollupYear {
   readonly year: ModelYear;
   readonly metros: readonly MetroYear[];
+  /**
+   * Revenue BOOKED across the year, summed month by month. What the company invoices between
+   * January and December. NOT annual recurring revenue -- see `exitArr`, and note that every
+   * existing consumer of this field kept its original meaning when `exitArr` was added.
+   */
   readonly revenue: number;
   readonly grossProfit: number;
   readonly marketingCost: number;
@@ -58,10 +69,24 @@ export interface RollupYear {
    * as "N metros".
    */
   readonly metrosLive: number;
-  readonly topDownRevenueLow: number;
-  readonly topDownRevenueHigh: number;
-  /** Bottom-up revenue as a multiple of the top-down band's midpoint. 1.0 means agreement. */
-  readonly bottomUpVsTopDown: number;
+  /**
+   * Annual recurring revenue at year end: year-end customers at the registered mix, times
+   * twelve. The like-for-like counterpart to the prior plan's ARR band, and the numerator of
+   * `bottomUpVsPriorPlan`.
+   */
+  readonly exitArr: number;
+  /**
+   * The SUPERSEDED top-down plan's ARR band, carried as a cross-check. Named for what it is
+   * rather than for the method that produced it: an investor who saw the earlier deck will
+   * ask about these numbers by name, and "top-down" does not tell them which document.
+   */
+  readonly priorPlanArrLow: number;
+  readonly priorPlanArrHigh: number;
+  /**
+   * Bottom-up EXIT ARR as a multiple of the prior plan's band midpoint. 1.0 means agreement.
+   * Reported, never closed -- see this file's header.
+   */
+  readonly bottomUpVsPriorPlan: number;
 }
 
 /**
@@ -108,6 +133,55 @@ export const COHORT_TEMPLATE_METRO_ID = 'palm-beach';
  * mid-sized reference case, and the honest claim is that it is defensible, not that it is
  * cautious.
  */
+/**
+ * Every numeric field of `MetroYear` that is an EXTENSIVE quantity — one that means "how
+ * much", so N metros have N times as much of it.
+ *
+ * Enumerated, and checked for completeness by a test, because the previous version of this
+ * function spread the template and then listed the fields to scale inline. Adding `exitArr`
+ * to `MetroYear` therefore left the cohort row carrying ONE metro's ARR while carrying 17
+ * metros' revenue — silently, with every existing test still green, because nothing
+ * connected the two lists. That is the bug this shape exists to make impossible.
+ */
+const COHORT_SCALED_FIELDS = [
+  'customersAtYearStart',
+  'customersAtYearEnd',
+  'grossAdds',
+  'campaigns',
+  'gmv',
+  'subscriptionRevenue',
+  'takeRateRevenue',
+  'revenue',
+  'exitArr',
+  'stripeCost',
+  'serveCost',
+  'costOfRevenue',
+  'grossProfit',
+  'marketingCost',
+  'metroEbitda',
+] as const satisfies readonly (keyof MetroYear)[];
+
+/**
+ * Numeric fields that are INTENSIVE — a rate, a year label, or a per-metro market size —
+ * and are carried from the template unchanged.
+ *
+ * `penetrationAtYearEnd` is a share and does not multiply. `addressableVenues` stays at ONE
+ * template metro's TAM deliberately: it is the denominator the penetration rate is stated
+ * against, and multiplying it while carrying an unmultiplied rate would make the pair
+ * self-contradictory. Nothing prints the cohort's addressable count today.
+ */
+const COHORT_UNSCALED_FIELDS = [
+  'year',
+  'addressableVenues',
+  'penetrationAtYearEnd',
+] as const satisfies readonly (keyof MetroYear)[];
+
+/** Both lists, for the completeness test in `rollup.test.ts`. */
+export const COHORT_FIELD_CLASSIFICATION = {
+  scaled: COHORT_SCALED_FIELDS,
+  unscaled: COHORT_UNSCALED_FIELDS,
+} as const;
+
 export function cohortMetroYear(year: ModelYear, mix: TierMix): MetroYear {
   const count = COHORT_METRO_COUNTS[year].value;
   // The template must be a live metro. If it is ever disabled or renamed, this fails loudly
@@ -122,46 +196,14 @@ export function cohortMetroYear(year: ModelYear, mix: TierMix): MetroYear {
   }
   const template = projectMetroYear(COHORT_TEMPLATE_METRO_ID, year, mix);
 
-  if (count === 0) {
-    return {
-      ...template,
-      metroId: COHORT_METRO_ID,
-      customersAtYearStart: 0,
-      customersAtYearEnd: 0,
-      grossAdds: 0,
-      campaigns: 0,
-      gmv: 0,
-      subscriptionRevenue: 0,
-      takeRateRevenue: 0,
-      revenue: 0,
-      stripeCost: 0,
-      serveCost: 0,
-      costOfRevenue: 0,
-      grossProfit: 0,
-      marketingCost: 0,
-      metroEbitda: 0,
-    };
-  }
+  // count === 0 needs no special case: every extensive field multiplied by zero IS zero,
+  // and the intensive fields are carried through either way. The old code special-cased it
+  // with a second hand-written field list, which was a second place to forget a field.
+  const scaled = Object.fromEntries(
+    COHORT_SCALED_FIELDS.map((k) => [k, template[k] * count]),
+  ) as Pick<MetroYear, (typeof COHORT_SCALED_FIELDS)[number]>;
 
-  const scale = (v: number) => v * count;
-  return {
-    ...template,
-    metroId: COHORT_METRO_ID,
-    customersAtYearStart: scale(template.customersAtYearStart),
-    customersAtYearEnd: scale(template.customersAtYearEnd),
-    grossAdds: scale(template.grossAdds),
-    campaigns: scale(template.campaigns),
-    gmv: scale(template.gmv),
-    subscriptionRevenue: scale(template.subscriptionRevenue),
-    takeRateRevenue: scale(template.takeRateRevenue),
-    revenue: scale(template.revenue),
-    stripeCost: scale(template.stripeCost),
-    serveCost: scale(template.serveCost),
-    costOfRevenue: scale(template.costOfRevenue),
-    grossProfit: scale(template.grossProfit),
-    marketingCost: scale(template.marketingCost),
-    metroEbitda: scale(template.metroEbitda),
-  };
+  return { ...template, metroId: COHORT_METRO_ID, ...scaled };
 }
 
 export function rollup(mix: TierMix = REGISTERED_MIX, metroIds?: readonly string[]): RollupYear[] {
@@ -174,6 +216,7 @@ export function rollup(mix: TierMix = REGISTERED_MIX, metroIds?: readonly string
       cohortMetroYear(year, mix),
     ];
     const revenue = metros.reduce((s, m) => s + m.revenue, 0);
+    const exitArr = metros.reduce((s, m) => s + m.exitArr, 0);
     const grossProfit = metros.reduce((s, m) => s + m.grossProfit, 0);
     const marketingCost = metros.reduce((s, m) => s + m.marketingCost, 0);
     const metroEbitda = metros.reduce((s, m) => s + m.metroEbitda, 0);
@@ -184,6 +227,7 @@ export function rollup(mix: TierMix = REGISTERED_MIX, metroIds?: readonly string
       year,
       metros,
       revenue,
+      exitArr,
       grossProfit,
       marketingCost,
       metroEbitda,
@@ -192,9 +236,12 @@ export function rollup(mix: TierMix = REGISTERED_MIX, metroIds?: readonly string
         (metros.find((m) => m.metroId === COHORT_METRO_ID)!.revenue > 0
           ? COHORT_METRO_COUNTS[year].value
           : 0),
-      topDownRevenueLow: band.revenueLow,
-      topDownRevenueHigh: band.revenueHigh,
-      bottomUpVsTopDown: midpoint === 0 ? 0 : revenue / midpoint,
+      priorPlanArrLow: band.revenueLow,
+      priorPlanArrHigh: band.revenueHigh,
+      // EXIT ARR over the band, not booked revenue over the band. The band is an ARR figure;
+      // dividing booked revenue by it compared two different quantities and made the model
+      // look further below the plan than it is.
+      bottomUpVsPriorPlan: midpoint === 0 ? 0 : exitArr / midpoint,
     };
   });
 }

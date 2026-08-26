@@ -266,6 +266,17 @@ function metroSheet(metroId: string): SheetSpec {
   ]);
   const totalRevenueRow = rows.length;
 
+  // Exit ARR beside booked revenue, because the two are different quantities and a sheet
+  // that shows only one invites the reader to treat it as the other. Plain values, like
+  // "Shared cost" and "Metros live" below: a live formula would need ARPU as a cell, and
+  // ARPU is DERIVED from the tier mix rather than being an assumption, so putting it on the
+  // Assumptions sheet would be the same category error this row exists to prevent.
+  rows.push(line('Exit ARR (year-end run rate)', (y) => y.exitArr));
+  rows.push([
+    t('Booked revenue is summed month by month while customers ramp; exit ARR is year-end'),
+  ]);
+  rows.push([t('customers at a full year of the registered mix. They are not comparable.')]);
+
   rows.push([blank]);
   rows.push([t('Cost of revenue')]);
   rows.push(line('Stripe fees', (y) => -y.stripeCost));
@@ -362,6 +373,7 @@ function cohortSheet(): SheetSpec {
       [t('Metros in cohort'), ...MODEL_YEARS.map((y) => n(COHORT_METRO_COUNTS[y].value, '#,##0'))],
       [t('Customers at year end'), ...years.map((y) => n(y.customersAtYearEnd, '#,##0'))],
       [t('Revenue'), ...years.map((y) => n(y.revenue))],
+      [t('Exit ARR (year-end run rate)'), ...years.map((y) => n(y.exitArr))],
       [t('Gross profit'), ...years.map((y) => n(y.grossProfit))],
       [t('Marketing'), ...years.map((y) => n(-y.marketingCost))],
       [t('Metro EBITDA'), ...years.map((y) => n(y.metroEbitda))],
@@ -473,9 +485,8 @@ function totalsSheet(sourceSheets: readonly SheetSpec[]): SheetSpec {
   });
 
   rows.push([blank]);
-  const totalRow = rows.length + 1;
   rows.push([
-    t('Total revenue'),
+    t('Total revenue (booked in year)'),
     blank,
     ...MODEL_YEARS.map((_, i) => {
       // SUM over an explicit comma-separated list of refs, not a `C4:C6` colon range — the
@@ -525,24 +536,38 @@ function totalsSheet(sourceSheets: readonly SheetSpec[]): SheetSpec {
 
   rows.push(
     [blank],
-    [t('Cross-check — PROJECT_CONTEXT section 3 top-down band')],
-    [t('Top-down revenue, low'), blank, ...years.map((y) => n(y.topDownRevenueLow))],
-    [t('Top-down revenue, high'), blank, ...years.map((y) => n(y.topDownRevenueHigh))],
+    [t('Exit ARR — the year-end RUN RATE, not what was booked during the year')],
+    [t('Exit ARR'), blank, ...years.map((y) => n(y.exitArr))],
+  );
+  const exitArrRow = rows.length;
+  rows.push(
+    [t('Booked revenue above is summed month by month while customers are still ramping, so')],
+    [t('it sits below the year-end run rate in every growth year. The comparison below needs')],
+    [t('the run rate, because the plan it compares against is stated as ARR.')],
+    [blank],
+    [t('Cross-check — the SUPERSEDED top-down plan (PROJECT_CONTEXT section 3, before 2026-08-26)')],
+    [t('Prior plan ARR, low'), blank, ...years.map((y) => n(y.priorPlanArrLow))],
+    [t('Prior plan ARR, high'), blank, ...years.map((y) => n(y.priorPlanArrHigh))],
   );
   const lowRow = rows.length - 1;
   const highRow = rows.length;
   rows.push([
-    t('Bottom-up as a multiple of the band midpoint'),
+    t('Exit ARR as a multiple of the prior plan’s band midpoint'),
     blank,
     ...MODEL_YEARS.map((_, i) => ({
-      v: years[i].bottomUpVsTopDown,
-      f: `${tref(totalRow, TOTALS_COLS[i])}/((${tref(lowRow, TOTALS_COLS[i])}+${tref(highRow, TOTALS_COLS[i])})/2)`,
+      v: years[i].bottomUpVsPriorPlan,
+      // EXIT ARR over the band, never booked revenue over the band. The band is an ARR
+      // figure; dividing booked revenue by it compared two different quantities.
+      f: `${tref(exitArrRow, TOTALS_COLS[i])}/((${tref(lowRow, TOTALS_COLS[i])}+${tref(highRow, TOTALS_COLS[i])})/2)`,
       fmt: '0.00x',
     })),
   ]);
   rows.push(
-    [t('These are expected to disagree. The band was asserted top-down; this model is built')],
-    [t('bottom-up from Census venue counts. Neither has been tuned to match the other.')],
+    [t('These are expected to disagree, and the gap is reported rather than closed. Section 3')],
+    [t('now states this model’s figures; the band above is kept as the plan it replaced, so an')],
+    [t('investor who saw the earlier number can be answered. Neither side has been tuned to')],
+    [t('meet the other — the band’s six values are unchanged, deliberately, because updating')],
+    [t('them to match would make the ratio 1.00x by construction and the cross-check worthless.')],
   );
   return { name: 'Totals', rows };
 }

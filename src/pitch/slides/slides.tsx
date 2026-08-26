@@ -841,7 +841,7 @@ export function SlideTrajectory({ index, total }: SlideProps) {
             <div className="w-[24rem] shrink-0 text-right">
               <p className="text-lg tabular-nums">
                 <span className="font-bold text-white">{moneyShort(y.revenue)}</span>
-                <span className="text-white/45"> revenue · </span>
+                <span className="text-white/45"> booked · </span>
                 <span
                   className={
                     y.metroEbitda >= 0 ? 'font-bold text-dc-teal' : 'font-bold text-dc-pink'
@@ -851,7 +851,9 @@ export function SlideTrajectory({ index, total }: SlideProps) {
                 </span>
                 <span className="text-white/45"> metro contribution</span>
               </p>
-              <p className="text-sm text-white/45">{y.metrosLive} metros live</p>
+              <p className="text-sm text-white/45">
+                {moneyShort(y.exitArr)} exit ARR · {y.metrosLive} metros live
+              </p>
             </div>
           </div>
         ))}
@@ -859,17 +861,22 @@ export function SlideTrajectory({ index, total }: SlideProps) {
 
       <TrajectoryConsolidatedEbitda />
 
+      {/* The opening "built bottom-up: Census venue counts, a stated share, our live pricing"
+          sentence that used to start this paragraph was DELETED, not moved: the Source block
+          below already says it almost word for word, and the slide has no vertical slack to
+          spend saying it twice. See the measurement note above. */}
       <p className="mt-3 max-w-5xl text-base leading-relaxed text-white/70">
-        Built bottom-up: Census venue counts per metro, the share we expect to sign, our live
-        pricing. The pale overlay is what the metros cost to run, so what is left is{' '}
-        <b className="text-white">metro contribution</b> — before company-level payroll, AI and
-        infrastructure. That is not <Gloss t="EBITDA" className="text-white" />: the
-        company&rsquo;s own line stays negative through 2027, which is what the raise is for.
-        Our earlier top-down plan put{' '}
+        Bars are revenue <b className="text-white">booked</b> during the year; exit{' '}
+        <Gloss t="ARR" className="text-white" /> is where it ends, and it is what a plan is
+        stated in — our superseded plan put{' '}
         <b className="text-white">
-          {moneyShort(years[2].topDownRevenueLow)}–{moneyShort(years[2].topDownRevenueHigh)}
+          {moneyShort(years[2].priorPlanArrLow)}–{moneyShort(years[2].priorPlanArrHigh)}
         </b>{' '}
-        on 2028 — a cross-check, not a number this build was tuned to meet.
+        on 2028, a cross-check we did not tune to meet. The pale overlay is what the metros
+        cost to run; what is left is <b className="text-white">metro contribution</b>, before
+        company payroll, AI and infrastructure — so it is not{' '}
+        <Gloss t="EBITDA" className="text-white" />. The company&rsquo;s own line stays
+        negative through 2027, which is what the raise is for.
       </p>
 
       <div className="mt-auto flex items-center gap-3">

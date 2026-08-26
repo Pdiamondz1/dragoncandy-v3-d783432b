@@ -116,3 +116,15 @@ export function projectMonth({ month, restaurants, mix, operatingExpense = 0 }: 
     ebitda: grossProfit - operatingExpense,
   };
 }
+
+/**
+ * Revenue ONE customer produces in ONE month, at the registered mix.
+ *
+ * Derived by running `projectMonth` over a single restaurant rather than by re-deriving
+ * subscription + take rate here, so the two cannot drift apart. This is the ARPU the model
+ * actually implies — quote it, rather than a figure from a narrative document, whenever
+ * someone asks what a customer is worth.
+ */
+export function revenuePerCustomerMonth(mix: TierMix = REGISTERED_MIX): number {
+  return projectMonth({ month: 1, restaurants: 1, mix }).totalRevenue;
+}

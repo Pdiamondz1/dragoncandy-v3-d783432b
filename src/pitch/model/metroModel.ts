@@ -15,6 +15,7 @@ import {
   avgCampaignValue,
   blendedSubscription,
   blendedTakeRate,
+  revenuePerCustomerMonth,
   type TierMix,
 } from './project';
 import { MARKET, UNIT_ECONOMICS } from './assumptions';
@@ -34,7 +35,27 @@ export interface MetroYear {
   readonly gmv: number;
   readonly subscriptionRevenue: number;
   readonly takeRateRevenue: number;
+  /**
+   * Revenue BOOKED during the year: summed month by month while customers are still ramping.
+   * This is what the metro actually invoices between January and December.
+   *
+   * It is NOT annual recurring revenue and the two must never be compared. See `exitArr`.
+   */
   readonly revenue: number;
+  /**
+   * Annual recurring revenue at the EXIT of the year: customers at year end, at the
+   * registered mix, running for twelve months. A run-rate, not a sum of what happened.
+   *
+   * Both quantities are carried because the model needs both and they differ by a real
+   * mechanism, not by rounding. `revenue` is depressed by the ramp -- a metro that ends the
+   * year with 65 customers spent most of it with far fewer -- so booked revenue is
+   * materially BELOW exit ARR in every growth year, and the faster the growth the wider the
+   * gap. PROJECT_CONTEXT section 3's targets are stated as ARR, so the cross-check in
+   * `rollup.ts` compares against THIS field. Confusing the two is the same class of error as
+   * labelling metro contribution "EBITDA": two figures that look comparable, differ by a
+   * real mechanism, and get conflated because nobody computed both.
+   */
+  readonly exitArr: number;
   readonly stripeCost: number;
   readonly serveCost: number;
   readonly costOfRevenue: number;
@@ -172,6 +193,9 @@ export function projectMetroYear(metroId: string, year: ModelYear, mix: TierMix)
     subscriptionRevenue,
     takeRateRevenue,
     revenue,
+    // Derived from `revenuePerCustomerMonth` rather than by re-multiplying subscription and
+    // take rate here, so ARPU has exactly one definition in the model.
+    exitArr: customersAtYearEnd * revenuePerCustomerMonth(mix) * MONTHS_PER_YEAR,
     stripeCost,
     serveCost,
     costOfRevenue,

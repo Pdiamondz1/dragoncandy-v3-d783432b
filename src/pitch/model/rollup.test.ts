@@ -5,6 +5,7 @@ import {
   COHORT_METRO_ID,
   COHORT_METRO_COUNTS,
   COHORT_TEMPLATE_METRO_ID,
+  COHORT_FIELD_CLASSIFICATION,
 } from './rollup';
 import { projectMetroYear } from './metroModel';
 // Shared cost, its allocation and consolidated EBITDA moved out of `rollup.ts` so a public
@@ -47,6 +48,39 @@ describe('the later-metro cohort', () => {
 
   it('contributes nothing in 2026, when no fourth metro is open', () => {
     expect(cohortMetroYear(2026, REGISTERED_MIX).revenue).toBe(0);
+  });
+
+  /**
+   * Every numeric field of `MetroYear` must be explicitly classified as scaling with the
+   * cohort count or not. This is the control that would have caught `exitArr`: it was added
+   * to `MetroYear`, the cohort's inline scale list was not updated, and the cohort row went
+   * on carrying ONE metro's ARR beside SEVENTEEN metros' revenue -- with every other test
+   * still green, because nothing tied the two lists together.
+   *
+   * Derived from a real projection's keys, not from a hand-written list, so a new field
+   * fails here the moment it exists.
+   */
+  it('classifies every numeric MetroYear field as scaled or deliberately unscaled', () => {
+    const sample = projectMetroYear('palm-beach', 2028, REGISTERED_MIX);
+    const numericKeys = Object.entries(sample)
+      .filter(([, v]) => typeof v === 'number')
+      .map(([k]) => k)
+      .sort();
+    const classified = [
+      ...COHORT_FIELD_CLASSIFICATION.scaled,
+      ...COHORT_FIELD_CLASSIFICATION.unscaled,
+    ].sort();
+
+    expect(numericKeys.length, 'no numeric fields found -- this test is checking nothing')
+      .toBeGreaterThan(10);
+    expect(
+      classified,
+      'A numeric MetroYear field is not classified in rollup.ts. Add it to ' +
+        'COHORT_SCALED_FIELDS (an amount -- N metros have N times as much) or to ' +
+        'COHORT_UNSCALED_FIELDS (a rate, a label, or a per-metro denominator), and say which ' +
+        'in the comment. Leaving it out means the cohort row silently reports one metro\'s ' +
+        'worth of it beside seventeen metros\' worth of everything else.',
+    ).toEqual(numericKeys);
   });
 
   it('scales a single template metro by the cohort count', () => {
@@ -166,26 +200,63 @@ describe('rollup', () => {
   });
 
   // Spec section 10. This REPORTS the gap; it must never fail on it, because either the
-  // top-down band or the bottom-up build could be the wrong one, and a test that forced
-  // them together would just be assumption-fitting with extra steps.
-  it('carries the top-down cross-check band without asserting agreement', () => {
+  // prior plan or the bottom-up build could be the wrong one, and a test that forced them
+  // together would just be assumption-fitting with extra steps.
+  it('carries the prior plan\'s ARR band without asserting agreement', () => {
     for (const y of years) {
-      expect(y.topDownRevenueLow).toBeGreaterThan(0);
-      expect(y.topDownRevenueHigh).toBeGreaterThan(y.topDownRevenueLow);
-      expect(typeof y.bottomUpVsTopDown).toBe('number');
+      expect(y.priorPlanArrLow).toBeGreaterThan(0);
+      expect(y.priorPlanArrHigh).toBeGreaterThan(y.priorPlanArrLow);
+      expect(typeof y.bottomUpVsPriorPlan).toBe('number');
     }
   });
 
-  it('prints the top-down gap so a reviewer sees it', () => {
+  /**
+   * Booked revenue and exit ARR are DIFFERENT QUANTITIES, and the cross-check must use the
+   * one that matches the band's unit.
+   *
+   * The band is ARR -- annual RECURRING revenue, a year-end run rate. `revenue` is revenue
+   * BOOKED during the year, summed monthly while customers ramp. The ratio divided booked by
+   * ARR until 2026-08-26, which made the model look further below the plan than it is. Same
+   * class of error as labelling metro contribution "EBITDA".
+   *
+   * Asserted as an exact identity against `exitArr` rather than as an inequality, so nothing
+   * can quietly point the numerator back at booked revenue.
+   */
+  it('divides EXIT ARR by the band, never booked revenue', () => {
+    for (const y of years) {
+      const midpoint = (y.priorPlanArrLow + y.priorPlanArrHigh) / 2;
+      expect(y.bottomUpVsPriorPlan).toBeCloseTo(y.exitArr / midpoint, 9);
+      // The control: the two numerators must actually differ, or this identity would hold
+      // for the wrong implementation too.
+      expect(y.exitArr).not.toBeCloseTo(y.revenue, 0);
+    }
+  });
+
+  /**
+   * Exit ARR exceeds booked revenue in every year here, and the mechanism is the ramp: a
+   * metro that ends the year with 65 customers spent most of it with far fewer. Pinned as a
+   * DIRECTION rather than a magnitude -- the magnitude moves with every penetration change,
+   * but a year where booked exceeded a year-end run rate would mean the ramp had inverted
+   * and something is wrong.
+   */
+  it('reports exit ARR above booked revenue in every year with customers', () => {
+    for (const y of years) {
+      if (y.revenue === 0) continue;
+      expect(y.exitArr, `${y.year}`).toBeGreaterThan(y.revenue);
+    }
+  });
+
+  it('prints the gap against the prior plan so a reviewer sees it', () => {
     const report = years
       .map(
         (y) =>
-          `  ${y.year}: bottom-up $${Math.round(y.revenue).toLocaleString()} vs top-down ` +
-          `$${y.topDownRevenueLow.toLocaleString()}-$${y.topDownRevenueHigh.toLocaleString()} ` +
-          `(${(y.bottomUpVsTopDown * 100).toFixed(0)}% of the band midpoint)`,
+          `  ${y.year}: booked $${Math.round(y.revenue).toLocaleString()} | exit ARR ` +
+          `$${Math.round(y.exitArr).toLocaleString()} vs prior plan ` +
+          `$${y.priorPlanArrLow.toLocaleString()}-$${y.priorPlanArrHigh.toLocaleString()} ARR ` +
+          `(${(y.bottomUpVsPriorPlan * 100).toFixed(0)}% of the band midpoint)`,
       )
       .join('\n');
-    console.warn(`Top-down / bottom-up divergence:\n${report}`);
+    console.warn(`Bottom-up exit ARR vs the superseded plan:\n${report}`);
     expect(report.length).toBeGreaterThan(0);
   });
 });

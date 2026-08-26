@@ -58,8 +58,9 @@ describe('workbook provenance', () => {
   // `consolidated.ts` when the rollup was made confidential-free, and those three are exactly
   // the figures the Shared_Costs and Totals sheets print.
   for (const year of consolidated()) {
-    for (const k of ['revenue', 'grossProfit', 'marketingCost', 'metroEbitda', 'sharedCost', 'ebitda',
-                     'metrosLive', 'topDownRevenueLow', 'topDownRevenueHigh', 'bottomUpVsTopDown'] as const) {
+    for (const k of ['revenue', 'exitArr', 'grossProfit', 'marketingCost', 'metroEbitda',
+                     'sharedCost', 'ebitda', 'metrosLive', 'priorPlanArrLow', 'priorPlanArrHigh',
+                     'bottomUpVsPriorPlan'] as const) {
       addDerived(year[k] as number);
     }
     for (const m of year.metros) {
