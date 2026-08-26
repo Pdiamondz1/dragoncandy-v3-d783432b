@@ -49,6 +49,15 @@ export interface RollupYear {
   readonly sharedCost: number;
   readonly allocations: readonly SharedCostAllocation[];
   readonly ebitda: number;
+  /**
+   * Count of actual metros with a live customer relationship at year end -- NOT a count
+   * of rollup rows. Named metros count 1 each; the cohort row counts as
+   * `COHORT_METRO_COUNTS[year].value` (the metros it stands in for) when it has revenue,
+   * 0 otherwise -- never as a single row. A row-count definition would read "4" for
+   * 2027/2028 while the model books revenue for 3 named metros plus 6 or 17 cohort
+   * metros, which is an investor-facing misstatement once this renders on a deck slide
+   * as "N metros".
+   */
   readonly metrosLive: number;
   readonly topDownRevenueLow: number;
   readonly topDownRevenueHigh: number;
@@ -77,6 +86,14 @@ export function allocateSharedCost(
  * budget's first twelve months; later years hold the run rate of month 12 flat, because the
  * budget horizon is 18 months and extrapolating a hiring plan we have not written would be
  * inventing headcount.
+ *
+ * Consequence, not just cause: with cost frozen, every dollar of 2027-2028 revenue growth
+ * drops straight to EBITDA. Revenue grows 4.2x from 2027 to 2028 ($661,124 to $2,772,169)
+ * while shared cost stays flat at $775,884, so the swing from EBITDA of -$466,406 in 2027 to
+ * +$897,937 in 2028 is partly an artifact of the frozen-cost assumption, not pure revenue
+ * growth. A model that grew shared cost with the business (more metros, more support load)
+ * would show a smaller swing. See the Palm Beach penetration note in `metros.ts` for the
+ * same house style of naming a modeling choice's consequence, not just its cause.
  */
 export function sharedCostForYear(year: ModelYear): number {
   const yearIndex = MODEL_YEARS.indexOf(year);
@@ -172,7 +189,11 @@ export function rollup(mix: TierMix = REGISTERED_MIX, metroIds?: readonly string
       sharedCost,
       allocations: allocateSharedCost(metros, sharedCost),
       ebitda: metroEbitda - sharedCost,
-      metrosLive: metros.filter((m) => m.customersAtYearEnd > 0).length,
+      metrosLive:
+        metros.filter((m) => m.metroId !== COHORT_METRO_ID && m.customersAtYearEnd > 0).length +
+        (metros.find((m) => m.metroId === COHORT_METRO_ID)!.revenue > 0
+          ? COHORT_METRO_COUNTS[year].value
+          : 0),
       topDownRevenueLow: band.revenueLow,
       topDownRevenueHigh: band.revenueHigh,
       bottomUpVsTopDown: midpoint === 0 ? 0 : revenue / midpoint,

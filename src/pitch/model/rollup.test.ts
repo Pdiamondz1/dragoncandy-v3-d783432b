@@ -84,9 +84,14 @@ describe('rollup', () => {
     }
   });
 
-  it('counts metros live as those with a customer at year end', () => {
+  // metrosLive counts actual metros, not rollup rows: the cohort row stands in for
+  // COHORT_METRO_COUNTS[year].value metros, not 1. Asserted against fixed expected numbers
+  // (not re-derived from the implementation) so a regression to row-counting -- which would
+  // read "4" for both 2027 and 2028 -- actually fails this test.
+  it('counts metros live as actual metros, weighting the cohort by its metro count', () => {
+    const expected: Record<number, number> = { 2026: 2, 2027: 9, 2028: 20 };
     for (const y of years) {
-      expect(y.metrosLive).toBe(y.metros.filter((m) => m.customersAtYearEnd > 0).length);
+      expect(y.metrosLive).toBe(expected[y.year]);
     }
   });
 
