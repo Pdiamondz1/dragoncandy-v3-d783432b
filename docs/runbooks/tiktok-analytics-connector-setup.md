@@ -124,7 +124,24 @@ around the audit.
 
 ---
 
-## 4. Secrets — three, none of them set
+## 4. Secrets — three, and **all three are set** (2026-08-26)
+
+> **This heading said "none of them set" until 2026-08-26.** They are set, and the
+> commands below are for a **fresh environment**, not for the production cutover
+> that is still outstanding.
+>
+> **Do NOT re-run the third command.** `TIKTOK_OAUTH_STATE_SECRET` signs OAuth
+> state, so rotating it invalidates every state already in flight: anyone
+> mid-consent at that moment comes back to a signature that no longer verifies,
+> and the connect fails at the callback with nothing on screen explaining why.
+> There is no reason to rotate it when swapping client credentials — it is not a
+> TikTok credential at all, it is ours.
+>
+> **The production swap is the first two only**, after App Review approves:
+> `TIKTOK_CLIENT_KEY` and `TIKTOK_CLIENT_SECRET` move from the sandbox app to the
+> production app. Sandbox keys carry an `sba` prefix, which is how to tell which
+> is loaded without printing the value. A sandbox key in prod fails at the **token
+> exchange** — the end of a consent flow the user has already completed.
 
 ```bash
 npx supabase secrets set --project-ref zocahiffooqdybdhguqv \
@@ -160,11 +177,30 @@ mismatch tells you about the subject rather than about your instrument.
 
 ---
 
-## 5. Apply the migration **before** the frontend deploys
+## 5. Apply the migrations **before** the frontend deploys
+
+**All four, in order.** This section named only the first until 2026-08-26, which
+would have rebuilt the connector with `integer` counters and both RPC signatures
+in the state that produced the overflow — a runbook that reconstructs a fixed
+defect is worse than no runbook, because it carries the authority of having been
+followed.
 
 ```bash
 npm run db:apply -- supabase/migrations/20260826200000_tiktok_account_connections.sql
+npm run db:apply -- supabase/migrations/20260826210000_store_tiktok_connection_stats.sql
+npm run db:apply -- supabase/migrations/20260826230000_tiktok_counters_bigint.sql
+npm run db:apply -- supabase/migrations/20260826240000_tiktok_status_bigint.sql
 ```
+
+Order matters and the gap is not a typo: `20260826220000` belongs to another
+branch (`email_verification_code`), which is why the third file is numbered
+`230000`. `db:apply` refuses a version already recorded, so a re-run is safe;
+forcing past that refusal is exactly how `recorded ≠ actual` happens.
+
+`210000` teaches the connect write to carry the four counters, `230000` widens
+them to `bigint` in the columns and both write RPCs, and `240000` widens the read
+RPC's `RETURNS TABLE`. Stopping after any one of them leaves a connector that
+looks fine until a large account touches it.
 
 **This ordering is not advice; it is the defect this project shipped twice in two
 days.** `useTikTokConnection` does `if (error) throw error` on
@@ -193,6 +229,19 @@ where table_name = 'tiktok_account_connections';
 -- The status function is granted to authenticated but NOT anon; every other RPC
 -- is service_role only.
 select proname, proacl from pg_proc where proname like '%tiktok%';
+
+-- All four counters are bigint. `id` is the control: it must still read `uuid`,
+-- which is what proves this query distinguishes types rather than answering the
+-- same thing for every column. An `integer` here means a follow-up migration was
+-- skipped, and the connector will revoke a large account's token on connect.
+select column_name, data_type from information_schema.columns
+where table_name = 'tiktok_account_connections'
+  and column_name in ('follower_count','following_count','likes_count','video_count','id');
+
+-- ...and so does the READ path, which is a separate declaration and was missed
+-- once already: an SQL function coerces its result to its declared type, so an
+-- `integer` in this RETURNS TABLE narrows bigint back on the way out.
+select pg_get_function_result(oid) from pg_proc where proname = 'tiktok_connection_status';
 ```
 
 ---
@@ -285,7 +334,7 @@ That is not hypothetical: it is exactly what the `int4` overflow did before
 `20260826230000`. A large account's `likes_count` raised `22003` inside the
 cache RPC, the card showed figures, and the stamp never moved.
 
-So read it as three cases, not two:
+So read it as four cases, not two:
 
 | Card | `last_synced_at` | Meaning |
 |---|---|---|
