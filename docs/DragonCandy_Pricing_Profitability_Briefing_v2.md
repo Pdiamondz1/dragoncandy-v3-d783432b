@@ -759,7 +759,25 @@ This is the most important ask, and the hardest. The math only works if we resis
 - We are not asking to scale headcount ahead of revenue.
 - We are not asking to chase $30M+ ARR in 24 months. That target requires $40-80M in funding and a 30-person team — and only top 1% of funded startups hit it.
 
-> **The realistic target is $7-12M ARR with $2-5M in annual profit on a team of 8-12 by end of Year 3. That's a top-quartile outcome, achievable with the team and product we already have, and it gets us to acquisition-readiness or independence — partner's choice.**
+> **The evidenced target is ~$4.7M exit ARR by end of Year 3 on a team of 10–11, built bottom-up from US Census venue counts per metro and our own live pricing (`src/pitch/model/`, restated 2026-08-26 — see `PROJECT_CONTEXT.md` §3). What makes it notable is not the revenue, it is the efficiency: roughly $431–474K of ARR per employee, against a private-SaaS median of ~$130K and about $100K in the $1–3M ARR band ([[North Star & KPI Scorecard]]). It still gets us to acquisition-readiness or independence — partner's choice.**
+
+**Why this replaced the previous claim, rather than restating its number.** This quote used to read
+"$7-12M ARR with $2-5M in annual profit on a team of 8-12 ... that's a top-quartile outcome."
+Swapping the figure alone would have silently asserted that the *new* number is also top-quartile —
+a claim nobody had checked — so the argument was rebuilt on a benchmark we can cite instead of a
+percentile we cannot.
+
+Two other claims did not survive, and neither is quietly carried over. First, the **$2–5M profit**
+figure was computed against the old revenue band and does not follow at the restated revenue. Costs
+are incurred in-year, so the like-for-like comparison is **booked** revenue
+($3.34M), not exit ARR: against the registered Year 3 cost band of **$2.2–3.8M**
+(`year3CostLow`/`year3CostHigh`, taken from this document's line-item breakdown at line 520 — note
+its per-year summary tables say $2.5–3.5M and the two disagree) that is **−$0.5M to +$1.1M**. It
+straddles zero, and stating a single profit figure here would be picking one end of it. The model
+computes the number exactly, net of shared costs, but that is a confidential-build figure — read it
+from the workbook's Totals sheet. Second, the **team of 8–12** is 10–11 in the current staffing
+plan. None of this refutes the old band — the model
+books only two of the four revenue streams, so it is a floor. See §3 for what would close the gap.
 
 ---
 
