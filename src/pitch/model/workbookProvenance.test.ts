@@ -130,8 +130,10 @@ describe('workbook provenance', () => {
       orphans,
       `${orphans.length} numeric cell(s) have no provenance. Every number in the workbook must ` +
         `come from src/pitch/model/assumptions.ts, src/pitch/model/metros.ts, or a computation ` +
-        `over them — or be an Excel formula. Do not add the value to this test to make it pass; ` +
-        `register the assumption.\n${orphans.slice(0, 40).join('\n')}`,
+        `over them — or be an Excel formula, whose INPUT cells are checked by this same walk ` +
+        `and whose own literal numerals are pinned by the "no unregistered numeral inside a ` +
+        `formula" test below. Do not add the value to this test to make it pass; register the ` +
+        `assumption.\n${orphans.slice(0, 40).join('\n')}`,
     ).toEqual([]);
   });
 
@@ -145,6 +147,79 @@ describe('workbook provenance', () => {
       }
     }
     expect(numeric).toBeGreaterThan(100);
+  });
+
+  /**
+   * The walker above skips every formula cell entirely — correctly, since a formula's value
+   * is DERIVED from other cells, and those cells are checked wherever they land. What that
+   * exemption does not cover is a numeric literal written INSIDE the formula string itself:
+   * `=Hoboken_Model!B16*0.37` would put an unregistered 0.37 into the workbook, the walker
+   * would skip the cell because `cell.f !== undefined`, and formulaAgreement.test.ts would
+   * only confirm the formula matches whatever cache we typed next to it — neither test would
+   * ever see the 0.37. This closes that gap: no emitted formula may contain a standalone
+   * numeral outside a small, justified allowlist.
+   */
+  describe('no unregistered numeral hides inside a formula', () => {
+    // Every entry must carry a reason. An allowlist without one is where a real magnitude
+    // goes to hide next time someone is in a hurry.
+    const ALLOWED_LITERALS: Readonly<Record<string, string>> = {
+      // ROUND(...,0)'s precision argument (round to the nearest whole customer), and the
+      // zero branch of every `IF(revenue=0,0,...)` KPI guard. Not a business assumption —
+      // a function argument and a guard's literal zero.
+      '0': 'ROUND(...,0) precision arg, and the 0 branch of the revenue=0 KPI guards',
+      // The "/2" in the top-down cross-check's `(low+high)/2` — an arithmetic mean, the same
+      // one `rollup()`'s `midpoint = (band.revenueLow + band.revenueHigh) / 2` computes in
+      // TypeScript. Structural (how you average two numbers), not a modeled input.
+      '2': 'the midpoint divisor in (top-down low + top-down high) / 2',
+    };
+
+    // Matches only a STANDALONE numeral. A bare `\d+` also matches the row digits inside
+    // every cell reference (`B16`, `C9`) and the "4" inside the sheet name `Metros_4toN`,
+    // which would make this test either always-red (every formula references a row) or,
+    // if loosened to compensate, always-green (matching nothing real either). The
+    // negative lookbehind excludes any digit preceded by a letter, digit, `!`, `_` or `.`,
+    // which is exactly what a cell address or qualified sheet name looks like immediately
+    // before its digits.
+    const STANDALONE_NUMERAL = /(?<![A-Za-z0-9_!.])\d+(?:\.\d+)?/g;
+
+    it('the matcher actually fires on a formula carrying a real magnitude', () => {
+      // Forced control, the other half of it: a scan that always finds nothing is
+      // indistinguishable from a regex that matches nothing. Prove it can reject first.
+      const bad = 'Hoboken_Model!B16*0.37';
+      const literals = bad.match(STANDALONE_NUMERAL) ?? [];
+      expect(literals).toEqual(['0.37']);
+      expect(Object.keys(ALLOWED_LITERALS)).not.toContain('0.37');
+    });
+
+    it('visits a meaningful number of formula cells', () => {
+      const formulaCells = spec.flatMap((s) => s.rows.flat()).filter((c) => c.f !== undefined);
+      expect(formulaCells.length, 'Task 7 is not done if there are no formulas').toBeGreaterThan(20);
+    });
+
+    it('has no formula whose literal numerals fall outside the allowlist', () => {
+      const violations: string[] = [];
+      for (const sheet of spec) {
+        sheet.rows.forEach((row, r) => {
+          row.forEach((cell, c) => {
+            if (cell.f === undefined) return;
+            const literals = cell.f.match(STANDALONE_NUMERAL) ?? [];
+            for (const lit of literals) {
+              if (!(lit in ALLOWED_LITERALS)) {
+                violations.push(`${sheet.name}!R${r + 1}C${c + 1}: "${lit}" in "${cell.f}"`);
+              }
+            }
+          });
+        });
+      }
+      expect(
+        violations,
+        `${violations.length} formula(s) carry a numeral outside {${Object.keys(ALLOWED_LITERALS).join(', ')}}. ` +
+          `A number inside a formula string is invisible to the provenance walker above and to ` +
+          `formulaAgreement.test.ts, so it must either be a registered assumption pulled in by ` +
+          `reference (never typed as a literal) or added to ALLOWED_LITERALS here with a reason ` +
+          `for why it is structural, not a magnitude.\n${violations.slice(0, 40).join('\n')}`,
+      ).toEqual([]);
+    });
   });
 
   /**
