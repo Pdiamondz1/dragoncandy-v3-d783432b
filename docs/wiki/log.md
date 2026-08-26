@@ -6,6 +6,12 @@
 [[Email Verification Routes]], [[Verify Before Reporting]], `docs/SHIPPED_LOG.md`,
 `docs/PROJECT_CONTEXT.md` §5. No new pages, so `index.md` is unchanged.
 
+**No `sources/` page, deliberately.** The workflow in `docs/KNOWLEDGE_WIKI.md` lists one per raw
+source and the Codex review flagged its absence; measured against practice, 29 of 182 raw sessions
+have one. A summary here would restate the raw file without synthesising anything the two concept
+pages do not already carry, which is what "compound, don't duplicate" exists to prevent. Reversible
+if the query workflow is ever found missing this evidence.
+
 Compounded onto the two existing pages rather than creating a third. The session produced no new
 subject — it produced *evidence* about one page's subject and *an instance* of the other's, which
 is what those pages are for.

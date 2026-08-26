@@ -184,11 +184,14 @@ Auth: no `Authorization` header → 401; **the anon key used as the bearer** →
 [[verify_jwt Is Not Authorization]] class, and the only thing rejecting it is this function's
 own `getUser`); a malformed five-digit code → 400 with no attempt charged.
 
-Delivery was real, not a provider success flag: both mails reached the **inbox, not spam**,
-one second after the row was written, the emailed code matched the stored code exactly, the
-link was built on `dragoncandy.com` from the honoured request `Origin`, and the footer's
-visible label matched its own href — the derived-label anti-phishing fix holding in a real
-message rather than in the template source.
+Delivery was real, not a provider success flag — and **the evidence differs per mail, since three
+were sent**. The first two were opened and read in the mailbox: **inbox, not spam**, one second
+after the row was written, emailed code identical to the stored code, link built on
+`dragoncandy.com` from the honoured request `Origin`, and the footer's visible label matching its
+own href — the derived-label anti-phishing fix holding in a real message rather than in the
+template source. The third was never opened by the agent; its delivery is evidenced instead by the
+founder clicking its link, which is stronger evidence of delivery and silent about the code it
+carried.
 
 **Sessions came from the admin API, never a password:** `generate_link` (type `magiclink`)
 then `/auth/v1/verify` on the `hashed_token`. `supabase/scripts/staging-login.mjs` performs

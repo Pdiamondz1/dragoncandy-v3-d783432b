@@ -72,10 +72,11 @@ same input, opposite answers.
 `remaining` falling 9 → 8 across two *different* wrong codes is the per-user budget doing the
 thing the migration exists for; a per-code budget answers 9 twice.
 
-**Delivery was checked, not inferred from the provider's success flag.** Both mails reached the
-inbox — not spam — one second after the row was written, the emailed code matched the stored code
-exactly, the link was built on `dragoncandy.com` from the honoured request `Origin`, and the
-footer's visible label matched its own href.
+**Delivery was checked, not inferred from the provider's success flag** — and the evidence differs
+per mail, since three were sent. The first two were read in the mailbox: inbox not spam, one second
+after the row was written, emailed code identical to the stored code, link on `dragoncandy.com`
+from the honoured `Origin`, footer label matching its own href. The third was never opened by the
+agent; its delivery is evidenced by the founder clicking it.
 
 **A P1 was nearly filed and was wrong.** Read through the claude.ai Gmail connector, every link
 came back corrupted in a way mechanically consistent with quoted-printable decoding of an
