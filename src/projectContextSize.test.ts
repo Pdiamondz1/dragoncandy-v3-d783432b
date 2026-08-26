@@ -25,12 +25,18 @@ import { join } from 'node:path';
  * narrative) or `docs/wiki/` (durable synthesis), both of which are already richer than §5 for
  * every entry it carries.
  *
- * THE CONTROL MATTERS MORE THAN THE CAPS. "No entry exceeds 16 lines" is vacuously true if the
- * entry parser finds no entries — which is exactly how `brandLogo.test.ts` reported green for a
- * day while three headers stayed wrong, and how the RAG recall metric counted the wrong unit. So
- * `parses at least 40 entries` runs first and is the assertion that gives the rest meaning. If a
- * future edit changes §5's bullet syntax, that check fails loudly instead of the size checks
- * passing silently.
+ * THE CONTROLS MATTER MORE THAN THE CAPS. "No entry exceeds 16 lines" is vacuously true if the
+ * parser finds no entries — exactly how `brandLogo.test.ts` reported green for a day while three
+ * headers stayed wrong, and how the RAG recall metric counted the wrong unit. So two controls run
+ * first: the parser is proven against a FIXED FIXTURE, and the live file is checked for parser /
+ * raw-bullet agreement.
+ *
+ * Both are deliberately independent of how much §5 holds. The first draft of this control
+ * asserted "§5 parses at least 40 entries", and the Codex second review was right to reject it:
+ * that is a content floor, not a parser check. §5 getting SMALLER is the whole point of this
+ * file, so a floor would eventually fail on correct maintenance and pressure the author into
+ * keeping stale entries or deleting the guard. A control must be about the instrument, not about
+ * the reading.
  */
 
 const ROOT = join(__dirname, '..');
@@ -42,8 +48,16 @@ const MAX_FILE_BYTES = 60_000;
 const MAX_SECTION_5_BYTES = 45_000;
 /** Ceiling on one workstream entry. Past that it is a log entry, not an index line. */
 const MAX_ENTRY_LINES = 16;
-/** Control: the parser must actually find entries for the cap above to mean anything. */
-const MIN_ENTRIES_PARSED = 40;
+
+/**
+ * Counts entry bullets WITHOUT using the parser, and deliberately accepts any Markdown list
+ * marker. This is half the control: if §5 ever switches from `- **` to `* **`, this still
+ * counts every entry while `parseEntries` returns 0, and the mismatch fails. A regex that
+ * hard-coded `-` would drop to 0 alongside the parser and the two would agree about nothing.
+ */
+function countEntryBullets(section: string): number {
+  return section.split('\n').filter((line) => /^[-*+] +\*\*/.test(line)).length;
+}
 
 const raw = readFileSync(CONTEXT_PATH, 'utf8');
 
@@ -90,12 +104,50 @@ describe('PROJECT_CONTEXT.md stays an index', () => {
   const section = sectionFive();
   const entries = parseEntries(section);
 
-  it('parses at least ' + MIN_ENTRIES_PARSED + ' §5 entries (control for the checks below)', () => {
+  // ---- Controls. Without these, the size checks below can pass by finding nothing. ----
+
+  it('CONTROL: the parser returns entries for a known fixture', () => {
+    // A fixed fixture, so this proves the parser works no matter what §5 currently holds.
+    // The earlier version of this control asserted "§5 has >= 40 entries", which Codex
+    // correctly flagged as a content floor: §5 SHRINKING is the desired direction, so that
+    // assertion would eventually punish correct maintenance and pressure an author into
+    // keeping stale entries. Prove the parser against a fixture; measure the file separately.
+    const fixture = [
+      '## 5. Active Workstreams',
+      '',
+      '> a blockquote line that is not an entry',
+      '',
+      '### In flight',
+      '',
+      '- **First entry** — opening line',
+      '  a continuation line',
+      '  another continuation line',
+      '',
+      '- **Second entry** — just the one line',
+      '',
+      '### Shipped',
+      '',
+      '- **Third entry** — opening line',
+      '  a continuation line',
+      '',
+      'Trailing unindented prose that ends the last entry.',
+    ].join('\n');
+
+    const parsed = parseEntries(fixture);
+    expect(parsed.map((e) => e.lines)).toEqual([3, 1, 2]);
+    expect(parsed[0].title).toContain('First entry');
+    expect(countEntryBullets(fixture)).toBe(3);
+  });
+
+  it('CONTROL: every entry bullet in §5 is accounted for by the parser', () => {
+    // Content-independent: 3 entries or 300, both sides move together. It only fails when the
+    // parser and the file disagree — i.e. the bullet syntax changed out from under the parser,
+    // which is exactly the case that would let the size checks below pass on an empty list.
     expect(
       entries.length,
-      `Only ${entries.length} entries parsed out of §5. Either the section was gutted or the ` +
-        `bullet syntax changed — until this passes, the per-entry size check below proves nothing.`,
-    ).toBeGreaterThanOrEqual(MIN_ENTRIES_PARSED);
+      'The parser and the raw bullet count disagree, so the size checks below are measuring ' +
+        'something other than §5\'s entries. Has the list syntax changed?',
+    ).toBe(countEntryBullets(section));
   });
 
   it('keeps every §5 entry under ' + MAX_ENTRY_LINES + ' lines', () => {
