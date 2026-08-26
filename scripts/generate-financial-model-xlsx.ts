@@ -54,6 +54,20 @@ for (const sheet of spec) {
   ws.getColumn(1).width = 44;
   for (let c = 2; c <= 8; c += 1) ws.getColumn(c).width = 18;
   ws.getRow(1).font = { bold: true };
+
+  // The Totals sheet's "Include?" toggle column must only ever hold YES/NO — a dropdown
+  // instead of free text, so a typo can't silently fail to match the `IF(...="NO",...)`
+  // formulas it drives.
+  if (sheet.name === 'Totals') {
+    sheet.rows.forEach((row, r) => {
+      if (row[1]?.v === 'YES') {
+        ws.getCell(r + 1, 2).dataValidation = {
+          type: 'list', allowBlank: false, formulae: ['"YES,NO"'], showErrorMessage: true,
+          error: 'Type YES or NO.',
+        };
+      }
+    });
+  }
 }
 
 const buffer = await wb.xlsx.writeBuffer();

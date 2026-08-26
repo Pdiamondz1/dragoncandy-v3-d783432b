@@ -154,53 +154,147 @@ function sourcesSheet(): SheetSpec {
   return { name: 'Sources', rows };
 }
 
+/** This metro sheet's own year columns — label in A, so years land in B/C/D. */
+const METRO_YEAR_COLS = ['B', 'C', 'D'] as const;
+
 function metroSheet(metroId: string): SheetSpec {
   const snap = snapshotFor(loadCensusSnapshot(), metroId);
   const years = MODEL_YEARS.map((y) => projectMetroYear(metroId, y, REGISTERED_MIX));
   const label = METROS.find((m) => m.id === metroId)!.label;
+  const sheetName = SHEET_BY_METRO[metroId];
+  // Every reference is sheet-qualified, even these same-sheet ones — see formulaEval.ts's
+  // header comment for why the evaluator requires that.
+  const ref = (row: number, col: string) => `${sheetName}!${col}${row}`;
 
   const line = (name: string, pick: (y: (typeof years)[number]) => number, fmt?: string): CellRow => [
     t(name),
     ...years.map((y) => (fmt === '0.0%' ? pct(pick(y)) : n(pick(y), fmt))),
   ];
 
-  return {
-    name: SHEET_BY_METRO[metroId],
-    rows: [
-      [t(label), ...MODEL_YEARS.map((y) => t(String(y)))],
-      [t(`${snap.geography.label} — Census ${snap.vintage}`)],
-      [blank],
-      [t('Market')],
-      [t('Total food service venues'), ...years.map(() => n(totalFoodServiceVenues(metroId), '#,##0'))],
-      [t('Addressable venues'), ...years.map(() => n(addressableVenues(metroId), '#,##0'))],
-      line('Penetration of addressable', (y) => y.penetrationAtYearEnd, '0.0%'),
-      line('Customers at year end', (y) => y.customersAtYearEnd, '#,##0'),
-      line('Gross adds (incl. churn replacement)', (y) => y.grossAdds, '#,##0'),
-      [blank],
-      [t('Revenue')],
-      line('Campaigns', (y) => y.campaigns, '#,##0'),
-      line('GMV', (y) => y.gmv),
-      line('Subscription revenue', (y) => y.subscriptionRevenue),
-      line('Take-rate revenue', (y) => y.takeRateRevenue),
-      line('Total revenue', (y) => y.revenue),
-      [blank],
-      [t('Cost of revenue')],
-      line('Stripe fees', (y) => -y.stripeCost),
-      line('AI and infrastructure', (y) => -y.serveCost),
-      line('Total cost of revenue', (y) => -y.costOfRevenue),
-      line('Gross profit', (y) => y.grossProfit),
-      [blank],
-      [t('Marketing')],
-      line('Acquisition marketing', (y) => -y.marketingCost),
-      [blank],
-      [t('Metro EBITDA'), ...years.map((y) => n(y.metroEbitda))],
-      [blank],
-      [t('KPIs')],
-      line('Gross margin', (y) => metroKpis(y).grossMarginPct, '0.0%'),
-      line('Marketing as % of revenue', (y) => metroKpis(y).marketingPctOfRevenue, '0.0%'),
-      line('Cost of revenue as % of revenue', (y) => metroKpis(y).costOfRevenuePctOfRevenue, '0.0%'),
-    ],
-  };
+  // Rows are pushed in order and their Excel row numbers (rows.length after each push)
+  // captured as we go, so a formula can reference an earlier row without hardcoding its
+  // index — the same discipline totalsSheet() below uses.
+  const rows: CellRow[] = [
+    [t(label), ...MODEL_YEARS.map((y) => t(String(y)))],
+    [t(`${snap.geography.label} — Census ${snap.vintage}`)],
+    [blank],
+    [t('Market')],
+    [t('Total food service venues'), ...years.map(() => n(totalFoodServiceVenues(metroId), '#,##0'))],
+    [t('Addressable venues'), ...years.map(() => n(addressableVenues(metroId), '#,##0'))],
+  ];
+  const addressableRow = rows.length;
+  rows.push(line('Penetration of addressable', (y) => y.penetrationAtYearEnd, '0.0%'));
+  const penetrationRow = rows.length;
+
+  // Customers at year end = ROUND(addressable * penetration, 0) — matches
+  // `customersAtMonth`'s `Math.round`, which a plain product does not (they can differ by up
+  // to ~0.4 for these metros). See formulaEval.ts's header comment.
+  rows.push([
+    t('Customers at year end'),
+    ...MODEL_YEARS.map((_, i) => ({
+      v: years[i].customersAtYearEnd,
+      f: `ROUND(${ref(addressableRow, METRO_YEAR_COLS[i])}*${ref(penetrationRow, METRO_YEAR_COLS[i])},0)`,
+      fmt: '#,##0',
+    })),
+  ]);
+
+  rows.push(line('Gross adds (incl. churn replacement)', (y) => y.grossAdds, '#,##0'));
+  rows.push([blank]);
+  rows.push([t('Revenue')]);
+  rows.push(line('Campaigns', (y) => y.campaigns, '#,##0'));
+  rows.push(line('GMV', (y) => y.gmv));
+  rows.push(line('Subscription revenue', (y) => y.subscriptionRevenue));
+  const subscriptionRow = rows.length;
+  rows.push(line('Take-rate revenue', (y) => y.takeRateRevenue));
+  const takeRateRow = rows.length;
+
+  rows.push([
+    t('Total revenue'),
+    ...MODEL_YEARS.map((_, i) => ({
+      v: years[i].revenue,
+      f: `${ref(subscriptionRow, METRO_YEAR_COLS[i])}+${ref(takeRateRow, METRO_YEAR_COLS[i])}`,
+      fmt: '$#,##0',
+    })),
+  ]);
+  const totalRevenueRow = rows.length;
+
+  rows.push([blank]);
+  rows.push([t('Cost of revenue')]);
+  rows.push(line('Stripe fees', (y) => -y.stripeCost));
+  const stripeRow = rows.length;
+  rows.push(line('AI and infrastructure', (y) => -y.serveCost));
+  const aiRow = rows.length;
+
+  rows.push([
+    t('Total cost of revenue'),
+    ...MODEL_YEARS.map((_, i) => ({
+      v: -years[i].costOfRevenue,
+      f: `${ref(stripeRow, METRO_YEAR_COLS[i])}+${ref(aiRow, METRO_YEAR_COLS[i])}`,
+      fmt: '$#,##0',
+    })),
+  ]);
+  const totalCostRow = rows.length;
+
+  rows.push([
+    t('Gross profit'),
+    ...MODEL_YEARS.map((_, i) => ({
+      v: years[i].grossProfit,
+      // Cost rows are already negative, so this is addition, not subtraction.
+      f: `${ref(totalRevenueRow, METRO_YEAR_COLS[i])}+${ref(totalCostRow, METRO_YEAR_COLS[i])}`,
+      fmt: '$#,##0',
+    })),
+  ]);
+  const grossProfitRow = rows.length;
+
+  rows.push([blank]);
+  rows.push([t('Marketing')]);
+  rows.push(line('Acquisition marketing', (y) => -y.marketingCost));
+  const marketingRow = rows.length;
+
+  rows.push([blank]);
+  rows.push([
+    t('Metro EBITDA'),
+    ...MODEL_YEARS.map((_, i) => ({
+      v: years[i].metroEbitda,
+      f: `${ref(grossProfitRow, METRO_YEAR_COLS[i])}+${ref(marketingRow, METRO_YEAR_COLS[i])}`,
+      fmt: '$#,##0',
+    })),
+  ]);
+
+  rows.push([blank]);
+  rows.push([t('KPIs')]);
+
+  // The three ratios divide by "Total revenue", which is 0 in a metro's pre-launch year
+  // (Palm Beach, 2026). `metroKpis()` guards that with its own `revenue === 0 ? 0 : …`, so
+  // the formula must guard it too, or Excel shows #DIV/0! where the cache shows 0. The
+  // marketing / cost-of-revenue source rows are stored negative, hence the leading `-`.
+  const revZero = (i: number) => `${ref(totalRevenueRow, METRO_YEAR_COLS[i])}=0`;
+  rows.push([
+    t('Gross margin'),
+    ...MODEL_YEARS.map((_, i) => ({
+      v: metroKpis(years[i]).grossMarginPct,
+      f: `IF(${revZero(i)},0,${ref(grossProfitRow, METRO_YEAR_COLS[i])}/${ref(totalRevenueRow, METRO_YEAR_COLS[i])})`,
+      fmt: '0.0%',
+    })),
+  ]);
+  rows.push([
+    t('Marketing as % of revenue'),
+    ...MODEL_YEARS.map((_, i) => ({
+      v: metroKpis(years[i]).marketingPctOfRevenue,
+      f: `IF(${revZero(i)},0,-${ref(marketingRow, METRO_YEAR_COLS[i])}/${ref(totalRevenueRow, METRO_YEAR_COLS[i])})`,
+      fmt: '0.0%',
+    })),
+  ]);
+  rows.push([
+    t('Cost of revenue as % of revenue'),
+    ...MODEL_YEARS.map((_, i) => ({
+      v: metroKpis(years[i]).costOfRevenuePctOfRevenue,
+      f: `IF(${revZero(i)},0,-${ref(totalCostRow, METRO_YEAR_COLS[i])}/${ref(totalRevenueRow, METRO_YEAR_COLS[i])})`,
+      fmt: '0.0%',
+    })),
+  ]);
+
+  return { name: sheetName, rows };
 }
 
 function cohortSheet(): SheetSpec {
@@ -244,33 +338,121 @@ function sharedCostsSheet(): SheetSpec {
   return { name: 'Shared_Costs', rows };
 }
 
+/**
+ * `SOURCE_COLS` is where a metro or cohort sheet's own years live (label in A, no toggle
+ * column, so years are B/C/D). `TOTALS_COLS` is where THIS sheet's years live (label in A,
+ * "Include?" toggle in B, so years are C/D/E). A cross-sheet reference (anything after a
+ * `!`) always uses `SOURCE_COLS`; anything addressing this sheet's own rows uses
+ * `TOTALS_COLS`. Conflating the two was an earlier bug here: it read each metro's NEXT
+ * year's revenue instead of its own, and read a trailing empty column as 0.
+ */
+const SOURCE_COLS = ['B', 'C', 'D'] as const;
+const TOTALS_COLS = ['C', 'D', 'E'] as const;
+
 function totalsSheet(): SheetSpec {
   const years = rollup();
   const metroIds = years[0].metros.map((m) => m.metroId);
+  const sheetFor = (id: string) => SHEET_BY_METRO[id] ?? 'Metros_4toN';
+  // Row of "Total revenue" / "Metro EBITDA" on each metro (or cohort) sheet, 1-indexed.
+  // Metro sheets and the cohort sheet have different layouts, so each is looked up rather
+  // than assumed — and the two rows are NOT at the same offset, so each gets its own map.
+  const REVENUE_ROW: Readonly<Record<string, number>> = { hoboken: 16, manhattan: 16, 'palm-beach': 16, cohort: 7 };
+  const EBITDA_ROW: Readonly<Record<string, number>> = { hoboken: 27, manhattan: 27, 'palm-beach': 27, cohort: 10 };
+  // Every reference is sheet-qualified, even ones addressing this same Totals sheet — see
+  // formulaEval.ts's header comment for why.
+  const tref = (row: number, col: string) => `Totals!${col}${row}`;
+
   const rows: CellRow[] = [
     [t('Consolidated'), t('Include?'), ...MODEL_YEARS.map((y) => t(String(y)))],
     [blank],
     [t('Revenue by metro')],
   ];
-  for (const id of metroIds) {
+
+  const firstMetroRow = rows.length + 1;
+  const toggleRowByMetro: Record<string, number> = {};
+  metroIds.forEach((id) => {
+    const toggleRow = rows.length + 1;
+    toggleRowByMetro[id] = toggleRow;
     rows.push([
       t(id),
       t('YES'),
-      ...years.map((y) => n(y.metros.find((m) => m.metroId === id)?.revenue ?? 0)),
+      ...MODEL_YEARS.map((_, i) => {
+        const value = years[i].metros.find((m) => m.metroId === id)?.revenue ?? 0;
+        const source = `${sheetFor(id)}!${SOURCE_COLS[i]}${REVENUE_ROW[id]}`;
+        return { v: value, f: `IF(${tref(toggleRow, 'B')}="NO",0,${source})`, fmt: '$#,##0' };
+      }),
     ]);
-  }
+  });
+
+  rows.push([blank]);
+  const totalRow = rows.length + 1;
+  rows.push([
+    t('Total revenue'),
+    blank,
+    ...MODEL_YEARS.map((_, i) => {
+      // SUM over an explicit comma-separated list of refs, not a `C4:C6` colon range — the
+      // evaluator's tokenizer (deliberately, see formulaEval.ts) has no notion of a range,
+      // and a colon range would also be redundant syntax once every ref is sheet-qualified.
+      // Numerically identical to a range; just a different, evaluator-checkable spelling.
+      const refs = metroIds.map((_id, idx) => tref(firstMetroRow + idx, TOTALS_COLS[i]));
+      return { v: years[i].revenue, f: `SUM(${refs.join(',')})`, fmt: '$#,##0' };
+    }),
+  ]);
+
+  const metroEbitdaRow = rows.length + 1;
+  rows.push([
+    t('Metro EBITDA'),
+    blank,
+    ...MODEL_YEARS.map((_, i) => {
+      // Correction 2: this must be a live formula too — otherwise changing a metro
+      // assumption would flow through to consolidated revenue but not to consolidated
+      // EBITDA. One row per metro is not needed (unlike the revenue block above); this
+      // single row sums each metro sheet's OWN EBITDA cell, honouring the same toggles.
+      const terms = metroIds.map((id) => {
+        const source = `${sheetFor(id)}!${SOURCE_COLS[i]}${EBITDA_ROW[id]}`;
+        return `IF(${tref(toggleRowByMetro[id], 'B')}="NO",0,${source})`;
+      });
+      return { v: years[i].metroEbitda, f: `SUM(${terms.join(',')})`, fmt: '$#,##0' };
+    }),
+  ]);
+
+  // Stays a plain value, deliberately: not a per-metro figure — it comes from the
+  // confidential budget at the rollup layer, not from any metro sheet.
+  rows.push([t('Shared cost'), blank, ...years.map((y) => n(-y.sharedCost))]);
+  const sharedCostRow = rows.length;
+
+  rows.push([
+    t('EBITDA'),
+    blank,
+    ...MODEL_YEARS.map((_, i) => ({
+      v: years[i].ebitda,
+      f: `${tref(metroEbitdaRow, TOTALS_COLS[i])}+${tref(sharedCostRow, TOTALS_COLS[i])}`,
+      fmt: '$#,##0',
+    })),
+  ]);
+
+  // Stays a plain value, deliberately: the cohort's metro count is not expressible as a
+  // cell reference.
+  rows.push([t('Metros live'), blank, ...years.map((y) => n(y.metrosLive, '#,##0'))]);
+
   rows.push(
-    [blank],
-    [t('Total revenue'), blank, ...years.map((y) => n(y.revenue))],
-    [t('Metro EBITDA'), blank, ...years.map((y) => n(y.metroEbitda))],
-    [t('Shared cost'), blank, ...years.map((y) => n(-y.sharedCost))],
-    [t('EBITDA'), blank, ...years.map((y) => n(y.ebitda))],
-    [t('Metros live'), blank, ...years.map((y) => n(y.metrosLive, '#,##0'))],
     [blank],
     [t('Cross-check — PROJECT_CONTEXT section 3 top-down band')],
     [t('Top-down revenue, low'), blank, ...years.map((y) => n(y.topDownRevenueLow))],
     [t('Top-down revenue, high'), blank, ...years.map((y) => n(y.topDownRevenueHigh))],
-    [t('Bottom-up as a multiple of the band midpoint'), blank, ...years.map((y) => ({ v: y.bottomUpVsTopDown, fmt: '0.00x' }))],
+  );
+  const lowRow = rows.length - 1;
+  const highRow = rows.length;
+  rows.push([
+    t('Bottom-up as a multiple of the band midpoint'),
+    blank,
+    ...MODEL_YEARS.map((_, i) => ({
+      v: years[i].bottomUpVsTopDown,
+      f: `${tref(totalRow, TOTALS_COLS[i])}/((${tref(lowRow, TOTALS_COLS[i])}+${tref(highRow, TOTALS_COLS[i])})/2)`,
+      fmt: '0.00x',
+    })),
+  ]);
+  rows.push(
     [t('These are expected to disagree. The band was asserted top-down; this model is built')],
     [t('bottom-up from Census venue counts. Neither has been tuned to match the other.')],
   );
