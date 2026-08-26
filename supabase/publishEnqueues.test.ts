@@ -89,12 +89,28 @@ describe('publish enqueue functions', () => {
   // post and answers it with a conflict. That is the two-fixes-cancelling-out
   // defect (Codex, round 9); the only visible difference is one argument.
   it.each(enqueueSources())('$name digests the media SOURCES, not the staged paths', ({ source }) => {
-    expect(source).toMatch(/p_media_sources:\s*media\.map/);
+    // Hoisted, because the fast-path lookup and the enqueue must digest the
+    // same thing and reading `body` twice is how they would come to differ.
+    expect(source).toMatch(/const mediaSources = media\.map\(/);
+    expect(source).toMatch(/p_media_sources:\s*mediaSources/);
     // The wrong version, spelled out so it cannot creep back in.
     expect(source).not.toMatch(/p_media_sources:\s*staging\.destinations/);
     // And the security check stays on destinations, which is the half sources
     // deliberately do not touch.
     expect(source).toMatch(/p_media_paths:\s*staging\.destinations/);
+  });
+
+  // ORDER, not merely presence. Resolving the key after staging means a retry
+  // re-probes and re-copies the source first — so a source the user has since
+  // deleted answers `media_not_found` for a post that is queued and about to
+  // publish, and every ordinary retry pays for a copy it discards a moment
+  // later (Codex, round 10).
+  it.each(enqueueSources())('$name resolves the key BEFORE staging', ({ source }) => {
+    const resolve = source.indexOf("'resolve_publish_idempotency'");
+    const stage = source.indexOf('await staging.stage()');
+    expect(resolve).toBeGreaterThan(-1);
+    expect(stage).toBeGreaterThan(-1);
+    expect(resolve).toBeLessThan(stage);
   });
 
   // Claiming an outcome this branch cannot know is how a queued post gets

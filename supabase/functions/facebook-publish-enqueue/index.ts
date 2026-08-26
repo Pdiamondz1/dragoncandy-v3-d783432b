@@ -142,6 +142,64 @@ serve(async (req: Request) => {
     // rule about WHICH empty posts are legal is `validateJobShape`'s.
     const media = parseMediaRefs(body?.media, { allowEmpty: true });
 
+    // Hoisted: the lookup below and the enqueue further down must agree
+    // exactly, and reading `body` twice is how they would come to differ.
+    const mediaSources = media.map((m) => `${m.bucket}/${m.path}`);
+    const scheduledAt = typeof body?.scheduled_at === 'string' ? body.scheduled_at : null;
+    const sourceScheduleId = typeof body?.source_schedule_id === 'string'
+      ? body.source_schedule_id
+      : null;
+
+    // RESOLVE THE KEY BEFORE STAGING ANYTHING.
+    //
+    // The documented recovery from a lost enqueue response is "retry with the
+    // same key". Staging first means the retry re-probes and re-copies the
+    // source before anything can tell it the job already exists — so a source
+    // the user has since deleted answers `media_not_found` for a post that is
+    // queued and about to publish. It also copies the media a second time on
+    // every ordinary retry, only to discard it a moment later.
+    //
+    // This is a FAST PATH, not the gate: `enqueue_publish_job` runs both checks
+    // itself, and two simultaneous attempts are still refereed by the unique
+    // index. That is why this may be a plain read with no lock.
+    const { data: resolved, error: resolveError } = await asUser.rpc(
+      'resolve_publish_idempotency',
+      {
+        p_idempotency_key: idempotencyKey,
+        p_platform: 'facebook',
+        p_content_type: contentType,
+        p_media_sources: mediaSources,
+        p_scheduled_at: scheduledAt,
+        p_caption: caption,
+        p_source_schedule_id: sourceScheduleId,
+        p_account_key: pageId,
+      },
+    );
+
+    if (resolveError) {
+      // A read that failed tells us nothing either way, and guessing "not a
+      // replay" would stage and enqueue a second time. Falling through is safe
+      // ONLY because the RPC repeats both checks — so this is a lost
+      // optimisation, not a lost guarantee.
+      console.warn(LABEL, 'idempotency fast path unavailable:', resolveError.message);
+    } else if (resolved?.conflict) {
+      return json(
+        req,
+        { error: 'idempotency_key_conflict', message: resolved.reason },
+        409,
+      );
+    } else if (resolved?.found) {
+      // Already queued. Nothing was staged, so there is nothing to discard.
+      return json(req, {
+        job_id: resolved.job_id,
+        page_id: pageId,
+        content_type: contentType,
+        media_count: media.length,
+        scheduled_at: body?.scheduled_at ?? null,
+        duplicate: true,
+      });
+    }
+
     staging = mediaStaging({ admin, asUser, userId: user.id, media, label: LABEL });
 
     // Against the DESTINATION names, because those are what the sweep reads the
@@ -175,12 +233,10 @@ serve(async (req: Request) => {
       // make every retry of the same approval look like a different post and
       // answer it with `idempotency_key_conflict` — the exact recovery the key
       // exists to provide. See 20260826400000.
-      p_media_sources: media.map((m) => `${m.bucket}/${m.path}`),
-      p_scheduled_at: typeof body?.scheduled_at === 'string' ? body.scheduled_at : null,
+      p_media_sources: mediaSources,
+      p_scheduled_at: scheduledAt,
       p_caption: caption,
-      p_source_schedule_id: typeof body?.source_schedule_id === 'string'
-        ? body.source_schedule_id
-        : null,
+      p_source_schedule_id: sourceScheduleId,
       p_account_key: pageId,
     });
 
