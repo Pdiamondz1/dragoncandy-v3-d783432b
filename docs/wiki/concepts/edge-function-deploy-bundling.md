@@ -196,7 +196,7 @@ After the deploy: all 12 echo `capacitor://localhost` with the `.com` control st
 
 Then a **full sweep of all 125 deployed functions**, which is strictly stronger than re-testing
 the 12 that were touched — it also catches a regression elsewhere, or a function the original
-count missed. **stale = 0**, ok = 105, nocors = 18, wildcard = 2 — 125 exactly, and the buckets are stated so they add up. The 2 are `outstand-proxy` and `social-proxy` answering `*` (below); an unreconciled total is how a silently-dropped case hides inside a clean result.
+count missed. **stale = 0**, ok = 105, nocors = 18, wildcard = 2 — 125 exactly, and the buckets are stated so they add up. The 2 are `outstand-proxy` and `social-proxy` answering `*` (below, now closed — a later sweep the same day reads ok = 107, wildcard = 0); an unreconciled total is how a silently-dropped case hides inside a clean result.
 
 Those 18 answer no preflight at all, and are deliberately kept as their own bucket: they are
 cron and webhook endpoints with no browser caller, and folding "no header" into "wrong header"
@@ -209,6 +209,15 @@ would have inflated the count and hidden the real defect inside it.
   Neither sets `Access-Control-Allow-Credentials`, so a cross-origin page still cannot read a
   response without holding the user's JWT: a real deviation from the shared `corsHeaders`
   helper, not a live hole.
+  ~~"out of scope for a redeploy"~~ — **CLOSED the same day (#539, merged `8bd8b3c0`, deployed
+  and swept).** They diverged because both need a WIDER `Allow-Headers` than `corsHeaders`
+  provides, so calling it would have broken them and copying the block was easier. The fix
+  shares the *origin decision* (`resolveAllowedOrigin`) without forcing the header lists to
+  match, and stamps it at the response boundary — `serve(req => withAllowedOrigin(req, await
+  handleRequest(req)))` — because both build most responses in module-level `jsonResponse`
+  helpers with no `req` in scope. **A shared helper only gets used if it fits; where one is
+  nearly-but-not-quite right, expect copies.** See
+  `docs/wiki/raw/sessions/2026-08-26-proxy-cors-wildcard.md`.
 - **Five of the 12 answer 500 rather than 401 unauthenticated**;
   `docs/PROJECT_CONTEXT.md` recorded that class as two and is corrected to five in the same
   change that added this section. Four others validate the request body
