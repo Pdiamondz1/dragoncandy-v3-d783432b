@@ -3,6 +3,7 @@ import Stripe from "https://esm.sh/stripe@18.5.0";
 import { createClient } from "npm:@supabase/supabase-js@2.57.2";
 import { corsHeaders } from "../_shared/cors.ts";
 import { isTestKey } from "../_shared/stripe-mode.ts";
+import { statusFor, unauthorized } from "../_shared/http-error.ts";
 
 const logStep = (step: string, details?: any) => {
   console.log(`[GET-STRIPE-DASHBOARD-LINK] ${step}`, details ? JSON.stringify(details) : '');
@@ -23,11 +24,11 @@ serve(async (req) => {
     );
 
     const authHeader = req.headers.get("Authorization");
-    if (!authHeader) throw new Error("No authorization header provided");
+    if (!authHeader) throw unauthorized("No authorization header provided");
 
     const token = authHeader.replace("Bearer ", "");
     const { data: { user }, error: authError } = await supabaseClient.auth.getUser(token);
-    if (authError || !user) throw new Error("Authentication failed");
+    if (authError || !user) throw unauthorized("Authentication failed");
     logStep('User authenticated', { userId: user.id });
 
     const url = new URL(req.url);
@@ -120,7 +121,7 @@ serve(async (req) => {
       }),
       {
         headers: { ...corsHeaders(req), "Content-Type": "application/json" },
-        status: 400,
+        status: statusFor(error, 400),
       }
     );
   }

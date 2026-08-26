@@ -5,6 +5,7 @@ import { writePaymentEvent } from "../_shared/payment-events.ts";
 import { calculatePlatformFee, getOrgTakeRate } from "../_shared/platform-fee.ts";
 import { corsHeaders } from "../_shared/cors.ts";
 import { verifyPayoutReady } from "../_shared/payout-ready.ts";
+import { statusFor, unauthorized } from "../_shared/http-error.ts";
 
 const logStep = (step: string, details?: any) => {
   const detailsStr = details ? ` - ${JSON.stringify(details)}` : '';
@@ -29,14 +30,14 @@ serve(async (req) => {
     if (!stripeKey) throw new Error("STRIPE_SECRET_KEY is not set");
 
     const authHeader = req.headers.get("Authorization");
-    if (!authHeader) throw new Error("No authorization header provided");
+    if (!authHeader) throw unauthorized("No authorization header provided");
 
     const token = authHeader.replace("Bearer ", "");
     const { data: userData, error: userError } = await supabaseClient.auth.getUser(token);
-    if (userError) throw new Error(`Authentication error: ${userError.message}`);
+    if (userError) throw unauthorized(`Authentication error: ${userError.message}`);
     
     const user = userData.user;
-    if (!user) throw new Error("User not authenticated");
+    if (!user) throw unauthorized("User not authenticated");
     logStep("User authenticated", { userId: user.id });
 
     const { sponsorshipId } = await req.json();
@@ -188,7 +189,7 @@ serve(async (req) => {
     logStep("ERROR", { message: errorMessage });
     return new Response(JSON.stringify({ error: errorMessage }), {
       headers: { ...corsHeaders(req), "Content-Type": "application/json" },
-      status: 500,
+      status: statusFor(error),
     });
   }
 });

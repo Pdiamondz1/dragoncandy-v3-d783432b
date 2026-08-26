@@ -3,6 +3,7 @@ import Stripe from "https://esm.sh/stripe@18.5.0";
 import { createClient } from "npm:@supabase/supabase-js@2.57.2";
 import { writePaymentEvent } from "../_shared/payment-events.ts";
 import { corsHeaders } from "../_shared/cors.ts";
+import { statusFor, unauthorized } from "../_shared/http-error.ts";
 
 const logStep = (step: string, details?: Record<string, unknown>) => {
   console.log(`[INVOICE-RUSH] ${step}${details ? ' - ' + JSON.stringify(details) : ''}`);
@@ -25,7 +26,7 @@ serve(async (req) => {
 
   try {
     const authHeader = req.headers.get("Authorization");
-    if (!authHeader) throw new Error("No authorization header");
+    if (!authHeader) throw unauthorized("No authorization header");
 
     const supabaseUser = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
@@ -165,7 +166,7 @@ serve(async (req) => {
     const msg = err instanceof Error ? err.message : "Internal error";
     logStep("ERROR", { error: msg });
 
-    if (msg.includes("Unauthorized") || msg.includes("authorization") || msg.includes("mismatch")) {
+    if (statusFor(err, 0) === 401 || msg.includes("Unauthorized") || msg.includes("authorization") || msg.includes("mismatch")) {
       return new Response(JSON.stringify({ error: msg }), {
         status: 401,
         headers: { ...corsHeaders(req), "Content-Type": "application/json" },
