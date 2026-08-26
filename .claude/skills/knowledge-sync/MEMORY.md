@@ -408,6 +408,16 @@
     underneath it, so `[scope-paths]` applies **again at merge**, not once at the start. Resolve
     both-prepended-an-entry conflicts by keeping **both** sides, then verify both headings survive
     in each file — taking either side silently deletes a colleague's knowledge-sync run.
+  - **`[worktree-not-repo]` A failing check in a worktree is a claim about the WORKTREE until
+    proven otherwise.** On 2026-08-26 `npm run typecheck` failed with
+    `middleware.ts(30): Cannot find module '@vercel/functions'`, and that was reported as a
+    **pre-existing repo defect** in a PR body, a `SHIPPED_LOG` entry, a wiki raw source and
+    several commit messages — then **Codex echoed it back**, which felt like corroboration and
+    was not. `@vercel/functions` is declared in `package.json`; the worktree just had no
+    `node_modules/@vercel/`, and CI runs `npm ci`, which is why the identical check passed on two
+    other PRs the same afternoon. One `npm install` settled it. Before calling a local failure
+    pre-existing, check whether the same job passed in CI on a sibling PR — and remember that a
+    reviewer repeating your untested belief is one observation, not two.
   - **`[codex-citation]` Check Codex's CITATION, not only its claim.** It cited `AGENTS.md`,
     which `CLAUDE.md` flags as a stale duplicate and which produced a refuted P1 on #519. Here
     the same sentence was in `CLAUDE.md` too, so the finding stood — but that had to be

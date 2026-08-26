@@ -123,7 +123,18 @@ called a defect.
 
 ## Verification
 
-3,546 tests pass (315 files); production build clean. `npm run typecheck` reports one
-**pre-existing** error — `middleware.ts(30): Cannot find module '@vercel/functions'` — on a file
-this branch does not touch; Codex independently confirmed it as outside the patch. Codex clean at
-round 2.
+3,549 tests pass (320 files); production build clean; **`npm run typecheck` passes clean**.
+
+**A claim this session made four times and never tested.** The typecheck error
+`middleware.ts(30): Cannot find module '@vercel/functions'` was reported as a **pre-existing repo
+defect** in the PR body, the SHIPPED_LOG entry, this file and several commit messages — and Codex
+echoed it back ("an unchanged missing @vercel/functions dependency"), which felt like
+corroboration. It was wrong. `@vercel/functions` is declared in `package.json` (`^3.9.5`); this
+*worktree* had no `node_modules/@vercel/`. CI runs `npm ci`, which is why the identical typecheck
+passed on #531 and #532 the same afternoon. `npm install` fixed it.
+
+**A failing check in a worktree is a claim about the worktree until proven otherwise.** Two
+observations of the same untested belief — mine and a reviewer repeating mine — are not two pieces
+of evidence, which is the lesson the YouTube connector entry already records in different words.
+
+Codex clean at round 8.

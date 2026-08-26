@@ -132,9 +132,16 @@ verified-true**, and were left as written. *A refusal that names itself is the g
 `Access-Control-Allow-Origin: *` where the other 93 use the allow-list. Both authenticate by
 bearer token; exploitability untested, so it is recorded for an owner rather than called a defect.
 
-**Verified:** 3,546 tests pass (315 files); production build clean. `npm run typecheck` reports
-one **pre-existing** error — `middleware.ts(30): Cannot find module '@vercel/functions'` — on a
-file this branch does not touch, which Codex independently confirmed as outside the patch.
+**Verified:** 3,549 tests pass (320 files); production build clean; **`npm run typecheck` passes
+clean**. An earlier draft of this entry — and the PR body, and several commit messages — called
+`middleware.ts(30): Cannot find module '@vercel/functions'` a **pre-existing repo error**. **It is
+not.** `@vercel/functions` is a declared dependency in `package.json` (`^3.9.5`); this *worktree*
+simply had no `node_modules/@vercel/`, and CI runs `npm ci`, which is why the same typecheck passed
+on #531 and #532 the same afternoon. Running `npm install` here made it pass. **A failing check in
+a worktree is a claim about the worktree until you have proven it is a claim about the repo** — and
+this one was repeated across four artefacts and echoed back by Codex before anyone tested it, which
+is the same "a plausible answer to the wrong question looks exactly like progress" shape this file
+records elsewhere.
 
 ### A parallel session merged mid-branch and falsified two of this file's claims
 
