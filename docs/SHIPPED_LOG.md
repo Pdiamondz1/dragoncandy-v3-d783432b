@@ -176,6 +176,90 @@ which nothing enforces and which fails at token exchange if missed; and App Revi
 Google's and Meta's. Both TikTok buttons on the settings page also read "Connect TikTok" — one
 publishes via Outstand, one measures — and nothing on the buttons says which.
 
+## [2026-08-26] The 12 money edge functions answering `.io` were stale bundles, not a bug
+
+**Deploy only — no code change, no migration, no PR for the fix itself.**
+
+A CORS preflight from `Origin: capacitor://localhost` — the origin every fetch carries inside
+the iOS Capacitor shell — was answered `Access-Control-Allow-Origin: https://dragoncandy.io` by
+12 deployed edge functions. The browser blocks that response, and in `WKWebView` it surfaces as
+a generic fetch error naming nothing. The 12 were **exactly the money surface**:
+`release-creator-payout`, `release-package-payout`, `release-sponsorship-payout`,
+`withdraw-pending-balance`, `refund-campaign-escrow`, `refund-package-order`,
+`create-package-order-escrow`, `verify-campaign-escrow`, `verify-package-order-escrow`,
+`verify-sponsorship-payment`, `invoice-rush-surcharges`, `get-stripe-dashboard-link`.
+
+**The repo was already correct.** `_shared/cors.ts` on `main` composes `NATIVE_APP_ORIGINS`
+into its allow-set and defaults to `https://dragoncandy.com`, so current source cannot emit
+`.io` **to an origin that is not itself allow-listed**. It can and does emit `.io` to an `.io`
+caller — both TLDs stay in `APP_ORIGINS` on purpose, because GoTrue honours `.io` redirect
+targets, and `corsHeaders` echoes an allowed origin verbatim. The invariant is about the
+*fallback*, not the string. Nothing to fix; something to ship.
+
+**The control did more than confirm the finding.** Preflighting each function twice — once from
+`capacitor://localhost`, once from `https://dragoncandy.com` — showed the `.com` origin echoed
+correctly while the native one fell to `.io`. So the deployed bundle *did* know `.com`: it was
+stranded between two separate changes, after the domain migration added `.com` to `APP_ORIGINS`
+but before `DEFAULT_ORIGIN` was flipped and `NATIVE_APP_ORIGINS` existed. Without the paired
+origin, "everything answers `.com`" is indistinguishable from "the function ignores `Origin`".
+
+**The real hazard was `verify_jwt`, not the code.** `supabase functions deploy` reads
+`supabase/config.toml` relative to the working directory and applies the platform default
+`verify_jwt = true` to any function the file does not mention. Ten of the 12 are declared
+`false`; **two — `invoice-rush-surcharges` and `refund-campaign-escrow` — are absent from the
+file entirely**, which is the dangerous case precisely because it is silent. Live posture was
+therefore measured *before* deploying, with no credential, by POSTing unauthenticated and
+reading which body came back: the platform's `UNAUTHORIZED_NO_AUTH_HEADER` means the gateway
+rejected the call before our code ran; our own JSON means our code ran and rejected it. An
+invented function name returns 404, separating "registered and rejecting" from "absent". Posture
+matched `config.toml` on all 12 — the two absent ones are live `true`, exactly what the default
+would re-apply — so the deploy preserved every posture. Established, not assumed.
+
+**One constant that is not only a header.** `create-package-order-escrow` is one of three
+functions that mint real user-facing URLs from `DEFAULT_ORIGIN` when their env var is unset.
+Checked by **digest, not by value**: `supabase secrets list` returns each secret's SHA-256, and
+`APP_URL`, `DRAGONCANDY_APP_URL` and `PUBLIC_SITE_URL` all hash to the digest of
+`https://dragoncandy.com`. All set, fallback unreachable, no minted URL changed.
+
+**Verified the way the defect was found.** Every upload log listed `_shared/origins.ts` and
+`_shared/cors.ts` among its assets — a deploy that fails to bundle keeps serving the old
+version, so `Deployed Functions.` alone proves nothing, and neither does an empty diff or a
+green build. After the deploy all 12 echo `capacitor://localhost` with the `.com` control still
+echoing `.com`, and the `verify_jwt` table is byte-identical. Then a **full sweep of all 125
+deployed functions** — strictly stronger than re-testing the 12 that were touched, since it also
+catches a regression elsewhere or a function the original count missed: **stale = 0**, ok = 105,
+nocors = 18, wildcard = 2 — 125 exactly, and the buckets are stated so they add up. The 2 are
+`outstand-proxy` and `social-proxy` answering `*` (below); an unreconciled total is how a
+silently-dropped case hides inside a clean result. Those 18 answer no preflight at all and stay their own bucket; they are
+cron and webhook endpoints with no browser caller, and folding "no header" into "wrong header"
+would inflate the count and hide the real defect inside it.
+
+**The 13 → 12 delta reconciles rather than contradicting the earlier count.**
+`check-creator-payout-status` and `disconnect-stripe-account` had been fixed in between, carried
+along by the identity slice-2 deploy that redeployed them for unrelated work. And
+`refund-campaign-escrow` was newly found, because this probe covered all 125 deployed functions
+where the 2026-08-14 one covered only the 50 that `src/` invokes. **That is the same lesson one
+layer up:** the earlier entry corrects a sample generalised to the fleet, then bounds its own
+re-measurement by a different sample.
+
+**Found in scope, deliberately left alone.** `outstand-proxy` and `social-proxy` answer
+`Access-Control-Allow-Origin: *` — in the repo source, not a stale bundle, so a code change and
+out of scope; neither sets `Access-Control-Allow-Credentials`, so a cross-origin page still
+cannot read a response without holding the user's JWT. Five of the 12 answer 500 rather than 401
+unauthenticated — `PROJECT_CONTEXT` recorded that class as two and is corrected to five in
+this same change — and four validate the request
+body before checking auth. All pre-existing: mixing a behaviour change into a redeploy makes a
+failure impossible to attribute to one or the other, which is the whole reason a no-code-change
+deploy is verifiable at all.
+
+**The durable lesson.** A deployed bundle is not the repo, and reading the repo cannot tell you
+what is running. Both halves were true at once here — the source was correct, so a code review
+would have found nothing, and the behaviour was wrong, so a probe found it immediately. This
+class of bug is invisible to every check that reads files, and the fix has to be verified the
+same way it was found.
+
+→ `docs/wiki/concepts/edge-function-deploy-bundling.md` · `docs/wiki/concepts/ios-testflight-first-build.md`
+
 ## [2026-08-26] The app icon's black eye was the background showing through a hole
 
 **PR #532, open at time of writing.** Codex clean at round 2; `npm run build` clean; 3493 tests
