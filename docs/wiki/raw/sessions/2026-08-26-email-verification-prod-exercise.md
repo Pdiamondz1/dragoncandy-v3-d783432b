@@ -126,8 +126,13 @@ second review, not here — because it cleared a production-verification gap tha
 
 ## Residue
 
-- Account restored to `email_verified = true`, its starting state. Both tokens spent.
-- Two verification emails sit unread in `dame@`.
+- Account restored to `email_verified = true`, its starting state. All THREE tokens spent
+  (`29ece178` by the agent's code, `4779a877` by the agent's link probe, `7bd889aa` by the
+  founder's click at 21:26:02).
+- The founder's first two clicks, at 21:22, hit the two tokens the agent had already burned and
+  correctly failed `invalid_or_used`. Their edge-function logs are also what settled the
+  quoted-printable question from the other end: `token_prefix: "29ece178"`, intact, against the
+  agent's own corrupted probe logging `token_prefix: ")ece178-"`.
 - `dame+onboardtest@dragoncandy.com` remains a live prod account inside the 46-row
   `profiles` count (the investor-facing figure says 45; it is now 46).
 - Doc comment in `_shared/verification-code.ts` says "against a five-attempt cap" while

@@ -86,7 +86,10 @@ intact. The first control tried could not have caught it — a Google notificati
 `gmail-mcp-mangles-equals-signs`.
 
 Those clicks *did* fail, for a mundane reason worth writing down: the test had already spent both
-tokens. A used verification link failing is the design working.
+tokens. A used verification link failing is the design working. **A third email was then sent and
+deliberately left untouched, and the founder's click on it verified** — token `7bd889aa`, created
+21:25:05, consumed 21:26:02. Recording only the first two clicks reads as "the human route failed";
+the Codex review drew exactly that conclusion from an earlier draft.
 
 Sessions came from the admin API (`generate_link` → `/auth/v1/verify`), never a password.
 `supabase/scripts/staging-login.mjs` performs the same exchange but deliberately refuses

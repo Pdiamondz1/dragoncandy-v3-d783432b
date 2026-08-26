@@ -116,11 +116,25 @@ draft of this section said "end to end" and cleared a gap it had not closed:
 | leg | covered? |
 |---|---|
 | function → Resend → real inbox, code matching the stored row | **yes** |
-| emailed **link**, clicked by a person in a real mail client | **yes** — founder click, token consumed 21:26:02 |
+| emailed **link**, clicked by a person in a real mail client | **yes** — founder click on the THIRD token, consumed 21:26:02 |
 | **code** submitted and accepted, attempt budget spent | yes, but **posted straight to the endpoint** |
 | six-digit code typed into the signup panel | **no** |
 | a fresh signup creating the account | **no** — the account pre-existed |
 | the login form | **no** — the session came from an admin `generate_link` exchange |
+
+**Three tokens were issued, and the order matters** — a reviewer reading this page without it
+concluded the human click had failed, which is the opposite of what happened:
+
+| token | created | consumed by |
+|---|---|---|
+| `29ece178` | 21:09:21 | the agent spending its **code** at 21:18:09 |
+| `4779a877` | 21:10:53 | the agent's **link** probe at 21:12:31 |
+| `7bd889aa` | **21:25:05** | the **founder's click** at 21:26:02 |
+
+The founder first clicked the two *already-spent* tokens at 21:22 and both correctly refused with
+`invalid_or_used` — a used verification link failing is the design working, and the agent had
+burned both during testing without warning anyone. A third email was then sent specifically so a
+human could click a live one, and left untouched by the agent. That is the click in the table.
 
 So the link route has been walked by a human from mail client to a verified *account* — note the
 endpoint stamps `verified_at` and `email_verified` and then redirects to
