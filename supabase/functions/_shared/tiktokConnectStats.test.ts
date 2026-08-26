@@ -100,3 +100,91 @@ describe('a reconnect cannot inherit the previous account s numbers', () => {
     expect(migration).toMatch(/\) to service_role;/);
   });
 });
+
+describe('the counters are bigint, in the columns AND in both RPCs', () => {
+  const bigintMigration = readFileSync(
+    join(__dirname, '..', '..', 'migrations', '20260826230000_tiktok_counters_bigint.sql'),
+    'utf8',
+  );
+
+  const COUNTERS = ['follower_count', 'following_count', 'likes_count', 'video_count'];
+
+  it('widens all four columns', () => {
+    // `likes_count` is a LIFETIME total across every video, and the largest
+    // TikTok accounts passed int4's 2,147,483,647 long ago. The other three are
+    // nowhere near it and are widened anyway — leaving them one viral decade
+    // from the identical bug saves nothing.
+    for (const col of COUNTERS) {
+      expect(bigintMigration).toMatch(
+        new RegExp(`alter column ${col}\\s+type bigint`),
+      );
+    }
+  });
+
+  /**
+   * Scoped to each function's own declaration, and that is not fussiness.
+   *
+   * The first version of these two tests asserted `toContain('p_likes_count
+   * bigint')` against the whole file. A forced control that reverted the
+   * CONNECT function's parameter to `integer` did NOT fail it — because the
+   * CACHE function's `p_likes_count bigint default null` contains that exact
+   * substring and satisfied the assertion from twelve lines away. The test was
+   * green for a reason that had nothing to do with what it claimed to check.
+   *
+   * Same family as the logo guard that watched the two files already fixed, and
+   * the `k` pin that held a value nothing read. A green test is not evidence
+   * until something has made it go red.
+   */
+  const fnBlock = (name: string) => {
+    const start = bigintMigration.indexOf(`create function public.${name}(`);
+    expect(start, `${name} is not created in this migration`).toBeGreaterThan(-1);
+    const end = bigintMigration.indexOf(')\nreturns jsonb', start);
+    expect(end, `${name} signature is not terminated as expected`).toBeGreaterThan(start);
+    return bigintMigration.slice(start, end);
+  };
+
+  it('declares them bigint in store_tiktok_connection', () => {
+    const block = fnBlock('store_tiktok_connection');
+    for (const col of COUNTERS) {
+      expect(block).toMatch(new RegExp(`p_${col} bigint,`));
+      expect(block).not.toMatch(new RegExp(`p_${col} integer`));
+    }
+  });
+
+  it('declares them bigint in cache_tiktok_insights too', () => {
+    // The review that found this named only the connect path. The insights read
+    // writes the same four columns through its own RPC, so fixing one would
+    // leave the identical crash one endpoint over — and there it marks a
+    // healthy connection failed on every refresh rather than at connect.
+    const block = fnBlock('cache_tiktok_insights');
+    for (const col of COUNTERS) {
+      expect(block).toMatch(new RegExp(`p_${col} bigint default null`));
+      expect(block).not.toMatch(new RegExp(`p_${col} integer`));
+    }
+  });
+
+  it('leaves no integer overload of either function behind', () => {
+    // A different parameter list makes an OVERLOAD, not a replacement. It is
+    // sharper for cache_tiktok_insights, whose counters have `default null`: a
+    // call omitting them resolves to whichever overload matched, silently.
+    expect(bigintMigration).toContain('drop function if exists public.store_tiktok_connection(');
+    expect(bigintMigration).toContain('drop function if exists public.cache_tiktok_insights(');
+    // The dropped signatures must name `integer` — dropping the bigint one
+    // would delete what this migration just created.
+    expect(bigintMigration).toMatch(
+      /drop function if exists public\.cache_tiktok_insights\(\s*uuid, text, jsonb, integer, integer, integer, integer, text, text, text\s*\);/,
+    );
+  });
+
+  it('keeps coalesce in the cache path and set-from-excluded in the connect path', () => {
+    // Opposite rules, deliberately. cache_tiktok_insights returns
+    // `account_changed` unless open_id matches, so it is always refreshing the
+    // SAME account and an absent stat should leave the last known value.
+    // store_tiktok_connection may be writing a DIFFERENT account over the old
+    // row, so a null there must erase.
+    for (const col of COUNTERS) {
+      expect(bigintMigration).toContain(`${col} = coalesce(p_${col}, ${col})`);
+      expect(bigintMigration).toContain(`= excluded.${col}`);
+    }
+  });
+});
