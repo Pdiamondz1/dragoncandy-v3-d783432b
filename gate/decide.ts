@@ -46,10 +46,25 @@ const COOKIE_LIFETIME_MS = 30 * 24 * 60 * 60 * 1000;
  *
  * `/sitemap.xml` is deliberately absent: de-listing the site while publishing a
  * machine-readable index of every route defeats the point.
+ *
+ * `/privacy.html` is here because four platform reviews — Google (YouTube), Meta
+ * (Instagram, Facebook), TikTok and X — each require an ANONYMOUSLY REACHABLE
+ * privacy policy, and `/privacy` is a SPA route that 401s the moment this gate is
+ * on. Without it, switching the gate on and getting the connectors approved are
+ * mutually exclusive. It obeys the rule above: `public/privacy.html` is a real
+ * file, generated from the app's own policy source by `npm run legal:static` (see
+ * `scripts/build-legal-static.ts`, which refuses to run unless this entry exists —
+ * a file nobody allowlists is 401'd like everything else, and an allowlisted path
+ * with no file serves the SPA shell, so the two halves are useless apart).
+ *
+ * Note it does NOT widen the gate: the page is fully self-contained, so passing it
+ * serves one HTML document and nothing else — no bundle, no `/assets/*`, no route
+ * map. `/privacy` itself stays gated.
  */
-const ALLOWED_EXACT = new Set([
+export const ALLOWED_EXACT = new Set([
   '/robots.txt',
   '/favicon.ico',
+  '/privacy.html',
 ]);
 
 export type GateEnv = {

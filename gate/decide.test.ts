@@ -1,5 +1,7 @@
+import { existsSync } from 'node:fs';
+import { join } from 'node:path';
 import { describe, it, expect } from 'vitest';
-import { decide, GATE_COOKIE_NAME, type GateEnv } from './decide';
+import { ALLOWED_EXACT, decide, GATE_COOKIE_NAME, type GateEnv } from './decide';
 
 const SECRET = 'test-secret';
 const PASSWORD = 'hunter2';
@@ -50,9 +52,44 @@ describe('decide — when the gate is off', () => {
 
 describe('decide — the static allowlist', () => {
   it('passes only paths with a real file behind them', async () => {
-    for (const p of ['/robots.txt', '/favicon.ico']) {
+    for (const p of ['/robots.txt', '/favicon.ico', '/privacy.html']) {
       expect((await decide(req(p), ON)).kind, p).toBe('pass');
     }
+  });
+
+  /**
+   * The rule stated in `decide.ts`'s comment, enforced instead of described.
+   *
+   * An allowlisted path with no backing file does not serve "nothing" —
+   * `vercel.json` rewrites it to `/index.html`, so it serves the SPA shell to an
+   * unauthenticated browser, which is the exact thing the gate exists to stop.
+   * And because the app talks straight to `supabase.co`, which never traverses
+   * Vercel, that shell is a working product, not a screenshot.
+   *
+   * This walks the real allowlist rather than a copy of it, so a future entry is
+   * covered by having been added — which is the failure mode prose invites: the
+   * comment has said this since 2026-08-23 and nothing checked it.
+   */
+  it('every allowlisted path has a real file under public/', () => {
+    const publicDir = join(import.meta.dirname!, '..', 'public');
+
+    // The control. A pathless assertion over an empty set passes vacuously, and
+    // an allowlist that shrank to nothing would look identical to one that is fine.
+    expect(ALLOWED_EXACT.size).toBeGreaterThanOrEqual(3);
+
+    for (const path of ALLOWED_EXACT) {
+      expect(existsSync(join(publicDir, path.slice(1))), `${path} has no file`).toBe(true);
+    }
+
+    // The other direction of the control: a path that is NOT allowlisted and has
+    // no file, proving `existsSync` here can return false at all.
+    expect(existsSync(join(publicDir, 'apple-app-site-association'))).toBe(false);
+  });
+
+  it('does NOT pass /privacy — that is the SPA route, and passing it un-gates the app', async () => {
+    // The whole reason public/privacy.html exists as a separate file. Allowlisting
+    // the pretty URL would have been the obvious move and the wrong one.
+    expect((await decide(req('/privacy'), ON)).kind).toBe('challenge');
   });
 
   it('does NOT pass the sitemap, which would leak the route map', async () => {
