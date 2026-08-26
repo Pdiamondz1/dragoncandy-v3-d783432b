@@ -6,8 +6,10 @@ Target: the email-verification code flow (#527, #528, #530, #531), whose §5 ent
 
 ## Preconditions established first
 
-- `dame+onboardtest@dragoncandy.com` = `f72d7e7d-6e72-4b75-a145-24b0be822b99`, created
-  2026-08-24 22:29:57, role `content_creator`, `email_verified = true`.
+- `dame+onboardtest@dragoncandy.com`, created 2026-08-24 22:29:57, role `content_creator`,
+  `email_verified = true`. (Its `profiles.id` is deliberately not recorded here — the email
+  identifies the row, and a stable prod USER id in the repo buys nothing. Raised by the Codex
+  second review. Amended before merge, so `raw/`'s immutability is not in play.)
 - `email_verification_tokens` held **0 rows**, and had never held one this session's probes
   could see. So the feature genuinely had not been exercised.
 - The empty table was NOT suspicious: `cron.job` #6, `expire-email-verification-tokens`,
