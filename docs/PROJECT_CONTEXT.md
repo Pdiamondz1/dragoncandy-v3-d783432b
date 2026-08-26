@@ -76,10 +76,14 @@ paid campaign in under 60 seconds.
 
 ## 4. Current State
 
-Pre-revenue by choice. **45 organic users** (read off prod 2026-08-24 — `select count(*)
+Pre-revenue by choice. **45 organic users — but `profiles` now returns 46** (re-counted
+2026-08-26). The 46th is `dame+onboardtest@dragoncandy.com`, a test account created
+2026-08-24 22:29 UTC — *after* the read below — and it is the only row added since
+2026-08-20, so organic is still 45 and a bare `count(*)` now overstates it by one.
+Subtract test accounts before quoting this anywhere. (Read off prod 2026-08-24 — `select count(*)
 from profiles`; this line said "~30" and the investor model had copied that figure and
 tagged it MEASURED, so a number wrong by a third was vouched for by its own provenance
-tag), $0 paying customers (also confirmed against prod the same day), **~$569/mo
+tag.) $0 paying customers (also confirmed against prod the same day), **~$569/mo
 operating cost** (as of 2026-08-23: Lovable $50, Anthropic $200, **Outstand.so $249**,
 Supabase $45, OpenAI $25 — sums to $569; this line briefly stated $572, which did not
 reconcile with these same five components, until corrected the same day, and the $3
@@ -207,8 +211,8 @@ Engineering cannot close these. Ordered by what blocks launch.
   **Both routes exercised end to end on prod 2026-08-26**, founder click on a live link included.
   **Pending:** the six-digit input has never been typed in a browser — everything beneath it is
   proven, but that needs a fresh signup; `dame+onboardtest@dragoncandy.com` is a live prod account
-  counted in the investor-facing user figure; and a distinct wizard-completion signal to replace
-  `is_completed` as the routing gate.
+  and is the **46th** `profiles` row, i.e. NOT inside §4's 45 (see there); and a distinct
+  wizard-completion signal to replace `is_completed` as the routing gate.
   → `docs/wiki/concepts/email-verification-routes.md` · #527, #528, #530, #531
 - **X (Twitter) analytics connector** — merged, applied, deployed. **TWO accounts are connected,
   not one, and the read is no longer failing** — this entry said `last_synced_at` was null and
