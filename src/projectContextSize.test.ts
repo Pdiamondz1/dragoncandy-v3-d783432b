@@ -81,10 +81,13 @@ function sectionFive(): string {
  * top-level bullet, the next heading, or the next unindented paragraph (e.g. the trailing
  * "Workflow discipline" block).
  */
-function parseEntries(section: string): { title: string; lines: number }[] {
+type Entry = { title: string; lines: number; subsection: string; body: string };
+
+function parseEntries(section: string): Entry[] {
   const lines = section.split('\n');
-  const entries: { title: string; lines: number }[] = [];
-  let current: { title: string; lines: number } | null = null;
+  const entries: Entry[] = [];
+  let current: Entry | null = null;
+  let subsection = '';
 
   for (const line of lines) {
     const isTopLevelBullet = line.startsWith('- ');
@@ -93,18 +96,39 @@ function parseEntries(section: string): { title: string; lines: number }[] {
 
     if (isTopLevelBullet) {
       if (current) entries.push(current);
-      current = { title: line.slice(2, 90), lines: 1 };
+      current = { title: line.slice(2, 90), lines: 1, subsection, body: line };
       continue;
     }
-    if (isHeading || isUnindentedProse) {
+    if (isHeading) {
+      if (current) entries.push(current);
+      current = null;
+      if (line.startsWith('### ')) subsection = line.slice(4).trim();
+      continue;
+    }
+    if (isUnindentedProse) {
       if (current) entries.push(current);
       current = null;
       continue;
     }
-    if (current && line.trim() !== '') current.lines += 1;
+    if (current && line.trim() !== '') {
+      current.lines += 1;
+      current.body += '\n' + line;
+    }
   }
   if (current) entries.push(current);
   return entries;
+}
+
+/**
+ * Subsections that record WORK. Every entry in one must say where its detail lives.
+ * "Open items — founder action" is deliberately excluded: those are tasks for a human, not
+ * records of shipped work, so they have nothing to point at.
+ */
+const WORK_SUBSECTIONS = ['In flight', 'Built — awaiting founder go-live', 'Shipped'];
+
+/** An entry's detail is reachable if it names a doc, or explicitly declares there is none. */
+function hasDestination(entry: Entry): boolean {
+  return /`docs\/[A-Za-z0-9._\-/]+\.md`/.test(entry.body) || entry.body.includes('no wiki page yet');
 }
 
 describe('PROJECT_CONTEXT.md stays an index', () => {
@@ -148,6 +172,12 @@ describe('PROJECT_CONTEXT.md stays an index', () => {
     // Same fixture discipline for the pointer extractor used by the check below.
     expect(extractDocPointers('see `docs/wiki/concepts/a.md` and `docs/SHIPPED_LOG.md` here'))
       .toEqual(['docs/wiki/concepts/a.md', 'docs/SHIPPED_LOG.md']);
+
+    // ...and for subsection tracking + the destination rule, which the checks below depend on.
+    expect(parsed.map((e) => e.subsection)).toEqual(['In flight', 'In flight', 'Shipped']);
+    expect(hasDestination({ ...parsed[0], body: 'x → `docs/wiki/concepts/a.md` · #1' })).toBe(true);
+    expect(hasDestination({ ...parsed[0], body: 'x → no wiki page yet · #1' })).toBe(true);
+    expect(hasDestination({ ...parsed[0], body: 'x — no destination at all · #1' })).toBe(false);
   });
 
   it('CONTROL: every entry bullet in §5 is accounted for by the parser', () => {
@@ -187,6 +217,29 @@ describe('PROJECT_CONTEXT.md stays an index', () => {
       'These §5 pointers name a file that does not exist, so the detail they promise cannot be ' +
         'reached. Either restore the file or correct the pointer — and never trim an entry ' +
         'whose pointer is broken, because §5 may be the only remaining copy.',
+    ).toEqual([]);
+  });
+
+  it('every work entry says where its detail lives', () => {
+    // The pointer check above only validates pointers that EXIST, so an entry could be trimmed
+    // to one line, have its pointer deleted along with the prose, and pass silently — which is
+    // precisely the destructive case both checks are for. Codex caught that gap; this closes it
+    // by requiring a destination rather than merely validating the ones present.
+    //
+    // "Open items — founder action" is excluded on purpose: those are tasks for a human, not
+    // records of work, so they have nothing to point at. Scoping by subsection is what keeps
+    // this from pressuring an author to invent a pointer for "create a Facebook Page".
+    const undocumented = entries
+      .filter((e) => WORK_SUBSECTIONS.includes(e.subsection))
+      .filter((e) => !hasDestination(e))
+      .map((e) => `${e.subsection}: ${e.title}`);
+
+    expect(
+      undocumented,
+      'These §5 entries name no destination, so nothing records where their detail lives. Add a ' +
+        '`docs/...md` pointer, or the literal marker "no wiki page yet" if the prose has not ' +
+        'been written — never leave an entry silent, because that is indistinguishable from ' +
+        'detail that was deleted.',
     ).toEqual([]);
   });
 
