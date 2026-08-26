@@ -50,6 +50,7 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'npm:@supabase/supabase-js@2';
 import { isAuthorizedIngest } from '../_shared/ingest-auth.ts';
+import { PUBLISH_BUCKET } from '../_shared/publish-staging.ts';
 import { InstagramError } from '../_shared/instagram.ts';
 import {
   ensureFreshToken,
@@ -72,8 +73,6 @@ import {
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 
-const PUBLISH_BUCKET = 'publish-media';
-
 /**
  * How long a claim may be held before the janitor takes it back.
  *
@@ -91,6 +90,21 @@ const CLAIM_TTL_SECONDS = 15 * 60;
  * transcoding gives its attempt back.
  */
 const MAX_ATTEMPTS = 5;
+
+/**
+ * How long a job may stay due-but-unpublished before we stop and ask a person.
+ *
+ * `MAX_ATTEMPTS` cannot end a job that is only ever POLLED, because a poll
+ * releases its attempt on purpose — so a media file the platform never reports
+ * as ready or failed would be claimed and released for ever. In practice Meta
+ * ends it (a container or upload session expires in about a day), but that is a
+ * third party's behaviour rather than a bound this function controls.
+ *
+ * Deliberately longer than Meta's own expiry, so Meta's terminal status stays
+ * the primary mechanism — it carries a reason a person can act on, where this
+ * only reports that nothing was ever heard. See 20260826370000.
+ */
+const MAX_AGE_SECONDS = 48 * 60 * 60;
 
 /** Jobs advanced per tick. Bounded so a backlog costs several runs, not a timeout. */
 const MAX_PER_RUN = 10;
@@ -183,6 +197,7 @@ serve(async (req: Request) => {
   };
   let reclaimed = 0;
   let flagged = 0;
+  let expired = 0;
 
   // Accounts that answered "out of allowance" this run. Without this, one
   // account at its 100-per-24h cap is the globally oldest due job every time
@@ -205,6 +220,7 @@ serve(async (req: Request) => {
         p_rate_limit: RATE_LIMIT_POSTS,
         p_rate_window_seconds: RATE_WINDOW_SECONDS,
         p_max_attempts: MAX_ATTEMPTS,
+        p_max_age_seconds: MAX_AGE_SECONDS,
         p_skip_account_keys: rateLimited,
         p_skip_job_ids: advanced,
         // Scoped to this platform, because the rate limit is not the same
@@ -223,6 +239,7 @@ serve(async (req: Request) => {
 
       reclaimed += Number(claim?.reclaimed ?? 0);
       flagged += Number(claim?.flagged ?? 0);
+      expired += Number(claim?.expired ?? 0);
 
       if (!claim?.claimed) {
         if (claim?.reason === 'rate_limited' && claim?.account_key) {
@@ -244,7 +261,13 @@ serve(async (req: Request) => {
       );
     }
 
-    return json({ ...counts, reclaimed, flagged });
+    if (expired > 0) {
+      console.error(
+        `[instagram-publish-sweep] ${expired} job(s) passed the deadline without the platform ever answering`,
+      );
+    }
+
+    return json({ ...counts, reclaimed, flagged, expired });
   } catch (err) {
     console.error('[instagram-publish-sweep] unexpected:', err);
     return json({ error: 'internal_error', ...counts }, 500);

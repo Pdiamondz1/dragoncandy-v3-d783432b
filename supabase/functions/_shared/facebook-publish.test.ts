@@ -5,14 +5,25 @@ import {
   hasPublishPermission,
   isVideoReady,
   isVideoTerminal,
+  mediaKindOf,
   metaErrorCode,
+  MULTI_MEDIA_SUPPORTED,
   protocolFor,
   PROTOCOL_STEPS,
+  PROVEN_NOT_PUBLISHED_CODES,
+  provesNothingWasPublished,
   PUBLISH_TASK,
   RATE_LIMIT_CODES,
+  RATE_LIMIT_POSTS,
+  RATE_WINDOW_SECONDS,
   requirePublishAccess,
+  validateJobShape,
+  videoEdgeKind,
   videoStatusIsProgress,
 } from './facebook-publish.ts';
+import {
+  RATE_LIMIT_POSTS as IG_RATE_LIMIT_POSTS,
+} from './instagram-publish.ts';
 
 // The permission and the task are granted by DIFFERENT people and fail
 // DIFFERENTLY, so a check that collapses them sends half the people who hit it
@@ -156,5 +167,166 @@ describe('native scheduling', () => {
   // Meta means the approval and the release stop being one decision we control.
   it('is deliberately not used', () => {
     expect(FACEBOOK_NATIVE_SCHEDULING_USED).toBe(false);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Formats: Facebook's, deliberately NOT Instagram's
+// ---------------------------------------------------------------------------
+describe('mediaKindOf', () => {
+  it('CONTROL — the formats both platforms share still resolve', () => {
+    expect(mediaKindOf('u/b/photo.jpg')).toBe('image');
+    expect(mediaKindOf('u/b/clip.mp4')).toBe('video');
+  });
+
+  // The reason this list is its own rather than an import from the Instagram
+  // module: Instagram accepts JPEG only, and refusing a PNG here because the
+  // sibling refuses one would refuse a post Facebook would have taken.
+  it.each(['png', 'gif', 'bmp', 'tif', 'tiff'])(
+    'accepts .%s, which Instagram does not',
+    (ext) => {
+      expect(mediaKindOf(`u/b/photo.${ext}`)).toBe('image');
+    },
+  );
+
+  it('is case-insensitive about the extension', () => {
+    expect(mediaKindOf('u/b/CLIP.MOV')).toBe('video');
+  });
+
+  it('reads the extension from the FILENAME, not from anywhere in the path', () => {
+    // A dotted DIRECTORY must not be judged as the file's format.
+    expect(() => mediaKindOf('my.mp4folder/clip')).toThrow(/not \.unknown/);
+    // And a path with no dot at all must not report itself as the extension.
+    expect(() => mediaKindOf('a/b/c')).toThrow(/not \.unknown/);
+  });
+
+  it('refuses a format Facebook will not take', () => {
+    expect(() => mediaKindOf('u/b/thing.webm')).toThrow(/not \.webm/);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Shape rules, and the protocol they select
+// ---------------------------------------------------------------------------
+describe('validateJobShape', () => {
+  it('CONTROL — each protocol is reachable by a job that should reach it', () => {
+    expect(validateJobShape('feed', [], 'closed Monday')).toBe('feed_text');
+    expect(validateJobShape('feed', ['u/0.jpg'], 'lunch')).toBe('photo_single');
+    expect(validateJobShape('stories', ['u/0.jpg'], null)).toBe('photo_story');
+    expect(validateJobShape('reels', ['u/0.mp4'], 'watch this')).toBe('video_session');
+  });
+
+  // The one place the platforms genuinely disagree about what a post IS.
+  it('accepts a feed post with no media at all, which Instagram cannot do', () => {
+    expect(validateJobShape('feed', [], 'we are open late tonight')).toBe('feed_text');
+  });
+
+  it('but a post with neither media nor text is not a post', () => {
+    expect(() => validateJobShape('feed', [], null)).toThrow(/needs some text/);
+    expect(() => validateJobShape('feed', [], '')).toThrow(/needs some text/);
+  });
+
+  it('only a FEED post may be published without media', () => {
+    expect(() => validateJobShape('stories', [], 'x')).toThrow(/caption/);
+    expect(() => validateJobShape('reels', [], null)).toThrow(/Only a feed post/);
+  });
+
+  // Meta accepts the field on a story and drops it. Accepting it here would let
+  // an owner believe their story carried text it never had.
+  it('refuses a caption on a story rather than letting Meta discard it', () => {
+    expect(() => validateJobShape('stories', ['u/0.jpg'], 'hi')).toThrow(/discards captions/);
+  });
+
+  it('a Reel must be a video, and a still image is not one', () => {
+    expect(() => validateJobShape('reels', ['u/0.jpg'], null)).toThrow(/must be a video/);
+  });
+
+  it('a plain feed VIDEO runs the upload session, not the photo path', () => {
+    expect(validateJobShape('feed', ['u/0.mov'], 'a video post')).toBe('video_session');
+  });
+
+  it('a story VIDEO runs the upload session; a story PHOTO runs the two-step path', () => {
+    expect(validateJobShape('stories', ['u/0.mp4'], null)).toBe('video_session');
+    expect(validateJobShape('stories', ['u/0.png'], null)).toBe('photo_story');
+  });
+
+  it('refuses a multi-file post while MULTI_MEDIA_SUPPORTED is false', () => {
+    expect(MULTI_MEDIA_SUPPORTED).toBe(false);
+    expect(() => validateJobShape('feed', ['u/0.jpg', 'u/1.jpg'], 'two')).toThrow(/One file/);
+  });
+
+  // The step machine branches on the returned protocol, and the enqueue path
+  // validates with the same call. Deriving it twice is how the two come to
+  // disagree about one job.
+  it('returns the protocol rather than void, so both callers derive it once', () => {
+    const protocol = validateJobShape('stories', ['u/0.jpg'], null);
+    expect(PROTOCOL_STEPS[protocol]).toBe(2);
+  });
+});
+
+describe('videoEdgeKind', () => {
+  // Meta retired standalone Page video publishing, so a post the owner thinks
+  // of as "a video on the page" goes out through video_reels.
+  it('sends a feed video to the REEL edge and a story to the STORY edge', () => {
+    expect(videoEdgeKind('feed')).toBe('reel');
+    expect(videoEdgeKind('reels')).toBe('reel');
+    expect(videoEdgeKind('stories')).toBe('story');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// The allowlist that decides whether an ambiguous publish may be retried
+// ---------------------------------------------------------------------------
+describe('provesNothingWasPublished', () => {
+  it('CONTROL — a verdict from Meta proves nothing was created, so a retry is safe', () => {
+    expect(provesNothingWasPublished('publish_rejected')).toBe(true);
+    expect(provesNothingWasPublished('needs_reconnect')).toBe(true);
+  });
+
+  // A 429 looks like a refusal and can be issued by an edge in front of Meta
+  // AFTER the request was accepted upstream. Being wrong costs a duplicate post
+  // on a customer's Page, so it is treated as ambiguous — the same exclusion
+  // the Instagram module makes.
+  it('does NOT treat a rate limit as proof, deliberately', () => {
+    expect(provesNothingWasPublished('rate_limited')).toBe(false);
+    expect(PROVEN_NOT_PUBLISHED_CODES).not.toContain('rate_limited');
+  });
+
+  // An allowlist, so a code added to graph() later defaults to AMBIGUOUS
+  // (over-escalates to a human) rather than to "safe to retry".
+  it('defaults an unknown code to ambiguous', () => {
+    expect(provesNothingWasPublished('some_code_added_next_year')).toBe(false);
+    expect(provesNothingWasPublished('')).toBe(false);
+  });
+
+  it('every shape rejection is on the list, since none of them reaches Meta', () => {
+    for (const code of [
+      'unsupported_media',
+      'no_media',
+      'too_many_media',
+      'caption_on_story',
+      'reels_need_video',
+      'story_needs_media',
+      'feed_text_needs_caption',
+    ]) {
+      expect(provesNothingWasPublished(code)).toBe(true);
+    }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// The rate limit is OURS, and the test says so
+// ---------------------------------------------------------------------------
+describe('RATE_LIMIT_POSTS', () => {
+  // Instagram's 100 is Meta's own published cap. Facebook's real limit is a
+  // formula over engaged users that cannot be evaluated before a call, so this
+  // number is a self-imposed bound and must not be mistaken for Meta's.
+  it('is not Instagram’s number, because it does not mean the same thing', () => {
+    expect(RATE_LIMIT_POSTS).not.toBe(IG_RATE_LIMIT_POSTS);
+    expect(RATE_LIMIT_POSTS).toBeLessThan(IG_RATE_LIMIT_POSTS);
+  });
+
+  it('is a rolling-24-hour window, matching how the claim RPC counts', () => {
+    expect(RATE_WINDOW_SECONDS).toBe(24 * 60 * 60);
   });
 });

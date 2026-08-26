@@ -127,6 +127,62 @@ export function requirePublishAccess(
   }
 }
 
+/**
+ * Error codes that PROVE nothing was created, so a retry cannot duplicate.
+ *
+ * Same allowlist shape as the Instagram module's, and the same reason: a new
+ * code added to `graph()` below defaults to AMBIGUOUS, which over-escalates a
+ * job to `needs_review`. A denylist would default it to "safe to retry", and
+ * being wrong there puts a duplicate on a customer's Page.
+ *
+ * `rate_limited` is deliberately absent, exactly as it is on Instagram. A 429
+ * looks like a refusal, but it can be issued by an edge in front of Meta after
+ * the request was already accepted upstream, and there is no way to tell from
+ * here. Being wrong costs a duplicate post, so it is treated as ambiguous.
+ *
+ * WHY THIS LIST CARRIES MORE WEIGHT HERE THAN IT DOES FOR INSTAGRAM: when
+ * Instagram is ambiguous, the container can be re-read and its `PUBLISHED`
+ * status settles the question. Facebook reports no such status (header, point
+ * 3), so this list is the ONLY thing standing between an ambiguous answer and
+ * a human. Everything it does not name stops.
+ */
+export const PROVEN_NOT_PUBLISHED_CODES = [
+  'publish_rejected',
+  'needs_reconnect',
+  'missing_publish_permission',
+  'missing_publish_task',
+  'unsupported_media',
+  'no_media',
+  'too_many_media',
+  'caption_on_story',
+  'reels_need_video',
+  'story_needs_media',
+  'feed_text_needs_caption',
+];
+
+export function provesNothingWasPublished(code: string): boolean {
+  return PROVEN_NOT_PUBLISHED_CODES.includes(code);
+}
+
+/**
+ * OUR cap, not Meta's -- and saying which is the whole point of this comment.
+ *
+ * Instagram publishes a flat 100 per rolling 24 hours per account, so
+ * `RATE_LIMIT_POSTS` over there is a real number from Meta. Facebook's Page
+ * limit is a formula over the Page's engaged users, reported after the fact in
+ * the `X-Business-Use-Case-Usage` header. It cannot be evaluated before a call,
+ * so there is no honest way to put Meta's number here.
+ *
+ * This is therefore a self-imposed bound: enough that no real business will
+ * meet it, small enough that a runaway loop costs 50 posts rather than a feed
+ * full of them. META'S THROTTLE IS THE ACTUAL AUTHORITY -- a 429 or error code
+ * 32 raises `rate_limited`, and the sweep puts that account on its skip list
+ * for the rest of the run. Raise this if a real user ever reaches it; do not
+ * mistake it for a fact about Facebook.
+ */
+export const RATE_LIMIT_POSTS = 50;
+export const RATE_WINDOW_SECONDS = 24 * 60 * 60;
+
 /** Our three content types, mapped onto Facebook's five endpoints. */
 export type ContentType = 'feed' | 'reels' | 'stories';
 
@@ -512,6 +568,121 @@ export async function finishVideoSession(
       502,
     );
   }
+}
+
+// ---------------------------------------------------------------------------
+// Shape rules
+// ---------------------------------------------------------------------------
+
+/**
+ * Facebook's accepted formats, which are NOT Instagram's -- so this list is its
+ * own rather than an import.
+ *
+ * Instagram accepts JPEG only for images. Facebook Pages accept PNG, GIF, BMP
+ * and TIFF as well, and rejecting a PNG here because the sibling module rejects
+ * one would refuse a post Facebook would have taken. That is the #540
+ * shared-helper lesson pointing the other way: a nearly-fitting helper is worse
+ * than two honest ones when the values genuinely differ.
+ *
+ * Video is `mp4`/`mov` and stays narrow on purpose. Every video path in this
+ * module goes through `video_reels` or `video_stories` -- including a plain
+ * feed video, which Meta treats as a Reel exactly as Instagram does -- and
+ * those are the two formats Meta names for Reels.
+ */
+const IMAGE_EXTENSIONS = ['jpg', 'jpeg', 'png', 'gif', 'bmp', 'tif', 'tiff'];
+const VIDEO_EXTENSIONS = ['mp4', 'mov'];
+
+/** `a/b/clip.MP4` -> `video`. The dot must be in the FILENAME, not the path. */
+export function mediaKindOf(path: string): MediaKind {
+  const name = path.slice(path.lastIndexOf('/') + 1);
+  const dot = name.lastIndexOf('.');
+  const ext = dot > 0 ? name.slice(dot + 1).toLowerCase() : '';
+  if (IMAGE_EXTENSIONS.includes(ext)) return 'image';
+  if (VIDEO_EXTENSIONS.includes(ext)) return 'video';
+  throw new FacebookError(
+    'unsupported_media',
+    `Facebook accepts ${[...IMAGE_EXTENSIONS, ...VIDEO_EXTENSIONS].join(', ')} — not .${ext || 'unknown'}`,
+    400,
+  );
+}
+
+/**
+ * A carousel is not built here either, and for a different reason than
+ * Instagram's.
+ *
+ * Instagram's blocker is structural: N child containers plus a parent, each
+ * transcoding on its own clock. Facebook's is simpler -- `POST /{page}/feed`
+ * takes an `attached_media` array of already-uploaded photo ids, so it is
+ * genuinely "upload N, then one call". It is still not built, because a
+ * multi-file job needs somewhere to keep N in-flight ids and `provider_ref` is
+ * one column. That is a schema change, so it is a slice rather than a flag.
+ */
+export const MULTI_MEDIA_SUPPORTED = false;
+
+/**
+ * Reject a job Facebook cannot publish, BEFORE anything irreversible happens,
+ * and return the protocol the step machine must run.
+ *
+ * Returning the protocol rather than void is the difference that matters: the
+ * caller needs it on every tick, and deriving it separately is how the two
+ * would come to disagree about a job -- one validating it as a photo story and
+ * the other running it as a Reel.
+ *
+ * The rules, and where each differs from Instagram's:
+ *   - NO MEDIA IS LEGAL, for a feed post carrying text. Instagram has no such
+ *     case. The caption then becomes REQUIRED, because a post with neither is
+ *     not a post.
+ *   - Stories take no caption. Meta accepts the field and drops it, the same
+ *     quiet lie the Instagram rule exists to prevent.
+ *   - One file per post. See MULTI_MEDIA_SUPPORTED.
+ *   - Reels are video only; a story is a photo or a video.
+ */
+export function validateJobShape(
+  contentType: ContentType,
+  mediaPaths: readonly string[],
+  caption: string | null,
+): PublishProtocol {
+  if (contentType === 'stories' && caption) {
+    throw new FacebookError(
+      'caption_on_story',
+      'Facebook discards captions on stories — remove it or post to the feed',
+      400,
+    );
+  }
+
+  if (mediaPaths.length > 1) {
+    throw new FacebookError(
+      'too_many_media',
+      'One file per post for now — multi-photo posts are not supported yet',
+      400,
+    );
+  }
+
+  if (mediaPaths.length === 0) {
+    if (contentType !== 'feed') {
+      throw new FacebookError('no_media', 'Only a feed post can be published without media', 400);
+    }
+    if (!caption) {
+      throw new FacebookError(
+        'feed_text_needs_caption',
+        'A post with no media needs some text',
+        400,
+      );
+    }
+    return protocolFor('feed', null);
+  }
+
+  return protocolFor(contentType, mediaKindOf(mediaPaths[0]));
+}
+
+/**
+ * Which video edge a job uses. A plain FEED video is a Reel here, exactly as it
+ * is on Instagram -- Meta retired standalone Page video publishing and routes
+ * it through `video_reels`, so an owner who thinks of their post as "a video on
+ * the page" is publishing a Reel whether or not the UI says so.
+ */
+export function videoEdgeKind(contentType: ContentType): 'reel' | 'story' {
+  return contentType === 'stories' ? 'story' : 'reel';
 }
 
 export const FACEBOOK_PUBLISH_INTERNALS = { FB_RUPLOAD } as const;

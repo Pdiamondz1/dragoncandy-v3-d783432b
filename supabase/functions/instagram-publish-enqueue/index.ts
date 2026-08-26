@@ -1,40 +1,17 @@
 // instagram-publish-enqueue — turn an owner's approval into a publish job.
 //
-// This is the ONLY way a row reaches `publish_jobs`. Donny cannot call it: the
-// enqueue RPC identifies the caller from `auth.uid()`, so the job is created by
-// the person whose session made the request, and "auto-posting" means a
-// human-approved item is released on time — never that a model decided to post.
-// The same property `social-draft.ts` has, enforced by where the code lives
-// rather than by an instruction a model may ignore.
+// This is the ONLY way an Instagram row reaches `publish_jobs`. Donny cannot
+// call it: the enqueue RPC identifies the caller from `auth.uid()`, so the job
+// is created by the person whose session made the request, and "auto-posting"
+// means a human-approved item is released on time — never that a model decided
+// to post. The same property `social-draft.ts` has, enforced by where the code
+// lives rather than by an instruction a model may ignore.
 //
-// ---------------------------------------------------------------------------
-// WHY IT COPIES THE MEDIA
-//
-// A job could have referenced the user's existing upload by path. It does not,
-// because a reference is a promise about a path and the bytes at a path can be
-// replaced after approval: schedule a post, overwrite the file, and the sweep
-// publishes something nobody approved. The copy freezes the approved bytes at
-// the moment of approval, which is what "the owner tapped this" has to mean for
-// an action that cannot be undone.
-//
-// The copy is TWO clients on purpose, and the split is the authorization:
-//
-//   1. The CALLER'S OWN credential signs the source object. Signing requires
-//      read permission, so Storage's existing RLS decides whether this user may
-//      have that file — we do not re-implement that judgement, and cannot get
-//      it subtly wrong for one of seventeen buckets.
-//   2. The SERVICE ROLE performs the copy, server-side inside Storage.
-//
-// Step 2 alone would let any authenticated user name any path in any bucket and
-// have our credentials publish a stranger's file — the `outstand_post_ownership`
-// defect, one layer up and with a public post instead of a mis-filed metric as
-// the consequence. Step 1 alone cannot write to a bucket clients are locked out
-// of. Neither half is redundant.
-//
-// The copy also never moves bytes through this function: `storage.copy` with a
-// `destinationBucket` runs inside Storage, so a 300 MB Reel does not have to fit
-// in a 256 MB edge-function heap. Downloading and re-uploading works in testing
-// and OOMs on the first real video.
+// The staging of the media — the copy that freezes the approved bytes, and the
+// two-client split that proves the caller owns them — lives in
+// `_shared/publish-staging.ts` and is shared with the Facebook enqueue. That is
+// our authorization property rather than Meta's protocol, so it is the half
+// that must not exist twice.
 //
 // ENV: SUPABASE_URL, SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY
 
@@ -48,15 +25,18 @@ import {
   validateJobShape,
   type ContentType,
 } from '../_shared/instagram-publish.ts';
+import {
+  mediaStaging,
+  parseMediaRefs,
+  StagingError,
+  type Staging,
+} from '../_shared/publish-staging.ts';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SUPABASE_ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY')!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 
-export const PUBLISH_BUCKET = 'publish-media';
-
-/** Long enough to prove the caller may read it; short enough to be useless if logged. */
-const PROBE_TTL_SECONDS = 60;
+const LABEL = '[instagram-publish-enqueue]';
 
 const json = (req: Request, body: unknown, status = 200) =>
   new Response(JSON.stringify(body), {
@@ -64,67 +44,18 @@ const json = (req: Request, body: unknown, status = 200) =>
     headers: { 'Content-Type': 'application/json', ...corsHeaders(req) },
   });
 
-interface MediaRef {
-  bucket: string;
-  path: string;
-}
-
-/**
- * Read the media list, refusing anything that is not a plain bucket + path.
- *
- * A URL here would be the whole attack: Instagram fetches media from whatever
- * we hand it. The enqueue RPC refuses URL-shaped paths in SQL as well, and that
- * is the copy of the check that matters — this one gives a caller a useful
- * message, the SQL one is the one a future call site cannot skip.
- */
-function parseMedia(value: unknown): MediaRef[] {
-  if (!Array.isArray(value) || value.length === 0) {
-    throw new InstagramError('no_media', 'A post needs at least one file', 400);
-  }
-  // The count is judged by `validateJobShape` — one rule, one place. Bounded
-  // here only so a caller cannot make this function copy ten thousand files
-  // before that rule gets a chance to speak.
-  if (value.length > 32) {
-    throw new InstagramError('too_many_media', 'Too many files', 400);
-  }
-  return value.map((item) => {
-    const bucket = typeof item?.bucket === 'string' ? item.bucket.trim() : '';
-    const path = typeof item?.path === 'string' ? item.path.trim() : '';
-    if (!bucket || !path) {
-      throw new InstagramError('bad_media', 'Each item needs a bucket and a path', 400);
-    }
-    if (path.includes('://') || path.startsWith('//') || bucket.includes('/')) {
-      throw new InstagramError(
-        'bad_media',
-        'Media must be a stored file, not a URL',
-        400,
-      );
-    }
-    return { bucket, path };
-  });
-}
-
-/** `a/b/clip.MP4` -> `mp4`. Empty when the FILENAME carries no extension. */
-function extensionOf(path: string): string {
-  const name = path.slice(path.lastIndexOf('/') + 1);
-  const dot = name.lastIndexOf('.');
-  return dot > 0 ? name.slice(dot + 1).toLowerCase() : '';
-}
-
 serve(async (req: Request) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders(req) });
   }
 
-  // INVARIANT: once this is non-empty, every exit from this function must go
-  // through `discardCopies`. Enumerated rather than assumed — the early returns
-  // for a missing header, a bad token, a bad content type and an absent
-  // connection all happen BEFORE the copy loop, so `copied` is still empty; the
-  // RPC-refusal branch discards explicitly; everything else throws into the
-  // catch, which discards. Anything added between the copy loop and the final
-  // response has to keep that true.
-  const copied: string[] = [];
   const admin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+
+  // Assigned only once staging exists. Every exit after that point goes through
+  // `discard()` — the early returns above it happen before anything is copied,
+  // the RPC-refusal branch discards explicitly, and everything else throws into
+  // the catch, which discards.
+  let staging: Staging | null = null;
 
   try {
     const authHeader = req.headers.get('Authorization');
@@ -163,20 +94,15 @@ serve(async (req: Request) => {
       ? body.caption.trim()
       : null;
 
-    const media = parseMedia(body?.media);
+    // Instagram has no post without media, so an empty list is a parse error
+    // here rather than a shape decision further in.
+    const media = parseMediaRefs(body?.media, { allowEmpty: false });
 
-    // One directory per approval. Two approvals of the same file are two sets
-    // of frozen bytes, which is the point — the second must not overwrite the
-    // first while the first is still queued.
-    const batch = crypto.randomUUID();
-    const destinations = media.map((m, i) => {
-      const ext = extensionOf(m.path);
-      return `${user.id}/${batch}/${i}${ext ? `.${ext}` : ''}`;
-    });
+    staging = mediaStaging({ admin, asUser, userId: user.id, media, label: LABEL });
 
     // Validated against the DESTINATION names, because those are what the sweep
     // will read the format from. Throws before anything is copied.
-    validateJobShape(contentType, destinations, caption);
+    validateJobShape(contentType, staging.destinations, caption);
 
     // Refuse a connection that never granted publishing BEFORE copying
     // anything. The RPC checks it again in SQL — that is the copy a future
@@ -193,46 +119,7 @@ serve(async (req: Request) => {
     }
     requirePublishPermission(conn.permissions ?? []);
 
-    for (const [i, item] of media.entries()) {
-      // (1) The caller's own credential. A signed URL cannot be minted for an
-      // object Storage RLS will not let this user read, so this line IS the
-      // ownership check.
-      const { error: probeError } = await asUser.storage
-        .from(item.bucket)
-        .createSignedUrl(item.path, PROBE_TTL_SECONDS);
-
-      if (probeError) {
-        // Deliberately one message for "does not exist" and "not yours". The
-        // distinction is exactly what an enumeration probe is looking for.
-        console.warn('[instagram-publish-enqueue] source unreadable:', item.bucket, probeError.message);
-        // THROWN, not returned. A bare `return` here skips the catch below, and
-        // with it `discardCopies` — so a request whose SECOND file is
-        // unreadable would leave the first one staged in `publish-media` for
-        // ever, with no job pointing at it. Unreachable today only because
-        // `validateJobShape` refuses multi-file posts; the loop is written for
-        // N items and the carousel gap is a documented future, so the exit path
-        // has to be right before it is reachable rather than after.
-        //
-        // The rule this restores: exactly ONE place cleans up, and every
-        // failure route goes through it.
-        throw new InstagramError(
-          'media_not_found',
-          'That file does not exist or is not yours',
-          404,
-        );
-      }
-
-      // (2) The service role, inside Storage. No bytes pass through here.
-      const { error: copyError } = await admin.storage
-        .from(item.bucket)
-        .copy(item.path, destinations[i], { destinationBucket: PUBLISH_BUCKET });
-
-      if (copyError) {
-        console.error('[instagram-publish-enqueue] copy failed:', copyError);
-        throw new InstagramError('copy_failed', 'Could not stage the media for publishing', 502);
-      }
-      copied.push(destinations[i]);
-    }
+    await staging.stage();
 
     // Called as the USER: the RPC takes no id parameter, so identity can only
     // come from `auth.uid()`. It re-checks the URL shape, the story caption and
@@ -245,7 +132,7 @@ serve(async (req: Request) => {
       // where Facebook must name which Page.
       p_platform: 'instagram',
       p_content_type: contentType,
-      p_media_paths: destinations,
+      p_media_paths: staging.destinations,
       p_scheduled_at: typeof body?.scheduled_at === 'string' ? body.scheduled_at : null,
       p_caption: caption,
       p_source_schedule_id: typeof body?.source_schedule_id === 'string'
@@ -254,40 +141,33 @@ serve(async (req: Request) => {
     });
 
     if (rpcError) {
-      console.error('[instagram-publish-enqueue] enqueue failed:', rpcError);
+      console.error(LABEL, 'enqueue failed:', rpcError);
       throw new InstagramError('enqueue_failed', 'Could not queue the post', 500);
     }
 
     if (!result?.enqueued) {
       // A refusal, not an error — the RPC's `reason` is written to be shown.
-      await discardCopies(admin, copied);
+      await staging.discard();
       return json(req, { error: 'rejected', message: result?.reason ?? 'Rejected' }, 400);
     }
 
     return json(req, {
       job_id: result.job_id,
       content_type: contentType,
-      media_count: destinations.length,
+      media_count: staging.destinations.length,
       scheduled_at: body?.scheduled_at ?? null,
     });
   } catch (err) {
     // Staged bytes with no job pointing at them are litter with a storage bill,
     // so they go. Best-effort: failing the cleanup must not turn a 400 into a
     // 500, which would tell the caller the wrong thing about their request.
-    await discardCopies(admin, copied);
+    await staging?.discard();
 
-    if (err instanceof InstagramError) {
-      console.error('[instagram-publish-enqueue]', err.code, err.message);
+    if (err instanceof InstagramError || err instanceof StagingError) {
+      console.error(LABEL, err.code, err.message);
       return json(req, { error: err.code, message: err.message }, err.status);
     }
-    console.error('[instagram-publish-enqueue] unexpected:', err);
+    console.error(LABEL, 'unexpected:', err);
     return json(req, { error: 'internal_error', message: 'Could not queue the post' }, 500);
   }
 });
-
-// deno-lint-ignore no-explicit-any
-async function discardCopies(admin: any, paths: string[]): Promise<void> {
-  if (paths.length === 0) return;
-  const { error } = await admin.storage.from(PUBLISH_BUCKET).remove(paths);
-  if (error) console.error('[instagram-publish-enqueue] could not remove staged media:', error);
-}
