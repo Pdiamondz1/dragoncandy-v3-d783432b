@@ -425,6 +425,42 @@ same token/font system, unaffected; `/internal` stays dark.
   at the wrong aspect they reserve the wrong shape and cause the layout shift they are meant to
   prevent. Re-read the real dimensions if either asset is ever replaced rather than copying the
   numbers.
+* **The iOS app icon and launch image are GENERATED — never hand-edit them.** Run `npm run
+  cap:assets` (`scripts/build-app-assets.mjs`). Both are composed from artwork already in the
+  repo — the icon from `public/icons/icon-512.png`, the splash from
+  `src/assets/Transparent_DragonCandy_logo.webp` — so there is one copy of each mark rather than
+  a duplicate under `assets/` that drifts. macOS only (it shells out to `swift`, because
+  compositing needs an image library and every cross-platform option costs a dependency);
+  deliberately **not** in CI, which runs Linux. Four things it encodes that are easy to get
+  wrong by hand:
+  **(1) The icon background is `#F7F9F7`, an off-white, not pure white.** Pure white gives the
+  icon no boundary against a light home screen or a Settings list. It does **not** rescue the
+  dragon's pale interior panels — `#C9FCAF` measures **1.14:1** against this off-white versus
+  **1.17:1** against pure white, which is no meaningful difference — so do not reintroduce pure
+  white on the theory that the off-white was only there for contrast.
+  **(2) The dragon's eye and nostril are HOLES in the source's alpha channel**, so they render in
+  whatever colour sits behind them. That is the whole reason the eye read as black: it was the
+  old `#1A1A2A` background showing through, not paint. Change the background and the eye follows
+  — there is nothing to recolour. The generator asserts **zero** near-black pixels in the eye
+  rect, which pins the actual defect rather than a proxy for it.
+  **(3) The app icon must carry NO alpha channel** or App Store submission is rejected; the
+  generator writes RGB and asserts it.
+  **(4) The splash logo is 423px in a 2732 canvas, and that number is derived, not chosen.**
+  `LaunchScreen.storyboard` shows the image `scaleAspectFill`, so on a 393x852pt iPhone the
+  square renders at 852x852pt and one point is `2732/852` = 3.207 image px; the web shell draws
+  the logo at 132pt, and `132 x 3.207` = **423**, which lands both at the same on-screen size.
+  The same maths says only the central `393/852` = **46%** of the image width (1260px) is visible
+  in portrait — anything wider is cropped off on a phone, which the generator also asserts.
+* **The launch image's background is COUPLED to `index.html`, and nothing on the iOS side says
+  so.** `LaunchScreen.storyboard` fills the screen with the splash, then the WebView paints
+  `index.html`'s prerendered shell — whose inline script sets `#241332` whenever
+  `location.pathname` is `/`, `/home` or `/landing`. Capacitor loads `capacitor://localhost/`,
+  so it is **always** `/` at first paint, and the splash is grape to match. Get them out of step
+  and the app flashes on every launch. Because that coupling is invisible from the iOS side,
+  `npm run cap:assets` **reads `index.html` and refuses to run** if the hex is no longer present
+  — change the shell's background and the generator fails loudly instead of shipping a flash
+  nobody notices. Note this is also why the splash needs no dark-mode variant: the shell paints
+  grape regardless of appearance.
 * **A public page may not promise a dashboard.** `/help` is linked from the landing footer and is
   reachable with no session, and it told every visitor "Back to Dashboard" — including people who
   have never had one (founder-reported 2026-08-23, same pass as the logo). The *destination* was
