@@ -255,3 +255,17 @@ Gotchas, all reusable for the Google/Meta/X videos still owed:
   in prod fails at token exchange.
 - App Review needs an **anonymously reachable privacy policy**, so switching on
   the site gate breaks it exactly as it breaks Google's and Meta's.
+
+---
+
+## Correction — appended 2026-08-26, original text above left intact
+
+**"the site gate breaks [App Review's privacy policy] exactly as it breaks Google's and
+Meta's" was true when written and is no longer.** #547 added a generated, self-contained
+`public/privacy.html` to the gate's allowlist, verified on prod, so the privacy policy survives
+the lockdown. **Register `https://dragoncandy.com/privacy.html`, never `/privacy`**, which is a
+SPA route and still 401s. `/terms` has no static equivalent and would still 401.
+
+Appended rather than edited, per `docs/KNOWLEDGE_WIKI.md`. The synthesized copies
+(`concepts/tiktok-analytics-connector.md`, `runbooks/tiktok-analytics-connector-setup.md`,
+`PROJECT_CONTEXT` §5) are corrected in place.

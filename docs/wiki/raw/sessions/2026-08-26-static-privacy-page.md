@@ -159,3 +159,27 @@ ungated, which `/privacy` never will.
 entirely. That would delete the React route, give one URL instead of two, and
 remove the drift risk at its root — but it changes what a logged-in user sees, so
 it is a product decision, not a cleanup.
+
+---
+
+## Correction — appended 2026-08-26, original text above left intact
+
+**"switching it on no longer breaks four app reviews" (above) is too strong.** #547 closes
+the **privacy-policy** requirement for all four platforms, which fully unblocks **Meta,
+TikTok and X**. **Google is only half-unblocked:** its verification also requires the
+**HOMEPAGE** to be reachable by a reviewer signed in to nothing, and `/` is the SPA and still
+answers 401 under the gate. Nothing in #547 touched that.
+
+Found by the Codex second review on the knowledge PR, at its third round, after the same
+over-claim had already been corrected in `PROJECT_CONTEXT`, the Google runbook, the concept
+pages, `index.md` and `SHIPPED_LOG.md`. **That is the third time in one session that
+correcting a claim where I found it was mistaken for correcting the claim.**
+
+This file is appended to rather than edited, per `docs/KNOWLEDGE_WIKI.md`: `raw/` is immutable
+input, and the same file says to flag contradictions explicitly rather than silently overwrite.
+Note also that Codex's stated reason — "this raw session feeds the project knowledge layer" —
+is **not** the mechanism: `sync-internal-docs.mjs` reads `concepts/`, `entities/` and
+`analyses/` only, so `raw/` reaches neither `internal_docs` nor `donny_knowledge`. The real
+exposure is a **human** reading it during session continuity, which is reason enough.
+
+→ `docs/runbooks/google-oauth-demo-video.md` splits the fixed half from the open half.
