@@ -345,8 +345,12 @@ evidence it is clean.
 **VERIFIED ON HARDWARE the same day** — this entry read "nothing has run on a device or simulator"
 for about an hour. The founder confirmed both assets on a physical **iPhone 15 Pro Max**: the
 launch image renders the mark on grape, and the icon renders the dragon on off-white with a light
-eye. **Still unconfirmed, and not to be read as covered:** whether the splash→shell *handoff* is
-seamless — a different observation from "the splash looks right", and not separately reported.
+eye. **The splash→shell handoff is confirmed seamless too** — "no flash, it went straight to the
+app" — which is the observation that actually validates the two derivations, since it is the only
+way to know that the *native* launch image and the *web* shell agree on both colour and logo size.
+Had `SPLASH_BG` or the 423px width been wrong, this is where it would have shown, and nowhere else.
+This paragraph asked for the check separately rather than letting it ride on "the splash looks
+right"; the answer came back clean.
 
 **Getting it onto the phone took three attempts and none of them was a build problem.** The
 founder deleted, rebuilt and reinstalled while still seeing the old icon. Xcode's DerivedData

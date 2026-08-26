@@ -9,6 +9,17 @@
 
 ## Lessons (read FIRST every run; curated — rewrite/prune as they evolve)
 
+- **[probe-token-from-diff] Take (b)'s probe token from the revision's DIFF, never from what you
+  remember writing.** The check asks whether the RAG matches the **wiki**, not whether it matches
+  this session — so the token must be extracted mechanically:
+  `git diff <sha>^1 <sha> -- docs/wiki/{concepts,entities,analyses}`, keep `^+` lines, pick a short
+  code/hyphenated token from them. Recalling a phrase you think you added has two failure modes the
+  diff closes: the phrase may already have existed on an edited page (so it was in the RAG all
+  along and passes trivially), and a session that changed **no** wiki page still owes an answer,
+  because an *earlier* sync may have failed silently. Confirm the token really is in added lines
+  before probing — on 2026-08-26 `scaleAspectFill` was verified present in 2 `^+` lines first, then
+  probed. **And always run the negative control** (an invented token must return 0); a probe that
+  cannot return zero is not evidence, which is this repo's standing rule one layer up.
 - **[freshness-proxy] (b)'s authority is content presence, never `max(updated_at)` — and the
   original reason for that has EXPIRED, so don't re-derive it from the timestamp's behaviour.**
   This lesson used to read "`donny_knowledge.updated_at` is NOT reliably bumped on UPDATE", because
@@ -69,6 +80,31 @@
   conflicting **current** state, not on keyword staleness — a naive grep false-flags these critical.
 
 ## Run log (newest first — add each new entry at the TOP; never edit/delete past entries)
+
+### [2026-08-26] `worktree-xcode-app` — iOS app icon + launch image knowledge sync
+
+**Output:** verdict block emitted in-session — `done:true`, all three criteria `met:true`.
+
+**Happened:** validated AFTER #532 merged (`3c38893f`), so unlike the `[unmerged-branch]` case
+the probe anchor and the session's own work are the same commit. (a) 0 orphans by path, plus
+`scripts/lib/wikilinks.test.ts` 29/29 as corroboration — that test is new (#535) and now enforces
+in CI what this check reasons about. (b) newest in-scope revision **is** `3c38893f`; token
+`scaleAspectFill` confirmed present in **2 added lines** of its first-parent diff, and the prod
+probe returned **2 rows** against a control (`zzqqxxnotarealtoken`) returning **0**. (c) the one
+session page is in `index.md` (1 catalog entry) and `log.md` (2 mentions).
+
+**Worked:** taking the probe token from `git diff <sha>^1 <sha> | grep '^+'` rather than from
+memory of what the session wrote — it is the difference between proving the RAG matches the WIKI
+and proving it matches my own recollection. Also: the post-merge hook did the sync unattended
+(`documents=163→164 rows=469→473 inserted=4 errors=0`), so there was nothing to run by hand; the
+`[rag-sync]` lesson in knowledge-sync's memory held.
+
+**Failed:** nothing. One near-miss worth noting for (a): the session's own wikilink check earlier
+in the day used `grep -F "[[Name]]" index.md`, which matches a **mention inside another entry's
+description** as readily as a catalog entry — exactly the flaw #535's header documents. It passed
+by luck; `wikilinks.test.ts` is now the real check.
+
+**Remember:** see `[probe-token-from-diff]` above.
 
 ### [2026-08-24] `worktree-DC-landing-page-fix3` — page-drag + logo-size knowledge sync
 

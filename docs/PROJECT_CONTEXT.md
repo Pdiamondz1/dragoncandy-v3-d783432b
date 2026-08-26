@@ -314,8 +314,9 @@ Engineering cannot close these. Ordered by what blocks launch.
   code change; `verify_jwt` was probed before and after and did not move. **Icon + launch image
   replaced and confirmed on a physical iPhone 2026-08-26 (#532)** — the "black eye" was a hole in
   the alpha channel, not paint;
-  the splash was still Capacitor's; `npm run cap:assets` rebuilds and asserts both. **Pending:** the
-  splash→shell **handoff** (not separately reported);
+  the splash was still Capacitor's; `npm run cap:assets` rebuilds and asserts both, and the
+  splash→shell **handoff is confirmed seamless on device** — the derived colour and 423px logo
+  hold. **Pending:**
   device checks #4/#6/#8/#9; TestFlight (no App Store Connect record yet); `.nvmrc` plus a vitest
   worktrees exclude; a private-window look at the landing footer on prod.
   → `docs/superpowers/specs/2026-08-09-ios-testflight-first-build-design.md` · `docs/wiki/concepts/legal-entity-identity.md` · `docs/wiki/concepts/ios-app-icon-and-launch-image.md` · #439, #532

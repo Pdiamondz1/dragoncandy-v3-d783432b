@@ -140,11 +140,16 @@ light eye. This closes the two questions that no amount of local measurement cou
 icon's legibility at real size on a light home screen, and that the splash asset is the one
 actually installed.
 
-**One thing is still unconfirmed and should not be read as covered:** whether the splash→shell
-handoff is *seamless*. That is a different observation from "the splash looks right" — it is about
-the transition, and it was not separately reported. If a white or off-white flash ever appears
-between the launch image and the app, the cause is `SPLASH_BG` disagreeing with what
-`index.html`'s shell paints, and the generator's guard is the thing that should have caught it.
+**The splash→shell handoff is confirmed seamless** — *"no flash, it went straight to the app."*
+This was asked for as a separate observation rather than folded into "the splash looks right", and
+it is the one that actually validates both derivations. The launch image is a PNG drawn by
+`LaunchScreen.storyboard`; the screen that replaces it is HTML drawn by `index.html`'s prerendered
+shell. Two unrelated technologies painting what has to look like one picture. A wrong `SPLASH_BG`
+shows up here as a colour flash, and a wrong logo width as the mark jumping size — **nowhere else**,
+which is why a correct-looking screenshot could never have settled it.
+
+If a flash ever does appear, the cause is `SPLASH_BG` disagreeing with what the shell paints, and
+the generator's `index.html` guard is what should have caught it before the build.
 
 **Getting it onto the device was the hard part, and it was not a build problem.** See "Three copies
 on disk" below.

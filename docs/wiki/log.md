@@ -69,8 +69,14 @@ with the wrong reasoning kept.
 
 **Updated the same day after hardware verification.** Both assets confirmed by the founder on a
 physical iPhone 15 Pro Max, so the "nothing has run on a device" caveat was struck from the
-concept page, `SHIPPED_LOG.md` and §5 within the hour — the splash→shell **handoff** remains
-separately unconfirmed and is recorded as such rather than folded in. Getting it onto the phone
+concept page, `SHIPPED_LOG.md` and §5 within the hour. The splash→shell **handoff** was held back
+as separately unconfirmed rather than folded in — and was **answered later the same day: "no
+flash, it went straight to the app."** All three docs now say confirmed. That separation was worth
+making: the handoff is the only place a wrong `SPLASH_BG` or a wrong 423px logo width could show,
+so a correct-looking splash screenshot would not have settled it. **Note `raw/sessions/2026-08-26-
+ios-app-icon-and-launch-image.md` still reads "nothing has run on a device"** — that is correct
+and stays: `raw/` is immutable input, a record of what was known when it was written, and this
+log entry is where the later state lives. Getting it onto the phone
 added the section *"Three copies of this project exist on disk"*: three delete-and-rebuild cycles
 failed because Xcode was building a **different worktree** whose icon hashed byte-identical to the
 old one, which DerivedData's `WorkspacePath` answers in one command. ***"It didn't update" is a
