@@ -387,7 +387,8 @@ Engineering cannot close these. Ordered by what blocks launch.
   401; authorization/not-found/validation unchanged. Its one open item is **closed** below.
   → `docs/wiki/raw/sessions/2026-08-26-auth-401-not-500.md` · #542
 - **The site gate and the platform approvals were mutually exclusive** — four app reviews need an
-  anonymously reachable privacy policy and `/privacy` is a SPA route. Closed by a generated,
+  anonymously reachable privacy policy and `/privacy` is a SPA route. Closes it for Meta/TikTok/X;
+  **Google also needs the homepage, which still 401s**. Closed by a generated,
   self-contained `public/privacy.html` on the allowlist; the gate's "real file behind every entry"
   rule is now machine-checked rather than a comment. Verified on prod.
   → `docs/wiki/concepts/site-access-lockdown.md` · #547

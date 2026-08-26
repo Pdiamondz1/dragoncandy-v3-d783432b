@@ -240,7 +240,9 @@ one place the secret is actually used.
 - App Review needs an **anonymously reachable privacy policy**. This read "so
   switching on the site gate breaks it exactly as it breaks Google's and Meta's"
   until 2026-08-26, when #547 put a generated, self-contained `public/privacy.html`
-  on the gate's allowlist — it survives the lockdown, and so do all four reviews.
+  on the gate's allowlist — it survives the lockdown, and so does TikTok's review. (Said "and
+  so do all four reviews" for a few hours; that is right for Meta and X too, and **wrong for
+  Google**, whose verification additionally needs the HOMEPAGE reachable signed out.)
   **Register `/privacy.html`, never `/privacy`**, which is a SPA route and stays
   gated. See [[Site Access Lockdown (Private Preview)]].
 

@@ -128,9 +128,11 @@ green because the *missing* one was required.
 
 **What it does and does not change.** Nothing deployed: it is a Vercel artifact that ships on merge.
 The gate is still **off** in production, so nothing changed for any visitor. What changed is that
-switching it on no longer breaks four app reviews — and **`/privacy.html` is the URL to register in
-the Google, Meta, TikTok and X consoles**, because it works gated *and* ungated, which `/privacy`
-never will.
+switching it on no longer breaks the **privacy-policy** requirement of any of the four — and
+**`/privacy.html` is the URL to register in the Google, Meta, TikTok and X consoles**, because it
+works gated *and* ungated, which `/privacy` never will. **That fully unblocks Meta, TikTok and X.
+Google is only half-unblocked**: its verification also needs the HOMEPAGE reachable signed out, and
+`/` is still the SPA. See the round-2 review note below.
 
 **Left open deliberately:** whether `/privacy` should collapse into the static page entirely — one
 URL, no drift risk at its root — which would delete the React route and change what a logged-in user

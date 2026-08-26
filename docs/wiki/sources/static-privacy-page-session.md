@@ -9,9 +9,16 @@ tags: [security, vercel, middleware, private-preview, legal, generators, guards,
 # Static Privacy Page Session
 
 2026-08-26. `public/privacy.html` — a real, generated, self-contained privacy policy that
-the site gate allowlists — so switching `SITE_GATE_ENABLED` on no longer breaks four
-platform reviews. PR #547 (`f467b3ed`), live and verified on prod. Full mechanics live on
-[[Site Access Lockdown (Private Preview)]].
+the site gate allowlists. PR #547 (`f467b3ed`), live and verified on prod. Full mechanics
+live on [[Site Access Lockdown (Private Preview)]].
+
+**Scope, precisely — this page originally overstated it as "no longer breaks four platform
+reviews".** It closes the **privacy-policy** requirement for all four. That fully unblocks
+**Meta, TikTok and X**. **Google is only half-unblocked**: its verification also requires the
+**HOMEPAGE** to be reachable by a reviewer signed in to nothing, and `/` is the SPA and still
+answers 401 under the gate. Nothing in #547 touched that. Do not enable the gate during a
+Google verification on the strength of this page.
+→ `docs/runbooks/google-oauth-demo-video.md`
 
 ## A deadlock that was never a decision
 
