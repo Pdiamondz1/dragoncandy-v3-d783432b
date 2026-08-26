@@ -261,10 +261,20 @@ shows a log-in and a stats read.
 `@dragoncandyco` is the company handle. The connect button is on Creator,
 Business and Location settings.
 
-**The acceptance signal is `last_synced_at` landing seconds after
-`connected_at`.** A row can be written without TikTok ever being called; that
-stamp cannot — `cache_tiktok_insights` is the only thing that sets it, and it
-runs only after a real response.
+**The acceptance signal is that `last_synced_at` is set at all — NOT that it
+lands seconds after `connected_at`.** A row can be written without TikTok ever
+being called; that stamp cannot, because `cache_tiktok_insights` is the only
+thing that sets it and it runs only after a real response. That much is shared
+with the other connectors.
+
+**The timing is not.** This line used to say "seconds after `connected_at`",
+copied from YouTube, Instagram and Facebook, where the connect flow itself
+triggers the first read. **TikTok's read fires when the settings card first
+renders.** Measured on the first two real connections (2026-08-26): gaps of
+**38 minutes** and **89 seconds**, both healthy. So a null `last_synced_at`
+here means *nobody has opened the settings page yet* — it is not evidence of a
+broken connector, and waiting a few seconds and re-running this query proves
+nothing. Open the card, then check.
 
 ```sql
 select username, display_name, follower_count, status,
@@ -282,8 +292,22 @@ Posting API attached.
 
 ## 9. Still open
 
-- **Nothing is configured yet.** No secrets, no saved console form, no connected
-  account. The code is deployed-ready and proven only against stubs.
+- **This section said "Nothing is configured yet — no secrets, no saved console
+  form, no connected account" until 2026-08-26. All three are now done.** The
+  three secrets are set, the console form is saved as a **sandbox**, and
+  `@tumericturtle` has connected and measured. What follows is what is genuinely
+  left.
+- **The production console form is not saved.** It cannot be until a demo video
+  exists — TikTok says so on the page — which is why the sandbox was used. That
+  video was recorded 2026-08-26. Remaining: `Import ⌄` the sandbox config, add
+  the icon, the ≤1000-char app-review explanation and the video, save, submit.
+- **After approval, swap `TIKTOK_CLIENT_KEY` and `TIKTOK_CLIENT_SECRET` from the
+  sandbox credentials to the production ones.** Nothing enforces this and
+  nothing will warn about it. A sandbox key fails at the **token exchange** —
+  the first and only place the secret is used — so the symptom appears at the
+  end of a consent flow the user has already completed, not at deploy time.
+  Sandbox client keys carry an `sba` prefix, which is how to tell which is
+  loaded without ever printing the value.
 - **App Review** needs an anonymously reachable privacy policy, so switching on
   the site gate breaks it exactly as it breaks Google's and Meta's. See
   `docs/runbooks/google-oauth-demo-video.md`.

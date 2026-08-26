@@ -32,6 +32,138 @@
 >
 > **Adding an entry:** prepend it (newest first). See `knowledge-sync` step 4.
 
+## [2026-08-26] TikTok read-only analytics connector — and four defects one real connection found
+
+**PRs #525 and #529, both merged.** The fifth direct platform connector under the 2026-08-23
+scope decision (*Outstand publishes, direct APIs measure*). Per-user OAuth on `user.info.basic`,
+`user.info.profile`, `user.info.stats` and `video.list`. **Nothing here can post** — the Content
+Posting API is deliberately not requested, and the consent screen the user sees itemises four
+*reads*. Migration `20260826200000` (`tiktok_account_connections` + 8 RPCs), four edge functions,
+three shared modules, plus three follow-up migrations from the review loop.
+
+Verified on prod **by object**, not by the ledger: RLS on with zero policies, grants exactly
+`postgres` + `service_role`, `tiktok_connection_status()` executable by `authenticated` but not
+`anon` and taking no arguments. The zero-policy count carried a control — the same query against
+`profiles` returns 7, so a 0 could have meant a broken query rather than a locked-down table.
+
+### What deliberately did not copy the X connector
+
+X carries **three** claim pairs; this carries **two**, and the missing one is the design. X's
+insights claim exists because **X bills per read**, so two tabs arriving after a cache expiry both
+miss, both call X, and both get invoiced — serialising the cache fill is a *cost* control.
+TikTok's Display API is **free** (600 req/min per endpoint, nowhere near our scale), so the
+snapshot is a plain cache with no lock. **Unjustified locking is not free**: every lock is a place
+a claim can strand and block a user for a TTL.
+
+The two locks that survive are correctness. The refresh token **rotates**, so two concurrent
+refreshes can leave us holding a token TikTok has already superseded — unrecoverable without
+re-consent. And a disconnect racing a reconnect can delete the row the reconnect just wrote,
+destroying a live grant's only stored token, the same hazard the Facebook connector fixed under
+lock. Both take the **same** advisory key; three different keys is the defect Codex found in the X
+connector at round 7 — three operations on one grant serialising against nothing.
+
+Platform facts were read at source rather than inferred from a sibling, because the Facebook
+connector shipped a real defect by pattern-matching Instagram. Access token **24 hours**; refresh
+token **365 days**, so a dormant connection survives a year and **no dormancy sweep exists** —
+the opposite of Instagram, where a connection nobody reads dies. A **revoke endpoint does exist**,
+unlike Instagram and Facebook. `username` needs `user.info.profile` while only `display_name`
+comes with `basic` — and the connector reads just `username` and `profile_deep_link` from that
+scope, because **a scope is not the same as what you fetch**.
+
+### The first real connection found four defects (#529)
+
+`@tumericturtle` connected cleanly and the row landed with all four counters **null**. Each was
+uncovered by fixing the one before it.
+
+**(1)** The callback fetched the stats and never passed them to `store_tiktok_connection` — under
+a comment saying it fetched early precisely *so* the row would carry stats. The code did the exact
+thing its own comment warned against, and **the comment read as evidence that it did not**. Third
+time on that branch a comment claimed a property the code lacked; Codex caught the other two, and
+none was caught by a test. **A comment is a claim, and nothing tests it.**
+
+**(2)** A reconnect kept the **previous account's** numbers: the `on conflict` branch never listed
+those columns, so it left them untouched while correctly resetting `last_synced_at` and
+`insights`. A reconnect can be to a different account — the function's own comment says so before
+leaving four columns doing exactly that. Now set from `excluded`, deliberately **not** coalesced,
+because **a real measurement attributed to the wrong subject is a fabrication, not staleness**.
+`coalesce` stays correct one function over in `cache_tiktok_insights`, which always refreshes the
+same account. Opposite rules on adjacent functions, both pinned by tests.
+
+**(3)** `likes_count` is a **lifetime** total that does not fit `int4` (Codex P2). The failure
+mode is not a wrong number: the RPC raises `22003`, the callback treats it as `storage_failed`,
+and that branch **revokes the token** — correctly, by the rule that a live grant is never
+abandoned. So a large account cannot connect and loses its grant on every attempt, behind an error
+naming storage rather than the counter that overflowed. **The population that breaks is exactly
+the one worth having.** All four columns were widened; the review named only the connect path, but
+`cache_tiktok_insights` wrote the same columns through its own RPC and declared them `integer`
+too, where the identical crash marks a healthy connection failed on *every refresh*.
+
+**(4)** Widening the columns left `tiktok_connection_status()` declaring them `integer` in its
+`RETURNS TABLE`, and an SQL function coerces its result to the declared type — so it narrowed
+`bigint` straight back to `int4` and raised `22003` for exactly the values the widening existed to
+permit (Codex P1). That is the **UI-facing** function, and its hook throws on error, so one large
+account would have taken the card's red branch on all three settings surfaces. **Widening a column
+is not a local change** — every function *declaring* that type has to move with it. `drop` then
+`create` throughout: a different parameter list makes an **overload**, not a replacement, and
+PostgreSQL refuses outright to change a function's return type.
+
+### Method
+
+**The first probe of (4) said it was fine** — the status RPC returned a row with no error, because
+every counter on it was null and a null coerces to anything. Re-probed by writing `12,000,000,000`
+into `likes_count` in a rolled-back transaction, which raised `22003`. **When a probe comes back
+clean, prove it could have come back dirty**; this project wrote that rule down after measuring
+the wrong element for the mobile scroll bug and had to learn it twice in one session.
+
+**Two forced controls caught flaws in the tests rather than the code**, both substring assertions
+satisfied by text that does not do the thing: `p_likes_count bigint` matched a *different*
+function twelve lines away while the one under test was reverted to `integer`, and a
+`drop function` assertion passed with the drop **commented out**. Now scoped and anchored. 14
+forced controls across three rounds, every one caught.
+
+A version collision also went the right way: `20260826220000` was already recorded on prod by
+another branch, `db:apply` **refused**, and it was renumbered rather than forced — forcing past
+that refusal is exactly how `recorded != actual` happens.
+
+### Working end to end, and an acceptance signal that is not the siblings'
+
+First connection 2026-08-26 13:56 UTC with exactly the four read scopes, `status=active`,
+`last_error=null`. **YouTube, Instagram and Facebook all stamp `last_synced_at` seconds after
+`connected_at`, and that gap is their proof the API was really called. TikTok's read fires when
+the card first renders** — measured gaps of **38 minutes**, then **89 seconds**. A null
+`last_synced_at` here means nobody opened the settings page. The runbook asserted the sibling rule
+and was wrong; corrected.
+
+After #529 the reconnect proved the fix on prod: `follower_count 10`, `likes_count 4`,
+`video_count 1` written **at connect time**, where before they landed null. The card's `0
+Comments` is a **genuine** zero, checked rather than assumed, because it is the shape of the
+fabricated zero this codebase has shipped before — `Number(null)` is 0 and 0 is finite.
+
+### Console and the demo video
+
+TikTok's **production** app form will not save without a demo video, stated on the page in
+TikTok's own words. So the console was configured as a **sandbox** — no app review, its own
+products/scopes/redirect URI, up to 10 target users. **Adding a target user requires that
+account's login credentials**, so it is founder work by construction. `TIKTOK_CLIENT_KEY` was
+proven to be the sandbox key by SHA-256 digest comparison, with a control proving the instrument
+could have disagreed.
+
+The demo video was recorded on 2026-08-26 (1:47, 2.5 MB, against a 50 MB cap): not-connected card
+→ Connect → consent screen with all four scopes → Continue → redirect to `dragoncandy.com` →
+populated card → Refresh moving the "Measured" timestamp. Two Chrome artefacts had to be cropped
+out because neither can be dismissed — the extension's debugging infobar (browser chrome) and its
+"active in this tab group" pill (not in the page DOM). The crop keeps the URL bar, since TikTok
+requires the reviewed domain on screen.
+
+### Not done
+
+The **production** console form (now unblocked by the video); swapping
+`TIKTOK_CLIENT_KEY`/`TIKTOK_CLIENT_SECRET` from sandbox to production credentials after approval,
+which nothing enforces and which fails at token exchange if missed; and App Review's need for an
+**anonymously reachable privacy policy**, which the site gate would break exactly as it breaks
+Google's and Meta's. Both TikTok buttons on the settings page also read "Connect TikTok" — one
+publishes via Outstand, one measures — and nothing on the buttons says which.
+
 ## [2026-08-26] The app icon's black eye was the background showing through a hole
 
 **PR #532, open at time of writing.** Codex clean at round 2; `npm run build` clean; 3493 tests

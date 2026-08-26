@@ -113,8 +113,10 @@ holds no Toast credentials. See §6.
 > task, forever.
 >
 > **The exception is load-bearing: an entry marked `→ no wiki page yet` is the ONLY copy.**
-> **One** exists today — the TikTok connector (#525, #529); email verification was the second
-> until #531 backfilled it hours later. Do not
+> **None exists today.** There were two: email verification, backfilled by #531 hours after it
+> was flagged, and the TikTok connector, backfilled by this PR. Both were found the same way —
+> a mid-session `git fetch` moving `origin/main` — which is the actual detector here, so expect
+> the count to go back above zero rather than treating zero as the steady state. Do not
 > trim one to an index line before its prose has been backfilled to `SHIPPED_LOG.md`; that is
 > the one edit in this file that can destroy information rather than relocate it. Trimming is
 > safe *because* the richer copy was checked to exist — never because this header says so.
@@ -180,17 +182,19 @@ Engineering cannot close these. Ordered by what blocks launch.
 ### In flight
 
 - **TikTok read-only analytics connector** — the fifth direct platform API under the
-  2026-08-23 scope decision. #525 merged 2026-08-25, #529 (connect dropped the stats it had
-  already fetched, plus three type bugs) merged 2026-08-26. Four functions, all
-  `verify_jwt = true`, and all four registered on prod (a POST returns 401; an invented name
-  returns 404). Five migrations on `origin/main` — the table, the stats write, and **three**
-  follow-ups widening counters to `bigint`. **Added to this index 2026-08-26: it had no §5
-  entry at all, and none of #525–#530 has reached `SHIPPED_LOG.md` or the wiki**, so the
-  knowledge layer owes five PRs. **Pending:** the knowledge-sync backfill; whether a real
-  account has ever connected is **unverified** — the acceptance signal is `last_synced_at`
-  landing seconds after `connected_at`, and checking it needs prod DB access; App Review needs
-  a demo video, and the site gate breaks its privacy-policy requirement exactly as it does
-  Google's and Meta's. → no wiki page yet · #525, #529
+  2026-08-23 scope decision. #525 and #529 merged; five migrations, four functions, all
+  `verify_jwt = true` and verified on prod by object. **CONNECTED AND MEASURING 2026-08-26**
+  (`@tumericturtle`, the four read scopes, `status=active`) — this entry called that
+  "unverified" and also named the wrong acceptance signal. **`last_synced_at` does NOT land
+  seconds after `connected_at` here**, unlike the other three connectors: TikTok's read fires
+  on card render, so the gap was 38 minutes and then 89 seconds, and a null stamp means nobody
+  opened the settings page. The reconnect proved #529 on prod — counters are written at
+  connect, where before they landed null. Console is a **sandbox**, because the production form
+  will not save without a demo video; that video was recorded 2026-08-26. **Pending:** save and
+  submit the production form; **swap the secrets from sandbox to production after approval**,
+  which nothing enforces and which fails at token exchange; App Review's anonymously reachable
+  privacy policy, which the site gate breaks as it does Google's and Meta's.
+  → `docs/wiki/concepts/tiktok-analytics-connector.md` · #525, #529
 - **Email verification by code — the signup tab stops being thrown away** — signup used to end
   in `signOut()`, discarding the tab that had just done the work; the session now survives and a
   six-digit code is entered in place, with **the emailed link unchanged** (the only route that
