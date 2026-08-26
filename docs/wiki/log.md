@@ -1,5 +1,28 @@
 # Wiki Log
 
+## [2026-08-26] ingest | Email verification exercised on prod, and a P1 that was nearly filed
+
+**Created** `raw/sessions/2026-08-26-email-verification-prod-exercise.md`. **Updated**
+[[Email Verification Routes]], [[Verify Before Reporting]], `docs/SHIPPED_LOG.md`,
+`docs/PROJECT_CONTEXT.md` §5. No new pages, so `index.md` is unchanged.
+
+Compounded onto the two existing pages rather than creating a third. The session produced no new
+subject — it produced *evidence* about one page's subject and *an instance* of the other's, which
+is what those pages are for.
+
+Both verification routes now run end to end on production. The durable half is not that they
+work; it is what had to be true for the test to be capable of failing. The RPC short-circuits on
+`already_verified` before reading the code, so on the verified test account a **wrong** code
+returned HTTP 200; only after `email_verified` was set false did the same request return 400.
+Recorded on [[Verify Before Reporting]] as its own section, because "ask what the system does when
+the work is already done" generalises past this feature.
+
+The Gmail-connector instance went onto the same page's *instrument* section. It is the sharpest
+one recorded: the false reading was internally consistent, survived a direct test, and was refuted
+only by a control from an unrelated sender — after a first control that came back clean because it
+could not express the failure at all. It was then confirmed from the other end by a human clicking
+the real buttons, which logged the token intact.
+
 ## [2026-08-26] ingest | TikTok connector: two locks not three, and four defects one real connection found
 
 **Created** [[TikTok Analytics Connector]] (`concepts/tiktok-analytics-connector.md`) and

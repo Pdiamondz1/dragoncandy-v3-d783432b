@@ -3,7 +3,7 @@ title: Verify Before Reporting
 type: concept
 created: 2026-08-26
 updated: 2026-08-26
-sources: []
+sources: [2026-08-26-email-verification-prod-exercise.md]
 tags: [method, verification, controls, evidence, review]
 ---
 # Verify Before Reporting
@@ -95,7 +95,43 @@ grepped only the scripts named in the root HTML, while the page under test is a 
 that could never appear there; the negative control returned 0 the same way, which was the
 tell. See [[Knowledge-Sync Automation]].
 
+The costliest instance so far was nearly a filed P1. Reading production verification mail
+through the claude.ai Gmail connector, every link came back corrupted — `?token=29ece178`
+as `?token)ece178`, `width=device-width` as `width`+`Þ`+`vice-width`. It was mechanically
+consistent with quoted-printable decoding of an unescaped `=`: every `=` followed by two hex
+digits eaten, every other `=` (`initial-scale=1.0`, `href="https`) untouched. Since a UUID
+always follows `?token=` with hex, the reading was "100% of verification links are broken",
+and it had been *tested* — the corrupted form returned `missing_token`, the stored token
+returned `verified=1`.
+
+It was still wrong. **An unrelated sender's mail showed the identical damage** — an X Corp
+login notification, whose links demonstrably work for millions of people. The corruption is
+the reader. Confirmed hours later from the other end: the founder clicked the real buttons
+in a real mail client and the edge function logged `token_prefix: "29ece178"`, intact, where
+the agent's own corrupted probe had logged `token_prefix: ")ece178-"`.
+
+**The first control chosen could not have detected it.** A Google Apps Script notification
+came back clean — because it happens to contain no `=` followed by two hex digits
+(`?trigger_id=td…`, and `t` is not hex). A control that comes back clean because it cannot
+express the failure is not corroboration; it is the same nothing as no control at all. Pick
+a control that carries the pattern you are testing for. See [[Email Verification Routes]].
+
 *State what the instrument would have to see to say no. If you cannot, you are not measuring.*
+
+## An idempotent success branch turns the whole test into a false pass
+
+`consume_email_verification_code` returns `ok:true, reason:'already_verified'` before it
+looks at the code, so that a double submit — or a race with the emailed link being clicked
+on another device — never errors about something that already worked. Correct behaviour, and
+it makes any verification test run against an already-verified account a guaranteed pass.
+
+Measured on prod rather than reasoned about: the **wrong** code `999999` returned **HTTP 200
+success**. With `email_verified` set false, the identical request returned **400 `mismatch`**.
+Same endpoint, same input, opposite answers — which is what made every later result on that
+route mean something. See [[Email Verification Routes]].
+
+*Before testing a success path, ask what the system does when the work is already done. If
+that answer is "succeed", the precondition is the test.*
 
 ## Two observations of the same thing are not two pieces of evidence
 
@@ -124,4 +160,5 @@ observation. See [[YouTube Analytics Connector]].
 - [[Social Provider Decision]] — what an unchecked empty result nearly cost
 - [[Mobile Viewport & Fixed Positioning]] — the probe that measured the wrong element
 - [[Workspace Email Signatures]] — success logged for zero delivered
+- [[Email Verification Routes]] — the instrument, the idempotent branch, and a real click that settled both
 - `codex-review` — the second reader that catches what one model's controls do not

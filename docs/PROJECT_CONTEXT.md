@@ -199,17 +199,16 @@ Engineering cannot close these. Ordered by what blocks launch.
   → `docs/wiki/concepts/tiktok-analytics-connector.md` · #525, #529
 - **Email verification by code — the signup tab stops being thrown away** — signup used to end
   in `signOut()`, discarding the tab that had just done the work; the session now survives and a
-  six-digit code is entered in place, with **the emailed link unchanged** (the only route that
-  works once the tab is closed, so the panel polls and moves on by itself). The durable half is
-  the entropy argument: the UUID link is safe with no session, which is why `verify-email` runs
-  at `verify_jwt = false` — and the ~20-bit code is safe **only** because the function body
-  resolves it against the caller's own JWT. The attempt cap lives in SQL because counting in
-  TypeScript is check-then-act, and is per **user**, since a resend mints a fresh row and would
-  otherwise refill the budget on demand. Verification is a **route gate** (#528); the wizard is
-  entered only when the account never finished it (#527). **Pending:** no real signup has
-  exercised the code flow end to end on prod; `dame+onboardtest@dragoncandy.com` is a live prod
-  account counted in the investor-facing user figure; and a distinct wizard-completion signal to
-  replace `is_completed` as the routing gate.
+  six-digit code is entered in place, with **the emailed link unchanged**. The durable half is the
+  entropy argument: the UUID link is safe with no session (which is why `verify-email` runs at
+  `verify_jwt = false`), and the ~20-bit code is safe **only** because the function body resolves
+  it against the caller's own JWT, behind a per-**user** cap enforced in SQL. Verification is a
+  **route gate** (#528); the wizard is entered only when the account never finished it (#527).
+  **Both routes exercised end to end on prod 2026-08-26**, founder click on a live link included.
+  **Pending:** the six-digit input has never been typed in a browser — everything beneath it is
+  proven, but that needs a fresh signup; `dame+onboardtest@dragoncandy.com` is a live prod account
+  counted in the investor-facing user figure; and a distinct wizard-completion signal to replace
+  `is_completed` as the routing gate.
   → `docs/wiki/concepts/email-verification-routes.md` · #527, #528, #530, #531
 - **X (Twitter) analytics connector** — merged, applied, deployed. **TWO accounts are connected,
   not one, and the read is no longer failing** — this entry said `last_synced_at` was null and
