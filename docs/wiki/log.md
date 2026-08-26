@@ -81,6 +81,37 @@ bullet wrapping onto a two-space continuation, so the next nested bullet read as
 links left the gate. The test failed first, which is the only reason it was visible.
 Clean at round 7. See [[Verify Before Reporting]].
 
+## [2026-08-26] ingest | §5 regrew to 155 KB, and the fix that "makes it stick" did not
+
+**Created** `raw/sessions/2026-08-26-context-tax-regrowth.md`. **Updated** [[Context Tax]]
+(`concepts/context-tax.md` — new "The regrowth (2026-08-26)" section), `index.md` (two lines
+carrying the falsified "so it cannot regrow" claim, corrected in place), `log.md`,
+`docs/PROJECT_CONTEXT.md`, `docs/SHIPPED_LOG.md`, `.claude/skills/knowledge-sync/SKILL.md`.
+
+**Contradiction flagged, not overwritten.** [[Context Tax]] and both `index.md` lines asserted
+the July split "amended **both** generators so it cannot regrow". §5 regrew **73,742 →
+154,964 B in six weeks** — within 3.2% of its pre-split size. The old claim is struck through and
+dated rather than deleted, because the reason it was believed is the lesson.
+
+**The durable rule:** *a written rule that nothing enforces is not a control* — now
+`src/projectContextSize.test.ts` (per-entry line cap, byte caps, rule-text presence). Whole file
+**170,999 → 49,438 B (−71%)**; §5 **154,964 → 33,403 B (−78%)**.
+
+**And a rule about controls themselves.** The first draft's control asserted "§5 parses at least
+40 entries" — a **content floor, not a parser check**, which Codex correctly rejected: §5 getting
+*smaller* is the point of the file, so the floor would have failed on correct maintenance. *A
+control must be about the instrument, not about the reading.* Replaced by a fixed fixture plus
+parser-vs-raw-bullet agreement; both forced to fail before being trusted.
+
+**Five wrong claims corrected in §5**, from checking all 111 cited PRs against the repo's 530:
+#444/#452 open→merged, **#387 asserted merged but CLOSED unmerged** (work landed via #396),
+#249 closed (landed via #251/#254), and 13→**12** edge functions answering `.io` to a native
+origin. Two workstreams were **missing entirely** — TikTok (#525, #529) and email verification
+(#527, #528, #530), none of which has reached `SHIPPED_LOG.md` or the wiki.
+
+**Not verified:** the prod-DB half of the sweep. The Supabase MCP reports connected but holds no
+`SUPABASE_ACCESS_TOKEN`, and `.env.sync.local` is gitignored so it lives only in the main
+checkout. Recorded as unverified rather than assumed true.
 ## [2026-08-26] ingest | Email verification by code, with the link kept working
 
 **Created** [[Email Verification Routes]] (`concepts/email-verification-routes.md`) and
