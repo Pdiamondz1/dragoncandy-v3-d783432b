@@ -154,24 +154,53 @@ export function parseMediaRefs(
  *
  * A PRESENT-BUT-WRONG value is refused rather than ignored. Reading a number as
  * "no schedule" would silently post immediately something the user asked to go
- * out on Friday.
+ * out on Friday — and a timestamp with no timezone is present-but-wrong in the
+ * same way, which is why `parseScheduledAt` refuses one rather than picking an
+ * offset on the user's behalf.
  */
+/**
+ * An ISO 8601 instant with an EXPLICIT offset. `2026-09-01T18:00:00Z` or
+ * `2026-09-01T18:00:00-04:00`; never `2026-09-01T18:00:00`.
+ *
+ * Seconds are optional, fractional seconds are optional, the offset is not.
+ */
+const INSTANT_RE = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2}(\.\d{1,9})?)?(Z|[+-]\d{2}:?\d{2})$/i;
+
 export function parseScheduledAt(value: unknown): string | null {
   if (value === undefined || value === null) return null;
   if (typeof value !== 'string' || !value.trim()) {
     throw new StagingError('bad_scheduled_at', 'scheduled_at must be a date and time', 400);
   }
 
-  const at = Date.parse(value);
+  // REFUSED, not guessed. A timestamp with no offset does not name an instant,
+  // and every layer that touches it picks a different one: `Date.parse` reads
+  // it as the EDGE RUNTIME's local time (UTC), Postgres would read it as the
+  // session timezone, and the user meant neither — they meant six in the
+  // evening where their restaurant is. In Hoboken that is a four-hour error on
+  // a post that cannot be unpublished.
+  //
+  // The first version of this function normalised such a value to an explicit
+  // instant instead of refusing it. That was an improvement — it stopped the
+  // answer depending on how each layer happened to be configured — but it
+  // settled the ambiguity by GUESSING, which is the one thing this codebase
+  // does not do with irreversible actions. The client knows its own timezone
+  // and can say so; the server cannot and must not invent one.
+  const trimmed = value.trim();
+  if (!INSTANT_RE.test(trimmed)) {
+    throw new StagingError(
+      'bad_scheduled_at',
+      'scheduled_at must include a timezone, e.g. 2026-09-01T18:00:00-04:00 or ...Z',
+      400,
+    );
+  }
+
+  const at = Date.parse(trimmed);
   if (!Number.isFinite(at)) {
     throw new StagingError('bad_scheduled_at', 'scheduled_at is not a valid date and time', 400);
   }
 
-  // NORMALISED to an explicit UTC instant, not passed through. A bare
-  // `2026-09-01 18:00` is read as local time by JS and as the SESSION timezone
-  // by Postgres, and those are two different moments. Sending an unambiguous
-  // instant means the post goes out when the client meant, whatever either side
-  // happens to be configured as.
+  // Normalised to UTC once the offset has been read, so everything downstream
+  // sees one representation of one instant.
   return new Date(at).toISOString();
 }
 

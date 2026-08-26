@@ -244,11 +244,32 @@ describe('parseScheduledAt', () => {
     expect(parseScheduledAt(null)).toBeNull();
   });
 
-  // A bare date-time is read as LOCAL by JS and as the SESSION TIMEZONE by
-  // Postgres — two different moments. Normalising is what stops the post going
-  // out at the wrong hour depending on how either side is configured.
-  it('pins a bare date-time to one instant rather than leaving it ambiguous', () => {
-    expect(parseScheduledAt('2026-09-01T18:00:00')).toMatch(/^2026-09-0\dT\d\d:00:00\.000Z$/);
+  // An offset is REQUIRED, not defaulted. `Date.parse` would read a bare
+  // date-time as the EDGE RUNTIME's local time (UTC), Postgres would read it as
+  // the session timezone, and the user meant six in the evening where their
+  // restaurant is — a four-hour error in Hoboken, on a post that cannot be
+  // unpublished. An earlier version pinned it to an instant instead of refusing,
+  // which removed the inconsistency but settled it by guessing.
+  it.each([
+    '2026-09-01T18:00:00',
+    '2026-09-01T18:00',
+    '2026-09-01',
+    '2026-09-01 18:00:00Z',
+  ])('refuses %p, because it does not name an instant', (value) => {
+    expect(() => parseScheduledAt(value)).toThrow(/must include a timezone/);
+  });
+
+  // CONTROL — an explicit offset is honoured as written, not re-read as UTC.
+  it('reads a real offset rather than assuming UTC', () => {
+    expect(parseScheduledAt('2026-09-01T18:00:00-04:00')).toBe('2026-09-01T22:00:00.000Z');
+    expect(parseScheduledAt('2026-09-01T18:00:00+09:00')).toBe('2026-09-01T09:00:00.000Z');
+    // The compact offset form ISO 8601 also allows.
+    expect(parseScheduledAt('2026-09-01T18:00:00-0400')).toBe('2026-09-01T22:00:00.000Z');
+  });
+
+  it('accepts fractional seconds and second-less forms, as long as the offset is there', () => {
+    expect(parseScheduledAt('2026-09-01T18:00Z')).toBe('2026-09-01T18:00:00.000Z');
+    expect(parseScheduledAt('2026-09-01T18:00:00.500Z')).toBe('2026-09-01T18:00:00.500Z');
   });
 
   // The one that mattered: a malformed value used to reach PostgREST's argument
