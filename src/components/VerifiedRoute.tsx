@@ -1,6 +1,7 @@
 import React, { useEffect } from 'react';
 import { Navigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
+import { deriveEmailGate } from '@/lib/emailVerificationGate';
 import { toast } from 'sonner';
 import { Spinner } from '@/components/ui/spinner';
 
@@ -24,18 +25,10 @@ interface VerifiedRouteProps {
 export const VerifiedRoute: React.FC<VerifiedRouteProps> = ({ children }) => {
   const { isAuthenticated, loading, profile, user } = useAuth();
 
-  const settled = !loading && isAuthenticated;
-  const isInternalOnly =
-    settled && !profile && user?.user_metadata?.account_scope === 'internal';
-  // Resolve on whether the app-level flag is KNOWN, not on whether a profile
-  // object exists: AuthContext fabricates a profile from user metadata when the
-  // row is missing (createProfileFromMetadata), and that object carries no
-  // email_verified — so a `profile ? … : …` test would read the fabricated
-  // undefined as "unverified" and re-create the very loop this fixes. `??`
-  // falls back to auth truth only when the flag is absent, so a real stored
-  // `false` still blocks.
-  const emailNotVerified =
-    settled && (profile?.email_verified ?? !!user?.email_confirmed_at) !== true;
+  // One derivation, shared with `ProtectedRoute` — see `lib/emailVerificationGate.ts`
+  // for why the `??` fallback is deliberately weak and must not be copied as a
+  // verification signal elsewhere.
+  const { isInternalOnly, emailNotVerified } = deriveEmailGate({ loading, isAuthenticated, profile, user });
 
   useEffect(() => {
     if (emailNotVerified) {
