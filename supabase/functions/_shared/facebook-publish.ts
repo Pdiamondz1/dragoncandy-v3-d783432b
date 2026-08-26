@@ -158,6 +158,9 @@ export const PROVEN_NOT_PUBLISHED_CODES = [
   'reels_need_video',
   'story_needs_media',
   'feed_text_needs_caption',
+  // Raised only by the `published: false` upload, which by construction puts
+  // nothing on the feed. See `publishPhoto`.
+  'staged_unknown_id',
 ];
 
 export function provesNothingWasPublished(code: string): boolean {
@@ -417,7 +420,28 @@ export async function publishPhoto(
     'photo post',
   );
   const photoId = data?.id;
-  if (!photoId) throw new FacebookError('published_unknown_id', 'Facebook returned no photo id', 502);
+  if (!photoId) {
+    // TWO CODES, BECAUSE THIS ONE CALL DOES TWO DIFFERENT THINGS.
+    //
+    // With `published` left alone the photo goes straight onto the Page, so a
+    // missing id means something IS live and we cannot name it — which is the
+    // `published_unknown_id` contract, and the sweep sends it to a person.
+    //
+    // With `published: false` nothing is public: this is step one of a photo
+    // story, and the photo sits in the Page's library. A missing id there is an
+    // ordinary failed upload, and calling it `published_unknown_id` would stop
+    // the job for ever over a story that was never created (Codex, round 14).
+    // It is a distinct code rather than a shared one so the log says which
+    // happened, and it is on `PROVEN_NOT_PUBLISHED_CODES` because by
+    // construction it is.
+    throw new FacebookError(
+      opts.published === false ? 'staged_unknown_id' : 'published_unknown_id',
+      opts.published === false
+        ? 'Facebook accepted the upload but returned no photo id'
+        : 'Facebook returned no photo id',
+      502,
+    );
+  }
   return { photoId: String(photoId), postId: data?.post_id ? String(data.post_id) : null };
 }
 

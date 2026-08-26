@@ -1,6 +1,7 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
 import {
   canPublish,
+  publishPhoto,
   FACEBOOK_NATIVE_SCHEDULING_USED,
   hasPublishPermission,
   isVideoReady,
@@ -328,5 +329,50 @@ describe('RATE_LIMIT_POSTS', () => {
 
   it('is a rolling-24-hour window, matching how the claim RPC counts', () => {
     expect(RATE_WINDOW_SECONDS).toBe(24 * 60 * 60);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// One call, two meanings — and the error code has to say which
+// ---------------------------------------------------------------------------
+describe('publishPhoto when Facebook returns no id', () => {
+  const originalFetch = globalThis.fetch;
+
+  function answerWith(body: unknown) {
+    globalThis.fetch = (() =>
+      Promise.resolve(new Response(JSON.stringify(body), { status: 200 }))) as typeof fetch;
+  }
+
+  afterEach(() => {
+    globalThis.fetch = originalFetch;
+  });
+
+  it('CONTROL — a normal response still yields both ids', async () => {
+    answerWith({ id: '123', post_id: '99_123' });
+    await expect(publishPhoto('page', 'tok', 'https://x/1.jpg', 'hi'))
+      .resolves.toEqual({ photoId: '123', postId: '99_123' });
+  });
+
+  // Published: something IS live and we cannot name it. A person has to look.
+  it('a PUBLISHED photo with no id is an ambiguous live post', async () => {
+    answerWith({});
+    await expect(publishPhoto('page', 'tok', 'https://x/1.jpg', 'hi'))
+      .rejects.toMatchObject({ code: 'published_unknown_id' });
+  });
+
+  // published:false is step one of a photo story: the photo sits in the Page's
+  // library and nothing is on the feed. Calling that `published_unknown_id`
+  // stopped the job for ever over a story that was never created.
+  it('an UNPUBLISHED upload with no id is a failed upload, not a live post', async () => {
+    answerWith({});
+    await expect(publishPhoto('page', 'tok', 'https://x/1.jpg', null, { published: false }))
+      .rejects.toMatchObject({ code: 'staged_unknown_id' });
+  });
+
+  it('and is safe to retry, because by construction nothing was published', () => {
+    expect(provesNothingWasPublished('staged_unknown_id')).toBe(true);
+    // The control: its published counterpart must NOT be, or the distinction
+    // buys nothing.
+    expect(provesNothingWasPublished('published_unknown_id')).toBe(false);
   });
 });

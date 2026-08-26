@@ -372,6 +372,11 @@ async function advance(db: any, job: Claim): Promise<Outcome> {
         return 'failed';
       }
       if (err.code === 'published_unknown_id') {
+        // Straight to a person, with no marker check, because the INVARIANT is
+        // on the code rather than on this branch: only a call that genuinely
+        // published may raise it. `publishPhoto` with `published: false` raises
+        // `staged_unknown_id` instead, precisely so this branch stays a
+        // statement about live posts. Keep that true when adding a call site.
         await review(db, job, err.message);
         return 'needs_review';
       }
