@@ -36,7 +36,7 @@ ignores code spans. Proven by forcing it red three ways; **the mojibake control 
 first attempt and had to be redone**, because the injected bytes were Latin-1 where the check
 reads UTF-8. A control that fails to fail is the failure.
 
-**Codex then found the checker wrong four times across two rounds, every one real, and every
+**Codex then found the checker wrong seven times across four rounds, every one real, and every
 one in the checker rather than the cleanup.** The mojibake detector was a list of the five
 sequences this cleanup happened to contain — which is *"a guard that enumerates the bad cases
 treats every case it has not met as good"*, the lesson this repo already recorded on the X
@@ -55,9 +55,22 @@ the code as prose. And code spans were matched on a single backtick, so the mult
 form a page uses to write a literal link left the link exposed — the regex consumed the two
 adjacent backticks as an empty span.
 
-Fixing the last of those **raised coverage from 1,942 links to 1,958**: the old regex had been
-over-blanking, so sixteen real links were never checked at all. A parser that is wrong about
-markdown does not merely mis-report — it silently shrinks what the gate covers.
+Rounds 3 and 4 inverted the direction: **paths where the gate would pass a broken link.** A
+fence opener matched at any indentation, so a line markdown reads as indented code opened a
+block that blanked every link after it to EOF. A catalog target was accepted on `existsSync`
+alone, which a *directory* also satisfies. And indented code blocks were scanned as prose.
+
+That last one is the one to remember, because **the obvious remedy was wrong**: blanking every
+line indented four spaces would have dropped nested bullets and wrapped list continuations —
+where the links in this wiki actually live — silently out of the gate. An indented block now
+starts only after a blank line, only when the preceding content was not a list, and never on a
+line that is itself a bullet.
+
+Fixing the code-span parser **raised coverage from 1,942 links to 1,958**: the old regex had
+been over-blanking, so sixteen real links were never checked at all. That is the through-line
+of all seven findings — **a parser that is wrong about markdown does not merely mis-report, it
+silently changes how much the gate covers**, and the direction is not obvious from the code.
+Every fix since has been checked against the link count for exactly that reason.
 See [[Verify Before Reporting]].
 
 ## [2026-08-26] ingest | Email verification by code, with the link kept working

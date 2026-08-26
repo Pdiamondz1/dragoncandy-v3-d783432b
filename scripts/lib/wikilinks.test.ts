@@ -173,6 +173,23 @@ describe('the checker itself can fail', () => {
     expect(extractTargets('a `b ``` c` [[Real]]')).toEqual(['Real']);
   });
 
+  it('ignores a genuine indented code block', () => {
+    const doc = ['A paragraph.', '', '    [[Example In Code]]', '', 'Back to [[Real Prose]].'].join(
+      '\n',
+    );
+    expect(extractTargets(doc)).toEqual(['Real Prose']);
+  });
+
+  it('does NOT blank indented list continuations, which is where the links actually live', () => {
+    // Blanking every 4-space line is the naive fix and would drop real links out of the
+    // gate — the silent false negative that matters more than the false positive above.
+    const nestedBullet = ['- top', '', '    - [[Nested Bullet Link]]'].join('\n');
+    expect(extractTargets(nestedBullet)).toEqual(['Nested Bullet Link']);
+
+    const continuation = ['- a bullet whose text wraps', '    onto [[A Wrapped Link]]'].join('\n');
+    expect(extractTargets(continuation)).toEqual(['A Wrapped Link']);
+  });
+
   it('does not open a fence on a line indented four or more spaces', () => {
     // Markdown reads that as indented code, not a fence. Opening one anyway blanks every
     // link after it to EOF, so real dangling links pass the gate — a silent false negative.

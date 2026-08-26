@@ -47,7 +47,21 @@ export function stripCode(text: string): string {
   // Fences are tracked line by line, NOT matched as pairs. Markdown treats an UNCLOSED
   // fence as running to end of document; a paired `/```[\s\S]*?```/` regex leaves that
   // trailing block untouched, so every quoted [[Name]] after it is reported as dangling
-  // and fails CI over text that is not a link. (Codex second review, 2026-08-26.)
+  // and fails CI over text that is not a link. (Codex second review, round 1.)
+
+  // Indented code blocks are code too. This deliberately does NOT
+  // blank every line indented four spaces: in this wiki that indentation is almost always
+  // list continuation or a nested bullet, and blanking those would drop real links out of
+  // the gate — the silent false negative round 3 closed. An indented block therefore starts
+  // only after a blank line, only when the preceding content was not a list, and never on a
+  // line that is itself a bullet. (Codex second review, round 4.)
+  const isListItem = (l: string) => /^\s*([-*+]|\d+[.)])\s/.test(l);
+  const isIndented = (l: string) => /^( {4,}|\t)/.test(l) && l.trim() !== '';
+
+  let inIndentedCode = false;
+  let previousBlank = true; // start of document behaves like "after a blank line"
+  let lastContentWasList = false;
+
   let fence: string | null = null;
   const defenced = text
     .split('\n')
@@ -72,8 +86,30 @@ export function stripCode(text: string): string {
       }
       if (delimiter) {
         fence = delimiter[1];
+        previousBlank = false;
+        lastContentWasList = false;
+        inIndentedCode = false;
         return blank(line);
       }
+
+      const isBlank = line.trim() === '';
+      if (isBlank) {
+        previousBlank = true;
+        return line;
+      }
+
+      if (isIndented(line) && !isListItem(line)) {
+        if (inIndentedCode || (previousBlank && !lastContentWasList)) {
+          inIndentedCode = true;
+          previousBlank = false;
+          return blank(line);
+        }
+      } else {
+        inIndentedCode = false;
+      }
+
+      previousBlank = false;
+      lastContentWasList = isListItem(line);
       return line;
     })
     .join('\n');
