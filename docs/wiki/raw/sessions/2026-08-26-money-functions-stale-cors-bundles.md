@@ -94,7 +94,9 @@ Both checks re-run after the deploy:
 Then a **full sweep of all 125 deployed functions**, which is a stronger check
 than re-testing only the 12 that were touched — it would also catch a regression
 elsewhere, or a function the original count missed. Result: **stale = 0**, ok =
-105 (93 + the 12), nocors = 18 unchanged.
+105 (93 + the 12), nocors = 18, wildcard = 2 — 125 exactly. The buckets are stated
+so they add up: the 2 are `outstand-proxy` and `social-proxy` answering `*` (below).
+An unreconciled total is how a silently-dropped case hides inside a clean result.
 
 The 18 answer no preflight at all. That is deliberately kept as its own bucket:
 they are cron and webhook endpoints with no browser caller, and folding "no

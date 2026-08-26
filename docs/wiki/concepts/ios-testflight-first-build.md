@@ -3,7 +3,7 @@ title: iOS TestFlight First Build
 type: concept
 created: 2026-08-10
 updated: 2026-08-26
-sources: [raw/sessions/2026-08-09-ios-testflight-first-build.md, raw/sessions/2026-08-14-ios-first-physical-device-build.md]
+sources: [raw/sessions/2026-08-09-ios-testflight-first-build.md, raw/sessions/2026-08-14-ios-first-physical-device-build.md, raw/sessions/2026-08-26-money-functions-stale-cors-bundles.md]
 tags: [ios, capacitor, testflight, cors, origin, bundle-id, safe-area, xcode]
 ---
 # iOS TestFlight First Build

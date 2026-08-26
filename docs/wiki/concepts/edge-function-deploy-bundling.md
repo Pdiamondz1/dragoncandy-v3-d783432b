@@ -196,7 +196,7 @@ After the deploy: all 12 echo `capacitor://localhost` with the `.com` control st
 
 Then a **full sweep of all 125 deployed functions**, which is strictly stronger than re-testing
 the 12 that were touched — it also catches a regression elsewhere, or a function the original
-count missed. **stale = 0**, ok = 105, nocors = 18 unchanged.
+count missed. **stale = 0**, ok = 105, nocors = 18, wildcard = 2 — 125 exactly, and the buckets are stated so they add up. The 2 are `outstand-proxy` and `social-proxy` answering `*` (below); an unreconciled total is how a silently-dropped case hides inside a clean result.
 
 Those 18 answer no preflight at all, and are deliberately kept as their own bucket: they are
 cron and webhook endpoints with no browser caller, and folding "no header" into "wrong header"

@@ -81,7 +81,9 @@ green build. After the deploy all 12 echo `capacitor://localhost` with the `.com
 echoing `.com`, and the `verify_jwt` table is byte-identical. Then a **full sweep of all 125
 deployed functions** — strictly stronger than re-testing the 12 that were touched, since it also
 catches a regression elsewhere or a function the original count missed: **stale = 0**, ok = 105,
-nocors = 18 unchanged. Those 18 answer no preflight at all and stay their own bucket; they are
+nocors = 18, wildcard = 2 — 125 exactly, and the buckets are stated so they add up. The 2 are
+`outstand-proxy` and `social-proxy` answering `*` (below); an unreconciled total is how a
+silently-dropped case hides inside a clean result. Those 18 answer no preflight at all and stay their own bucket; they are
 cron and webhook endpoints with no browser caller, and folding "no header" into "wrong header"
 would inflate the count and hide the real defect inside it.
 
