@@ -71,7 +71,12 @@ export function stripCode(text: string): string {
       // so real dangling links pass the gate — a silent false negative, which is strictly
       // worse than the loud false positive of missing a fence nested inside a list. No
       // linted file currently indents a fence at all (measured 2026-08-26).
-      const delimiter = line.match(/^ {0,3}(`{3,}|~{3,})(.*)$/);
+      const candidate = line.match(/^ {0,3}(`{3,}|~{3,})(.*)$/);
+      // A BACKTICK fence's info string may not itself contain a backtick — CommonMark does
+      // not open a block there. Opening one anyway blanks everything to the next delimiter
+      // or EOF, so a real dangling link after it disappears from the gate. (Round 6.)
+      const delimiter =
+        candidate && candidate[1][0] === '`' && candidate[2].includes('`') ? null : candidate;
       if (fence !== null) {
         // A closing fence is the same character, at least as long, and followed by nothing
         // but whitespace. ```` ```ts ```` inside a block is CONTENT — treating it as a
@@ -98,7 +103,10 @@ export function stripCode(text: string): string {
         return line;
       }
 
-      if (isIndented(line) && !isListItem(line)) {
+      // Whether an indented line is CODE or list continuation is decided by list context,
+      // not by whether the line happens to look like a bullet. An indented bullet after a
+      // paragraph is a code block; the same line inside a list is a nested item.
+      if (isIndented(line)) {
         if (inIndentedCode || (previousBlank && !lastContentWasList)) {
           inIndentedCode = true;
           previousBlank = false;
@@ -109,7 +117,12 @@ export function stripCode(text: string): string {
       }
 
       previousBlank = false;
-      lastContentWasList = isListItem(line);
+      // List context is sticky across ANY indented line, not just 4-space ones — a bullet
+      // wrapping onto a 2-space continuation is still inside the list, and resetting there
+      // would make the next nested bullet read as code and drop its links out of the gate.
+      // Only a line starting at column 0 ends the list.
+      if (isListItem(line)) lastContentWasList = true;
+      else if (!/^\s/.test(line)) lastContentWasList = false;
       return line;
     })
     .join('\n');

@@ -190,6 +190,34 @@ describe('the checker itself can fail', () => {
     expect(extractTargets(doc)).toEqual(['Real Prose']);
   });
 
+  it('blanks an indented bullet that is a code block, not a nested list item', () => {
+    // Outside any list, `    - [[x]]` is an indented code block. (Codex round 6.)
+    const afterParagraph = ['A paragraph.', '', '    - [[Quoted Example]]'].join('\n');
+    expect(extractTargets(afterParagraph)).toEqual([]);
+  });
+
+  it('keeps list context across a wrapped continuation line', () => {
+    // If a continuation line reset the context, the NEXT nested bullet would read as code
+    // and its links would silently leave the gate.
+    const doc = ['- a bullet', '  whose text wraps', '', '    - [[Still A Nested Bullet]]'].join(
+      '\n',
+    );
+    expect(extractTargets(doc)).toEqual(['Still A Nested Bullet']);
+  });
+
+  it('does not open a backtick fence when the info string contains a backtick', () => {
+    // CommonMark forbids it, so the rest of the document is NOT code — a dangling link
+    // after such a line must still be caught. (Codex round 6.)
+    const doc = ['```js `x`', 'later [[Must Still Be Seen]]'].join('\n');
+    expect(extractTargets(doc)).toEqual(['Must Still Be Seen']);
+    // control: a legal info string DOES open a fence and hides the same link
+    const legal = ['```js', 'later [[Must Still Be Seen]]'].join('\n');
+    expect(extractTargets(legal)).toEqual([]);
+    // ...and a tilde fence has no such restriction
+    const tilde = ['~~~js `x`', 'later [[Must Still Be Seen]]'].join('\n');
+    expect(extractTargets(tilde)).toEqual([]);
+  });
+
   it('does NOT blank indented list continuations, which is where the links actually live', () => {
     // Blanking every 4-space line is the naive fix and would drop real links out of the
     // gate — the silent false negative that matters more than the false positive above.
