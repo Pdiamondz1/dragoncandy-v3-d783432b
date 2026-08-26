@@ -117,7 +117,8 @@ real one.
 - **Five of the 12 answer 500 rather than 401 unauthenticated** —
   `release-creator-payout`, `release-sponsorship-payout`, `verify-campaign-escrow`,
   `verify-sponsorship-payment`, `withdraw-pending-balance`. `PROJECT_CONTEXT`
-  records this class as two functions; it is five. Pre-existing, and deliberately
+  recorded this class as two functions; it is five, and that doc was corrected in the same
+  change. Pre-existing, and deliberately
   not folded in: mixing a behaviour change into a redeploy makes any failure
   impossible to attribute to one or the other.
 - **Four validate the request body before checking auth**, answering an

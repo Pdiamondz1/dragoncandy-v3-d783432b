@@ -102,7 +102,8 @@ re-measurement by a different sample.
 `Access-Control-Allow-Origin: *` — in the repo source, not a stale bundle, so a code change and
 out of scope; neither sets `Access-Control-Allow-Credentials`, so a cross-origin page still
 cannot read a response without holding the user's JWT. Five of the 12 answer 500 rather than 401
-unauthenticated (`PROJECT_CONTEXT` records that class as two), and four validate the request
+unauthenticated — `PROJECT_CONTEXT` recorded that class as two and is corrected to five in
+this same change — and four validate the request
 body before checking auth. All pre-existing: mixing a behaviour change into a redeploy makes a
 failure impossible to attribute to one or the other, which is the whole reason a no-code-change
 deploy is verifiable at all.

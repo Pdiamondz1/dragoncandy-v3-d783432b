@@ -210,7 +210,8 @@ would have inflated the count and hidden the real defect inside it.
   response without holding the user's JWT: a real deviation from the shared `corsHeaders`
   helper, not a live hole.
 - **Five of the 12 answer 500 rather than 401 unauthenticated**;
-  `docs/PROJECT_CONTEXT.md` records that class as two. Four others validate the request body
+  `docs/PROJECT_CONTEXT.md` recorded that class as two and is corrected to five in the same
+  change that added this section. Four others validate the request body
   *before* checking auth, so an unauthenticated caller gets `Missing required field: …`.
 
 All three are pre-existing. **Mixing a behaviour change into a redeploy makes a failure
