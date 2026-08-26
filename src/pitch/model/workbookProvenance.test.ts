@@ -13,6 +13,8 @@ import {
   preSeedRaise,
   buildFundsAllocation,
   USE_OF_FUNDS_SPLIT,
+  CONFIDENTIAL_ASSUMPTIONS,
+  PRE_SEED_LINE_ASSUMPTIONS,
 } from './confidential';
 
 /**
@@ -29,6 +31,11 @@ describe('workbook provenance', () => {
     ...Object.values(REGISTER).map((a) => a.value),
     ...Object.values(METRO_ASSUMPTIONS).map((a) => a.value),
     ...MODEL_YEARS.map((y) => COHORT_METRO_COUNTS[y].value),
+    // Founder salaries, the rest of the pre-seed budget's line costs, and the use-of-funds
+    // split are CONFIDENTIAL assumptions -- registered separately from REGISTER because the
+    // Assumptions sheet ships in both workbook builds and REGISTER's contents show up there
+    // unconditionally. See confidential.ts and the public-build leak test below.
+    ...Object.values(CONFIDENTIAL_ASSUMPTIONS).map((a) => a.value),
   ]);
 
   // Values this model derives. Collected by walking the rollup rather than by listing them,
@@ -73,13 +80,20 @@ describe('workbook provenance', () => {
   // Unit_Economics sheet: every field of `unitEconomics()`'s output.
   addDerivedFromObject(unitEconomics(REGISTERED_MIX));
 
-  // Financing sheet (confidential): the pre-seed budget's line costs, the budget total, the
-  // one shared raise computation, and the use-of-funds allocation -- all derived from the
-  // register (OPERATING.burnMonthly for the infra line) or documented directly in
-  // confidential.ts's own header comment (the NYC-metro cost-model rates the other lines cite).
-  for (const line of PRE_SEED_BUDGET) {
-    addDerived(line.monthlyCost);
-  }
+  // Financing sheet (confidential): PRE_SEED_BUDGET's line costs and USE_OF_FUNDS_SPLIT's
+  // shares are NOT walked as raw arrays here -- 8 of the 9 lines are registered assumptions
+  // now (CONFIDENTIAL_ASSUMPTIONS, above), so walking the array too would just be reading the
+  // same literal out of confidential.ts a second time and blessing it against itself.
+  //
+  // `infra` is the one line that is genuinely a computation rather than a registered literal
+  // (OPERATING.burnMonthly.value * 3, both in confidential.ts and here) -- it is walked by
+  // name rather than by iterating the whole array, so a future line added as a bare literal
+  // cannot ride along and pass as "derived."
+  addDerived(PRE_SEED_BUDGET.find((l) => l.key === 'infra')!.monthlyCost);
+
+  // What IS a genuine computation over the registered inputs above -- and so belongs here --
+  // is the budget total, the one shared raise calculation, and the use-of-funds allocation
+  // amounts.
   addDerived(budgetTotal(PRE_SEED_BUDGET, PRE_SEED_HORIZON_MONTHS));
   const raise = preSeedRaise();
   addDerivedFromObject(raise);
@@ -131,5 +145,32 @@ describe('workbook provenance', () => {
       }
     }
     expect(numeric).toBeGreaterThan(100);
+  });
+
+  /**
+   * The Assumptions sheet ships in BOTH builds -- only the Financing sheet is gated out of the
+   * public one. So registering PRE_SEED_LINE_ASSUMPTIONS / USE_OF_FUNDS_SHARE_ASSUMPTIONS
+   * (confidential.ts) creates exactly the leak vector this test exists to close: if a future
+   * edit ever merged CONFIDENTIAL_ASSUMPTIONS into REGISTER, or dropped the `confidential`
+   * gate on `assumptionRows()` in workbook.ts, a founder's salary would render on the public
+   * workbook's Assumptions sheet with nothing to catch it. Checked against every cell of the
+   * public spec, not just the Assumptions sheet, since a leak could show up anywhere a future
+   * public sheet reads PRE_SEED_LINE_ASSUMPTIONS directly.
+   */
+  it('never lets a confidential salary appear anywhere in the public build', () => {
+    const publicSpec = buildWorkbookSpec({ confidential: false });
+    // The AI engineer's monthly cost -- $17,900 -- appears nowhere else in this model, so its
+    // presence in the public spec could only mean the confidential register leaked.
+    const distinctiveSalary = PRE_SEED_LINE_ASSUMPTIONS.ai_dev.value;
+
+    let found = false;
+    for (const sheet of publicSpec) {
+      for (const row of sheet.rows) {
+        for (const cell of row) {
+          if (cell.v === distinctiveSalary) found = true;
+        }
+      }
+    }
+    expect(found).toBe(false);
   });
 });

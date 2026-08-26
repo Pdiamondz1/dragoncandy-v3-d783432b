@@ -22,6 +22,7 @@ import type {
   RaiseInput,
   UseOfFundsSplit,
 } from './confidential';
+import type { Assumption } from './types';
 
 export type { BudgetLine, FundsBucket, PreSeedRaise, RaiseInput, UseOfFundsSplit };
 
@@ -32,6 +33,12 @@ export const PRE_SEED_HORIZON_MONTHS = 0;
 export const PRE_SEED_BUFFER_MONTHS = 0;
 
 export const USE_OF_FUNDS_SPLIT: UseOfFundsSplit = { engineering: 0, gtm: 0, gna: 0 };
+
+// Empty registers, matching kind (object) rather than content — the real module's founder
+// salaries and use-of-funds shares must never enter this module's graph at all.
+export const PRE_SEED_LINE_ASSUMPTIONS: Readonly<Record<string, Assumption<number>>> = {};
+export const USE_OF_FUNDS_SHARE_ASSUMPTIONS: Readonly<Record<string, Assumption<number>>> = {};
+export const CONFIDENTIAL_ASSUMPTIONS: Readonly<Record<string, Assumption<number>>> = {};
 
 // Signatures mirror the real module exactly — arguments accepted and ignored — so a
 // caller type-checks identically against either. `confidential.stub.test.ts` asserts

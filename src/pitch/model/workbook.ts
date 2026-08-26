@@ -28,6 +28,7 @@ import {
   preSeedRaise,
   buildFundsAllocation,
   USE_OF_FUNDS_SPLIT,
+  CONFIDENTIAL_ASSUMPTIONS,
 } from './confidential';
 import type { Assumption } from './types';
 
@@ -75,11 +76,17 @@ const SHEET_BY_METRO: Readonly<Record<string, string>> = {
   'palm-beach': 'PalmBeach_Model',
 };
 
-function assumptionRows(): CellRow[] {
+/**
+ * `confidentialAssumptions` is included only for the confidential build. The Assumptions sheet
+ * ships in BOTH builds, so putting founder salaries / use-of-funds shares here unconditionally
+ * would leak them into the public workbook the same way `FINANCING_SHEET` is gated instead.
+ */
+function assumptionRows(confidential: boolean): CellRow[] {
   const all: Array<[string, Assumption<number>]> = [
     ...Object.entries(REGISTER),
     ...Object.entries(METRO_ASSUMPTIONS),
     ...MODEL_YEARS.map((y) => [`cohortMetros_${y}`, COHORT_METRO_COUNTS[y]] as [string, Assumption<number>]),
+    ...(confidential ? Object.entries(CONFIDENTIAL_ASSUMPTIONS) : []),
   ];
   return all.map(([key, a]) => [
     t(key),
@@ -329,7 +336,7 @@ export function buildWorkbookSpec({ confidential }: { confidential: boolean }): 
     readmeSheet(),
     { name: 'Assumptions', rows: [
       [t('key'), t('label'), t('value'), t('provenance'), t('source'), t('as of'), t('unit'), t('note')],
-      ...assumptionRows(),
+      ...assumptionRows(confidential),
     ] },
     sourcesSheet(),
     ...enabledMetros().map((m) => metroSheet(m.id)),
