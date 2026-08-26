@@ -18,7 +18,8 @@ import {
 } from './metros';
 import { loadCensusSnapshot, snapshotFor } from './censusTam';
 import { projectMetroYear, metroKpis } from './metroModel';
-import { rollup, COHORT_METRO_COUNTS, sharedCostForYear } from './rollup';
+import { rollup, COHORT_METRO_COUNTS } from './rollup';
+import { consolidated, sharedCostForYear } from './consolidated';
 import { REGISTERED_MIX } from './project';
 import { unitEconomics } from './derive';
 import {
@@ -317,7 +318,7 @@ function cohortSheet(): SheetSpec {
 }
 
 function sharedCostsSheet(): SheetSpec {
-  const years = rollup();
+  const years = consolidated();
   const rows: CellRow[] = [
     [t('Shared costs'), ...MODEL_YEARS.map((y) => t(String(y)))],
     [t('Payroll, AI and shared infrastructure, allocated across metros by revenue share.')],
@@ -350,7 +351,7 @@ const SOURCE_COLS = ['B', 'C', 'D'] as const;
 const TOTALS_COLS = ['C', 'D', 'E'] as const;
 
 function totalsSheet(): SheetSpec {
-  const years = rollup();
+  const years = consolidated();
   const metroIds = years[0].metros.map((m) => m.metroId);
   const sheetFor = (id: string) => SHEET_BY_METRO[id] ?? 'Metros_4toN';
   // Row of "Total revenue" / "Metro EBITDA" on each metro (or cohort) sheet, 1-indexed.

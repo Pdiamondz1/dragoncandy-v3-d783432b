@@ -1,10 +1,14 @@
 /**
- * Every metro, consolidated. Adrian's `Totals` sheet, as a function.
+ * Every metro, summed. Adrian's `Totals` sheet, as a function -- minus the shared-cost line.
  *
- * Shared costs (payroll, AI, shared infrastructure) are allocated across metros by revenue
- * share, which is how his USA_Tech_Consolidated_costs sheet feeds each state sheet. Before
- * any metro has revenue the split is even, because a revenue-weighted split of zero is a
- * division by zero, not an allocation.
+ * **This file is deliberately free of `./confidential`.** Company-level shared cost, its
+ * allocation across metros and the resulting consolidated EBITDA live in `consolidated.ts`,
+ * because they are computed from the pre-seed budget and the budget must not enter a public
+ * bundle's module graph. Everything here -- revenue, gross profit, marketing, metro EBITDA,
+ * metros live, the top-down band -- depends on nothing confidential, so a deck slide may
+ * import it directly. See `consolidated.ts`'s header for why the split is by dependency
+ * rather than by consumer, and why pointing this file at `@pitch/confidential` instead would
+ * have silently zeroed shared cost under vitest.
  *
  * The top-down band from PROJECT_CONTEXT section 3 travels alongside the bottom-up build as
  * a cross-check. They are expected to disagree. See the spec, section 10: the gap is
@@ -16,7 +20,6 @@ import { MODEL_YEARS, enabledMetros, type ModelYear } from './metros';
 import { projectMetroYear, type MetroYear } from './metroModel';
 import { REGISTERED_MIX, type TierMix } from './project';
 import { threeYearTrajectory } from './derive';
-import { PRE_SEED_BUDGET, budgetTotal } from './confidential';
 
 export const COHORT_METRO_ID = 'cohort';
 
@@ -33,22 +36,17 @@ export const COHORT_METRO_COUNTS: Readonly<Record<ModelYear, Assumption<number>>
   2028: modeled({ value: 17, unit: 'metros', label: 'Additional metros 2028', source: SOURCE }),
 };
 
-export interface SharedCostAllocation {
-  readonly metroId: string;
-  readonly share: number;
-  readonly amount: number;
-}
-
 export interface RollupYear {
   readonly year: ModelYear;
   readonly metros: readonly MetroYear[];
   readonly revenue: number;
   readonly grossProfit: number;
   readonly marketingCost: number;
+  /**
+   * The metros' own EBITDA, BEFORE company-level shared costs. This is not the company's
+   * EBITDA and must never be labelled as such -- see `ConsolidatedYear.ebitda`.
+   */
   readonly metroEbitda: number;
-  readonly sharedCost: number;
-  readonly allocations: readonly SharedCostAllocation[];
-  readonly ebitda: number;
   /**
    * Count of actual metros with a live customer relationship at year end -- NOT a count
    * of rollup rows. Named metros count 1 each; the cohort row counts as
@@ -63,46 +61,6 @@ export interface RollupYear {
   readonly topDownRevenueHigh: number;
   /** Bottom-up revenue as a multiple of the top-down band's midpoint. 1.0 means agreement. */
   readonly bottomUpVsTopDown: number;
-}
-
-export function allocateSharedCost(
-  metros: readonly Pick<MetroYear, 'metroId' | 'revenue'>[],
-  total: number,
-): SharedCostAllocation[] {
-  const revenue = metros.reduce((s, m) => s + m.revenue, 0);
-  if (metros.length === 0) return [];
-  if (revenue <= 0) {
-    const share = 1 / metros.length;
-    return metros.map((m) => ({ metroId: m.metroId, share, amount: total * share }));
-  }
-  return metros.map((m) => {
-    const share = m.revenue / revenue;
-    return { metroId: m.metroId, share, amount: total * share };
-  });
-}
-
-/**
- * Shared cost for a year, taken from the pre-seed budget's non-metro lines. Year 1 is the
- * budget's first twelve months; later years hold the run rate of month 12 flat, because the
- * budget horizon is 18 months and extrapolating a hiring plan we have not written would be
- * inventing headcount.
- *
- * Consequence, not just cause: with cost frozen, every dollar of 2027-2028 revenue growth
- * drops straight to EBITDA. Revenue grows 4.2x from 2027 to 2028 ($661,124 to $2,772,169)
- * while shared cost stays flat at $775,884, so the swing from EBITDA of -$466,406 in 2027 to
- * +$897,937 in 2028 is partly an artifact of the frozen-cost assumption, not pure revenue
- * growth. A model that grew shared cost with the business (more metros, more support load)
- * would show a smaller swing. See the Palm Beach penetration note in `metros.ts` for the
- * same house style of naming a modeling choice's consequence, not just its cause.
- */
-export function sharedCostForYear(year: ModelYear): number {
-  const yearIndex = MODEL_YEARS.indexOf(year);
-  const firstTwelve = budgetTotal(PRE_SEED_BUDGET, 12);
-  if (yearIndex === 0) return firstTwelve;
-  const monthTwelveRunRate = PRE_SEED_BUDGET.filter(
-    (l) => l.startMonth <= 12 && l.endMonth >= 12,
-  ).reduce((s, l) => s + l.monthlyCost, 0);
-  return monthTwelveRunRate * 12;
 }
 
 /**
@@ -175,7 +133,6 @@ export function rollup(mix: TierMix = REGISTERED_MIX, metroIds?: readonly string
     const grossProfit = metros.reduce((s, m) => s + m.grossProfit, 0);
     const marketingCost = metros.reduce((s, m) => s + m.marketingCost, 0);
     const metroEbitda = metros.reduce((s, m) => s + m.metroEbitda, 0);
-    const sharedCost = sharedCostForYear(year);
     const band = topDown[i];
     const midpoint = (band.revenueLow + band.revenueHigh) / 2;
 
@@ -186,9 +143,6 @@ export function rollup(mix: TierMix = REGISTERED_MIX, metroIds?: readonly string
       grossProfit,
       marketingCost,
       metroEbitda,
-      sharedCost,
-      allocations: allocateSharedCost(metros, sharedCost),
-      ebitda: metroEbitda - sharedCost,
       metrosLive:
         metros.filter((m) => m.metroId !== COHORT_METRO_ID && m.customersAtYearEnd > 0).length +
         (metros.find((m) => m.metroId === COHORT_METRO_ID)!.revenue > 0

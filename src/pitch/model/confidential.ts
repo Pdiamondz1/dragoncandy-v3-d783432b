@@ -15,16 +15,16 @@
  */
 import { OPERATING } from './assumptions';
 import { modeled, type Assumption } from './types';
+import { budgetTotal, type BudgetLine } from './sharedCost';
 
-export interface BudgetLine {
-  readonly key: string;
-  readonly label: string;
-  readonly monthlyCost: number;
-  /** 1-based, inclusive. */
-  readonly startMonth: number;
-  /** 1-based, inclusive. */
-  readonly endMonth: number;
-}
+/**
+ * The budget's SHAPE and the arithmetic over it are not confidential and now live in
+ * `sharedCost.ts`, so a public slide can sum a budget it was never handed. They are
+ * re-exported here so this module's public surface — and `confidential.stub.ts`, which
+ * must mirror it name for name — is unchanged by that move.
+ */
+export type { BudgetLine };
+export { budgetTotal };
 
 const HORIZON_MONTHS = 18;
 
@@ -171,16 +171,6 @@ export const PRE_SEED_BUDGET: readonly BudgetLine[] = [
   { key: 'marketing', label: 'Hoboken launch marketing', monthlyCost: PRE_SEED_LINE_ASSUMPTIONS.marketing.value, startMonth: 2, endMonth: 18 },
   { key: 'legal', label: 'Legal, IP and accounting', monthlyCost: PRE_SEED_LINE_ASSUMPTIONS.legal.value, startMonth: 1, endMonth: 18 },
 ];
-
-/** Sum of every line over its active months, truncated to the horizon. */
-export function budgetTotal(lines: readonly BudgetLine[], months: number): number {
-  return lines.reduce((sum, line) => {
-    const start = Math.max(1, line.startMonth);
-    const end = Math.min(months, line.endMonth);
-    const active = end - start + 1;
-    return active > 0 ? sum + line.monthlyCost * active : sum;
-  }, 0);
-}
 
 export interface RaiseInput {
   readonly operatingNeed: number;

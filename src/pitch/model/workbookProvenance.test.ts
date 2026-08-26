@@ -2,7 +2,8 @@ import { describe, it, expect } from 'vitest';
 import { buildWorkbookSpec } from './workbook';
 import { REGISTER } from './assumptions';
 import { METRO_ASSUMPTIONS, MODEL_YEARS, enabledMetros, totalFoodServiceVenues } from './metros';
-import { COHORT_METRO_COUNTS, rollup } from './rollup';
+import { COHORT_METRO_COUNTS } from './rollup';
+import { consolidated } from './consolidated';
 import { metroKpis } from './metroModel';
 import { unitEconomics } from './derive';
 import { REGISTERED_MIX } from './project';
@@ -53,7 +54,10 @@ describe('workbook provenance', () => {
     }
   }
 
-  for (const year of rollup()) {
+  // `consolidated()`, not `rollup()`: shared cost, its allocation and EBITDA moved into
+  // `consolidated.ts` when the rollup was made confidential-free, and those three are exactly
+  // the figures the Shared_Costs and Totals sheets print.
+  for (const year of consolidated()) {
     for (const k of ['revenue', 'grossProfit', 'marketingCost', 'metroEbitda', 'sharedCost', 'ebitda',
                      'metrosLive', 'topDownRevenueLow', 'topDownRevenueHigh', 'bottomUpVsTopDown'] as const) {
       addDerived(year[k] as number);

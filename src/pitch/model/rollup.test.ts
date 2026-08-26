@@ -1,11 +1,11 @@
 import { describe, it, expect } from 'vitest';
-import {
-  rollup,
-  allocateSharedCost,
-  cohortMetroYear,
-  COHORT_METRO_ID,
-  COHORT_METRO_COUNTS,
-} from './rollup';
+import { rollup, cohortMetroYear, COHORT_METRO_ID, COHORT_METRO_COUNTS } from './rollup';
+// Shared cost, its allocation and consolidated EBITDA moved out of `rollup.ts` so a public
+// deck slide can import the rollup without pulling the pre-seed budget into the bundle.
+// They are still exercised here, against the REAL budget — `consolidated.ts` imports
+// `./confidential` by its relative path, so vitest gets the true figures and not the stub's
+// zeros. See `consolidated.ts`'s header.
+import { consolidated, allocateSharedCost } from './consolidated';
 import { MODEL_YEARS } from './metros';
 import { REGISTERED_MIX } from './project';
 
@@ -51,6 +51,7 @@ describe('the later-metro cohort', () => {
 
 describe('rollup', () => {
   const years = rollup(REGISTERED_MIX);
+  const full = consolidated(REGISTERED_MIX);
 
   it('covers 2026, 2027 and 2028', () => {
     expect(years.map((y) => y.year)).toEqual([...MODEL_YEARS]);
@@ -78,10 +79,32 @@ describe('rollup', () => {
   });
 
   it('reports EBITDA as metro EBITDA less shared cost', () => {
-    for (const y of years) {
+    for (const y of full) {
       const metroEbitda = y.metros.reduce((s, m) => s + m.metroEbitda, 0);
       expect(y.ebitda).toBeCloseTo(metroEbitda - y.sharedCost, 6);
     }
+  });
+
+  /**
+   * The control on the split above. If `consolidated()` ever resolved the budget through
+   * `@pitch/confidential`, vitest would hand it the stub, `budgetTotal()` would return 0,
+   * shared cost would vanish and `ebitda` would silently equal `metroEbitda` — a flattering
+   * number indistinguishable from a real one. This fails in exactly that case.
+   */
+  it('is reading the real budget, not the public stub', () => {
+    for (const y of full) {
+      expect(y.sharedCost).toBeGreaterThan(0);
+      expect(y.ebitda).not.toBeCloseTo(y.metroEbitda, 6);
+    }
+  });
+
+  /**
+   * Metro EBITDA and consolidated EBITDA are different quantities, and in 2027 they do not
+   * even share a sign (+$309,478 against -$466,406). Pinned so nobody can relabel one as
+   * the other on a slide and have every test still pass.
+   */
+  it('differs from metro EBITDA in sign in at least one year', () => {
+    expect(full.some((y) => Math.sign(y.metroEbitda) !== Math.sign(y.ebitda))).toBe(true);
   });
 
   // metrosLive counts actual metros, not rollup rows: the cohort row stands in for

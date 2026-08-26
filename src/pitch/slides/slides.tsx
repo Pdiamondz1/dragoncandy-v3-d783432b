@@ -32,13 +32,19 @@ import {
   businessStepTable,
   isLiquid,
   monthsToLiquidity,
-  threeYearTrajectory,
   unitEconomics,
 } from '../model/derive';
+// The confidential-FREE half of the model. `consolidated.ts` (shared cost, company EBITDA)
+// must NEVER be imported here: it reaches the pre-seed budget by a relative path the
+// `@pitch/confidential` alias cannot intercept, so importing it would put every budget line
+// label into the public bundle's sourcemap. The company EBITDA line comes from
+// `trajectory.confidential.tsx`, behind the same build-time gate the ask uses.
+import { rollup } from '../model/rollup';
 import { Gloss, PendingMark, Source, Tag } from '../deck/components';
 import { count, money, moneyShort, pct } from '../deck/format';
 import { FOUNDER_FACTS, FOUNDER_INPUTS, LAUNCH_EVENTS } from '../deck/pending';
 import { AskFigures } from './ask.confidential';
+import { TrajectoryConsolidatedEbitda } from './trajectory.confidential';
 
 /**
  * Slide 2 exists in three forms, picked by this constant before an export (spec §6.1).
@@ -795,59 +801,85 @@ export function SlideScale({ index, total }: SlideProps) {
 /* ---------- 12 · The trajectory ---------- */
 
 export function SlideTrajectory({ index, total }: SlideProps) {
-  const years = threeYearTrajectory();
-  const max = Math.max(...years.map((y) => y.revenueHigh));
+  const years = rollup();
+  // Scaled off revenue, not off the cost overlay: 2026 costs more than it earns, so a max
+  // taken across both would let the one loss-making year set the scale for all three.
+  const max = Math.max(...years.map((y) => y.revenue));
   return (
     <SlideShell index={index} total={total} variant="dark" eyebrow="The trajectory">
       <H2>
-        Three years, with the cost line
+        Three years, built from
         <br />
-        <GradientText>drawn in.</GradientText>
+        <GradientText>venue counts up.</GradientText>
       </H2>
 
-      <div className="mt-8 space-y-6">
+      {/* Spacing here is measured, not chosen. The canvas is a fixed 1280x720 and nothing
+          clips it — content simply runs off the bottom of the exported PDF page. With the
+          confidential EBITDA line rendered, this slide is the tallest in the deck, and at
+          `mt-7 space-y-5` plus a five-line paragraph it overflowed by 59px. Re-measure
+          (headless Chrome, `slide.scrollHeight` vs `clientHeight`) before adding a line. */}
+      <div className="mt-6 space-y-4">
         {years.map((y) => (
-          <div key={y.year} className="flex items-center gap-7">
-            <p className="w-20 shrink-0 text-2xl font-extrabold">Y{y.year}</p>
+          <div
+            key={y.year}
+            data-testid={`trajectory-row-${y.year}`}
+            className="flex items-center gap-7"
+          >
+            <p className="w-24 shrink-0 text-2xl font-extrabold">{y.year}</p>
             <div className="relative h-9 flex-1 overflow-hidden rounded-lg bg-white/5">
               <div
                 className="absolute inset-y-0 left-0 rounded-lg bg-gradient-to-r from-dc-teal-btn to-dc-teal"
-                style={{ width: `${(y.revenueHigh / max) * 100}%` }}
+                style={{ width: `${(y.revenue / max) * 100}%` }}
               />
+              {/* What the metros themselves cost — delivery plus that metro's own
+                  marketing. In 2026 it is wider than the revenue bar, which is the point. */}
               <div
                 className="absolute inset-y-0 left-0 rounded-lg bg-white/25"
-                style={{ width: `${(y.totalCostHigh / max) * 100}%` }}
+                style={{ width: `${((y.revenue - y.metroEbitda) / max) * 100}%` }}
               />
             </div>
-            <div className="w-[26rem] shrink-0 text-right text-lg tabular-nums">
-              <span className="font-bold text-white">
-                {moneyShort(y.revenueLow)}–{moneyShort(y.revenueHigh)}
-              </span>
-              <span className="text-white/45"> revenue · </span>
-              <span className={y.ebitdaHigh >= 0 ? 'font-bold text-dc-teal' : 'font-bold text-dc-pink'}>
-                {moneyShort(y.ebitdaLow)} to {moneyShort(y.ebitdaHigh)}
-              </span>
-              <span className="text-white/45"> EBITDA</span>
+            <div className="w-[24rem] shrink-0 text-right">
+              <p className="text-lg tabular-nums">
+                <span className="font-bold text-white">{moneyShort(y.revenue)}</span>
+                <span className="text-white/45"> revenue · </span>
+                <span
+                  className={
+                    y.metroEbitda >= 0 ? 'font-bold text-dc-teal' : 'font-bold text-dc-pink'
+                  }
+                >
+                  {moneyShort(y.metroEbitda)}
+                </span>
+                <span className="text-white/45"> metro contribution</span>
+              </p>
+              <p className="text-sm text-white/45">{y.metrosLive} metros live</p>
             </div>
           </div>
         ))}
       </div>
 
-      <p className="mt-7 max-w-5xl text-lg text-white/70">
+      <TrajectoryConsolidatedEbitda />
+
+      <p className="mt-3 max-w-5xl text-base leading-relaxed text-white/70">
+        Built bottom-up: Census venue counts per metro, the share we expect to sign, our live
+        pricing. The pale overlay is what the metros cost to run, so what is left is{' '}
+        <b className="text-white">metro contribution</b> — before company-level payroll, AI and
+        infrastructure. That is not <Gloss t="EBITDA" className="text-white" />: the
+        company&rsquo;s own line stays negative through 2027, which is what the raise is for.
+        Our earlier top-down plan put{' '}
         <b className="text-white">
-          <Gloss t="EBITDA" />
-        </b>
-        . The worst case pairs the low revenue with the high cost; the best case pairs high
-        revenue with low cost. Year 1 is negative in every pairing, which is what a pre-seed is
-        for.
+          {moneyShort(years[2].topDownRevenueLow)}–{moneyShort(years[2].topDownRevenueHigh)}
+        </b>{' '}
+        on 2028 — a cross-check, not a number this build was tuned to meet.
       </p>
 
       <div className="mt-auto flex items-center gap-3">
         <Tag p="MODELED" dark />
         <Source dark>
-          Cost is all-in — Stripe, AI, infrastructure, payroll, marketing and legal — so it is
-          not comparable to the gross-margin line two slides back, which excludes everything
-          below the gross-profit line.
+          Every figure here is read from the model at render time: Census venue counts per
+          metro, a stated share of them signed, and our live pricing. Metro contribution is
+          after delivery cost and that metro&rsquo;s own marketing and before every
+          company-level cost, so it is not comparable to the margin figure on the
+          unit-economics slide, which excludes everything below gross profit.
         </Source>
       </div>
     </SlideShell>
