@@ -70,6 +70,18 @@ describe('publish enqueue functions', () => {
     expect(catchBody).not.toMatch(/^\s*await staging\?\.discard\(\);/m);
   });
 
+  // A key reused for a DIFFERENT post must not be answered with the other
+  // post's job. Silently returning it reports success for work that was thrown
+  // away — the one refusal shape in this feature that tells the caller nothing
+  // is wrong. See 20260826390000.
+  it.each(enqueueSources())('$name tells a key conflict apart from a replay', ({ source }) => {
+    expect(source).toMatch(/result\?\.conflict/);
+    expect(source).toMatch(/idempotency_key_conflict/);
+    // 409, not 400: a client that cannot tell the two apart retries the same
+    // key for ever.
+    expect(source).toMatch(/idempotency_key_conflict[\s\S]{0,200}409/);
+  });
+
   // Claiming an outcome this branch cannot know is how a queued post gets
   // reported as a failure the user then re-creates by hand.
   it.each(enqueueSources())('$name reports an unconfirmed enqueue honestly', ({ source }) => {

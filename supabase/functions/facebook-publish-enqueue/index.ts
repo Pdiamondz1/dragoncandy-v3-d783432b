@@ -192,7 +192,23 @@ serve(async (req: Request) => {
     }
 
     if (!result?.enqueued) {
+      // A refusal, not an error — the RPC's `reason` is written to be shown.
+      // This request's staged copy has no job to belong to, and the refusal is
+      // a KNOWN outcome, so discarding here is safe in a way it is not above.
       await staging.discard();
+
+      // A key reused for a different post gets its own status, because it is
+      // the caller's bug rather than their user's mistake and the fix is
+      // mechanical: mint a new key. 409 is the conventional answer, and telling
+      // it apart from an ordinary 400 is what stops a client retrying the same
+      // key for ever.
+      if (result?.conflict) {
+        return json(
+          req,
+          { error: 'idempotency_key_conflict', message: result.reason },
+          409,
+        );
+      }
       return json(req, { error: 'rejected', message: result?.reason ?? 'Rejected' }, 400);
     }
 
