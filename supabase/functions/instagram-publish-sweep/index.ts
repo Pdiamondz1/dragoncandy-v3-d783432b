@@ -390,7 +390,21 @@ async function publishStep(db: any, job: Claim, token: string): Promise<Outcome>
   }
 
   if (status === 'ERROR' || status === 'EXPIRED') {
-    await fail(db, job, `Instagram ${status.toLowerCase()} the media: ${error ?? 'no detail given'}`);
+    // The container is dead, so the retry must not resume from it — polling the
+    // same permanently errored container five times reaches `stuck` having done
+    // nothing but wait. Cleared so a retry builds a fresh one.
+    //
+    // Not terminal: EXPIRED is genuinely recoverable (a container aged out
+    // after 24 hours and a new one would work), and ERROR is often but not
+    // always permanent, since Meta reports a transient media-download failure
+    // the same way. Both keep their retries and reach `stuck` on their own if
+    // they really are permanent.
+    await fail(
+      db,
+      job,
+      `Instagram ${status.toLowerCase()} the media: ${error ?? 'no detail given'}`,
+      { clearContainer: true },
+    );
     return 'failed';
   }
 
@@ -472,13 +486,18 @@ async function fail(
   db: any,
   job: Claim,
   reason: string,
-  opts: { terminal?: boolean } = {},
+  opts: { terminal?: boolean; clearContainer?: boolean } = {},
 ): Promise<void> {
   const { data, error } = await db.rpc('fail_publish_job', {
     p_job_id: job.job_id,
     p_claim_id: job.claim_id,
     p_error: reason,
     p_max_attempts: opts.terminal ? TERMINAL : MAX_ATTEMPTS,
+    // Waives the resume-from-stored-container protection, which is what stops a
+    // retry building a SECOND container and publishing twice. Only ever set for
+    // a container Meta has declared dead, where resuming is the thing that
+    // cannot work.
+    p_clear_container: opts.clearContainer === true,
   });
   if (error) console.error('[instagram-publish-sweep] fail_publish_job:', error);
   // Reported exactly once, on the transition — the `bump_flush_attempt`
