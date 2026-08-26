@@ -16,6 +16,43 @@
   30+ worktrees, *"has someone already shipped this?"* has a real answer one command away.
   Corollary: **when the parallel version landed first and is better, delete yours** and rebuild
   on top of it; merging both produces two answers to one question.
+- **[rule-vs-control] A written rule that nothing enforces is not a control — and §5 is the case
+  where this repo had the lesson and did not apply it to itself.** The July 2026 split (#294) cut
+  `PROJECT_CONTEXT.md` 176,620 → 73,742 B, amended **both** generators (this skill's step 4 and
+  the always-loaded `CLAUDE.md` clause), and called that *"the part that makes it stick"*. On
+  2026-08-26 both rules were still present, still correct, still ignored — and §5 was back at
+  **154,964 B, 90% of the file**, with two entries at 13 KB each. Nothing read the rules at a
+  moment when it mattered, and every individual entry was defensible when written. **When a run
+  codifies a rule into an always-loaded doc, ask what would FAIL if the rule were broken. If the
+  answer is "nothing", the rule is a wish, not a control.** §5 now has
+  `src/projectContextSize.test.ts`; if it fails, **move the prose — do not raise the cap.**
+  Corollary — **[control-not-floor] a control must be about the instrument, not the reading.**
+  That test's first draft asserted "§5 parses at least 40 entries", and the Codex second review
+  correctly called it a *content floor, not a parser check*: §5 shrinking is the desired
+  direction, so the floor would eventually fail on correct maintenance and pressure the next
+  author into keeping stale entries or deleting the guard. Prove the parser against a **fixed
+  fixture**, then check parser-vs-raw agreement on live content — and make the raw counter
+  deliberately *wider* than the parser (any list marker), or both sides drop to zero together and
+  agree about nothing.
+- **[refs-and-omissions] §5 hygiene is two sweeps, not one: entries that are too LONG, and work
+  that is MISSING.** Both were found on 2026-08-26.
+  **(a) A wrong PR number on a TRUE claim is worse than no reference.** §5 asserted "#387 and
+  #396 merged"; #387 was **CLOSED unmerged**, though the work really is on `main` via #396. The
+  false reference invites a check — `gh pr view 387` — that returns the wrong answer, so a reader
+  concludes a security fix never landed. #249 was the same shape (landed via #251/#254), and
+  #444/#452 were described as open while both were merged. **One `gh pr list --state all --json
+  number,state` call covers every reference in the file**; 111 refs cost a single API call, so
+  there is no excuse for carrying an unchecked one.
+  **(b) Omission fails worse than bloat.** The TikTok connector (#525, #529) and the
+  email-verification rework (#527, #528, #530) had no entry in §5, `SHIPPED_LOG.md` **or** the
+  wiki. Bloat costs tokens; omission makes a reader conclude the work does not exist. Run
+  `git log --oneline HEAD..origin/main` and confirm every merged PR has an index line — the
+  natural extension of `[scope-paths]`.
+- **[codex-citation] Check Codex's CITATION, not only its claim.** On 2026-08-26 it cited
+  `AGENTS.md`, which `CLAUDE.md` flags as a stale duplicate and which produced a **refuted** P1 on
+  #519. Here the same sentence also appears in `CLAUDE.md`, so the finding stood — but that had to
+  be verified rather than assumed in either direction. A stale-source citation neither proves nor
+  disproves the point; re-check against the authoritative file before accepting *or* refuting.
 - **[superseded-mechanism] When work DELETES a mechanism, hunt the rule you wrote for it.**
   A knowledge-sync that generalises a pattern into `DESIGN_SYSTEM.md` / `CLAUDE.md` plants a
   claim that outlives the branch. On 2026-08-10 a redesign deleted the pinned-composer machinery
@@ -313,6 +350,58 @@
 
 ## Run log (newest first — add each new entry at the TOP; never edit/delete past entries)
 
+### 2026-08-26 — §5 regrew to 155 KB; compounded onto [[Context Tax]] and guarded it with a test
+- **Output:** `docs/wiki/concepts/context-tax.md` (new "The regrowth (2026-08-26)" section) +
+  `docs/wiki/raw/sessions/2026-08-26-context-tax-regrowth.md`, indexed and logged
+  (`log.md` → `[2026-08-26] ingest | §5 regrew to 155 KB, and the fix that "makes it stick" did not`).
+- **Happened:** §5 was 154,964 B of a 170,999 B always-loaded file (90%). Cut to 31,349 B
+  (file −72%), added an `### Open items — founder action` subsection, corrected five wrong
+  claims, added two missing workstreams, and shipped `src/projectContextSize.test.ts`.
+  Compounded onto the existing page rather than creating a new one; struck through the
+  falsified "cannot regrow" claim in place and corrected both `index.md` lines carrying it.
+- **Worked:** `[new-page-vs-compound]` pointed the right way — same SUBJECT (§5's size),
+  so it belonged on [[Context Tax]], not a new page; the page was only 8 KB so there was no
+  `FAIL_CHARS` risk. `[status-correction]`'s edit-in-place discipline applied cleanly to a
+  falsified *claim* rather than a stale status. `[index-sections]` earned its keep twice: the
+  new Sources entry went beside its sibling instead of scanning from the top, and the
+  resolve-every-`[[link]]` check caught a **pre-existing broken wikilink** —
+  `[[AIOS Runtime Spend Source of Truth]]` where the index says `Source-of-Truth` (hyphenated).
+  Fixed.
+- **Failed:** the **prod-DB half of the claim sweep could not run at all**. The Supabase MCP
+  reports `✔ Connected` but holds no `SUPABASE_ACCESS_TOKEN`, and `.env.sync.local` is
+  gitignored so it exists only in the main checkout — which a worktree session cannot reach.
+  Both paths refused with an explicit *Unauthorized*, which is the good failure, but it means
+  migrations-applied, cron run counts and two flag rows are **unverified, not verified-true**.
+- **Remember:**
+  - **`[rule-vs-control]` A written rule that nothing enforces is not a control — and the
+    July split is the case where this repo had the lesson and did not apply it to itself.** It
+    amended two rules and called that "the part that makes it stick"; both rules were still
+    present, still correct, and still ignored six weeks later. When a knowledge-sync run
+    codifies a rule into an always-loaded doc, ask what would FAIL if the rule were broken. If
+    the answer is "nothing", the rule is a wish. Prefer a test; §5 now has one.
+  - **`[control-not-floor]` A control must be about the instrument, not about the reading.**
+    The first draft's parser control asserted "§5 has ≥ 40 entries" — a content floor. Codex
+    rejected it correctly: §5 shrinking is the *desired* direction, so the floor would
+    eventually fail on correct maintenance and pressure the next author into keeping stale
+    entries or deleting the guard. Prove the parser against a **fixed fixture**, then check
+    parser-vs-raw agreement on live content. Make the raw counter deliberately *wider* than
+    the parser (any list marker), or both sides go to zero together and agree about nothing.
+  - **`[wrong-ref-worse-than-none]` A wrong PR number attached to a TRUE claim is worse than
+    no reference.** §5 asserted "#387 and #396 merged"; #387 was CLOSED unmerged, though the
+    work really is on `main` via #396. The false reference invites a check (`gh pr view 387`)
+    that returns the wrong answer, so a reader concludes a security fix never landed. When
+    citing a PR in an always-loaded doc, the cheap check is `gh pr list --state all --json
+    number,state` **once** and match the whole set — 111 refs cost one API call.
+  - **`[missing-is-worse-than-bloat]` Sweep for work that is missing from §5, not only for
+    entries that are too long.** TikTok (#525, #529) and email verification (#527, #528,
+    #530) had no entry anywhere in the knowledge layer. Bloat costs tokens; omission makes a
+    reader conclude the work does not exist. `git log --oneline HEAD..origin/main` and check
+    each merged PR has an index line — the natural extension of `[scope-paths]`.
+  - **`[codex-citation]` Check Codex's CITATION, not only its claim.** It cited `AGENTS.md`,
+    which `CLAUDE.md` flags as a stale duplicate and which produced a refuted P1 on #519. Here
+    the same sentence was in `CLAUDE.md` too, so the finding stood — but that had to be
+    verified, not assumed either way. A stale-source citation neither proves nor disproves the
+    point.
 ### 2026-08-26 — Email verification by code (#528, #530)
 
 **Output:** [[Email Verification Routes]] (`concepts/email-verification-routes.md`) +

@@ -32,6 +32,111 @@
 >
 > **Adding an entry:** prepend it (newest first). See `knowledge-sync` step 4.
 
+## [2026-08-26] §5 regrew to 155 KB in six weeks, and the fix that "makes it stick" did not
+
+Branch `docs/project-context-index`. The founder's brief was four words: *"we need to clean up
+the Project_context doc."*
+
+**The measurement.** `docs/PROJECT_CONTEXT.md` was **170,999 B / 1,968 lines**, of which §5
+"Active Workstreams" was **154,964 B — 90%**. The two largest entries were **13 KB each**. §5's
+own header has said *"Index only — one line per entry"* since July 2026.
+
+The July split (#294, #295) cut the file **176,620 → 73,742 B** and stated in the PR, in
+`docs/wiki/concepts/context-tax.md` and in two `index.md` lines that it had *"amended both
+generators so it cannot regrow"*. **Six weeks later it was back within 3.2% of its pre-split
+size.** Both rules were still present, still correct, and still ignored.
+
+**Result: 170,999 → 47,384 B (−72%); §5 154,964 → 31,349 B (−80%).**
+
+**Nothing was destroyed, and that was established before cutting rather than argued afterwards.**
+All **79** referenced wiki pages exist and each is *larger* than the §5 entry it backs;
+`SHIPPED_LOG.md` carries full session prose for every entry. §5 was a **third copy**. The 12
+pages whose direct pointer was folded into a grouped one-liner are all catalogued in
+`docs/wiki/index.md`, checked by name.
+
+**A new `### Open items — founder action` subsection** hoists the 11 blockers engineering cannot
+close into one list, ordered by what blocks launch. Scattering them across ~20 entries had hidden
+a real connection: turning the site gate on returns 401 on `/` and `/privacy`, which breaks
+Google's, Meta's, TikTok's and X's app reviews — stated in two entries that never referenced each
+other.
+
+### Five wrong claims, found by checking the things themselves
+
+All 111 cited PRs checked against the repo's 530 in one call.
+
+- **#444 and #452** — described as open; both **MERGED**.
+- **#387** — asserted *"#387 and #396 merged"*; **#387 was CLOSED unmerged** on 2026-08-08. The
+  work is real: all three migrations sit in **#396**'s merge commit `ea5d93c8` and
+  `can_notify_user` is referenced **7×** in `create-notification/index.ts` on `origin/main`. Only
+  the attribution was wrong — but a reader who runs `gh pr view 387` gets **CLOSED** and
+  reasonably concludes a security fix never landed. **A wrong reference on a true claim is worse
+  than no reference, because it invites a check that returns the wrong answer.**
+- **#249** — cited as shipping `find_creators`; **CLOSED unmerged**. It landed via **#251**, and
+  the avatar cards via **#254**.
+- **"13 edge functions answer `.io` to a native origin"** — it is **12**. Re-measured by
+  preflighting all **125** functions from `capacitor://localhost`: 93 answer correctly, 18 have no
+  CORS header (all cron/webhook, correct), 12 answer `https://dragoncandy.io`. The old text said
+  "almost exactly the money surface"; it is **exactly** the money surface — every payout, escrow,
+  refund, invoice and withdrawal function, now named individually. **Control:** the same function
+  echoes `.com` for a `.com` origin, so the `.io` answer is real and not a probe artifact.
+
+### Two workstreams were missing entirely
+
+The **TikTok read-only analytics connector** (#525, #529 — four deployed functions, five
+migrations) had **no §5 entry at all**, and neither did the **email-verification rework** (#527,
+#528, #530). None of #525–#530 has reached `SHIPPED_LOG.md` or the wiki either, so **the knowledge
+layer owes five PRs**; both new entries say so rather than implying coverage. Found only because a
+mid-session `git fetch` moved `origin/main` and prompted a check of what had landed.
+
+**An index that omits shipped work fails worse than one that bloats.** Bloat costs tokens;
+omission makes a reader conclude the work does not exist.
+
+### The guard, and the control that is the real point
+
+`src/projectContextSize.test.ts` — per-entry line cap, byte caps on §5 and the whole file, and a
+check that the rule text itself survives (delete the rule and the caps read as arbitrary, then get
+raised). **A written rule that nothing enforces is not a control** — the same lesson already
+behind `brandLogo.test.ts`, `profilesWriteGrants.test.ts` and `migrations.test.ts`. The July
+cleanup is the case where that lesson was available and not applied to itself.
+
+All failure branches were **forced, not assumed**: a 31-line entry fails and names itself; 400
+short entries trip both byte caps; changing `- **` to `* **` fires the parser control.
+
+**The Codex second review filed one P2 and it was right.** The first draft's control asserted
+*"§5 parses at least 40 entries"* — **a content floor, not a parser check**. §5 getting *smaller*
+is the entire point of this file, so the floor would eventually fail on correct maintenance and
+pressure an author into keeping stale entries or deleting the guard: a guard fighting the
+behaviour it exists to encourage. Replaced with two content-independent controls — `parseEntries()`
+against a **fixed fixture** with exact expected counts, and **parser count === raw bullet count**
+on the live file, where the raw counter matches *any* list marker on purpose so a syntax change
+makes the two disagree rather than agree at zero. Proven both ways: the syntax swap fails with
+*"expected +0 to be 85"*, and a §5 shrunk to **2 entries passes**, which would have failed under
+the old floor. **A control must be about the instrument, not about the reading.**
+
+**Codex cited `AGENTS.md`**, which `CLAUDE.md` flags as a stale duplicate and which produced a
+refuted P1 on #519 — so the claim was re-checked against `CLAUDE.md` itself, where the same
+*"one-line-per-entry index"* sentence appears. The finding stood on the authoritative file.
+**Check the citation, not only the claim.** Codex clean at round 2.
+
+### What could NOT be verified
+
+The **database half** of the claim sweep. Both paths refused with an explicit *Unauthorized*
+rather than a wrong answer: the Supabase MCP reports `✔ Connected` but holds no
+`SUPABASE_ACCESS_TOKEN` (the trap `CLAUDE.md` documents — `list_migrations` is the probe that
+exposes it), and `.env.sync.local` is gitignored, so it exists only in the main checkout, which a
+worktree session cannot reach. Migrations *applied* to prod, cron run counts, and the
+`SOCIAL_LOGIN_ENABLED` / `READINESS_GATE_ENABLED` flag rows are therefore **unverified, not
+verified-true**, and were left as written. *A refusal that names itself is the good failure.*
+
+**Lead, not a finding:** `outstand-proxy` and `social-proxy` answer
+`Access-Control-Allow-Origin: *` where the other 93 use the allow-list. Both authenticate by
+bearer token; exploitability untested, so it is recorded for an owner rather than called a defect.
+
+**Verified:** 3,546 tests pass (315 files); production build clean. `npm run typecheck` reports
+one **pre-existing** error — `middleware.ts(30): Cannot find module '@vercel/functions'` — on a
+file this branch does not touch, which Codex independently confirmed as outside the patch.
+
+→ `docs/wiki/concepts/context-tax.md`
 
 ## Email verification by code — the signup tab stops being thrown away (2026-08-26, #528, #530)
 

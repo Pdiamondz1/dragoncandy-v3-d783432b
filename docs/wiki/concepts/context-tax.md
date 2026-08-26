@@ -2,8 +2,8 @@
 title: Context Tax
 type: concept
 created: 2026-07-19
-updated: 2026-07-19
-sources: [2026-07-19-context-tax-split.md]
+updated: 2026-08-26
+sources: [2026-07-19-context-tax-split.md, 2026-08-26-context-tax-regrowth.md]
 tags: [claude-code, knowledge-layer, workflow, tokens, project-context]
 ---
 # Context Tax
@@ -34,12 +34,74 @@ added ~440 tokens, permanently, to a file loaded into every future session.
   (each carrying a `**Pending:**` clause) / `### Shipped`. Entry format is binding:
   `- **<Name>** — <one clause>. → <pointer> · <refs>`, wiki page beating spec, refs omitted
   entirely when neither a PR nor a branch exists.
-- **Both generators were amended in the same PR.** This is the part that makes it stick;
-  everything else was one-time cleanup. `CLAUDE.md` is the load-bearing half because it is
-  itself always-loaded — a session that never opens the skill file would otherwise re-bloat §5.
+- **Both generators were amended in the same PR.** ~~This is the part that makes it stick;
+  everything else was one-time cleanup.~~ **SUPERSEDED 2026-08-26 — the claim was wrong. §5
+  regrew to within 3.2% of its pre-split size in about six weeks. See "The regrowth" below.**
+  `CLAUDE.md` is still the load-bearing half of the *instruction*, because it is itself
+  always-loaded — but an instruction is not an enforcement, which is the entire lesson.
 
 Result: **176,620 → 73,742 bytes (−58%)**, and growth per shipped branch from ~440 tokens to
 ~15 (one index line).
+
+## The regrowth (2026-08-26)
+
+**It regrew, and the thing that was supposed to prevent that is what failed.**
+
+| | 2026-07-18 | after #294/#295 | 2026-08-26 | after this cleanup |
+|---|---|---|---|---|
+| whole file | 176,620 B | 73,742 B | **170,999 B** | **47,384 B** |
+| §5 alone | — | — | **154,964 B (90%)** | **31,349 B** |
+
+Six weeks, back to within 3.2% of the pre-split size. The largest two entries were 13 KB **each**,
+in a section whose own header says *"Index only — one line per entry"*.
+
+**Why the July fix did not hold.** It amended two written rules — `CLAUDE.md`'s branch-finish
+clause and `knowledge-sync` step 4 — and called that "the part that makes it stick". Both rules
+were still there on 2026-08-26, still correct, and still being ignored, because **nothing read
+them at a moment when it mattered**. Every individual entry was defensible when written; the
+section grew one reasonable paragraph at a time. That is the shape of this failure: it never
+arrives as a decision anyone would refuse.
+
+**A written rule that nothing enforces is not a control.** This repo already knew that —
+`brandLogo.test.ts`, `profilesWriteGrants.test.ts` and `migrations.test.ts` all exist because a
+hand-maintained rule failed the same way. The July cleanup is the case where the lesson was
+available and not applied to itself.
+
+So §5 is now guarded by **`src/projectContextSize.test.ts`**: a per-entry line cap, byte caps on
+§5 and the whole file, and a check that the rule text itself survives (delete the rule and the
+caps read as arbitrary, then get raised).
+
+### The control is the part worth copying
+
+"No entry exceeds 16 lines" is **vacuously true if the parser finds no entries** — the same shape
+as `brandLogo.test.ts` reporting green for a day while three unenumerated headers stayed wrong.
+Two controls run first: `parseEntries()` against a **fixed fixture** with exact expected counts,
+and **parser count === raw bullet count** on the live file, where the raw counter deliberately
+matches *any* list marker so a syntax change makes the two disagree rather than agree at zero.
+
+The first draft got this wrong in an instructive way. Its control asserted *"§5 parses at least 40
+entries"* — which the Codex second review correctly called a **content floor, not a parser
+check**. §5 getting *smaller* is the entire point of the file, so that floor would eventually fail
+on correct maintenance and pressure an author into keeping stale entries or deleting the guard:
+**a guard fighting the behaviour it exists to encourage.** *A control must be about the
+instrument, not about the reading.*
+
+### What the cleanup found in the prose
+
+Checking all 111 cited PRs against the repo's 530 turned up **four wrong PR claims** (#444 and
+#452 described as open but merged; **#387 asserted merged but CLOSED unmerged**; #249 cited for
+work that landed via #251/#254) and one wrong count (13 → **12** edge functions answering `.io` to
+a native origin, re-measured across all 125 with a `.com` control).
+
+**#387 is the instructive one.** The underlying work is real and on `main`. Only the attribution
+was wrong — but a reader who checks `gh pr view 387` gets **CLOSED** and reasonably concludes a
+security fix never shipped. *A wrong reference attached to a true claim is worse than no
+reference, because it invites a check that returns the wrong answer.*
+
+It also found **two workstreams missing entirely** — the TikTok connector (#525, #529) and the
+email-verification rework (#527, #528, #530), neither in §5, `SHIPPED_LOG.md`, or the wiki. *An
+index that omits shipped work fails worse than one that bloats: bloat costs tokens, omission makes
+a reader conclude the work does not exist.*
 
 ## Key Decisions
 
@@ -127,5 +189,5 @@ a generator fix.
 - [[Self-Improving App]] — the wider knowledge layer this feeds
 - [[Validator Skills]] — the `{done,checklist,missing}` contract `verify-knowledge` uses to judge
   whether this layer is current
-- [[AIOS Runtime Spend Source of Truth]] — the `ai-cost-vs-cap` verdict whose unattended runner
+- [[AIOS Runtime Spend Source-of-Truth]] — the `ai-cost-vs-cap` verdict whose unattended runner
   was scheduled in the paired PR #295
