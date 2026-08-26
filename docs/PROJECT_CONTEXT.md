@@ -131,6 +131,15 @@ holds no Toast credentials. See §6.
 > `supabase secrets list` for a secret (they *are* listable), `pg_proc` /
 > `information_schema` for a migration. Each costs seconds. A ledger row is not proof an
 > object exists — this project has three recorded cases of `recorded ≠ actual`.
+>
+> **Prod was swept on 2026-08-26 and THREE of these claims were false — all three in the
+> optimistic direction, i.e. work was further along than the doc said.** The Instagram sweep had
+> run twice; X had a second connected account and a stored snapshot; and Donny's `social_*`
+> acceptance signal had been met on 2026-08-11, a fortnight before anyone checked, leaving a
+> finished feature filed under "awaiting go-live". **A `**Pending:**` clause decays toward
+> pessimism, because the session that clears it is never the session that wrote it.** Ten
+> migrations, five tables and five functions were confirmed present, each probe carrying a
+> control that returned null or 3,271 as appropriate — so the negatives mean something.
 
 ### Open items — founder action
 
@@ -196,12 +205,20 @@ Engineering cannot close these. Ordered by what blocks launch.
   account counted in the investor-facing user figure; and a distinct wizard-completion signal to
   replace `is_completed` as the routing gate.
   → `docs/wiki/concepts/email-verification-routes.md` · #527, #528, #530, #531
-- **X (Twitter) analytics connector** — merged, applied, deployed; `@dragoncandyco` connected
-  2026-08-25 with a real refresh token, which is what finally proved `X_CLIENT_SECRET`. The
-  analytics read answers **402 `credits-depleted`** — X deleted its free tier in February 2026.
-  *Connected is not working*, and this is the first connector with one and not the other.
-  **Pending:** funding credits (founder, above) is the only thing between this and working
-  analytics.
+- **X (Twitter) analytics connector** — merged, applied, deployed. **TWO accounts are connected,
+  not one, and the read is no longer failing** — this entry said `last_synced_at` was null and
+  the read answered **402 `credits-depleted`**; prod disagrees (checked 2026-08-26).
+  `@dragoncandyco` (connected 2026-08-25) has `last_synced_at` **2026-08-26 14:34** and a stored
+  snapshot; `@CasteloCast` (connected 2026-08-25 20:24) has **never synced** and was not recorded
+  here at all. **The conclusion survives with a different mechanism: it still measures nothing.**
+  The snapshot reads `posts_counted: 0`, `top_posts: []`, `followers_count: 0`, and every total —
+  likes, replies, reposts, impressions, link and profile clicks — is **`null`, not `0`**, which is
+  [[Honest Analytics]] holding on the one row where fabricated zeros would be indistinguishable
+  from truth. **Whether credits were funded or the metered call is simply never reached on an
+  account with no posts is NOT established** — the free `/2/users/me` succeeds either way, so a
+  successful read here does not prove a funded read. Do not infer from this that paid analytics
+  work. **Pending:** a sync for `@CasteloCast`; and a post on either account, which is the only
+  thing that would distinguish the two explanations.
   → `docs/wiki/concepts/x-analytics-connector.md` · #519, #522
 - **Facebook Page Insights connector** — merged, migration applied, six functions deployed
   2026-08-24 and verified by object. The connect flow was driven end to end on prod and stops
@@ -212,7 +229,11 @@ Engineering cannot close these. Ordered by what blocks launch.
   → `docs/wiki/concepts/facebook-page-insights-connector.md` · #510, #512
 - **Instagram read-only insights connector** — merged, applied, deployed and **working end to
   end** 2026-08-24 (`@areyouaman`, read scopes only). **Pending:** the daily refresh sweep has
-  never fired (the cron exists; `cron.job_run_details` holds 0 runs); App Review, which needs a
+  **fired twice and succeeded both times** — this clause said it had "never fired (the cron
+  exists; `cron.job_run_details` holds 0 runs)" and prod disagrees (checked 2026-08-26):
+  `instagram-refresh-sweep` ran at 04:00 UTC on 25 and 26 August, both `succeeded`. Control:
+  `auto-approve-content` returns 3,271 runs on the same query, so a 0 would have meant
+  something. **Pending:** App Review, which needs a
   demo video and an anonymously reachable privacy policy.
   → `docs/wiki/concepts/instagram-insights-connector.md` · #489
 - **YouTube read-only analytics connector** — merged, applied, deployed and **working end to
@@ -323,13 +344,6 @@ Engineering cannot close these. Ordered by what blocks launch.
   functions surface an unauthenticated request as 500 rather than 401 (pre-existing); the
   pre-existing unauthenticated IDOR in `get_user_conversations`, found in scope and left for an
   owner. → `docs/wiki/concepts/identity-verification.md`
-- **Donny's `social_*` tools repaired** — 7 tools → 4, `account_id` resolved server-side, and
-  `create_post`/`schedule_post` returning a draft card the owner taps, so the LLM structurally
-  cannot publish. Merged (#416) and `donny-orchestrator` deployed, verified by reading the
-  **deployed source**. **Pending:** the acceptance signal — a `status='success'` row in
-  `donny_tool_executions` for a `social_*` tool has never existed, and producing one needs a
-  real signed-in interaction; a both-viewport `verify-prod`.
-  → `docs/wiki/concepts/donny-social-tools.md` · #416
 - **Notification + invitation authorization** — three pre-existing holes closed, each proven on
   prod inside a rolled-back transaction before and after. **#396 merged and carries all of it**
   — this line said "#387 and #396 merged", and **#387 was CLOSED unmerged** on 2026-08-08;
@@ -373,6 +387,14 @@ Engineering cannot close these. Ordered by what blocks launch.
   consumer-reachable through a default-scope catch-all; inverted to an empty allowlist, then
   wiki pages stopped syncing to consumers entirely.
   → `docs/wiki/concepts/donny-rag-scope-boundary.md` · #434, #437
+- **Donny's `social_*` tools repaired — acceptance signal MET** — 7 tools → 4, `account_id`
+  resolved server-side, and `create_post`/`schedule_post` returning a draft card the owner taps,
+  so the LLM structurally cannot publish. **Moved out of "awaiting go-live" 2026-08-26:** that
+  entry's own acceptance signal was "a `status='success'` row in `donny_tool_executions` for a
+  `social_*` tool has never existed" — prod holds **8 successes** for `social_get_post_analytics`,
+  latest **2026-08-11**, i.e. the signal was met a fortnight before anyone looked. The remaining
+  errors are on three *other* tools. **Residual:** a both-viewport `verify-prod`.
+  → `docs/wiki/concepts/donny-social-tools.md` · #416
 - **Dead `/settings/*` CTAs fixed (12 across 10 files)** — every "Upgrade" (including the revenue
   path) 404'd; `isKnownRoute` only ever guarded routes the LLM *invents*.
   → `docs/wiki/concepts/donny-data-and-quick-actions.md` · #409
