@@ -1,5 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { join } from 'node:path';
+import { existsSync, mkdirSync, mkdtempSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import {
   stripCode,
   parseCatalog,
@@ -7,6 +9,7 @@ import {
   listSkills,
   lintWikilinks,
   findMojibake,
+  isPageFile,
 } from './wikilinks';
 
 const REPO = join(__dirname, '../..');
@@ -168,5 +171,37 @@ describe('the checker itself can fail', () => {
   it('does not let a longer backtick run close a shorter span, or vice versa', () => {
     // opener of 1 must close on a run of exactly 1, so the ``` run is not its closer
     expect(extractTargets('a `b ``` c` [[Real]]')).toEqual(['Real']);
+  });
+
+  it('does not open a fence on a line indented four or more spaces', () => {
+    // Markdown reads that as indented code, not a fence. Opening one anyway blanks every
+    // link after it to EOF, so real dangling links pass the gate — a silent false negative.
+    const indented = ['    ```', 'later [[Should Still Be Seen]]'].join('\n');
+    expect(extractTargets(indented)).toEqual(['Should Still Be Seen']);
+    // control: at three spaces it IS a fence, and the link after it is inside the block
+    const threeSpaces = ['   ```', 'later [[Hidden By The Fence]]'].join('\n');
+    expect(extractTargets(threeSpaces)).toEqual([]);
+  });
+});
+
+describe('catalog paths must name a real page', () => {
+  it('accepts a markdown file and rejects a directory with the same name shape', () => {
+    // `existsSync` alone accepts a directory, which would resolve the catalog entry and
+    // every link pointing at it while no page exists. (Codex second review, round 3.)
+    expect(isPageFile(join(REPO, 'docs/wiki/index.md'))).toBe(true);
+    expect(isPageFile(join(REPO, 'docs/wiki/concepts'))).toBe(false); // a real directory
+    expect(isPageFile(join(REPO, 'docs/wiki/no-such-page.md'))).toBe(false);
+  });
+
+  it('rejects a directory even when it ends in .md', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'wikilink-'));
+    const trap = join(dir, 'looks-like-a-page.md');
+    mkdirSync(trap);
+    try {
+      expect(existsSync(trap)).toBe(true); // control: the path really is there
+      expect(isPageFile(trap)).toBe(false); // ...and is still not a page
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
   });
 });

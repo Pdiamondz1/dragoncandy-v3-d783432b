@@ -52,7 +52,12 @@ export function stripCode(text: string): string {
   const defenced = text
     .split('\n')
     .map((line) => {
-      const delimiter = line.match(/^\s*(`{3,}|~{3,})(.*)$/);
+      // At 4+ spaces markdown reads the line as indented code, not a fence. Opening one
+      // anyway blanks every link after it through to the next matching delimiter or EOF,
+      // so real dangling links pass the gate — a silent false negative, which is strictly
+      // worse than the loud false positive of missing a fence nested inside a list. No
+      // linted file currently indents a fence at all (measured 2026-08-26).
+      const delimiter = line.match(/^ {0,3}(`{3,}|~{3,})(.*)$/);
       if (fence !== null) {
         // A closing fence is the same character, at least as long, and followed by nothing
         // but whitespace. ```` ```ts ```` inside a block is CONTENT — treating it as a
@@ -147,6 +152,17 @@ export function extractTargets(text: string): string[] {
   return [...stripCode(text).matchAll(/\[\[([^\]\n]+)\]\]/g)].map((m) => m[1].split('|')[0].trim());
 }
 
+/**
+ * A catalog target has to be a real markdown FILE.
+ *
+ * `existsSync` alone accepts a directory, which would resolve the catalog entry and every
+ * link pointing at it, while no page exists. (Codex second review, round 3.)
+ */
+export function isPageFile(absolutePath: string): boolean {
+  if (!absolutePath.endsWith('.md') || !existsSync(absolutePath)) return false;
+  return statSync(absolutePath).isFile();
+}
+
 export function listSkills(repoRoot: string): string[] {
   const dir = join(repoRoot, '.claude/skills');
   if (!existsSync(dir)) return [];
@@ -224,7 +240,7 @@ export function lintWikilinks(repoRoot: string): LintResult {
   const cataloged = new Set<string>();
   for (const [name, p] of catalog) {
     const abs = join(dirname(indexPath), p);
-    if (existsSync(abs)) cataloged.add(relative(repoRoot, abs));
+    if (isPageFile(abs)) cataloged.add(relative(repoRoot, abs));
     else brokenCatalogPaths.push({ name, path: p });
   }
 
