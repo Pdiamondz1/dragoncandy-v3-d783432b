@@ -154,12 +154,13 @@ Engineering cannot close these. Ordered by what blocks launch.
 - **Site-gate go-live, in this order:** set the four Production-scope Vercel variables →
   deploy → run the runbook's checks → **only then** disable Supabase signup. `SITE_GATE_ENABLED`
   is the lever; deleting the variables is the wrong rollback, because it fails closed.
-  **This entry said switching it on "breaks every pending platform review" and called it a
-  decision, not a task. That is no longer true** — #547 added a generated, self-contained
-  `public/privacy.html` to the allowlist, verified live on prod, so the anonymously reachable
-  privacy policy Google, Meta, TikTok and X each require survives the gate. Register
-  `/privacy.html` in those consoles, never `/privacy`, which is a SPA route and stays gated.
-  It is now a task.
+  **The privacy-policy blocker is closed; a HOMEPAGE one is not.** #547 put a generated,
+  self-contained `public/privacy.html` on the allowlist, verified on prod, so the anonymously
+  reachable privacy policy Google, Meta, TikTok and X each require survives the gate — register
+  `/privacy.html`, never `/privacy`. **But Google's verification also requires the HOMEPAGE to be
+  reachable signed out**, and `/` is the SPA and still 401s. This entry then said "it is now a
+  task"; that is right for Meta/TikTok/X and wrong for Google, which still needs the gate off or a
+  static homepage nobody has built. → `docs/runbooks/google-oauth-demo-video.md`
 - **No Facebook Page exists to connect** — creating one is public, outward-facing content. The
   connector is deployed and stops at Meta's Page-selection step until a Page exists.
 - **Demo videos for platform app review** — Google (YouTube) and Meta (Instagram, Facebook).

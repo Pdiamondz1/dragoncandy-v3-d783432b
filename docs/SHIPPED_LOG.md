@@ -152,6 +152,21 @@ where you found it is not correcting the claim. And a reviewer is structurally t
 here: Codex reads the diff, so it can only ever catch survivors that sit near the change. The
 mechanical fix is to grep the distinctive phrase across `docs/` **before** committing a correction.
 
+**Codex round 2 found what round 1's sweep structurally could not: the URL, not the claim.** The
+first sweep grepped the *prose* (`anonymously reachable privacy`) and fixed five copies. What an
+operator actually acts on is a **pasteable string** — `https://dragoncandy.com/privacy` in TikTok's
+console field table — which shares no words with the sentence. Grepping `dragoncandy.com/privacy`
+found it, plus the same URL in the Google runbook. **Sweep for the artifact a reader will USE, not
+only for the sentence you happen to have written.**
+
+**And that second runbook corrected a claim of mine.** `google-oauth-demo-video.md` had already
+proposed this exact fix — "serve the legal pages as real static files and allowlist those paths" —
+so #547 shipped a solution the repo had written down and nobody had built. But the same section
+records that Google's verification needs the **homepage** reachable signed out too, and `/` is the
+SPA and still 401s. So "switching the gate on no longer breaks four app reviews" was **too strong**:
+it is true for Meta, TikTok and X, and only half-true for Google. Corrected in §5's Open items rather
+than left to be discovered by a failed verification.
+
 ## [2026-08-26] The package-order existence oracle: one answer for "no such order" and "not yours"
 
 **PR #545** (`54ca8b24`), both functions deployed and verified on prod the same day.

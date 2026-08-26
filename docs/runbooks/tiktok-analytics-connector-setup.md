@@ -285,7 +285,13 @@ working integration to film.
 |---|---|
 | Category | Business |
 | Description (≤120) | Businesses and creators plan campaigns together, then publish the approved videos to their own TikTok accounts. |
-| Terms / Privacy | `https://dragoncandy.com/terms` · `https://dragoncandy.com/privacy` |
+| Terms / Privacy | `https://dragoncandy.com/terms` · **`https://dragoncandy.com/privacy.html`** |
+
+> **Privacy must be `/privacy.html`, not `/privacy`.** `/privacy` is a SPA route and answers
+> 401 once `SITE_GATE_ENABLED` is on; `/privacy.html` is a real static file on the gate's
+> allowlist (#547) and works in both states. This table said `/privacy` until 2026-08-26.
+> `/terms` has **no** static equivalent yet and would still 401 under the gate — TikTok does
+> not appear to fetch it during review, but do not assume the same of a future platform.
 | Platforms | **Web only** — ticking iOS demands an App Store URL that does not exist |
 | Web/Desktop URL | `https://dragoncandy.com` |
 | Products | **Login Kit only** |
