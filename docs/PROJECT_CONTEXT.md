@@ -208,7 +208,8 @@ Engineering cannot close these. Ordered by what blocks launch.
   `verify_jwt = false`), and the ~20-bit code is safe **only** because the function body resolves
   it against the caller's own JWT, behind a per-**user** cap enforced in SQL. Verification is a
   **route gate** (#528); the wizard is entered only when the account never finished it (#527).
-  **Both routes exercised end to end on prod 2026-08-26**, founder click on a live link included.
+  **Both routes exercised end to end on prod 2026-08-26** (the code path's first run — it shipped
+  that day), founder click on a live link included.
   **Pending:** the six-digit input has never been typed in a browser — everything beneath it is
   proven, but that needs a fresh signup; `dame+onboardtest@dragoncandy.com` is a live prod account
   and is the **46th** `profiles` row, i.e. NOT inside §4's 45 (see there); and a distinct

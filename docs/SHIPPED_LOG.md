@@ -39,10 +39,13 @@ Verification of shipped work, not new code. The §5 entry for the email-verifica
 prod"* since it merged. It has now been exercised, on the founder-designated account
 `dame+onboardtest@dragoncandy.com`.
 
-**Until that day `email_verification_tokens` held zero rows.** The claim was accurate. The empty
-table was not itself evidence, though: `cron.job` `expire-email-verification-tokens` deletes
-expired rows at 05:30 daily, so the 2026-08-24 signup's row had simply been swept. Checked before
-anything was concluded from the zero.
+**The empty token table proved less than it looked like.** `email_verification_tokens` held zero
+rows at inspection, and that was first written up as "the feature had never run". It does not
+support that: the nightly `expire-email-verification-tokens` cron sweeps expired rows, and a
+verification email went out on 2026-08-24 and is still in the mailbox, so a row existed. The Codex
+second review caught the contradiction. The defensible bound is the ship date — `code`, `attempts`
+and the code-bearing template all landed in #530 on 2026-08-26, and the 8/24 email carries the old
+template with no code — so the link had been sent before and the **code** path had not run.
 
 **The forced control is the whole story.** `consume_email_verification_code` returns
 `ok:true, reason:'already_verified'` *before* it looks at the code — correct, because a double

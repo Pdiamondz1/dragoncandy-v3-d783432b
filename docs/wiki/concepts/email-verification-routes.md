@@ -110,11 +110,19 @@ documented no-op against Supabase's ambient grant, the lesson
 ## Proven on prod, 2026-08-26 — and what the proof required
 
 Both routes were exercised end to end against production on the founder-designated account
-`dame+onboardtest@dragoncandy.com`. Until that day `email_verification_tokens` held **zero
-rows**: the feature was deployed, boot-verified and proven at the SQL layer, and had never
-run. (The empty table was not itself the finding — `cron.job` `expire-email-verification-tokens`
-deletes expired rows at 05:30 daily, so the 8/24 signup's row had been swept. Checked before
-concluding anything from the zero.)
+`dame+onboardtest@dragoncandy.com`.
+
+**What the empty table did and did not prove.** `email_verification_tokens` held zero rows at
+inspection, and the first draft of this section read that as "the feature had never run". It does
+not: `cron.job` `expire-email-verification-tokens` deletes expired rows at 05:30 daily, and a
+verification email demonstrably went out on 2026-08-24 — it is still in the mailbox — so a row
+existed and was swept. *An empty result is ambiguous*, which is [[Verify Before Reporting]]'s own
+lesson, applied late and only because the Codex second review pushed back.
+
+What IS established comes from the ship date, not the table: `code`, `attempts` and the
+code-bearing template all shipped in **#530 on 2026-08-26**, and the 2026-08-24 email carries the
+old template with no code in it. So the **link** had been sent before; the **code** path could not
+have run before that day, and had not.
 
 **The whole test turned on one forced control.** `consume_email_verification_code` returns
 `ok:true, reason:'already_verified'` *before* it looks at the code, so on an already-verified

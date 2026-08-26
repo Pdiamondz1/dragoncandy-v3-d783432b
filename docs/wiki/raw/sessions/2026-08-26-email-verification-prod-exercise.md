@@ -10,11 +10,14 @@ Target: the email-verification code flow (#527, #528, #530, #531), whose §5 ent
   `email_verified = true`. (Its `profiles.id` is deliberately not recorded here — the email
   identifies the row, and a stable prod USER id in the repo buys nothing. Raised by the Codex
   second review. Amended before merge, so `raw/`'s immutability is not in play.)
-- `email_verification_tokens` held **0 rows**, and had never held one this session's probes
-  could see. So the feature genuinely had not been exercised.
-- The empty table was NOT suspicious: `cron.job` #6, `expire-email-verification-tokens`,
-  runs `delete from public.email_verification_tokens where expires_at < now()` at 05:30
-  daily. The 8/24 signup's row expired after 24h and was swept. Checked before concluding.
+- `email_verification_tokens` held **0 rows at inspection**. That is NOT evidence the feature
+  had never run, and was briefly written up as if it were — `cron.job` #6,
+  `expire-email-verification-tokens`, runs `delete ... where expires_at < now()` at 05:30
+  daily, and a verification email went out 2026-08-24 (still in the mailbox), so a row
+  existed and was swept. Caught by the Codex second review, not here.
+- The real bound is the ship date: `code`, `attempts` and the code-bearing template shipped in
+  **#530 on 2026-08-26**, and the 8/24 email carries the old template with no code. So the
+  LINK had been sent before; the CODE path had not run.
 - `profiles.email_verified` DEFAULT is `false`, and prod's `handle_new_user` carries the
   social-login provider allowlist (`google`/`apple`/`facebook`), so password signups get
   `false`. 45 of 46 profiles read `true` — legacy rows predating that logic.
