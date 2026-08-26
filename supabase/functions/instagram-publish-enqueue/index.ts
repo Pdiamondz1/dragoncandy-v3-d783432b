@@ -116,6 +116,13 @@ serve(async (req: Request) => {
     return new Response(null, { headers: corsHeaders(req) });
   }
 
+  // INVARIANT: once this is non-empty, every exit from this function must go
+  // through `discardCopies`. Enumerated rather than assumed — the early returns
+  // for a missing header, a bad token, a bad content type and an absent
+  // connection all happen BEFORE the copy loop, so `copied` is still empty; the
+  // RPC-refusal branch discards explicitly; everything else throws into the
+  // catch, which discards. Anything added between the copy loop and the final
+  // response has to keep that true.
   const copied: string[] = [];
   const admin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
@@ -198,9 +205,19 @@ serve(async (req: Request) => {
         // Deliberately one message for "does not exist" and "not yours". The
         // distinction is exactly what an enumeration probe is looking for.
         console.warn('[instagram-publish-enqueue] source unreadable:', item.bucket, probeError.message);
-        return json(
-          req,
-          { error: 'media_not_found', message: 'That file does not exist or is not yours' },
+        // THROWN, not returned. A bare `return` here skips the catch below, and
+        // with it `discardCopies` — so a request whose SECOND file is
+        // unreadable would leave the first one staged in `publish-media` for
+        // ever, with no job pointing at it. Unreachable today only because
+        // `validateJobShape` refuses multi-file posts; the loop is written for
+        // N items and the carousel gap is a documented future, so the exit path
+        // has to be right before it is reachable rather than after.
+        //
+        // The rule this restores: exactly ONE place cleans up, and every
+        // failure route goes through it.
+        throw new InstagramError(
+          'media_not_found',
+          'That file does not exist or is not yours',
           404,
         );
       }
