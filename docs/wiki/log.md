@@ -1,5 +1,39 @@
 # Wiki Log
 
+## [2026-08-26] ingest | Email verification exercised on prod, and a P1 that was nearly filed
+
+**Created** `raw/sessions/2026-08-26-email-verification-prod-exercise.md` and
+[[Email Verification Prod Exercise Session]] (`sources/email-verification-prod-exercise-session.md`).
+**Updated**
+[[Email Verification Routes]], [[Verify Before Reporting]], `docs/SHIPPED_LOG.md`,
+`docs/PROJECT_CONTEXT.md` §5, `index.md`.
+
+**The `sources/` page was skipped, then added.** The first pass declined it: the workflow lists one
+per raw source, but practice is 29 of 182 raw sessions, and a summary risks restating the raw file
+while both concept pages already carry the synthesis. The Codex review raised it twice, and the
+second time correctly — *an exception argued from prior noncompliance is not an argument*. Changing
+the workflow is a separate decision from quietly not following it. The page is a claims summary
+with provenance, not a copy, and `index.md` now carries it so the query workflow can reach it.
+
+Compounded onto the two existing pages rather than creating a third. The session produced no new
+subject — it produced *evidence* about one page's subject and *an instance* of the other's, which
+is what those pages are for.
+
+Both verification routes were driven against production — **partially**, and the page carries a
+per-leg table saying which three legs were covered and which three were not: no fresh signup, no
+browser code entry, and no session from the login form. The durable half is not that they work; it
+is what had to be true for the test to be capable of failing. The RPC short-circuits on
+`already_verified` before reading the code, so on the verified test account a **wrong** code
+returned HTTP 200; only after `email_verified` was set false did the same request return 400.
+Recorded on [[Verify Before Reporting]] as its own section, because "ask what the system does when
+the work is already done" generalises past this feature.
+
+The Gmail-connector instance went onto the same page's *instrument* section. It is the sharpest
+one recorded: the false reading was internally consistent, survived a direct test, and was refuted
+only by a control from an unrelated sender — after a first control that came back clean because it
+could not express the failure at all. It was then confirmed from the other end by a human clicking
+the real buttons, which logged the token intact.
+
 ## [2026-08-26] ingest | An auth failure is not a server error
 
 **Created** `raw/sessions/2026-08-26-auth-401-not-500.md` and

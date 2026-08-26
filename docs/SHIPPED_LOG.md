@@ -32,6 +32,76 @@
 >
 > **Adding an entry:** prepend it (newest first). See `knowledge-sync` step 4.
 
+## [2026-08-26] Email verification exercised against prod — and the control that made it mean something
+
+Verification of shipped work, not new code. The §5 entry for the email-verification code flow
+(#527, #528, #530, #531) had carried *"no real signup has exercised the code flow end to end on
+prod"* since it merged. Both routes have now been driven against production on the
+founder-designated account `dame+onboardtest@dragoncandy.com` — **but that clause is only partly
+retired, and the wiki page carries the per-leg table.** The emailed link was clicked by a person in
+a real mail client and verified. The code was posted straight to the endpoint, never typed into the
+signup panel; the account pre-existed, so no fresh signup was involved; and the session came from
+an admin `generate_link` exchange rather than the login form. Calling that "end to end" was an
+overstatement the Codex second review removed.
+
+**The empty token table proved less than it looked like.** `email_verification_tokens` held zero
+rows at inspection, and that was first written up as "the feature had never run". It does not
+support that: the nightly `expire-email-verification-tokens` cron sweeps expired rows, and a
+verification email went out on 2026-08-24 and is still in the mailbox, so a row existed. The Codex
+second review caught the contradiction. The defensible bound is the ship date — `code`, `attempts`
+and the code-bearing template all landed in #530 on 2026-08-26, and the 8/24 email carries the old
+template with no code — so the link had been sent before and the **code** path had not run.
+
+**The forced control is the whole story.** `consume_email_verification_code` returns
+`ok:true, reason:'already_verified'` *before* it looks at the code — correct, because a double
+submit or a race with the link being clicked on another device must not error about work already
+done. It also means every submission on a verified account succeeds. Demonstrated rather than
+assumed: the **wrong** code `999999` returned **HTTP 200 success**, leaving `attempts = 0`. With
+`email_verified` set false, the identical request returned **400 `mismatch`**. Same endpoint,
+same input, opposite answers.
+
+| probe | result |
+|---|---|
+| wrong `999999`, then wrong `000000` | 400 `mismatch`, `remaining` 9 then **8** |
+| real code from the email | 200, `email_verified` false → true, `verified_at` stamped |
+| link token, GET | 302 `/auth?mode=login&verified=1` |
+| same link token replayed | 302 `?status=error&reason=invalid_or_used` |
+| no `Authorization`; anon key as the JWT | 401, 401 |
+| malformed five-digit code | 400 `malformed`, no attempt charged |
+
+`remaining` falling 9 → 8 across two *different* wrong codes is the per-user budget doing the
+thing the migration exists for; a per-code budget answers 9 twice.
+
+**Delivery was checked, not inferred from the provider's success flag** — and the evidence differs
+per mail, since three were sent. The first two were read in the mailbox: inbox not spam, one second
+after the row was written, emailed code identical to the stored code, link on `dragoncandy.com`
+from the honoured `Origin`, footer label matching its own href. The third was never opened by the
+agent; its delivery is evidenced by the founder clicking it.
+
+**A P1 was nearly filed and was wrong.** Read through the claude.ai Gmail connector, every link
+came back corrupted in a way mechanically consistent with quoted-printable decoding of an
+unescaped `=`. An unrelated sender's mail showed the identical damage, which is what stopped it;
+the founder then clicked the real buttons and the function logged `token_prefix: "29ece178"`,
+intact. The first control tried could not have caught it — a Google notification containing no
+`=` followed by two hex digits came back clean and proved nothing. Recorded in project memory as
+`gmail-mcp-mangles-equals-signs`.
+
+Those clicks *did* fail, for a mundane reason worth writing down: the test had already spent both
+tokens. A used verification link failing is the design working. **A third email was then sent and
+deliberately left untouched, and the founder's click on it verified** — token `7bd889aa`, created
+21:25:05, consumed 21:26:02. Recording only the first two clicks reads as "the human route failed";
+the Codex review drew exactly that conclusion from an earlier draft.
+
+Sessions came from the admin API (`generate_link` → `/auth/v1/verify`), never a password.
+`supabase/scripts/staging-login.mjs` performs the same exchange but deliberately refuses
+production, so it was left untouched rather than adapted.
+
+**Still not proven:** the six-digit input has never been typed in a browser. Everything beneath
+it is proven; that one needs a fresh signup.
+
+→ `docs/wiki/concepts/email-verification-routes.md` · `docs/wiki/concepts/verify-before-reporting.md`
+
+
 ## [2026-08-26] TikTok read-only analytics connector — and four defects one real connection found
 
 **PRs #525 and #529, both merged.** The fifth direct platform connector under the 2026-08-23
