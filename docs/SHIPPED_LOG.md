@@ -32,12 +32,17 @@
 >
 > **Adding an entry:** prepend it (newest first). See `knowledge-sync` step 4.
 
-## [2026-08-26] Email verification exercised end to end on prod — and the control that made it mean something
+## [2026-08-26] Email verification exercised against prod — and the control that made it mean something
 
 Verification of shipped work, not new code. The §5 entry for the email-verification code flow
 (#527, #528, #530, #531) had carried *"no real signup has exercised the code flow end to end on
-prod"* since it merged. It has now been exercised, on the founder-designated account
-`dame+onboardtest@dragoncandy.com`.
+prod"* since it merged. Both routes have now been driven against production on the
+founder-designated account `dame+onboardtest@dragoncandy.com` — **but that clause is only partly
+retired, and the wiki page carries the per-leg table.** The emailed link was clicked by a person in
+a real mail client and verified. The code was posted straight to the endpoint, never typed into the
+signup panel; the account pre-existed, so no fresh signup was involved; and the session came from
+an admin `generate_link` exchange rather than the login form. Calling that "end to end" was an
+overstatement the Codex second review removed.
 
 **The empty token table proved less than it looked like.** `email_verification_tokens` held zero
 rows at inspection, and that was first written up as "the feature had never run". It does not

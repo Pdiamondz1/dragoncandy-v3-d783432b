@@ -118,9 +118,11 @@ Recorded in project memory as `gmail-mcp-mangles-equals-signs`.
 
 ## What is still NOT proven
 
-The **UI** has never been exercised: nobody has typed a code into the six-digit input in a
-browser. That needs a fresh signup, and creating accounts is outside what the agent does.
-Everything below the UI — send, deliver, code, link, attempt budget, auth — is now proven.
+Three legs, not one. Nobody has typed a code into the six-digit input in a browser; no FRESH
+SIGNUP created the account (it pre-existed); and the session came from an admin `generate_link`
+exchange, not the login form. The emailed link WAS clicked by a person and did verify, so that
+route is walked. Calling the whole thing "end to end" was an overstatement — caught by the Codex
+second review, not here — because it cleared a production-verification gap that is still open.
 
 ## Residue
 

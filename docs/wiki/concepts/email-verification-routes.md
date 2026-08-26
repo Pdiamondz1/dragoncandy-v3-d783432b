@@ -107,10 +107,25 @@ documented no-op against Supabase's ambient grant, the lesson
 
 **A dormant permission is not a safe one — it is one feature away from being live.**
 
-## Proven on prod, 2026-08-26 — and what the proof required
+## Exercised against prod, 2026-08-26 — and exactly how far that goes
 
-Both routes were exercised end to end against production on the founder-designated account
-`dame+onboardtest@dragoncandy.com`.
+Both routes were driven against production on the founder-designated account
+`dame+onboardtest@dragoncandy.com`. **Be precise about what that covered**, because the first
+draft of this section said "end to end" and cleared a gap it had not closed:
+
+| leg | covered? |
+|---|---|
+| function → Resend → real inbox, code matching the stored row | **yes** |
+| emailed **link**, clicked by a person in a real mail client | **yes** — founder click, token consumed 21:26:02 |
+| **code** submitted and accepted, attempt budget spent | yes, but **posted straight to the endpoint** |
+| six-digit code typed into the signup panel | **no** |
+| a fresh signup creating the account | **no** — the account pre-existed |
+| the login form | **no** — the session came from an admin `generate_link` exchange |
+
+So the link route has been walked by a human from mail client to verified session. The code route
+is proven from send through delivery to acceptance, with the browser input still untested, and
+neither route has been entered from a real signup. Raised by the Codex second review after this
+page claimed otherwise.
 
 **What the empty table did and did not prove.** `email_verification_tokens` held zero rows at
 inspection, and the first draft of this section read that as "the feature had never run". It does
