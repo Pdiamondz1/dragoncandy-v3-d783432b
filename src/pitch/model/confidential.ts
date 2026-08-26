@@ -30,6 +30,8 @@ const HORIZON_MONTHS = 18;
 
 const STAFFING_ROSTER = 'docs/DragonCandy_Capital_Raise_Cost_Model.md (section 5, staffing roster rates)';
 const USE_OF_FUNDS_SOURCE = 'docs/DragonCandy_Capital_Raise_Cost_Model.md (section 8.1, Use of Funds)';
+const MARKETING_LAUNCH_BUDGET = 'docs/DragonCandy_Capital_Raise_Cost_Model.md (section 7, Marketing — Sequenced 3-Metro Launch; section 8 consolidated-budget table, "Marketing + brand acquisition" line, sourced there to §7, §6.1)';
+const LEGAL_AND_GA_BUDGET = 'docs/DragonCandy_Capital_Raise_Cost_Model.md (section 8 consolidated-budget table — "Legal / IP / fundraising" line, sourced there to the Moat Playbook 90-day legal plan, and the separate "G&A / ops / insurance / accounting" line, which this assumption\'s label also covers)';
 
 /**
  * Every `PRE_SEED_BUDGET` line's monthly cost, except `infra` (which already derives from
@@ -94,7 +96,7 @@ export const PRE_SEED_LINE_ASSUMPTIONS = {
     value: 3_000,
     unit: 'USD/month',
     label: 'Hoboken launch marketing',
-    source: STAFFING_ROSTER,
+    source: MARKETING_LAUNCH_BUDGET,
     note:
       'One city. Founders stated three launch events on 2026-08-24 — Hoboken (Antique Lofts), ' +
       'Palm Beach (the Colony Hotel) and Montauk (venue not chosen) — and this line does not ' +
@@ -107,7 +109,12 @@ export const PRE_SEED_LINE_ASSUMPTIONS = {
     value: 1_800,
     unit: 'USD/month',
     label: 'Legal, IP and accounting',
-    source: STAFFING_ROSTER,
+    source: LEGAL_AND_GA_BUDGET,
+    note:
+      'This label bundles legal/IP with accounting; the cost model carries them as two ' +
+      'separate section 8 lines ("Legal / IP / fundraising" and "G&A / ops / insurance / ' +
+      'accounting") rather than one, so both are cited rather than picking the one that ' +
+      'happens to match the label\'s first word.',
   }),
 } satisfies Record<string, Assumption<number>>;
 
