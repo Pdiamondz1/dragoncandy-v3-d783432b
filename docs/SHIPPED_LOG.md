@@ -234,6 +234,77 @@ which nothing enforces and which fails at token exchange if missed; and App Revi
 Google's and Meta's. Both TikTok buttons on the settings page also read "Connect TikTok" — one
 publishes via Outstand, one measures — and nothing on the buttons says which.
 
+## [2026-08-26] The two proxies answered every origin with `*`, because copying was easier than sharing
+
+**#539, merged `8bd8b3c0`, deployed and swept.** Code change plus deploy — the follow-up to the
+`.io` sweep below, which found this and deliberately left it out.
+
+`outstand-proxy` and `social-proxy` were the only 2 of 125 deployed functions answering
+`Access-Control-Allow-Origin: *`. Measured before the change: both echoed `*` to **every** origin
+tried, `https://evil.example` included.
+
+**Not a live hole, and the record should say so.** Neither sets
+`Access-Control-Allow-Credentials`, so a cross-origin page still could not read a response without
+already holding the user's JWT — which lives in localStorage on our own origin. Consistency and
+defence in depth, not an incident.
+
+**Why they diverged is the durable part.** Both need a WIDER `Allow-Headers` than
+`_shared/cors.ts` provides (`accept`, `x-org-unit-id`, and outstand's two delegation headers), and
+`outstand-proxy` serves five verbs where the shared helper allows POST. Calling `corsHeaders`
+would have broken them, so copying the block was the path of least resistance — and a copied block
+is where a wildcard survives. The fix shares the *origin decision* (`resolveAllowedOrigin`)
+without forcing the header lists to match.
+
+**Why the origin is stamped at the boundary.** Both build most responses in module-level
+`jsonResponse` helpers with no `req` in scope — 28 and 41 call sites, most outside the request
+handler. Threading `req` through touches 55+ sites and a dozen signatures, where one miss ships a
+wrong origin that nothing catches until a browser blocks it. And caching the origin in module
+state is a **cross-request bug**: Deno serves concurrent requests in one isolate, so request A's
+origin can be read by request B — written into the helper's doc comment because it is the answer
+that makes the smallest, most attractive diff. So `serve(req => withAllowedOrigin(req, await
+handleRequest(req)))`, which every response leaves through and therefore cannot miss a path. The
+module-level fallback became `DEFAULT_ORIGIN`, never `*`.
+
+`Vary: Origin` added to both — without it a shared cache can hand one origin's ACAO to another.
+The platform already sets `Vary: Accept-Encoding`, so the helper **appends** rather than
+overwrites; confirmed on prod afterwards as `Vary: Accept-Encoding, Origin`.
+
+**The guard is fleet-wide and was forced red.** It walks the real function tree, so a NEW function
+copying the block fails too — a guard watching only the pair you already repaired cannot see the
+third. Three controls: it found 100+ sources (a bad glob would otherwise pass over zero); its
+pattern matches a real declaration in both quote styles; and it does NOT match prose about the
+wildcard, which both proxies now carry in a comment — **a guard that matched its own documentation
+would break the moment the fix was documented**. Proven by planting a wildcard in a throwaway
+function, with cleanup in a `finally`.
+
+**Two Codex findings declined on measurement, not preference.** Allow-listing `*.vercel.app` would
+be strictly worse than the wildcard removed — it is a *shared domain*, so any Vercel user's page
+becomes an allowed origin — and previews point at staging anyway. And `http://127.0.0.1:8080` (the
+`npm run dev` origin, filed P1) was measured against prod: `donny-orchestrator`,
+`create-notification` and `release-creator-payout` **already** answer `.com` to a localhost origin,
+so local dev has never been able to call Donny, notifications or any money function from the
+browser. These two were the last exception, not a working baseline. Not fixed inline for blast
+radius — adding localhost to `ALLOWED` widens CORS on all 125 functions including payouts — and
+the measurement is in the doc comment so it can be reversed deliberately. **Accepted cost, stated
+rather than buried: developing social features locally now fails.**
+
+**Verification.** Identical probe before and after, so differences are attributable: apex `*` →
+`.com`; `capacitor://localhost` `*` → itself; `evil.example` `*` → `.com` (the fix); localhost `*`
+→ `.com` (by decision); `Vary` gains `Origin`; unauth POST still gateway-401, so `verify_jwt` did
+not move. **The check that mattered most**: `Allow-Headers` still carries all eight values
+including both delegation headers and `Allow-Methods` all five verbs — narrowing either was the
+real way this could have broken working features. Both upload logs listed `_shared/cors.ts` and
+`origins.ts`, which is the evidence the fix shipped. Fleet sweep after: ok = 107, stale = 0,
+nocors = 18, **wildcard = 0** — 125 exactly.
+
+**The durable lesson: a shared helper only gets used if it fits.** These two did not copy the block
+out of carelessness — `corsHeaders` would have broken them, and nothing offered the origin decision
+separately from the header list. The fix was to make the shared thing decomposable, not to demand
+the callers conform. Where a helper is nearly-but-not-quite right, expect copies, and expect them
+to drift in whatever direction is easiest to write.
+
+→ `docs/wiki/concepts/edge-function-deploy-bundling.md` · `docs/wiki/raw/sessions/2026-08-26-proxy-cors-wildcard.md`
+
 ## [2026-08-26] The 12 money edge functions answering `.io` were stale bundles, not a bug
 
 **Deploy only — no code change, no migration, no PR for the fix itself.**
@@ -300,8 +371,8 @@ where the 2026-08-14 one covered only the 50 that `src/` invokes. **That is the 
 layer up:** the earlier entry corrects a sample generalised to the fleet, then bounds its own
 re-measurement by a different sample.
 
-**Found in scope, deliberately left alone.** `outstand-proxy` and `social-proxy` answer
-`Access-Control-Allow-Origin: *` — in the repo source, not a stale bundle, so a code change and
+**Found in scope, deliberately left alone — and closed the same day by #539.**
+`outstand-proxy` and `social-proxy` answer `Access-Control-Allow-Origin: *` — in the repo source, not a stale bundle, so a code change and
 out of scope; neither sets `Access-Control-Allow-Credentials`, so a cross-origin page still
 cannot read a response without holding the user's JWT. Five of the 12 answer 500 rather than 401
 unauthenticated — `PROJECT_CONTEXT` recorded that class as two and is corrected to five in
@@ -522,8 +593,8 @@ worktree session cannot reach. Migrations *applied* to prod, cron run counts, an
 `SOCIAL_LOGIN_ENABLED` / `READINESS_GATE_ENABLED` flag rows are therefore **unverified, not
 verified-true**, and were left as written. *A refusal that names itself is the good failure.*
 
-**Lead, not a finding:** `outstand-proxy` and `social-proxy` answer
-`Access-Control-Allow-Origin: *` where the other 93 use the allow-list. Both authenticate by
+**Lead, not a finding — pursued and closed 2026-08-26 (#539).** `outstand-proxy` and
+`social-proxy` answer `Access-Control-Allow-Origin: *` where the other 93 use the allow-list. Both authenticate by
 bearer token; exploitability untested, so it is recorded for an owner rather than called a defect.
 
 **Verified:** 3,549 tests pass (320 files); production build clean; **`npm run typecheck` passes

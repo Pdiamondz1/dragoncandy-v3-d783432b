@@ -23,6 +23,22 @@ only by a control from an unrelated sender — after a first control that came b
 could not express the failure at all. It was then confirmed from the other end by a human clicking
 the real buttons, which logged the token intact.
 
+## [2026-08-26] ingest | The two proxies answered every origin with `*`
+
+**Created** `raw/sessions/2026-08-26-proxy-cors-wildcard.md` and
+[[Proxy CORS Wildcard Session]] (`sources/proxy-cors-wildcard-session.md`).
+**Updated** [[Edge-Function Deploy & Bundling]] (the "left alone" bullet closed, and its tally
+annotated), `index.md` (both the concept entry and the new source), `docs/SHIPPED_LOG.md` (two
+cross-refs marked closed plus a new top entry), `docs/PROJECT_CONTEXT.md` §5 Shipped.
+
+Code change + deploy (#539, `8bd8b3c0`). `outstand-proxy` and `social-proxy` were the only 2 of
+125 answering a wildcard ACAO — because both need a WIDER `Allow-Headers` than `corsHeaders`
+provides, so copying the block was easier than sharing it. Fixed by sharing the *origin decision*
+(`resolveAllowedOrigin`) and stamping it at the response boundary, since both build most responses
+in module-level helpers with no `req` in scope. Fleet sweep after: **wildcard = 0**, and
+`verify_jwt` unchanged. Two Codex findings (Vercel previews, `127.0.0.1:8080`) declined on
+measurement, with the reasoning recorded in the helper so it can be reversed deliberately.
+
 ## [2026-08-26] ingest | TikTok connector: two locks not three, and four defects one real connection found
 
 **Created** [[TikTok Analytics Connector]] (`concepts/tiktok-analytics-connector.md`) and
