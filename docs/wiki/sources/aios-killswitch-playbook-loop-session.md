@@ -55,4 +55,4 @@ Apply the seed migration to prod (MCP `apply_migration`); verify A1 once on-dema
 - [[Founder Playbooks]]
 - [[Self-Improving App]]
 - [[North Star & KPI Scorecard]]
-- [[AIOS]]
+- [[AIOS Internal Shell]]

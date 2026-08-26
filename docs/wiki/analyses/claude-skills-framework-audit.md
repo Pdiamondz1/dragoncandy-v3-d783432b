@@ -112,7 +112,7 @@ Where the library sits against the framework's 9 categories (this is the gap-fin
 | Infrastructure ops | **Partial** | `worktree-cleanup`. Gap: edge-fn deploy, migration guardrails, secret/key rotation (the `AIOS_INGEST_SECRET` saga), cron management — all in memory, not skills. |
 
 **Cross-cutting gap:** no on-demand **safety** skill (`/careful`) despite a documented
-prod-overwrite incident ([[project_concurrent_lovable_pr_collisions]]) and many dangerous ops
+prod-overwrite incident (`project_concurrent_lovable_pr_collisions`) and many dangerous ops
 (edge-fn deploy, `git reset --hard`, DROP/RENAME migrations, Stripe live keys).
 
 ## Donny audit

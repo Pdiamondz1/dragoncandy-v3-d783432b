@@ -39,6 +39,20 @@ Content with [[Display Name]] cross-references.
 **Filenames:** kebab-case (`stripe-connect.md`). Display names in `title:`
 frontmatter. `[[Wikilinks]]` use display names, resolved via `index.md`.
 
+**A link resolves through a CATALOG ENTRY, never through a mention.** Only an `index.md`
+line of the shape `- [[Name]](path)` defines a page. The same name appearing in another
+entry's *description* is a use — a check that cannot tell the two apart calls a broken
+link fine, which is how one survived a hand-run `grep` on 2026-08-26. Two other
+namespaces resolve on purpose: **skills** (`[[codex-review]]` →
+`.claude/skills/codex-review/SKILL.md`) and the index itself (`[[Wiki Index]]`).
+**Memory notes are not a namespace** — cite them in backticks, since they are not pages.
+A wikilink inside a code span is a quotation and is ignored.
+
+`scripts/lib/wikilinks.test.ts` enforces this in CI: no dangling link in `docs/wiki/` or
+the core docs, every catalog path exists, every page is cataloged, and `index.md` carries
+no CP1252 mojibake — 92 characters of it were live until 2026-08-26, four of them inside
+catalog display names, silently breaking every correctly-encoded link to those pages.
+
 ## Ingest Workflow
 
 1. Read the raw source completely. If it contains image references,
@@ -74,6 +88,10 @@ Answer from wiki first. Go to raw sources only if wiki lacks detail.
 Run on request or suggest every ~20 ingestions. Check for:
 contradictions, stale claims, orphan pages, missing concept pages,
 missing cross-references, thin coverage areas.
+
+Broken wikilinks, uncataloged pages and encoding damage are **not** on that
+list any more — they are machine-checked on every CI run (see above). Spend
+the manual pass on the judgements a test cannot make.
 
 ## Principles
 

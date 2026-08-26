@@ -12,7 +12,7 @@ The landing page's free **"paste a URL → campaign brief"** teaser (`BriefGener
 `DonnySection`, CTA "Try it now — paste a link"). It calls the `generate-anonymous-brief` edge
 function (no login; `verify_jwt=true`, satisfied by the public anon key). The value is signup-gated —
 a guest sees one preview; saving/using the brief forces signup — so the asset to defend is **AI cost**,
-not data. Sibling of the [[Landing Lead Capture]] pipeline (the other hardened anonymous landing endpoint).
+not data. Sibling of the [[Landing Redesign & Public Lead Capture]] pipeline (the other hardened anonymous landing endpoint).
 
 ## Key Decisions
 
@@ -81,7 +81,7 @@ section IDs (`audiences`/`creator-hub`). See `2026-06-28-landing-fixes-brief-sav
 
 ## See Also
 
-- [[Landing Lead Capture]] — the other hardened anonymous landing endpoint (honeypot + fail-open IP
+- [[Landing Redesign & Public Lead Capture]] — the other hardened anonymous landing endpoint (honeypot + fail-open IP
   throttle + closed-anon-DML table); same "defend a public endpoint" family, different fail posture
   (lead capture fails *open* to never drop a real lead; this fails *closed* to never overspend).
 - [[Donny AI]] — the campaign-generation brain; the logged-in path is `donny-campaign-generate`.

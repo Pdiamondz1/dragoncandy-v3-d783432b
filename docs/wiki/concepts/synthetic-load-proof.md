@@ -87,8 +87,7 @@ selecting non-existent columns (`full_name`/`role` vs the view's `creator_name`)
 every run; the daily `tick` dragging in the depth pool after a bulk-seed; the DB snapshot captured
 **after** the wave drained (artificially-low connection curve); and a stale pooled JWT reused after a
 purge+re-mint. Each was a LEAD **verified against the code** (R3 against the real prod view schema via
-`information_schema.columns`) before fixing — see [[Verify a reviewer's claim before accepting OR
-dismissing]] and [[MCP execute_sql returns only the LAST statement's result]]. R7 was clean.
+`information_schema.columns`) before fixing — see [[Verify Before Reporting]] and `MCP execute_sql returns only the LAST statement's result`. R7 was clean.
 
 ## Runner matrix (Slice 1) — multi-IP fan-out (2026-07-24, PR #337)
 
@@ -130,8 +129,7 @@ careful gate; the 2-shard live smoke stays founder-gated.
   deletes the non-cascading synthetic org.
 
 Codex ran three rounds: R1 (2×P2) + R2 (P1+P2) fixed; **R3 ("creators can't INSERT campaigns") verified
-FALSE** by the rollback-wrapped RLS probe and dismissed — see [[Verify a reviewer's claim before accepting
-OR dismissing]]. data-exposure-reviewer PASS. Full session: `raw/sessions/2026-07-24-synthetic-load-runner-matrix.md`.
+FALSE** by the rollback-wrapped RLS probe and dismissed — see [[Verify Before Reporting]]. data-exposure-reviewer PASS. Full session: `raw/sessions/2026-07-24-synthetic-load-runner-matrix.md`.
 
 ## Slice 2 — credible 200K (real egress + overlap-honest peak), 2026-07-25
 
@@ -248,5 +246,5 @@ the summary RPC; `sim/tsconfig.json`'s strict typecheck is not wired into CI.
 - [[Supabase .in() Header Overflow]] — the unbounded-`.in()` 16 KB bomb that blocked the 20-shard
   seed four times while impersonating a network outage.
 - [[Living Synthetic Marketplace]] — the persistent browsable `botmk_` cohort on the same spine.
-- [[AIOS runtime spend source of truth]] — the `donny_cost_ledger` / 15% AI cap the synthetic
+- [[AIOS Runtime Spend Source-of-Truth]] — the `donny_cost_ledger` / 15% AI cap the synthetic
   exclusion protects.

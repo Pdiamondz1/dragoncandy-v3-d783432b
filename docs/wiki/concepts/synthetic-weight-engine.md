@@ -63,7 +63,7 @@ Tagging is done at the **DB layer** so the harness cannot "forget" it:
   test-mode Stripe only (see [[Test-Mode Stripe UX]]).
 - **Email suppression** to bot addresses in `send-notification-email` / `send-welcome-email` /
   `create-notification` (the in-app row is still written; only the outbound Resend leg is suppressed,
-  backstopped by the sender's own suffix guard — see [[Notification delivery choke point]]).
+  backstopped by the sender's own suffix guard — see [[Notification Delivery]]).
 - **SHOW side:** `get_simulation_stats()` (internal-gated) + the `/internal/simulation` founder
   dashboard is the ONE surface that intentionally shows synthetic. `platform_weight`'s **physical**
   fields (`db_bytes`/`storage_bytes`) and count **totals** deliberately include synthetic (bots use
@@ -82,7 +82,7 @@ w/ auto-orgs + 3 creators) → mixed real↔bot activity → the real `aios_*` R
 before/after (minus `generated_at`) → `get_simulation_stats` shows the cohort → `purge_synthetic_data()`
 returns **every residual = 0** → ROLLBACK. Reproducible any time the spine changes. Enablers:
 `set_config('request.jwt.claim.sub', <admin uuid>, true)` fakes `auth.uid()` so the internal-gated RPCs
-run (see [[Testing auth.uid() RPCs and RLS on prod]]); `auth.users` has exactly one insert trigger
+run (see `Testing auth.uid() RPCs and RLS on prod`); `auth.users` has exactly one insert trigger
 (`handle_new_user`, pure SQL, no external call) so a rollback-wrapped mint fires no webhook/email.
 
 ## Phase 1 — the private-crew behavior engine
@@ -122,7 +122,7 @@ N=25 cohort (≈65% creators / 35% Hoboken restaurants) and drives the full **fr
   default) beyond `file_path`/`file_size`/`uploaded_by` — the Codex second review caught the missing
   four (every `uploadDeliverable` would 23502 and wedge the funnel). A multi-statement `execute_sql`
   schema check had silently returned only its last result set, hiding this (see
-  [[MCP execute_sql returns only the LAST statement's result]]).
+  `MCP execute_sql returns only the LAST statement's result`).
 - **GitHub Actions script-injection:** workflow inputs must pass through `env:` vars, never be
   interpolated into a `run:` shell that holds secrets (Codex P1).
 - **`hire` is one atomic RPC** — `accept_application_with_collaboration` itself sets the app
@@ -133,7 +133,7 @@ N=25 cohort (≈65% creators / 35% Hoboken restaurants) and drives the full **fr
 
 - **`CREATE OR REPLACE` of a shared trigger fn silently reverts later migrations.** The plan said
   "reproduce `handle_new_user` from `20260427220001`", but two later migrations had changed it
-  (`account_scope='internal'` guard for [[AIOS Stakeholder Invites]]; `ON CONFLICT DO UPDATE`
+  (`account_scope='internal'` guard for [[AIOS Stakeholder Invite]]; `ON CONFLICT DO UPDATE`
   re-signup refresh). The first spine migration reverted both on prod. **Always diff a shared function
   against its CURRENT prod definition (`pg_get_functiondef`), never an old migration file.** Fixed by
   corrective migration `20260723132000`.
@@ -177,7 +177,7 @@ other bot-touched table (campaigns/apps/collabs/file_uploads/project_reviews/cre
 considered (`campaigns.group_id` RESTRICT) wouldn't bite, but never considered the crew
 membership/activity FKs; only running the real purge on real crew rows surfaced them, and the fail-loud
 purge (throws on any non-zero residual) made the gap loud instead of silent residue. See
-[[Testing auth.uid() RPCs and RLS on prod]] for the aios_*/get_simulation_stats internal-auth-gated
+`Testing auth.uid() RPCs and RLS on prod` for the aios_*/get_simulation_stats internal-auth-gated
 snapshot technique the proof used.
 
 ## Phase 1 go-live — N=25 cohort + daily cron (Task 8 second switch), 2026-07-24
@@ -226,7 +226,7 @@ client-side. The teardown rule below (`purge_synthetic_load_cohort()` for load c
 - [[Internal Real-vs-Total Metrics]] — how the `/internal` metric surfaces present this exclusion:
   Overview real-only, Simulation mirroring the Overview card set for the synthetic cohort.
 - [[Service-Role Data Exposure]] — the same "re-assert the intended scope server-side" discipline.
-- [[AIOS runtime spend source of truth]] — `donny_cost_ledger` / the 15% AI cap the synthetic
+- [[AIOS Runtime Spend Source-of-Truth]] — `donny_cost_ledger` / the 15% AI cap the synthetic
   exclusion protects.
-- [[Testing auth.uid() RPCs and RLS on prod]] — the rollback + `set_config` technique the proof uses.
-- [[AIOS Stakeholder Invites]] — the `account_scope='internal'` guard the corrective migration restored.
+- `Testing auth.uid() RPCs and RLS on prod` — the rollback + `set_config` technique the proof uses.
+- [[AIOS Stakeholder Invite]] — the `account_scope='internal'` guard the corrective migration restored.

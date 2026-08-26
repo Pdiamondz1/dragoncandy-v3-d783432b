@@ -24,7 +24,7 @@ backtick hotfix; donny-chat deployed to prod).
   reconstructed `proposed_value` downstream — every other hop unchanged. See
   [[Patch-Based Corrections]].
 - A full-`proposed_value` fallback is kept for genuine rewrites. The invariant **a human
-  approves** ([[Donny Gated Corrections]]) is preserved.
+  approves** ([[In-UI Knowledge Merge]]) is preserved.
 - Gotcha: backticks inside the backtick-delimited system-prompt template literal broke the Deno
   bundle; `npm run build` doesn't typecheck edge functions, so the **deploy bundle is the real
   parse check**. Merged #151 before deploying → main briefly held the break → #152 realigned
@@ -40,4 +40,4 @@ turn, no "Load failed") is the remaining post-deploy check.
 
 - [[Patch-Based Corrections]]
 - [[Edge Function Streaming]]
-- [[Donny Gated Corrections]]
+- [[In-UI Knowledge Merge]]

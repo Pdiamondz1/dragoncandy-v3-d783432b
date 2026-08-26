@@ -127,5 +127,5 @@ a generator fix.
 - [[Self-Improving App]] — the wider knowledge layer this feeds
 - [[Validator Skills]] — the `{done,checklist,missing}` contract `verify-knowledge` uses to judge
   whether this layer is current
-- [[AIOS Runtime Spend Source of Truth]] — the `ai-cost-vs-cap` verdict whose unattended runner
+- [[AIOS Runtime Spend Source-of-Truth]] — the `ai-cost-vs-cap` verdict whose unattended runner
   was scheduled in the paired PR #295

@@ -2162,7 +2162,7 @@ every page except `/landing` served two canonicals that disagreed — and confli
 discarded rather than resolved, so the correct per-route value was being thrown away site-wide.
 `/landing` passed only because it is the one page where the static value happens to be right. This
 also falsifies a standing wiki claim that `SEO.tsx`'s `SITE_URL` is "the single constant every
-canonical link and `og:url` derives from" — corrected on [[Domain Migration .io → .com]].
+canonical link and `og:url` derives from" — corrected on [[Domain Migration (.io → .com)]].
 **A gate that tests one URL is evidence about one URL.**
 
 Both static tags removed. `/how-it-works` now scores **100 accessibility / 100 best practices /
@@ -4300,7 +4300,7 @@ The proof this asks to be judged on is a **`status='success'` row in `donny_tool
 a `social_*` tool** — which has never existed. Both preconditions are now met: merged as
 `d5cb594b` (#416) and `donny-orchestrator` **deployed** on 2026-08-09.
 
-**Verified by the deployed source, not the version number** ([[Merged ≠ deployed]]):
+**Verified by the deployed source, not the version number** ([[Verify Before Reporting]]):
 `accounts_unavailable`, `unwrapMcpPayload`, `hasConnectedAccount`, `draft_id` and
 `donny_draft_publications` are all present in the running bundle; `esm.sh/@supabase` is absent and
 `npm:@supabase/supabase-js` present. The two dropped tool names and all **25** `account_id`

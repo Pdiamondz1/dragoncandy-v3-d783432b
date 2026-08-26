@@ -43,7 +43,7 @@ Applying in the donny-chat handler isolates the whole change to one function and
 data contract every other hop depends on. Re-reading the current doc as the **edit base** also
 matches the `current_value` that ingest captures server-side, and the apply RPC's trimmed-text
 drift check still guards the approve-time race — *more* robust than the old path, where Donny
-edited a possibly-stale in-context copy. The invariant from [[Donny Gated Corrections]] holds:
+edited a possibly-stale in-context copy. The invariant from [[In-UI Knowledge Merge]] holds:
 **Donny never writes — it only proposes; a human approves at `/internal/corrections`.**
 
 ## doc-edits.ts semantics (mirror the Edit tool)
@@ -63,12 +63,12 @@ backticks inside it (`` `edits` ``) terminates the string → Deno bundle "Expre
 `npm run build` only builds the frontend (`src/`), so it **never typechecks the edge function**
 — the deploy bundle (`supabase functions deploy`) is the real parse check. Use **single
 quotes** for emphasis inside any edge-fn prompt, and order edge-fn work
-build → **deploy (bundle check)** → merge (see [[Lovable Edge-Function Deploy Gap]]).
+build → **deploy (bundle check)** → merge (see [[Edge-Function Deploy & Bundling]]).
 
 ## See Also
 
 - [[Edge Function Streaming]] — the predecessor fix; this resolves its "patch/diff contract" residual
-- [[Donny Gated Corrections]]
+- [[In-UI Knowledge Merge]]
 - [[Wiki-Commit-PR Session]]
-- [[Lovable Edge-Function Deploy Gap]]
+- [[Edge-Function Deploy & Bundling]]
 - [[Donny AI]]
