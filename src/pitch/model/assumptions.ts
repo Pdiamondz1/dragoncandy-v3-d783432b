@@ -271,50 +271,81 @@ export const UNIT_ECONOMICS = {
   }),
 } satisfies Record<string, Assumption<number>>;
 
-const PROJECT_CONTEXT_TARGETS = 'docs/PROJECT_CONTEXT.md (section 3)';
+/**
+ * The SUPERSEDED top-down plan's revenue band.
+ *
+ * PROJECT_CONTEXT section 3 was restated on 2026-08-26 to this model's own bottom-up
+ * figures, so it is no longer the source of these six numbers -- the archive narrative they
+ * originally came from is. Pointing them at section 3 after the restatement would make the
+ * model source its cross-check from a document that now quotes the model.
+ *
+ * **The six VALUES are deliberately unchanged.** Updating them to match the restated section
+ * 3 would make `bottomUpVsPriorPlan` exactly 1.00 every year BY CONSTRUCTION, turn the
+ * trajectory slide's own sentence ("a cross-check, not a number this build was tuned to
+ * meet") into a falsehood, and satisfy the spec's "the gap is reported, never closed" rule by
+ * fiat -- which is the precise failure that rule exists to prevent. Only the label and the
+ * source moved.
+ */
+const PRIOR_PLAN_TARGETS =
+  'docs/archive/DragonCandy_Path_to_Multi-million_annual_profit.md (three-year plan, lines 57-61) ' +
+  '— the top-down plan as published in PROJECT_CONTEXT.md section 3 before 2026-08-26';
 const COST_BREAKDOWN = 'docs/DragonCandy_Pricing_Profitability_Briefing_v2.md (section 7, "The Cost Breakdown" table, line 520)';
 
 /**
- * Three-year revenue and cost bands, our own forward projections — not a benchmark, not a
- * measurement of anything that exists yet. Feeds `threeYearTrajectory()` in `derive.ts`.
+ * Three-year bands, our own forward projections — not a benchmark, not a measurement of
+ * anything that exists yet. Feeds `threeYearTrajectory()` in `derive.ts`.
+ *
+ * The six REVENUE rows are the SUPERSEDED top-down plan, kept at their original values as
+ * the bottom-up build's cross-check. See `PRIOR_PLAN_TARGETS` above for why they must not be
+ * restated. They are ARR figures — a year-end run rate — which is why `rollup.ts` compares
+ * them against `exitArr` and not against revenue booked in-year.
  */
 export const TRAJECTORY = {
   year1RevenueLow: modeled({
     value: 300000,
     unit: 'USD/year',
-    label: 'Year 1 revenue, low',
-    source: PROJECT_CONTEXT_TARGETS,
-    note: 'docs/DragonCandy_Pricing_Profitability_Briefing_v2.md section 7 states the same three-year ranges independently, so they are corroborated across two documents.',
+    label: 'Prior plan (superseded): Year 1 ARR, low',
+    source: PRIOR_PLAN_TARGETS,
+    note:
+      'docs/DragonCandy_Pricing_Profitability_Briefing_v2.md section 7 states the same ' +
+      'three-year ranges independently, so the PRIOR PLAN is corroborated across two ' +
+      'documents. Superseded 2026-08-26, when PROJECT_CONTEXT section 3 was restated to this ' +
+      'model\'s bottom-up figures; retained at its original value as the cross-check. The ' +
+      'archive states this band as ARR explicitly ("ARR reaches $300K-600K"), which is why ' +
+      'the comparison uses exit ARR. Its ARPU assumption ($250/mo in Y1 rising to $400-500 ' +
+      'by Y3) counts Donny credit overages and DragonDash rush surcharges; this model books ' +
+      'neither, because nothing has ever been charged for them — that difference, not the ' +
+      'customer count, is most of the gap.',
   }),
   year1RevenueHigh: modeled({
     value: 600000,
     unit: 'USD/year',
-    label: 'Year 1 revenue, high',
-    source: PROJECT_CONTEXT_TARGETS,
+    label: 'Prior plan (superseded): Year 1 ARR, high',
+    source: PRIOR_PLAN_TARGETS,
   }),
   year2RevenueLow: modeled({
     value: 2000000,
     unit: 'USD/year',
-    label: 'Year 2 revenue, low',
-    source: PROJECT_CONTEXT_TARGETS,
+    label: 'Prior plan (superseded): Year 2 ARR, low',
+    source: PRIOR_PLAN_TARGETS,
   }),
   year2RevenueHigh: modeled({
     value: 4500000,
     unit: 'USD/year',
-    label: 'Year 2 revenue, high',
-    source: PROJECT_CONTEXT_TARGETS,
+    label: 'Prior plan (superseded): Year 2 ARR, high',
+    source: PRIOR_PLAN_TARGETS,
   }),
   year3RevenueLow: modeled({
     value: 7000000,
     unit: 'USD/year',
-    label: 'Year 3 revenue, low',
-    source: PROJECT_CONTEXT_TARGETS,
+    label: 'Prior plan (superseded): Year 3 ARR, low',
+    source: PRIOR_PLAN_TARGETS,
   }),
   year3RevenueHigh: modeled({
     value: 12000000,
     unit: 'USD/year',
-    label: 'Year 3 revenue, high',
-    source: PROJECT_CONTEXT_TARGETS,
+    label: 'Prior plan (superseded): Year 3 ARR, high',
+    source: PRIOR_PLAN_TARGETS,
   }),
   year1CostLow: modeled({
     value: 590000,

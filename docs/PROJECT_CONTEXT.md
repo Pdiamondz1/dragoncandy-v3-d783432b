@@ -54,21 +54,49 @@ paid campaign in under 60 seconds.
 
 ## 3. Three-Year Targets
 
-| Year | ARR        | Headcount | Metros | Notes        |
-|------|------------|-----------|--------|--------------|
-| Y1   | $300–600K  | 5–6       | 2–3    |              |
-| Y2   | $2–4.5M    | 7–8       | 8–12   | NRR > 110%   |
-| Y3   | $7–12M     | 10–11     | 20+    | $2–5M profit |
+**Restated 2026-08-26 from the bottom-up model** (`src/pitch/model/`): US Census
+venue counts per metro × a stated penetration × live pricing, every figure traced to a
+provenance-tagged assumption. The ARR column is **exit ARR** — the year-end run rate,
+which is what "ARR" has always meant here. Booked revenue is the lower figure the same
+years actually invoice, because customers ramp through the year; both are in the
+generated workbook (`npm run model:xlsx`). Do not quote one for the other.
+
+| Year | Exit ARR | Booked | Headcount | Metros | Notes |
+|------|----------|--------|-----------|--------|-------|
+| Y1 (2026) | $100K | $36K   | 5–6   | 2  | 2026 = Y1 is founder-confirmed, not assumed |
+| Y2 (2027) | $879K | $518K  | 7–8   | 10 | NRR > 110% |
+| Y3 (2028) | $4.7M | $3.3M  | 10–11 | 21 | 4 named metros + a 17-metro cohort |
+
+**The superseded plan was $300–600K / $2–4.5M / $7–12M ARR**
+(`docs/archive/DragonCandy_Path_to_Multi-million_annual_profit.md`). It stays registered
+in `src/pitch/model/assumptions.ts` **at those original values** as the model's
+cross-check and must not be updated to match this table — that would make the ratio 1.00
+by construction and destroy the check. Bottom-up exit ARR runs **0.22× / 0.27× / 0.50×**
+the old band's midpoint. Almost the whole Y3 gap is **ARPU, not customers**: the model
+books $277.55/customer/month against the plan's $400–500, because the plan counts Donny
+credit overages and DragonDash rush surcharges and the model books neither (nothing has
+ever been charged for them). At the plan's own ARPU our Y3 customer count would produce
+$6.8M. Changing the mix or the take rate is a founder decision and has not been made.
 
 **Kill-switches** (any trigger ≥ pause and reassess):
 - Churn > 6% **monthly** (SMB SaaS benchmark is 3–5%/mo, so >6%/mo means worse than
   typical SMB; unit clarified 2026-06-10 — was previously unitless)
 - CAC payback > 12 months
 - LTV:CAC < 2:1
-- Revenue per employee < $400K — **Y2–Y3 maturity gate, not a Y1 trigger.** The Y1
-  plan ($300–600K ARR ÷ 5–6 staff ≈ $50–120K/employee) is structurally below this
-  floor, so applying it early would false-trigger; the Y3 plan ($7–12M ÷ 10–11 ≈
-  $636K–$1.2M/employee) clears it. (Scoped 2026-06-10.)
+- Revenue per employee < $400K — **Y2–Y3 maturity gate, not a Y1 trigger.** Scoped
+  2026-06-10 against the old $7–12M Y3 ($636K–$1.2M/employee, which cleared easily).
+  **It no longer clears cleanly — see the open decision below.**
+
+> **OPEN FOUNDER DECISION — three numbers in this section disagree, and nobody has picked.**
+> At the restated Y3, revenue per employee is **$431–474K on exit ARR** (clears the $400K
+> floor) but **$304–334K on booked revenue** (fails it, in both staffing cases). Four
+> candidate resolutions, none chosen: (a) Y3 headcount of 10–11 is too high for this
+> revenue; (b) $400K is the wrong floor for a company at this stage; (c) the Y3 target is
+> too low to carry the planned team; (d) the gate never said WHICH revenue it measures —
+> "revenue per employee" conventionally means booked revenue, which is the reading that
+> fails. (d) surfaced only when exit ARR and booked revenue were computed separately on
+> 2026-08-26; it was not a live question while one number stood for both. Decide (d) first,
+> because it determines whether (a)–(c) are even in play.
 
 > Kill-switch thresholds validated against 2025 SMB-SaaS benchmarks and operationalized
 > into a tracked metric set in `docs/wiki/analyses/north-star-kpi-scorecard.md`

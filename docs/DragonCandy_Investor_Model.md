@@ -35,6 +35,7 @@
 | Passing tests (`tests`) | 3228 | tests | MEASURED | `npx vitest run` | 2026-08-24 |
 | Test files (`testFiles`) | 291 | files | MEASURED | `npx vitest run` | 2026-08-24 |
 | AI spend cap as share of revenue (`aiCostCapPctOfRevenue`) | 0.15 | fraction | MEASURED | `docs/PROJECT_CONTEXT.md (section 8)` | 2026-08-23 |
+| The calendar year that is Year 1 (`year1CalendarYear`) | 2026 | calendar year | MODELED | `founder confirmation, Damon Williams (CTO), in session 2026-08-26` | — |
 | Standard delivery, low band (`campaignPriceStandardLow`) | 75 | USD/deliverable | MEASURED | `src/lib/campaignPricing.ts (TIER_PRICE_BANDS)` | 2026-08-23 |
 | Standard delivery, high band (`campaignPriceStandardHigh`) | 150 | USD/deliverable | MEASURED | `src/lib/campaignPricing.ts (TIER_PRICE_BANDS)` | 2026-08-23 |
 | Deliverables per campaign (`deliverablesPerCampaign`) | 3 | deliverables | MODELED | `src/pitch/model/assumptions.ts` | — |
@@ -53,12 +54,12 @@
 | Stripe fixed fee (`stripeFixedFee`) | 0.3 | USD/transaction | BENCHMARKED | `https://stripe.com/pricing` | — |
 | AI cost per customer per month (`aiCostPerCustomerMonth`) | 1.2 | USD/month | MODELED | `docs/DragonCandy_Infrastructure_Capacity_Report.md (section 4)` | — |
 | Infrastructure cost per customer per month (`infraCostPerCustomerMonth`) | 0.2 | USD/month | MODELED | `docs/DragonCandy_Pricing_Profitability_Briefing_v2.md (section 5, "What One Customer Costs Us to Serve")` | — |
-| Year 1 revenue, low (`year1RevenueLow`) | 300000 | USD/year | MODELED | `docs/PROJECT_CONTEXT.md (section 3)` | — |
-| Year 1 revenue, high (`year1RevenueHigh`) | 600000 | USD/year | MODELED | `docs/PROJECT_CONTEXT.md (section 3)` | — |
-| Year 2 revenue, low (`year2RevenueLow`) | 2000000 | USD/year | MODELED | `docs/PROJECT_CONTEXT.md (section 3)` | — |
-| Year 2 revenue, high (`year2RevenueHigh`) | 4500000 | USD/year | MODELED | `docs/PROJECT_CONTEXT.md (section 3)` | — |
-| Year 3 revenue, low (`year3RevenueLow`) | 7000000 | USD/year | MODELED | `docs/PROJECT_CONTEXT.md (section 3)` | — |
-| Year 3 revenue, high (`year3RevenueHigh`) | 12000000 | USD/year | MODELED | `docs/PROJECT_CONTEXT.md (section 3)` | — |
+| Prior plan (superseded): Year 1 ARR, low (`year1RevenueLow`) | 300000 | USD/year | MODELED | `docs/archive/DragonCandy_Path_to_Multi-million_annual_profit.md (three-year plan, lines 57-61) — the top-down plan as published in PROJECT_CONTEXT.md section 3 before 2026-08-26` | — |
+| Prior plan (superseded): Year 1 ARR, high (`year1RevenueHigh`) | 600000 | USD/year | MODELED | `docs/archive/DragonCandy_Path_to_Multi-million_annual_profit.md (three-year plan, lines 57-61) — the top-down plan as published in PROJECT_CONTEXT.md section 3 before 2026-08-26` | — |
+| Prior plan (superseded): Year 2 ARR, low (`year2RevenueLow`) | 2000000 | USD/year | MODELED | `docs/archive/DragonCandy_Path_to_Multi-million_annual_profit.md (three-year plan, lines 57-61) — the top-down plan as published in PROJECT_CONTEXT.md section 3 before 2026-08-26` | — |
+| Prior plan (superseded): Year 2 ARR, high (`year2RevenueHigh`) | 4500000 | USD/year | MODELED | `docs/archive/DragonCandy_Path_to_Multi-million_annual_profit.md (three-year plan, lines 57-61) — the top-down plan as published in PROJECT_CONTEXT.md section 3 before 2026-08-26` | — |
+| Prior plan (superseded): Year 3 ARR, low (`year3RevenueLow`) | 7000000 | USD/year | MODELED | `docs/archive/DragonCandy_Path_to_Multi-million_annual_profit.md (three-year plan, lines 57-61) — the top-down plan as published in PROJECT_CONTEXT.md section 3 before 2026-08-26` | — |
+| Prior plan (superseded): Year 3 ARR, high (`year3RevenueHigh`) | 12000000 | USD/year | MODELED | `docs/archive/DragonCandy_Path_to_Multi-million_annual_profit.md (three-year plan, lines 57-61) — the top-down plan as published in PROJECT_CONTEXT.md section 3 before 2026-08-26` | — |
 | Year 1 cost, low (`year1CostLow`) | 590000 | USD/year | MODELED | `docs/DragonCandy_Pricing_Profitability_Briefing_v2.md (section 7, "The Cost Breakdown" table, line 520)` | — |
 | Year 1 cost, high (`year1CostHigh`) | 830000 | USD/year | MODELED | `docs/DragonCandy_Pricing_Profitability_Briefing_v2.md (section 7, "The Cost Breakdown" table, line 520)` | — |
 | Year 2 cost, low (`year2CostLow`) | 1100000 | USD/year | MODELED | `docs/DragonCandy_Pricing_Profitability_Briefing_v2.md (section 7, "The Cost Breakdown" table, line 520)` | — |
