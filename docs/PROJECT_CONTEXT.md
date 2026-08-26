@@ -1016,11 +1016,15 @@ holds no Toast credentials. See §6.
   the stock Capacitor blue X**, is now the brand mark on `#241332`, copied from `index.html`'s
   shell because that is what paints next. Both regenerate via `npm run cap:assets`, zero-dependency
   and self-asserting; a Codex P2 caught its coupling guard matching the hex in a *comment* rather
-  than the assignment, i.e. enforcing nothing. **Pending:** merge #532; then the first device
-  launch, which is the only thing that can confirm the splash→shell handoff is seamless — nothing
-  here has run on hardware or a simulator. Note the founder's phone showed the old app for a
-  reason worth remembering: **these files exist only on the branch**, so building from the main
-  checkout rebuilds the old assets no matter how often the app is deleted.
+  than the assignment, i.e. enforcing nothing. **BOTH CONFIRMED ON A PHYSICAL iPhone 15 Pro Max
+  2026-08-26** — this line read "nothing here has run on hardware or a simulator" for about an
+  hour. **Pending:** merge #532; and the splash→shell **handoff**, which is a different
+  observation from "the splash looks right" and was not separately reported. Note the founder's
+  phone showed the old app through several delete-and-rebuild cycles for a reason worth
+  remembering: **three copies of this project exist on disk and every workspace is named
+  `App.xcworkspace`**, and Xcode was building `.claude/worktrees/DC-apple-IOS/`, whose icon is
+  byte-identical to the old one — *"the app didn't update" is a path question before it is a
+  caching question*, answerable from DerivedData's `WorkspacePath` in one command.
   → `docs/superpowers/specs/2026-08-09-ios-testflight-first-build-design.md`
   · `docs/wiki/concepts/legal-entity-identity.md`
   · `docs/wiki/concepts/ios-app-icon-and-launch-image.md` · #439, #532

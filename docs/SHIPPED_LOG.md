@@ -114,9 +114,24 @@ the encoder emit RGB, i.e. an icon with no alpha, which App Store submission req
 `**/*.{ts,tsx}`, so the file is unmatched and skipped — `npx eslint <file>` exiting 0 is not
 evidence it is clean.
 
-**Not verified:** nothing has run on a device or simulator. The colour match rests on reading
-`index.html` and reasoning that Capacitor loads `/`. Open on first launch: whether the
-splash→shell handoff is seamless, and whether the icon reads well at real size.
+**VERIFIED ON HARDWARE the same day** — this entry read "nothing has run on a device or simulator"
+for about an hour. The founder confirmed both assets on a physical **iPhone 15 Pro Max**: the
+launch image renders the mark on grape, and the icon renders the dragon on off-white with a light
+eye. **Still unconfirmed, and not to be read as covered:** whether the splash→shell *handoff* is
+seamless — a different observation from "the splash looks right", and not separately reported.
+
+**Getting it onto the phone took three attempts and none of them was a build problem.** The
+founder deleted, rebuilt and reinstalled while still seeing the old icon. Xcode's DerivedData
+showed why: the build came from `.claude/worktrees/DC-apple-IOS/`, a **different worktree**, whose
+icon hashes `6664f0ad…` — byte-identical to the old navy one. **Three copies of this project exist
+on disk and every one's workspace is named `App.xcworkspace`**, so Xcode's Recents shows identical
+entries. My first guess (the main checkout) was wrong in the specifics; `plutil -extract
+WorkspacePath raw ~/Library/Developer/Xcode/DerivedData/<App-*>/info.plist` answered it in one
+command, and hashing the asset in the built-from directory settled it. **"The app didn't update"
+is a path question before it is a caching question.** Then it built and launched on the
+**Simulator** while the founder waited on the phone — the run destination defaults to one, and
+`xcrun devicectl list devices` reporting `available (paired)` is what distinguishes that from a
+pairing failure.
 
 → `docs/wiki/concepts/ios-app-icon-and-launch-image.md` · #532
 

@@ -301,6 +301,20 @@
   line that proves success** (e.g. `db-exec: ledger row confirmed for <version>`). Then verify
   against the system, not the report. Same family as `[status-correction]`: the report is not the
   fact.
+  **Corollary (2026-08-26): the same trap exists in a GUI, where you cannot prefix anything.**
+  The founder deleted, rebuilt and reinstalled the iOS app three times and kept getting the old
+  icon. Not a cache and not a build failure — **every worktree's Xcode workspace is named
+  `App.xcworkspace`**, so the Recents list showed several identical entries and Xcode was building
+  `.claude/worktrees/DC-apple-IOS/`, whose asset hashed byte-identical to the old one. My first
+  diagnosis (the main checkout) was wrong in the specifics and would have wasted another cycle.
+  **Two commands settle it before any theorising:** `plutil -extract WorkspacePath raw
+  ~/Library/Developer/Xcode/DerivedData/<App-*>/info.plist` names the directory that was actually
+  built, and hashing the asset there proves what it contains. Generalise: ***"it didn't update" is
+  a path question before it is a caching question***, and on a repo with 30+ worktrees the path is
+  the likelier answer. When handing a GUI step to a human, `open <absolute path>` for them rather
+  than naming a menu item — and expect a second destination trap behind it (this one then built to
+  the **Simulator** while they waited on the phone; `xcrun devicectl list devices` reporting
+  `available (paired)` is what separates a wrong destination from a pairing problem).
 - **[version-collision] Migration versions collide between concurrent branches, and only the merge
   reveals it.** Two branches open at once both chose `20260825100000`; the ledger is keyed on the
   version alone, so the second to apply is refused as already recorded, and forcing past that

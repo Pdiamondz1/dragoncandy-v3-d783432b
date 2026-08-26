@@ -132,11 +132,46 @@ no optimizer is installed and adding one would undo the zero-dependency decision
 [[Mobile Viewport & Fixed Positioning]]'s rule that a probe returning a number must be shown
 capable of returning a different one.
 
-## Known Issues
+## Verified on hardware (2026-08-26)
 
-- **Nothing has run on a device or simulator.** The colour match rests on reading `index.html` and
-  reasoning that Capacitor loads `/`. Open on first launch: whether the splash→shell handoff is
-  genuinely seamless, and whether the icon reads well at real size on a light home screen.
+Both assets were confirmed by the founder on a physical **iPhone 15 Pro Max**: the launch image
+renders the brand mark on grape, and the home-screen icon renders the dragon on off-white with a
+light eye. This closes the two questions that no amount of local measurement could answer — the
+icon's legibility at real size on a light home screen, and that the splash asset is the one
+actually installed.
+
+**One thing is still unconfirmed and should not be read as covered:** whether the splash→shell
+handoff is *seamless*. That is a different observation from "the splash looks right" — it is about
+the transition, and it was not separately reported. If a white or off-white flash ever appears
+between the launch image and the app, the cause is `SPLASH_BG` disagreeing with what
+`index.html`'s shell paints, and the generator's guard is the thing that should have caught it.
+
+**Getting it onto the device was the hard part, and it was not a build problem.** See "Three copies
+on disk" below.
+
+## Three copies of this project exist on disk, and Xcode cannot tell them apart
+
+The founder rebuilt, reinstalled and deleted the app repeatedly while still seeing the old icon.
+None of that could have worked: Xcode's DerivedData recorded that the build came from
+`.claude/worktrees/DC-apple-IOS/`, a **different worktree**, whose `AppIcon-512@2x.png` hashes
+`6664f0ad…` — byte-identical to the old navy icon. The changes live in
+`.claude/worktrees/xcode-app/` (`198e948d…`).
+
+Two lessons worth more than the CSS:
+
+- **"The app didn't update" is a path question before it is a caching question.** The icon cache is
+  real but it is the *second* hypothesis. `plutil -extract WorkspacePath raw
+  ~/Library/Developer/Xcode/DerivedData/<App-*>/info.plist` answers the first one in one command,
+  and hashing the asset in the built-from directory settles it beyond argument.
+- **Every worktree's workspace is called `App.xcworkspace`**, so Xcode's Recents list shows several
+  identical entries. Open it by absolute path (`open <path>/ios/App/App.xcworkspace`) rather than
+  choosing from Recents, and confirm with **File → Show in Finder** before building.
+
+Related: the app then built and launched on the **Simulator** while the founder waited for it on
+the phone — the run destination defaults to a simulator, and `xcrun devicectl list devices`
+confirming `available (paired)` is how you tell a destination mistake from a pairing problem.
+
+## Known Issues
 - **Assets add ~1.4MB** to a binary this project had worked down 54MB → 39MB (icon 294KB → 557KB;
   splash 41KB → 411KB, ×3, since Capacitor registers one image at 1×/2×/3×).
 - **ESLint does not lint `scripts/**/*.mjs`.** `scripts/` is not ignored, but the rule block matches

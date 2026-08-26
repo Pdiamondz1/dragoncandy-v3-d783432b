@@ -28,6 +28,15 @@ regression that did not occur, and a file-size alarm that turned out to be a `si
 artifact (the "non-flat" region holds exactly **1** distinct colour). Both are recorded in place,
 with the wrong reasoning kept.
 
+**Updated the same day after hardware verification.** Both assets confirmed by the founder on a
+physical iPhone 15 Pro Max, so the "nothing has run on a device" caveat was struck from the
+concept page, `SHIPPED_LOG.md` and §5 within the hour — the splash→shell **handoff** remains
+separately unconfirmed and is recorded as such rather than folded in. Getting it onto the phone
+added the section *"Three copies of this project exist on disk"*: three delete-and-rebuild cycles
+failed because Xcode was building a **different worktree** whose icon hashed byte-identical to the
+old one, which DerivedData's `WorkspacePath` answers in one command. ***"It didn't update" is a
+path question before it is a caching question.***
+
 ## [2026-08-24] ingest | The first production test of onboarding
 
 **Created** [[Onboarding Resume & Post-Login Routing]]
