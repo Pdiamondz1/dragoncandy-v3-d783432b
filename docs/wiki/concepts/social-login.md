@@ -156,5 +156,5 @@ migration, and fails against a one-character change.
 - [[Onboarding Wizard & Depth]] — slices 3 and 4, which named social login as blocked on
   exactly the migration this shipped.
 - [[Account Completeness Engine]] — the registry whose `AccountRole` this reuses.
-- [[Internal-Only Users]] — the other `handle_new_user` branch, and why it returns early.
+- [[Internal-Only AIOS Users]] — the other `handle_new_user` branch, and why it returns early.
 - [[verify_jwt Is Not Authorization]] — same shape: a check that looks like a gate but is not.

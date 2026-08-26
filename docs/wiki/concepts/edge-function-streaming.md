@@ -82,7 +82,7 @@ function. Symmetrically, an *old* frontend hitting a *new* streaming edge functi
 gracefully rather than breaking: `response.json().catch(() => ({}))` on an NDJSON body
 yields `{}` on a 200, and the existing `onSettled` refetch of `donny_messages` still renders
 the persisted final message (no live UX, but no error). So deploy order is not load-bearing
-— relevant given the [[Lovable Edge-Function Deploy Gap]] (frontend and edge functions
+— relevant given the [[Edge-Function Deploy & Bundling]] (frontend and edge functions
 deploy separately).
 
 ## Residual limits
@@ -120,6 +120,6 @@ isolate shutdown and the 400s wall-clock still applies.
 - [[Patch-Based Corrections]] — the follow-up that cut the correction turn itself (output volume), resolving the residual above
 - [[Donny Chat UX]] — the consumer/internal shared chat components and how the transient streaming bubble renders
 - [[Donny AI]]
-- [[Lovable Edge-Function Deploy Gap]]
+- [[Edge-Function Deploy & Bundling]]
 - [[Error Handling Patterns]]
-- [[Codex Second Review]]
+- [[codex-review]]

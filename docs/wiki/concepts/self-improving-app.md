@@ -122,7 +122,7 @@ already **have the data + tools** it needs. All four green = "build-first."
   the top ~5 as `aios_findings` (`source:"loop-scout"`, `fingerprint:"loop-candidate:<slug>"`,
   `severity` = build priority, `title` prefixed `[loop]`) at `/internal/findings`. Stable
   fingerprints mean a recurring candidate bumps occurrences = "still worth building after N months."
-  No schema/UI change — it reuses the [[AIOS]] findings surface (`source` is a free string).
+  No schema/UI change — it reuses the [[AIOS Internal Shell]] findings surface (`source` is a free string).
 
 Together these close two gaps: the one place the knowledge backstop *detected* a problem a human
 had to *fix* now fixes itself, and the platform now proposes its own next automation loops instead
@@ -211,7 +211,7 @@ to direct table SELECTs) and surfaces a **deduped finding on breach/watch only**
   human-gated, never auto-merged — honoring "one change per prompt" and "never modify auth without
   confirming."
 - **Phase 5 — KPI/milestone autopilot** *(first slice built — AIOS, 2026-06-11).* The **AIOS weekly
-  operating brief** cloud routine (Mondays) reads the [[North-Star KPI Scorecard]] + PROJECT_CONTEXT
+  operating brief** cloud routine (Mondays) reads the [[North Star & KPI Scorecard]] + PROJECT_CONTEXT
   targets, pulls live platform data read-only, and files a draft brief (`aios_briefings`) with KPI
   status chips, a scaling forecast from `platform_weight` growth, and per-role acquisition
   recommendations. Admins review and publish to stakeholders at `/internal/briefings` (publish gate).

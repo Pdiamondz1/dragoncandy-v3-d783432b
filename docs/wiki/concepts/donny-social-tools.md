@@ -392,7 +392,7 @@ one — but it is not zero.
 The proof this work asks to be judged on is a **`status='success'` row in
 `donny_tool_executions` for a `social_*` tool** — which has never existed. It could not be
 observed until after merge **and** a separate deploy of `donny-orchestrator`, because merging
-ships the frontend only ([[Lovable Edge-Function Deploy Gap]]).
+ships the frontend only ([[Edge-Function Deploy & Bundling]]).
 
 **Both preconditions are now met** — merged `d5cb594b` (#416), `donny-orchestrator` deployed
 2026-08-09 — and the deploy was verified by **reading the deployed source**, never the version

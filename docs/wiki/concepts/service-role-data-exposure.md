@@ -287,7 +287,7 @@ ever touches it again. Audit the *deployed* function list against the repo, not 
 endpoint. Worth recording why the answer here was *undeploy* instead:
 
 - **A tombstone does not self-neutralize in this repo either.** Nothing auto-deploys edge functions —
-  a push to `main` deploys only the frontend (see [[Lovable Edge-Function Deploy Gap]]). A tombstone
+  a push to `main` deploys only the frontend (see [[Edge-Function Deploy & Bundling]]). A tombstone
   still needs the same manual deploy the undeploy needs, so it buys no automation, only a *second*
   chance if someone later runs a bulk deploy.
 - **It institutionalizes the exact anti-pattern above** — a permanently deployed, feature-less

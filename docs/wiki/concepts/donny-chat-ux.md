@@ -56,7 +56,7 @@ internal, not shown). So **date dividers must compare against the previous *visi
 message, not `messages[i-1]`** — otherwise a tool row sitting just before the first
 message of a new day (a tool-using turn crossing midnight, or a history starting with a
 tool row) suppresses the divider. The helper `startsNewDayGroup(messages, index)` walks
-back past tool rows before comparing dates. (This was the [[Codex Second Review]] P2 catch
+back past tool rows before comparing dates. (This was the [[codex-review]] P2 catch
 on PR #140.)
 
 ## Internal streaming (PR #148)
@@ -131,4 +131,4 @@ brand-colored per the [[Design System]] no-gray rule. Chip *data* is unchanged
 - [[Donny Tray Close UX Session]]
 - [[Donny Chat Input & Timestamps Session]]
 - [[Edge Function Streaming]]
-- [[Codex Second Review]]
+- [[codex-review]]

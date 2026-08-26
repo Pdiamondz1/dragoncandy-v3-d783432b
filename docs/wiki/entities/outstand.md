@@ -100,7 +100,7 @@ The `content-performance-capture` cron reads per-post engagement from Outstand's
 > **Consequence:** this page's claim was load-bearing — it was cited as a primary reason to
 > migrate off Outstand in
 > `docs/superpowers/specs/2026-08-01-outstand-zernio-cutover-design.md`. That spec's premise
-> is retracted. See [[Social Provider Seam]].
+> is retracted. See [[Social Provider Decision]].
 
 Consequence: the Content Engine treats empty `metrics_by_account` as
 **"metrics unavailable"** rather than a measured 0 (see [[Content Engine]]).

@@ -154,4 +154,4 @@ merges on 07-25.)
 ## See Also
 - [[Synthetic Weight Engine]]
 - [[Creator Groups (Crews)]]
-- [[CGC Campaigns]]
+- [[Promotions / CGC Flow]]

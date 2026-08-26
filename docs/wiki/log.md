@@ -1,5 +1,86 @@
 # Wiki Log
 
+## [2026-08-26] lint | Every dangling wikilink cleared, and the check that lets them regrow
+
+**Created** [[Verify Before Reporting]] (`concepts/verify-before-reporting.md`) and
+`scripts/lib/wikilinks.ts` + `scripts/lib/wikilinks.test.ts`.
+**Updated** `index.md` (encoding repair + two new entries), `docs/KNOWLEDGE_WIKI.md`, and 26
+pages carrying repointed links.
+
+51 wikilinks resolved to nothing. They split as: 4 encoding, 20 name corrections, 5 valid
+skill references, 11 that were never pages, 8 quotations that were never broken, and 3 that
+needed a page, a catalog entry and a built-in.
+
+**The largest single cause was encoding, not naming.** `index.md` carried 92
+CP1252-double-encoded characters, and four sat inside catalog *display names*, so the
+correctly-encoded links pointing at those four pages could never resolve. The pages
+themselves were fine; only the index was damaged.
+
+Twenty were names that had moved and taken no callers with them — `[[Lovable Edge-Function
+Deploy Gap]]`, five pages deep, was one page rename ago. Eleven were never wiki pages: eight
+memory notes and lesson keys, one document title, two names of UI surfaces. Six now sit in
+backticks, which is the form this project already settled on — a memory note is cited that
+way *because* it is not a page — and two turned out to name a principle the new page covers,
+so they point at it instead. One concept was genuinely missing: five pages pointed at
+[[Verify Before Reporting]], which is the argument for writing it, so it now exists.
+
+**Eight of the 51 were never broken.** They sit inside code spans, in sentences that say
+"deliberately not a wikilink". The checker could not tell a link from a quotation — the same
+defect as the one that started this, a `grep -F` that matched a prose mention rather than a
+catalog definition. Both are instruments answering a different question than the one asked.
+
+`scripts/lib/wikilinks.test.ts` now gates CI on 1,958 links: no dangling target, every catalog
+path resolving to a real file, every page cataloged, no mojibake. It knows the two namespaces
+that are deliberate — skills, under EITHER skill root, and the index itself — and ignores code
+spans, fenced blocks and indented blocks. Proven by forcing it red three ways; **the mojibake control passed on the
+first attempt and had to be redone**, because the injected bytes were Latin-1 where the check
+reads UTF-8. A control that fails to fail is the failure.
+
+**Codex then found the checker wrong TEN times across six rounds, every one real, and every
+one in the checker rather than the cleanup.** The mojibake detector was a list of the five
+sequences this cleanup happened to contain — which is *"a guard that enumerates the bad cases
+treats every case it has not met as good"*, the lesson this repo already recorded on the X
+connector, reproduced inside the tool built to enforce that kind of discipline. It is now a
+round trip against the *good* case: a run is mojibake exactly when mapping it back through
+CP1252 yields valid UTF-8 for a non-ASCII character, so a double-encoded curly apostrophe or
+accented `e` is caught without ever having been listed, while `café` and `naïve` are not.
+(Those examples are described rather than shown, because writing the damaged bytes into this
+page trips the check — which is the check working.)
+
+The other three were markdown parsing, and all three fail in the same direction: **a false CI
+failure over text that is deliberately not a link.** Fences were matched in pairs, but
+markdown treats an unclosed fence as running to end of document. A line like an info-string
+fence *inside* a block was read as a closer, reopening the document and scanning the rest of
+the code as prose. And code spans were matched on a single backtick, so the multi-backtick
+form a page uses to write a literal link left the link exposed — the regex consumed the two
+adjacent backticks as an empty span.
+
+Rounds 3 and 4 inverted the direction: **paths where the gate would pass a broken link.** A
+fence opener matched at any indentation, so a line markdown reads as indented code opened a
+block that blanked every link after it to EOF. A catalog target was accepted on `existsSync`
+alone, which a *directory* also satisfies. And indented code blocks were scanned as prose.
+
+That last one is the one to remember, because **the obvious remedy was wrong**: blanking every
+line indented four spaces would have dropped nested bullets and wrapped list continuations —
+where the links in this wiki actually live — silently out of the gate. An indented block now
+starts only after a blank line, only when the preceding content was not a list, and never on a
+line that is itself a bullet.
+
+Fixing the code-span parser **raised coverage from 1,942 links to 1,958**: the old regex had
+been over-blanking, so sixteen real links were never checked at all. That is the through-line
+of all seven findings — **a parser that is wrong about markdown does not merely mis-report, it
+silently changes how much the gate covers**, and the direction is not obvious from the code.
+Every fix since has been checked against the link count for exactly that reason.
+
+**Not one of the ten was in the cleanup; all ten were in the checker.** The link fixes were
+right the first time and the instrument took six rounds — which is the honest ratio for
+anything that parses markdown, and the argument for a linter having its own tests rather than
+being trusted because the corpus it was written against comes out clean. Writing the test for
+the last finding then exposed an eleventh nobody had reported: list context was reset by a
+bullet wrapping onto a two-space continuation, so the next nested bullet read as code and its
+links left the gate. The test failed first, which is the only reason it was visible.
+Clean at round 7. See [[Verify Before Reporting]].
+
 ## [2026-08-26] ingest | §5 regrew to 155 KB, and the fix that "makes it stick" did not
 
 **Created** `raw/sessions/2026-08-26-context-tax-regrowth.md`. **Updated** [[Context Tax]]
@@ -481,7 +562,7 @@ invented name gives — because PostgREST resolves overloads by argument name an
 never match. Re-probed with the real signature it returned 42501, and the invented name still
 returned PGRST202. **A negative result is informative only if the probe could have produced a
 positive one for the thing being asked about**; "returns the not-found error" and "is not there" are
-different claims. Sibling: the SMTP `RCPT TO` probe in [[Domain Migration .io → .com]].
+different claims. Sibling: the SMTP `RCPT TO` probe in [[Domain Migration (.io → .com)]].
 
 Also recorded: two of the reviewer's four findings were real. The **automatic** Stripe-detach path
 checked no errors on either `STRIPE_IDENTITY_RESET` write, so the eraser could fail while the
@@ -978,7 +1059,7 @@ footer pill said "Learn more", which Lighthouse's `link-text` audit rejects outr
 canonical tags on every page of the site**: `index.html` hardcoded one pointing at `/landing` and
 Helmet appends rather than replaces, so the correct per-route value was discarded site-wide.
 `/landing` passed only because it is the one page where the static value is right. **Updated**
-[[Domain Migration .io → .com]], whose claim that `SITE_URL` drives *every* canonical was false.
+[[Domain Migration (.io → .com)]], whose claim that `SITE_URL` drives *every* canonical was false.
 
 **Contradictions resolved, not silently overwritten.** Three claims this wiki asserted are now
 recorded as false with the correction beside them:
@@ -1413,7 +1494,7 @@ outcome. Recording a favourable result as confirmation of the mechanism you hope
 how a coincidence becomes a project belief.
 
 **Separately, the project moved from Windows to macOS**, and the audit found one defect that
-matters beyond the port: [[Worktree Cleanup]]'s live-session safety gate matched
+matters beyond the port: [[worktree-cleanup]]'s live-session safety gate matched
 `CommandLine -match "--worktree"`, and on macOS the CLI process is plain `claude` carrying no such
 flag — so the gate returned "no live sessions" **while a session was demonstrably running in
 `DC-apple-IOS`**. It failed *open*, licensing exactly the deletion it exists to prevent. Replaced
@@ -2517,7 +2598,7 @@ Slice 1's HEAD-only ~312, so the split needs re-probing); post-merge RAG sync.
 ## [2026-07-25] ingest | Living Synthetic Marketplace (Sub-project A) — offline build + live teardown (feat/living-marketplace)
 Ingested `raw/sessions/2026-07-25-living-marketplace-phase-a1.md`. New concept page [[Living Synthetic Marketplace]] — Sub-project A: a persistent `botmk_` cohort on prod via real RLS-enforced flows (full US-diverse profiles excl. social, free campaigns, content, messaging, discounts, reviews, multi-location, CGC), the `sim/marketplace/` module + `marketplace-seed`/`-purge` command + `buildDefaultSeedSteps` live glue, the ONE-SHOT cohort-cap + freshness guard (recovery = `marketplace-purge`, not resumable — mirrors bulk-seed), and the FK-graph-grounded `purge_synthetic_marketplace_cohort()` teardown (applied + no-op-verified on prod). Load-bearing decisions: `readSessionCapableBots` excludes `botmk_` (else the daily crew tick + single-runner load sweep it); public free campaigns are explicitly status-flipped published→active→completed (the accept RPC only auto-activates crew campaigns); the synthetic org's `active_campaign_limit` is raised (default 1 aborts multi-publish); profiles exclude ALL social fields; `skills` is the `creator_skill[]` enum + `industry` the `industry_type` enum (display text breaks the update). `index.md`: new Concepts entry. `SHIPPED_LOG.md` prepended; `PROJECT_CONTEXT.md` §5 "Built — awaiting founder go-live" line added. No `DATABASE_SCHEMA.md` change (new RPC + migration, no tables/columns). 1 migration applied to prod under the careful gate. Reviews: per-task + opus whole-branch (*ready to merge*) + Codex 4 passes (campaign-limit abort; seed-without-teardown; cohort cap; downstream-not-resumable; one-shot doc — all resolved). Founder-gated remainder: merge → small 2/4 seed → segregation + teardown-to-zero proofs → scale 100/300; post-merge RAG sync.
 ## [2026-07-24] ingest | Synthetic Weight Engine — multi-IP load runner matrix (Slice 1) (feat/synthetic-load-runner-matrix)
-Ingested `raw/sessions/2026-07-24-synthetic-load-runner-matrix.md`. **Compounded** onto [[Synthetic Weight Engine]] a "Runner matrix (Slice 1) — multi-IP fan-out" section (the shard-count-as-ramp-knob idea to break the single-runner ~312 egress wall; the ~90:10 DAU behavior mix `sim/load/actions-mix.ts`; the 3 RLS-real writes; and the load-bearing rules: **writes are matrix-ONLY** so single-runner never writes as the live `bot0##` cohort the scoped teardown spares; `campaign_write` uses `draft` (role-agnostic RLS proven by a rollback-wrapped creator-insert probe, limit-trigger fires only on `published`); media is a HEAD+Content-Length proxy; the per-step FINAL snapshot for short-soak correctness; ≥2-shards + `github.run_id` run-label uniqueness; the scoped `purge_synthetic_load_cohort()` teardown). `index.md`: refreshed the Concepts entry tail (+ runner matrix). `SHIPPED_LOG.md` prepended; `PROJECT_CONTEXT.md` §5 line edited in place (+ Slice 1); `DATABASE_SCHEMA.md` — the 3 new RPCs (`seed_synthetic_content`/`purge_synthetic_load_cohort`/`get_sim_load_matrix_summary`) + the `purge_synthetic_data` push_notifications leaf-delete. 3 migrations applied to prod under the careful gate. Codex 3 rounds: R1 (2×P2) + R2 (P1+P2) fixed, **R3 verified FALSE** (rollback-wrapped RLS probe) and dismissed — see [[Verify a reviewer's claim before accepting OR dismissing]]. Founder-gated remainder: 2-shard live smoke + `types.ts` regen + post-merge RAG sync.
+Ingested `raw/sessions/2026-07-24-synthetic-load-runner-matrix.md`. **Compounded** onto [[Synthetic Weight Engine]] a "Runner matrix (Slice 1) — multi-IP fan-out" section (the shard-count-as-ramp-knob idea to break the single-runner ~312 egress wall; the ~90:10 DAU behavior mix `sim/load/actions-mix.ts`; the 3 RLS-real writes; and the load-bearing rules: **writes are matrix-ONLY** so single-runner never writes as the live `bot0##` cohort the scoped teardown spares; `campaign_write` uses `draft` (role-agnostic RLS proven by a rollback-wrapped creator-insert probe, limit-trigger fires only on `published`); media is a HEAD+Content-Length proxy; the per-step FINAL snapshot for short-soak correctness; ≥2-shards + `github.run_id` run-label uniqueness; the scoped `purge_synthetic_load_cohort()` teardown). `index.md`: refreshed the Concepts entry tail (+ runner matrix). `SHIPPED_LOG.md` prepended; `PROJECT_CONTEXT.md` §5 line edited in place (+ Slice 1); `DATABASE_SCHEMA.md` — the 3 new RPCs (`seed_synthetic_content`/`purge_synthetic_load_cohort`/`get_sim_load_matrix_summary`) + the `purge_synthetic_data` push_notifications leaf-delete. 3 migrations applied to prod under the careful gate. Codex 3 rounds: R1 (2×P2) + R2 (P1+P2) fixed, **R3 verified FALSE** (rollback-wrapped RLS probe) and dismissed — see [[Verify Before Reporting]]. Founder-gated remainder: 2-shard live smoke + `types.ts` regen + post-merge RAG sync.
 ## [2026-07-24] ingest | Wallet-first payout reroute — stage 2 of the wallet-first fix (feat/wallet-first-stage2)
 Ingested `raw/sessions/2026-07-24-wallet-first-reroute-stage2.md`. **Compounded** onto [[Payout Finalization & Re-entrancy]] a "Wallet-first reroute (stage 2 — shipped)" section (the single money path; the Approach-A collaboration-keyed ledger-event contract; the one reconciled Total-Earned / In-Wallet reader rule keyed on `metadata.type`; the `wallet-first.ts` co-located-module refinement vs an `import.meta.main` guard; the `flushPendingBalance({assumeReady})` fix; the `PaymentsPage` phantom-timeline filter; reason-aware `getPaymentMessage`) and **flipped the two `release-creator-payout` cross-path residuals from "narrowed" to CLOSED** (concurrent double-pay; Stripe-up/DB-down marker split-brain — both close by construction once the fork is gone). Updated the "clean fix (staged)" bullet to "fully shipped." `index.md`: new Sources line + refreshed the Concepts entry (fix fully shipped). `SHIPPED_LOG.md` prepended; `PROJECT_CONTEXT.md` §5 flush-ledger line updated in place (stage 2 shipped). No `DATABASE_SCHEMA.md` change (no migration — all RPCs/columns live from #329/#334). Notable: 4 Codex fix rounds; edge-fn `index.ts` with top-level `serve()` isn't import-testable, so factor the body into a co-located pure module (not `import.meta.main`); prefer routing REVOKE-contested financial columns through edge functions over a contested grant.
 ## [2026-07-24] ingest | Synthetic Weight Engine — Phase A: load proof & economics (feat/synthetic-weight-load-economics)
@@ -2559,7 +2640,7 @@ passes (plan-doc → spec-compliance → code-quality → Codex): the plan revie
 corrections were all TRUE; code-quality fixed two wedge-risk non-atomic writes; Codex caught a real
 workflow script-injection (P1) + a funnel-breaking missing `file_uploads` columns bug (P2). Go-live is
 two deliberate switches (kill switch + cron), never a merge; the founder-gated live smoke (Task 8) is
-parked. New reference memory: [[MCP execute_sql returns only the LAST statement's result]]. `SHIPPED_LOG.md`
+parked. New reference memory: `MCP execute_sql returns only the LAST statement's result`. `SHIPPED_LOG.md`
 prepended; `PROJECT_CONTEXT.md` §5 one Shipped line. No `DATABASE_SCHEMA`/`DESIGN_SYSTEM`/`CLAUDE.md`
 change (harness only). RAG sync + [[verify-knowledge]] post-merge.
 ## [2026-07-23] ingest | Payout durable re-entrancy — Complete follow-up (PR #329)
@@ -2591,10 +2672,10 @@ post-merge.
 ## [2026-07-23] ingest | Synthetic Weight Engine — Phase 0 safety spine (feat/synthetic-weight-engine)
 Ingested [[Synthetic Weight Engine]] from `2026-07-23-synthetic-weight-engine-phase-0.md` — a new
 concept page for the prod-safe synthetic-user tagging/exclusion/teardown spine. Cross-linked to
-[[Service-Role Data Exposure]] (same re-assert-scope-server-side discipline), [[Testing auth.uid()
-RPCs and RLS on prod]] (the rollback + `set_config` proof technique), [[AIOS Stakeholder Invites]]
+[[Service-Role Data Exposure]] (same re-assert-scope-server-side discipline), `Testing auth.uid()
+RPCs and RLS on prod` (the rollback + `set_config` proof technique), [[AIOS Stakeholder Invite]]
 (the `account_scope='internal'` guard a corrective migration restored), [[Dragon Rewards Engine (DRE)]]
-(the two-switch fail-closed launch), [[Test-Mode Stripe UX]] and [[Notification delivery choke point]].
+(the two-switch fail-closed launch), [[Test-Mode Stripe UX]] and [[Notification Delivery]].
 Pages created: `concepts/synthetic-weight-engine.md`. Records the Codex-caught segregation gaps
 (reverted `handle_new_user`, single-party predicates on multi-party tables, unfiltered cost-alert).
 
@@ -3125,7 +3206,7 @@ the "Agent Loops Clearly Explained" video); gaps 2 (`/internal/loops` observabil
 source-of-truth) sequenced next. Source [[make-validator skill]]. Branch `feat/make-validator-skill`.
 
 ## [2026-07-07] ingest | Find Creators "near me" location/radius search
-Ingested the location-search build session. The restaurant [[Find Creators]] page got a prominent
+Ingested the location-search build session. The restaurant Find Creators page got a prominent
 location + radius control: default **near me** off the restaurant's saved `business_profiles` location
 (0 keystrokes), a city/ZIP "Another area" override, radius chips (10/25/50/100/Any), "Nearest first"
 sort, "· N mi away" on cards, and a "Widen to Any location" empty-state nudge. All **client-side** over
@@ -3176,7 +3257,7 @@ anchors to real section IDs. Updated [[Anonymous Brief Generator]] with a post-s
 
 ## [2026-06-27] ingest | Dragon Rewards Engine v1 (Engine + Tiers + Badges)
 Ingested the DRE v1 build session — the first sub-project decomposed from the 6-phase parent
-spec [[DragonCandy — Dragon Rewards Engine (DRE) Full System Spec]] (PR #191). v1 ships the
+spec *DragonCandy — Dragon Rewards Engine (DRE) Full System Spec* (PR #191). v1 ships the
 **configurable Dragon Points ledger + an idempotent award engine + the 5-tier system + tier
 badges** (≈ parent Phases 1–2). The award engine is a **consumer of events the platform already
 emits** ([[DragonShare]] posts/boosts, campaign completions/launches, profile completion,
@@ -4072,7 +4153,7 @@ best-effort per-IP + honeypot + hardened SSRF guard) and a thin-page source_qual
 gentle preview note. Spec passed independent review (6 fixes) before build; Codex caught 2 P1s
 (trailing-dot FQDN SSRF bypass; malformed-IPv6 → failed inet insert → cap-accounting bypass), both
 fixed. Deployed via CLI (verify_jwt=true preserved) + live-verified on prod. Pages created:
-[[Anonymous Brief Generator]] (+ See-Also [[Landing Lead Capture]]).
+[[Anonymous Brief Generator]] (+ See-Also [[Landing Redesign & Public Lead Capture]]).
 
 ## [2026-06-28] ingest | Dezzy milestone-celebration playbook (Domain 6 amplification core)
 Un-gated now that the DRE award engine is live + dragon_point_events is populated. Added a 7th

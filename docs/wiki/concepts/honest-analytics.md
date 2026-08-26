@@ -28,7 +28,7 @@ metric".
 `PostingHeatmap` was the worst, and instructively so. A mislabelled chart is
 merely misleading; this one **drove a decision**, and a circular one — post every
 Tuesday at 9am and it recommends Tuesday at 9am, with a confident colour ramp.
-It is exactly the decision [[Donny]] exists to inform, answered by feeding the
+It is exactly the decision [[Donny AI]] exists to inform, answered by feeding the
 user's own habit back to them as advice.
 
 `FollowerChart` is the subtle one: the tallest bar reads as fastest-growing,

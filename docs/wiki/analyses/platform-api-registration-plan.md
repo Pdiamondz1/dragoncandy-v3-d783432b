@@ -26,7 +26,7 @@ Every analytics **consumer** reads the source‑agnostic seam (`social_analytics
 `content_performance`), never a provider API directly. The **source** sits behind an adapter (Outstand
 today). When a direct‑platform registration lands, it becomes a **new adapter** that writes the same
 cache — the recommender and every other reader stay untouched. So these registrations are a *data‑source
-swap*, not an app rebuild. (See [[project_platform_api_registration_strategy]], [[Content Engine]].)
+swap*, not an app rebuild. (See `project_platform_api_registration_strategy`, [[Content Engine]].)
 
 ## Status checklist
 

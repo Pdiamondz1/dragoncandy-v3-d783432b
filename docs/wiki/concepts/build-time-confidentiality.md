@@ -12,7 +12,7 @@ How to keep a figure out of a public JavaScript bundle, and why the obvious ways
 
 Written from the investor deck's ask slide ([[Investor Pitch Deck & Capital Raise]]), where the
 pre-seed budget and the derived raise had to be absent from the default build — `/pitch` is a lazy
-chunk anyone who guesses the URL can fetch until the edge gate ships ([[Site Access Lockdown]]).
+chunk anyone who guesses the URL can fetch until the edge gate ships ([[Site Access Lockdown (Private Preview)]]).
 
 ## A runtime check is not confidentiality
 
@@ -73,6 +73,6 @@ one that found nothing.
 
 ## See Also
 
-- [[Investor Pitch Deck & Capital Raise]] · [[Site Access Lockdown]]
+- [[Investor Pitch Deck & Capital Raise]] · [[Site Access Lockdown (Private Preview)]]
 - [[verify_jwt Is Not Authorization]] — the same shape one layer down: a check that looks like a
   control and is not.

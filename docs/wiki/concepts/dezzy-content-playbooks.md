@@ -20,7 +20,7 @@ Hub" dashboard).
 (`aios-playbook-run`, `aios-report-ingest`, `/internal/playbooks`, `/schedule`,
 `/internal/briefings`). Each Dezzy "domain" becomes one or more report-only playbooks the
 founder runs during the Monday review; the founder reviews and publishes — **Dezzy drafts,
-a human acts** (the standing [[AIOS]] invariant). This page covers the **content half**
+a human acts** (the standing [[AIOS Internal Shell]] invariant). This page covers the **content half**
 (Domains 1 + 2); the supply/demand **outreach** half (Domain 3) is the sibling `dezzy-outreach`
 playbook.
 
@@ -88,6 +88,6 @@ playbook, since the runner has no web access); one-tap send/publish.
 - [[Dezzy Agent (Playbook Suite)]] — the parent framing; this page is its content half (the sibling Outreach Machine is Domain 3)
 - [[Founder Playbooks]]
 - [[Donny AI]]
-- [[AIOS]]
+- [[AIOS Internal Shell]]
 - [[AIOS Internal Shell]]
 - [[Musk's Algorithm]]

@@ -111,7 +111,7 @@ starts — a claim explicitly retracted in spec review).
 The originating idea's final clause — *so any loop can call it* — shipped 2026-06-20 as
 **scheduling**, the prompt's literal "loop." A playbook can now run **unattended on a
 cron** via a new cloud-routine template `playbook-runner-agent.md` (modeled on the
-[[AIOS]] weekly-brief routine).
+[[AIOS Internal Shell]] weekly-brief routine).
 
 - **Why a routine, not the runner:** the on-demand `aios-playbook-run` is **session-JWT
   bound** (see Architecture below) — a **sessionless cron can't call it**. So the routine
@@ -143,6 +143,6 @@ stats-RPC auth model.
 
 - [[Self-Improving App]]
 - [[Donny AI]]
-- [[AIOS]]
+- [[AIOS Internal Shell]]
 - [[Loop Scout First Run]]
 - [[Musk's Algorithm]]

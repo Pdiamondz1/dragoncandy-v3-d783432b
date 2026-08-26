@@ -427,7 +427,7 @@ differ from the subject in exactly one respect: existence.
 The generalisation worth keeping: **a negative result is only informative if the probe could have
 produced a positive one for the thing you are asking about.** "Returns the not-found error" is not
 the same claim as "is not there", and the gap between them is where a false all-clear lives. The
-sibling instances are [[Domain Migration .io → .com]]'s SMTP `RCPT TO` probe (250 for real and
+sibling instances are [[Domain Migration (.io → .com)]]'s SMTP `RCPT TO` probe (250 for real and
 nonsense addresses alike — *change instrument*) and this page's own [[Ask which gate, not whether it
 is green]].
 
