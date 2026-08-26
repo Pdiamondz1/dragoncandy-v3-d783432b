@@ -53,7 +53,12 @@ and an append-only **Run Log**. Full contract: `docs/wiki/concepts/loop-memory-p
      `**Pending:**` clause), or *fully completes* (move to Shipped as a one-liner +
      pointer). One line per entry — plus a `**Pending:**` clause for Built — awaiting
      founder go-live entries only. Detail belongs in `SHIPPED_LOG.md` or the wiki.
-     **§5 is an index, not a log.**
+     **§5 is an index, not a log** — and saying so here did not hold it: §5 was cut to
+     73,742 B in July 2026 and had regrown to 154,964 B by 2026-08-26. It is now enforced by
+     `src/projectContextSize.test.ts` (per-entry line cap, §5 and whole-file byte caps, with a
+     parser control so the caps cannot pass vacuously). **If that test fails, move the prose —
+     do not raise the cap.** A blocker that only a founder can clear goes in §5's
+     **Open items** list, not buried inside an entry.
    - `docs/PROJECT_CONTEXT.md` §4 Current State — if the project-level picture changed.
    - `docs/DATABASE_SCHEMA.md` — if tables/columns/views changed.
    - `docs/DESIGN_SYSTEM.md` — if design tokens / UI patterns changed.

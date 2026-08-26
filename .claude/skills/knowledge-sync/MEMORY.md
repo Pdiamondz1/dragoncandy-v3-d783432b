@@ -45,6 +45,43 @@
   30+ worktrees, *"has someone already shipped this?"* has a real answer one command away.
   Corollary: **when the parallel version landed first and is better, delete yours** and rebuild
   on top of it; merging both produces two answers to one question.
+- **[rule-vs-control] A written rule that nothing enforces is not a control — and §5 is the case
+  where this repo had the lesson and did not apply it to itself.** The July 2026 split (#294) cut
+  `PROJECT_CONTEXT.md` 176,620 → 73,742 B, amended **both** generators (this skill's step 4 and
+  the always-loaded `CLAUDE.md` clause), and called that *"the part that makes it stick"*. On
+  2026-08-26 both rules were still present, still correct, still ignored — and §5 was back at
+  **154,964 B, 90% of the file**, with two entries at 13 KB each. Nothing read the rules at a
+  moment when it mattered, and every individual entry was defensible when written. **When a run
+  codifies a rule into an always-loaded doc, ask what would FAIL if the rule were broken. If the
+  answer is "nothing", the rule is a wish, not a control.** §5 now has
+  `src/projectContextSize.test.ts`; if it fails, **move the prose — do not raise the cap.**
+  Corollary — **[control-not-floor] a control must be about the instrument, not the reading.**
+  That test's first draft asserted "§5 parses at least 40 entries", and the Codex second review
+  correctly called it a *content floor, not a parser check*: §5 shrinking is the desired
+  direction, so the floor would eventually fail on correct maintenance and pressure the next
+  author into keeping stale entries or deleting the guard. Prove the parser against a **fixed
+  fixture**, then check parser-vs-raw agreement on live content — and make the raw counter
+  deliberately *wider* than the parser (any list marker), or both sides drop to zero together and
+  agree about nothing.
+- **[refs-and-omissions] §5 hygiene is two sweeps, not one: entries that are too LONG, and work
+  that is MISSING.** Both were found on 2026-08-26.
+  **(a) A wrong PR number on a TRUE claim is worse than no reference.** §5 asserted "#387 and
+  #396 merged"; #387 was **CLOSED unmerged**, though the work really is on `main` via #396. The
+  false reference invites a check — `gh pr view 387` — that returns the wrong answer, so a reader
+  concludes a security fix never landed. #249 was the same shape (landed via #251/#254), and
+  #444/#452 were described as open while both were merged. **One `gh pr list --state all --json
+  number,state` call covers every reference in the file**; 111 refs cost a single API call, so
+  there is no excuse for carrying an unchecked one.
+  **(b) Omission fails worse than bloat.** The TikTok connector (#525, #529) and the
+  email-verification rework (#527, #528, #530) had no entry in §5, `SHIPPED_LOG.md` **or** the
+  wiki. Bloat costs tokens; omission makes a reader conclude the work does not exist. Run
+  `git log --oneline HEAD..origin/main` and confirm every merged PR has an index line — the
+  natural extension of `[scope-paths]`.
+- **[codex-citation] Check Codex's CITATION, not only its claim.** On 2026-08-26 it cited
+  `AGENTS.md`, which `CLAUDE.md` flags as a stale duplicate and which produced a **refuted** P1 on
+  #519. Here the same sentence also appears in `CLAUDE.md`, so the finding stood — but that had to
+  be verified rather than assumed in either direction. A stale-source citation neither proves nor
+  disproves the point; re-check against the authoritative file before accepting *or* refuting.
 - **[superseded-mechanism] When work DELETES a mechanism, hunt the rule you wrote for it.**
   A knowledge-sync that generalises a pattern into `DESIGN_SYSTEM.md` / `CLAUDE.md` plants a
   claim that outlives the branch. On 2026-08-10 a redesign deleted the pinned-composer machinery
@@ -91,7 +128,15 @@
   and routinely differ from the page's `title:` frontmatter (this run guessed
   `Onboarding Wizard & Account Depth`; the index says `Onboarding Wizard & Depth`), and a wrong
   one is a silently broken link, not an error. Cheap check: extract every `[[…]]` from the new
-  pages and `grep -F` each against `index.md`.
+  pages and match each against `index.md` — **as a CATALOG ENTRY (`^- \[\[Name\]\](`), not as a
+  bare string.** A plain `grep -F "[[Name]]"` also matches the link where it appears inside
+  ANOTHER entry's prose, which is not a definition and does not resolve. That is how
+  `[[Verify Before Reporting]]` passed my own check on 2026-08-26 and was then caught by Codex:
+  the string occurs exactly once in `index.md`, inside the [[Social Provider Decision]] entry's
+  closing sentence, and no page file has ever existed. **Repo-wide this is systemic, not a
+  one-off — 52 of 203 distinct wikilinks resolve to no catalog entry** (swept 2026-08-26; left
+  unfixed as out of scope for a sync, but it means a link that "looks used elsewhere" is not
+  evidence it resolves).
 - **[orphans] Run the orphan check every run — by PATH, not title.** The `wiki-save-answer`
   flow adds `analyses/` pages + syncs RAG but does NOT update `index.md`, so its pages land as
   catalog orphans (caught 2: [[Competitive Advantage]], [[Influencer/Creator Outreach]]). Before
@@ -140,6 +185,20 @@
   migration never created (it adds columns + an index to `outstand_media_ownership`). Read the
   migration for the real identifiers before querying for them. Re-sweep whenever the section looks
   long, or when any entry is older than ~2 weeks.
+- **[stale-mechanism] A `**Pending:**` clause can be false in its CAUSAL STORY, not just its
+  status — check what it says causes what.** On 2026-08-26 §5 read: the Twilio *Primary Compliance
+  Profile* "is unapproved — error 21608 means **no real user can verify a phone**, so it is
+  launch-blocking". Two independent errors. The profile was **Approved**; and **21608 was never
+  the compliance profile's doing** — it is the *trial-account* restriction, lifted by upgrading,
+  while the compliance profile gates A2P 10DLC and toll-free registration. Two different doors,
+  welded into one sentence. Correcting only the status would have left the wrong mechanism in an
+  always-loaded doc, pointing every future session at the wrong remedy. Corollary to
+  `[status-correction]`, one level deeper. Two instrument traps came with it, both worth the
+  reflex: **the vendor console rendered "Pending review" until reloaded**, so an approval email is
+  a claim about a claim until the console agrees; and the green **"Active"** badge is account
+  *status* (not suspended), which trial accounts show too — the evidence for "upgraded" is the
+  billing TYPE (`Pay-as-you-go`). Same family as `[gap-claims]`: **check the claim against the
+  system, and check that what you read is the field you think it is.**
 - **[gap-claims] Verify a claimed knowledge gap against `origin/main`, never a worktree.** A worktree
   drifts silently — **absence in one proves nothing.** On 2026-07-19 I asserted "PR #288 shipped
   without its knowledge-sync" from a worktree 15 commits behind; PR #290 had already done the sync and
@@ -361,6 +420,105 @@
   re-encode artifact — the region holds exactly **1** distinct colour.
 - **Remember:** see the new `[guard-greps-its-own-docs]` and `[eslint-unmatched-file]`
   Lessons above.
+### 2026-08-26 — §5 regrew to 155 KB; compounded onto [[Context Tax]] and guarded it with a test
+- **Output:** `docs/wiki/concepts/context-tax.md` (new "The regrowth (2026-08-26)" section) +
+  `docs/wiki/raw/sessions/2026-08-26-context-tax-regrowth.md`, indexed and logged
+  (`log.md` → `[2026-08-26] ingest | §5 regrew to 155 KB, and the fix that "makes it stick" did not`).
+- **Happened:** §5 was 154,964 B of a 170,999 B always-loaded file (90%). Cut to 33,403 B
+  (file −71%), added an `### Open items — founder action` subsection, corrected five wrong
+  claims, added two missing workstreams, and shipped `src/projectContextSize.test.ts`.
+  Compounded onto the existing page rather than creating a new one; struck through the
+  falsified "cannot regrow" claim in place and corrected both `index.md` lines carrying it.
+- **Worked:** `[new-page-vs-compound]` pointed the right way — same SUBJECT (§5's size),
+  so it belonged on [[Context Tax]], not a new page; the page was only 8 KB so there was no
+  `FAIL_CHARS` risk. `[status-correction]`'s edit-in-place discipline applied cleanly to a
+  falsified *claim* rather than a stale status. `[index-sections]` earned its keep twice: the
+  new Sources entry went beside its sibling instead of scanning from the top, and the
+  resolve-every-`[[link]]` check caught a **pre-existing broken wikilink** —
+  `[[AIOS Runtime Spend Source of Truth]]` where the index says `Source-of-Truth` (hyphenated).
+  Fixed.
+- **Failed:** the **prod-DB half of the claim sweep could not run at all**. The Supabase MCP
+  reports `✔ Connected` but holds no `SUPABASE_ACCESS_TOKEN`, and `.env.sync.local` is
+  gitignored so it exists only in the main checkout — which a worktree session cannot reach.
+  Both paths refused with an explicit *Unauthorized*, which is the good failure, but it means
+  migrations-applied, cron run counts and two flag rows are **unverified, not verified-true**.
+- **Remember:**
+  - **`[rule-vs-control]` A written rule that nothing enforces is not a control — and the
+    July split is the case where this repo had the lesson and did not apply it to itself.** It
+    amended two rules and called that "the part that makes it stick"; both rules were still
+    present, still correct, and still ignored six weeks later. When a knowledge-sync run
+    codifies a rule into an always-loaded doc, ask what would FAIL if the rule were broken. If
+    the answer is "nothing", the rule is a wish. Prefer a test; §5 now has one.
+  - **`[control-not-floor]` A control must be about the instrument, not about the reading.**
+    The first draft's parser control asserted "§5 has ≥ 40 entries" — a content floor. Codex
+    rejected it correctly: §5 shrinking is the *desired* direction, so the floor would
+    eventually fail on correct maintenance and pressure the next author into keeping stale
+    entries or deleting the guard. Prove the parser against a **fixed fixture**, then check
+    parser-vs-raw agreement on live content. Make the raw counter deliberately *wider* than
+    the parser (any list marker), or both sides go to zero together and agree about nothing.
+  - **`[wrong-ref-worse-than-none]` A wrong PR number attached to a TRUE claim is worse than
+    no reference.** §5 asserted "#387 and #396 merged"; #387 was CLOSED unmerged, though the
+    work really is on `main` via #396. The false reference invites a check (`gh pr view 387`)
+    that returns the wrong answer, so a reader concludes a security fix never landed. When
+    citing a PR in an always-loaded doc, the cheap check is `gh pr list --state all --json
+    number,state` **once** and match the whole set — 111 refs cost one API call.
+  - **`[missing-is-worse-than-bloat]` Sweep for work that is missing from §5, not only for
+    entries that are too long.** TikTok (#525, #529) and email verification (#527, #528,
+    #530) had no entry anywhere in the knowledge layer. Bloat costs tokens; omission makes a
+    reader conclude the work does not exist. `git log --oneline HEAD..origin/main` and check
+    each merged PR has an index line — the natural extension of `[scope-paths]`.
+  - **`[recheck-at-merge]` Re-check `origin/main` at MERGE time, not only at rebase time.**
+    #531 merged while this branch was open and falsified two of its claims — including the **#1
+    entry in the new founder "Open items" list** (Twilio compliance "unapproved, launch-blocking";
+    the profile is Approved, and 21608 was the *trial-account* restriction, a different door
+    already lifted). Merging unchanged would have reinstated a false launch-blocker at the top of
+    the list the founder works from, **and** deleted #531's own §5 entry. It was caught only
+    because the merge step checked CI first and `gh run list` surfaced another branch's name. A
+    docs branch is exactly the kind that stays open long enough for its own subject matter to move
+    underneath it, so `[scope-paths]` applies **again at merge**, not once at the start. Resolve
+    both-prepended-an-entry conflicts by keeping **both** sides, then verify both headings survive
+    in each file — taking either side silently deletes a colleague's knowledge-sync run.
+  - **`[worktree-not-repo]` A failing check in a worktree is a claim about the WORKTREE until
+    proven otherwise.** On 2026-08-26 `npm run typecheck` failed with
+    `middleware.ts(30): Cannot find module '@vercel/functions'`, and that was reported as a
+    **pre-existing repo defect** in a PR body, a `SHIPPED_LOG` entry, a wiki raw source and
+    several commit messages — then **Codex echoed it back**, which felt like corroboration and
+    was not. `@vercel/functions` is declared in `package.json`; the worktree just had no
+    `node_modules/@vercel/`, and CI runs `npm ci`, which is why the identical check passed on two
+    other PRs the same afternoon. One `npm install` settled it. Before calling a local failure
+    pre-existing, check whether the same job passed in CI on a sibling PR — and remember that a
+    reviewer repeating your untested belief is one observation, not two.
+  - **`[codex-citation]` Check Codex's CITATION, not only its claim.** It cited `AGENTS.md`,
+    which `CLAUDE.md` flags as a stale duplicate and which produced a refuted P1 on #519. Here
+    the same sentence was in `CLAUDE.md` too, so the finding stood — but that had to be
+    verified, not assumed either way. A stale-source citation neither proves nor disproves the
+    point.
+### 2026-08-26 — Email verification by code (#528, #530)
+
+**Output:** [[Email Verification Routes]] (`concepts/email-verification-routes.md`) +
+`raw/sessions/2026-08-26-email-verification-by-code.md`; `log.md` entry
+`## [2026-08-26] ingest | Email verification by code, with the link kept working`.
+
+**Happened:** synced the email-verification work — concept page, index entry, log entry,
+`SHIPPED_LOG.md` entry, a §5 line, and the two migrations documented in `DATABASE_SCHEMA.md`.
+Also corrected **two stale Twilio claims** in §5 after reading the console and prod.
+
+**Worked:** `[index-sections]` earned its place twice in one run. I guessed
+`[[Internal-Only Users]]` from the filename; the index says `[[Internal-Only AIOS Users]]` —
+caught only by resolving every link before committing. And I first inserted the new entry
+*after* `Error Handling Patterns`, when `Emai` sorts before `Erro`. `[scope-paths]` and
+`[gap-claims]` each came back clean in one command. `[superseded-mechanism]` was a live check
+this time: the session DELETED `supabase.auth.signOut()` from signup, so I grepped the
+always-loaded docs for a rule telling future sessions to do it — nothing but my own new entry.
+
+**Failed:** nothing in the sync. Worth carrying from the session it documents: a migration
+version was taken twice by a parallel branch, and `supabase/migrations.test.ts` structurally
+cannot see that — it compares the repo TREE, and the colliding file lives only on another
+branch. `db:apply`'s already-recorded refusal caught it both times.
+
+**Remember:** a `**Pending:**` clause can be wrong about the MECHANISM, not just the status —
+see the new `[stale-mechanism]` Lesson.
+
 
 ### 2026-08-24 — Onboarding tested on production; two new concept pages
 - **Output:** `docs/wiki/concepts/onboarding-resume-and-routing.md` +

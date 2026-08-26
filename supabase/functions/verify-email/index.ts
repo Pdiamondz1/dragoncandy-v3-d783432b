@@ -8,9 +8,15 @@ import {
   LOVABLE_V3_ORIGIN,
   WWW_APP_ORIGINS,
 } from "../_shared/origins.ts";
+import {
+  MAX_CODE_ATTEMPTS,
+  isWellFormedCode,
+  normalizeVerificationCode,
+} from "../_shared/verification-code.ts";
 
 interface VerifyEmailRequest {
-  token: string;
+  token?: string;
+  code?: string;
 }
 
 const handler = async (req: Request): Promise<Response> => {
@@ -24,12 +30,18 @@ const handler = async (req: Request): Promise<Response> => {
     const isGet = req.method === 'GET';
 
     // Support both POST JSON body and GET query param
+    //
+    // The CODE is accepted from the POST body only, never from the query string. A URL
+    // is written to server logs, browser history and outbound Referer headers; the token
+    // has no choice (it IS the link), but the code does, and the difference costs nothing.
     let token: string | null = null;
+    let code: string | null = null;
     if (isGet) {
       token = url.searchParams.get('token');
     } else {
-      const body: VerifyEmailRequest = await req.json();
+      const body: VerifyEmailRequest = await req.json().catch(() => ({} as VerifyEmailRequest));
       token = body?.token ?? null;
+      code = typeof body?.code === 'string' ? normalizeVerificationCode(body.code) : null;
     }
 
     // Same membership as before the .com migration (apex + www + both Lovable
@@ -61,6 +73,115 @@ const handler = async (req: Request): Promise<Response> => {
       redirectBase,
     });
 
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const supabase = createClient(supabaseUrl, serviceKey);
+
+    /**
+     * THE CODE PATH. Everything below this block is the emailed-link path and is
+     * unchanged; a request carrying no `code` never enters here.
+     *
+     * THIS FUNCTION RUNS AT `verify_jwt = false`, because the emailed link arrives from a
+     * mail client with no session. The gateway therefore authenticates nobody, and a
+     * six-digit secret accepted without a session would be brute-forceable, anonymously,
+     * against every account on the platform. The JWT check below is not defence in depth
+     * — it is the only thing standing there, and it is why the code is resolved against
+     * `caller.id` rather than against anything the request asserts.
+     *
+     * The attempt cap is the second control, and it stops a different attack: signing up
+     * as somebody else's address, never opening the inbox, and guessing. It lives in
+     * `consume_email_verification_code` rather than here, because counting in TypeScript
+     * and then acting on the count is check-then-act under concurrency.
+     */
+    if (code) {
+      const authHeader = req.headers.get('Authorization') ?? '';
+      const bearer = authHeader.startsWith('Bearer ') ? authHeader.slice(7).trim() : '';
+      if (!bearer) {
+        return new Response(
+          JSON.stringify({ success: false, reason: 'unauthorized', message: 'Sign in to use a verification code.' }),
+          { status: 401, headers: { 'Content-Type': 'application/json', ...corsHeaders(req) } },
+        );
+      }
+
+      const anonKey = Deno.env.get('SUPABASE_ANON_KEY') ?? '';
+      if (!anonKey) {
+        // Fail CLOSED. Without the anon key the caller cannot be identified, and an
+        // unidentified caller must never reach the code path.
+        console.error('verify-email: SUPABASE_ANON_KEY missing; refusing the code path');
+        return new Response(
+          JSON.stringify({ success: false, reason: 'unavailable', message: 'Verification is temporarily unavailable.' }),
+          { status: 503, headers: { 'Content-Type': 'application/json', ...corsHeaders(req) } },
+        );
+      }
+
+      const authClient = createClient(supabaseUrl, anonKey);
+      const { data: { user: caller }, error: callerError } = await authClient.auth.getUser(bearer);
+      if (callerError || !caller) {
+        return new Response(
+          JSON.stringify({ success: false, reason: 'unauthorized', message: 'Sign in to use a verification code.' }),
+          { status: 401, headers: { 'Content-Type': 'application/json', ...corsHeaders(req) } },
+        );
+      }
+
+      // A malformed code cannot match anything, so it costs no budget. Charging for a
+      // typo the client could have caught would spend the cap on the honest user rather
+      // than on the attacker it exists for.
+      if (!isWellFormedCode(code)) {
+        return new Response(
+          JSON.stringify({ success: false, reason: 'malformed', message: 'Enter the 6-digit code from your email.' }),
+          { status: 400, headers: { 'Content-Type': 'application/json', ...corsHeaders(req) } },
+        );
+      }
+
+      const { data: outcome, error: rpcError } = await supabase.rpc('consume_email_verification_code', {
+        p_user_id: caller.id,
+        p_code: code,
+        p_max_attempts: MAX_CODE_ATTEMPTS,
+      });
+
+      if (rpcError) {
+        console.error('verify-email: consume_email_verification_code failed', rpcError);
+        return new Response(
+          JSON.stringify({ success: false, reason: 'error', message: 'Could not check that code. Please try again.' }),
+          { status: 500, headers: { 'Content-Type': 'application/json', ...corsHeaders(req) } },
+        );
+      }
+
+      const result = (outcome ?? {}) as { ok?: boolean; reason?: string; remaining?: number };
+      if (result.ok) {
+        console.log('verify-email: code accepted for user', caller.id, result.reason);
+        return new Response(
+          JSON.stringify({ success: true, message: 'Email verified successfully' }),
+          { status: 200, headers: { 'Content-Type': 'application/json', ...corsHeaders(req) } },
+        );
+      }
+
+      const CODE_FAILURES: Record<string, { status: number; message: string }> = {
+        mismatch: { status: 400, message: 'That code is not right. Check your email and try again.' },
+        too_many_attempts: {
+          status: 429,
+          message: 'Too many incorrect codes. Use the verification link in your email instead.',
+        },
+        no_live_code: {
+          status: 400,
+          message: 'That code has expired. Send yourself a new email and try again.',
+        },
+      };
+      const failure = CODE_FAILURES[result.reason ?? ''] ?? {
+        status: 400,
+        message: 'Could not verify that code.',
+      };
+      return new Response(
+        JSON.stringify({
+          success: false,
+          reason: result.reason ?? 'unknown',
+          remaining: result.remaining,
+          message: failure.message,
+        }),
+        { status: failure.status, headers: { 'Content-Type': 'application/json', ...corsHeaders(req) } },
+      );
+    }
+
     if (!token) {
       const message = 'Missing token';
       if (isGet && redirectBase) {
@@ -74,10 +195,6 @@ const handler = async (req: Request): Promise<Response> => {
         { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders(req) } }
       );
     }
-
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-    const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    const supabase = createClient(supabaseUrl, serviceKey);
 
     // Fetch token row
     const { data: tokenData, error: tokenError } = await supabase

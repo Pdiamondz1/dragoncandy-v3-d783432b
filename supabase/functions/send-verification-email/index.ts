@@ -3,6 +3,7 @@ import { createClient } from 'npm:@supabase/supabase-js@2.50.0';
 import { Resend } from "npm:resend@2.0.0";
 import { corsHeaders } from "../_shared/cors.ts";
 import { htmlEscape } from "../_shared/htmlEscape.ts";
+import { generateVerificationCode } from "../_shared/verification-code.ts";
 import {
   APP_ORIGINS,
   DEFAULT_ORIGIN,
@@ -68,10 +69,24 @@ const handler = async (req: Request): Promise<Response> => {
     // Create Supabase client with service role
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Generate a unique verification token
+    // TWO credentials, one row, one expiry.
+    //
+    // The token is what the emailed LINK carries: a UUID, 122 bits, unguessable, and so
+    // safe to accept with no session at all — which it must be, since the link is opened
+    // from a mail client that has never seen our origin.
+    //
+    // The code is what the SIGNUP TAB accepts, so the person who just signed up is not
+    // sent away from the page they are standing on to a different device and back. It is
+    // six digits, so it is only safe behind the caller's own JWT plus an attempt cap;
+    // both live in `verify-email` and `consume_email_verification_code`.
+    //
+    // Deliberately ONE row with ONE expiry rather than two lifetimes. A user holding an
+    // email where the link still works and the code does not — or the reverse — has no
+    // way to tell which half of the message to trust.
     const token = crypto.randomUUID();
+    const code = generateVerificationCode();
     const expiresAt = new Date();
-    expiresAt.setHours(expiresAt.getHours() + 24); // Token expires in 24 hours
+    expiresAt.setHours(expiresAt.getHours() + 24); // Both credentials expire in 24 hours
 
     // Store the token in the database
     const { error: tokenError } = await supabase
@@ -79,6 +94,8 @@ const handler = async (req: Request): Promise<Response> => {
       .insert({
         user_id: userId,
         token: token,
+        code,
+        attempts: 0,
         expires_at: expiresAt.toISOString(),
       });
 
@@ -144,7 +161,21 @@ const handler = async (req: Request): Promise<Response> => {
                 Thanks for signing up! Please verify your email address to complete your registration and access all features.
               </p>
               
-              <div style="text-align: center; margin: 30px 0;">
+              <p style="font-size: 15px; color: #4b5563; margin-bottom: 8px;">
+                Enter this code on the page you signed up on:
+              </p>
+
+              <div style="text-align: center; margin: 8px 0 28px;">
+                <div style="display: inline-block; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 34px; font-weight: 700; letter-spacing: 10px; color: #1f2937; background: #f3f4f6; border: 1px solid #e5e7eb; border-radius: 10px; padding: 16px 24px 16px 34px;">
+                  ${htmlEscape(code)}
+                </div>
+              </div>
+
+              <p style="font-size: 14px; color: #6b7280; text-align: center; margin: 0 0 16px;">
+                Closed that tab? Use this instead:
+              </p>
+
+              <div style="text-align: center; margin: 0 0 30px;">
                 <a href="${verificationLink}" 
                    style="background: linear-gradient(135deg, #EC4899 0%, #8B5CF6 100%); color: white; padding: 14px 32px; text-decoration: none; border-radius: 8px; display: inline-block; font-weight: 600; font-size: 16px;">
                   Verify Email Address
@@ -152,7 +183,7 @@ const handler = async (req: Request): Promise<Response> => {
               </div>
               
               <p style="font-size: 14px; color: #6b7280; margin-top: 30px;">
-                This verification link will expire in 24 hours.
+                The code and the link both expire in 24 hours.
               </p>
               
               <p style="font-size: 14px; color: #6b7280;">

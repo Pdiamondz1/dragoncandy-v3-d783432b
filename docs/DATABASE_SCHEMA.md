@@ -71,7 +71,7 @@
 | `profile_views` | Tracks who viewed which profiles |
 | `onboarding_steps` | Defines onboarding flow steps |
 | `user_onboarding_progress` | Tracks per-user onboarding completion |
-| `email_verification_tokens` | Email verification flow |
+| `email_verification_tokens` | Email verification flow. Carries **both** credentials for one email: `token` (UUID, the emailed link) and `code` (six digits, typed in the signup tab), plus `attempts`. Service-role only since `20260826220000`. See the note below. |
 | `feature_flags` | Per-user or global feature toggles |
 | `user_roles` | RBAC role assignments (`app_role` enum). Queried via the `has_role()` security-definer function so RLS policies stay non-recursive. |
 | `phone_verification_attempts` | Per-user + per-IP `verify-phone` (Twilio Verify) send/check audit log — service-role only, no client access. See the identity-verification note below. |
@@ -317,6 +317,45 @@
 > way, so verify before assuming. The merge-time deploy list is five
 > edge functions: `verify-phone`, `verify-address`, `stripe-webhook`, `disconnect-stripe-account` and
 > `check-restaurant-payout-status` (which gained `_shared/stripe-identity-reset.ts` at Codex round 5).
+
+> **`email_verification_tokens` — two credentials, one row, and a cap that lives in SQL**
+> (`20260826220000` + `20260826250000`, both applied 2026-08-26). See
+> [[Email Verification Routes]].
+>
+> Columns added: **`code`** (`text`, six digits) and **`attempts`** (`integer`), plus a partial
+> index `(user_id, code) where verified_at is null`. Deliberately ONE row with ONE `expires_at`
+> rather than two lifetimes — a user holding an email whose link works but whose code does not
+> has no way to tell which half of the message to trust.
+>
+> **The table is now service-role only.** It carried a client SELECT policy ("Users can view own
+> verification tokens") and **14 grants** to `anon`/`authenticated`. That was harmless while
+> nothing in `src/` read the table, and adding a guessable six-digit secret to the row is exactly
+> what would have made it matter. Both dropped at TABLE level — a *column*-level `REVOKE` is a
+> documented no-op against Supabase's ambient table-wide `GRANT`, the same lesson recorded four
+> times over on `profiles`. Verified by object: policies 1 → 0, client grants 14 → 0,
+> `service_role` retains 7, with an invented column name returning 0 as the control.
+>
+> **`consume_email_verification_code(p_user_id uuid, p_code text, p_max_attempts integer)
+> returns jsonb`** (`20260826250000`, SECURITY DEFINER, `search_path=public`, revoked from
+> `public, anon, authenticated`, granted `service_role`, with an in-body `request.jwt.claims ->>
+> 'role'` guard). Spends one guess atomically under a `pg_advisory_xact_lock` keyed on the user.
+>
+> **Why the decision is in SQL rather than the edge function**, and why the budget is per USER:
+> reading the count in TypeScript and then acting on it is check-then-act, so concurrent guesses
+> all pass the cap — the identical defect this project shipped in the phone throttle and moved
+> into `reserve_phone_verification_send`. And a per-CODE budget refills on demand, because a
+> resend inserts a fresh row with `attempts = 0`; summing across every live code means it can only
+> be waited out. Proven on prod in a rolled-back transaction: `remaining` went **2 → 1 → 0 through
+> a resend**, after which the *correct* code was refused and the profile stayed unverified.
+>
+> Spending the code and setting `profiles.email_verified` happen in **one transaction**. The
+> token path beside it does the two as separate statements in `verify-email`, so a failure between
+> them burns the credential without recording what it bought — recoverable only because a resend
+> mints a fresh token. That asymmetry is known and deliberate; it was left alone so a reviewer
+> could tell a behaviour change from a feature.
+>
+> Any live code matches, not merely the newest: a user who requests a second email while the first
+> is in front of them should not be told the code they can see is wrong.
 
 ## Campaigns & Marketplace
 

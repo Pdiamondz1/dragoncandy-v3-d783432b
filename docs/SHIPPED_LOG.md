@@ -134,6 +134,229 @@ is a path question before it is a caching question.** Then it built and launched
 pairing failure.
 
 → `docs/wiki/concepts/ios-app-icon-and-launch-image.md` · #532
+## [2026-08-26] §5 regrew to 155 KB in six weeks, and the fix that "makes it stick" did not
+
+Branch `docs/project-context-index`. The founder's brief was four words: *"we need to clean up
+the Project_context doc."*
+
+**The measurement.** `docs/PROJECT_CONTEXT.md` was **170,999 B / 1,968 lines**, of which §5
+"Active Workstreams" was **154,964 B — 90%**. The two largest entries were **13 KB each**. §5's
+own header has said *"Index only — one line per entry"* since July 2026.
+
+The July split (#294, #295) cut the file **176,620 → 73,742 B** and stated in the PR, in
+`docs/wiki/concepts/context-tax.md` and in two `index.md` lines that it had *"amended both
+generators so it cannot regrow"*. **Six weeks later it was back within 3.2% of its pre-split
+size.** Both rules were still present, still correct, and still ignored.
+
+**Result: 170,999 → 49,438 B (−71%); §5 154,964 → 33,403 B (−78%).**
+
+**Nothing was destroyed, and that was established before cutting rather than argued afterwards.**
+All **79** referenced wiki pages exist and each is *larger* than the §5 entry it backs;
+`SHIPPED_LOG.md` carries full session prose for every entry. §5 was a **third copy**. The 12
+pages whose direct pointer was folded into a grouped one-liner are all catalogued in
+`docs/wiki/index.md`, checked by name.
+
+**A new `### Open items — founder action` subsection** hoists the 11 blockers engineering cannot
+close into one list, ordered by what blocks launch. Scattering them across ~20 entries had hidden
+a real connection: turning the site gate on returns 401 on `/` and `/privacy`, which breaks
+Google's, Meta's, TikTok's and X's app reviews — stated in two entries that never referenced each
+other.
+
+### Five wrong claims, found by checking the things themselves
+
+All 111 cited PRs checked against the repo's 530 in one call.
+
+- **#444 and #452** — described as open; both **MERGED**.
+- **#387** — asserted *"#387 and #396 merged"*; **#387 was CLOSED unmerged** on 2026-08-08. The
+  work is real: all three migrations sit in **#396**'s merge commit `ea5d93c8` and
+  `can_notify_user` is referenced **7×** in `create-notification/index.ts` on `origin/main`. Only
+  the attribution was wrong — but a reader who runs `gh pr view 387` gets **CLOSED** and
+  reasonably concludes a security fix never landed. **A wrong reference on a true claim is worse
+  than no reference, because it invites a check that returns the wrong answer.**
+- **#249** — cited as shipping `find_creators`; **CLOSED unmerged**. It landed via **#251**, and
+  the avatar cards via **#254**.
+- **"13 edge functions answer `.io` to a native origin"** — it is **12**. Re-measured by
+  preflighting all **125** functions from `capacitor://localhost`: 93 answer correctly, 18 have no
+  CORS header (all cron/webhook, correct), 12 answer `https://dragoncandy.io`. The old text said
+  "almost exactly the money surface"; it is **exactly** the money surface — every payout, escrow,
+  refund, invoice and withdrawal function, now named individually. **Control:** the same function
+  echoes `.com` for a `.com` origin, so the `.io` answer is real and not a probe artifact.
+
+### Two workstreams were missing entirely
+
+The **TikTok read-only analytics connector** (#525, #529 — four deployed functions, five
+migrations) had **no §5 entry at all**, and neither did the **email-verification rework** (#527,
+#528, #530). None of #525–#530 has reached `SHIPPED_LOG.md` or the wiki either, so **the knowledge
+layer owes five PRs**; both new entries say so rather than implying coverage. Found only because a
+mid-session `git fetch` moved `origin/main` and prompted a check of what had landed.
+
+**An index that omits shipped work fails worse than one that bloats.** Bloat costs tokens;
+omission makes a reader conclude the work does not exist.
+
+### The guard, and the control that is the real point
+
+`src/projectContextSize.test.ts` — per-entry line cap, byte caps on §5 and the whole file, and a
+check that the rule text itself survives (delete the rule and the caps read as arbitrary, then get
+raised). **A written rule that nothing enforces is not a control** — the same lesson already
+behind `brandLogo.test.ts`, `profilesWriteGrants.test.ts` and `migrations.test.ts`. The July
+cleanup is the case where that lesson was available and not applied to itself.
+
+All failure branches were **forced, not assumed**: a 31-line entry fails and names itself; 400
+short entries trip both byte caps; changing `- **` to `* **` fires the parser control.
+
+**The Codex second review filed one P2 and it was right.** The first draft's control asserted
+*"§5 parses at least 40 entries"* — **a content floor, not a parser check**. §5 getting *smaller*
+is the entire point of this file, so the floor would eventually fail on correct maintenance and
+pressure an author into keeping stale entries or deleting the guard: a guard fighting the
+behaviour it exists to encourage. Replaced with two content-independent controls — `parseEntries()`
+against a **fixed fixture** with exact expected counts, and **parser count === raw bullet count**
+on the live file, where the raw counter matches *any* list marker on purpose so a syntax change
+makes the two disagree rather than agree at zero. Proven both ways: the syntax swap fails with
+*"expected +0 to be 85"*, and a §5 shrunk to **2 entries passes**, which would have failed under
+the old floor. **A control must be about the instrument, not about the reading.**
+
+**Codex cited `AGENTS.md`**, which `CLAUDE.md` flags as a stale duplicate and which produced a
+refuted P1 on #519 — so the claim was re-checked against `CLAUDE.md` itself, where the same
+*"one-line-per-entry index"* sentence appears. The finding stood on the authoritative file.
+**Check the citation, not only the claim.** Codex clean at round 2.
+
+### What could NOT be verified
+
+The **database half** of the claim sweep. Both paths refused with an explicit *Unauthorized*
+rather than a wrong answer: the Supabase MCP reports `✔ Connected` but holds no
+`SUPABASE_ACCESS_TOKEN` (the trap `CLAUDE.md` documents — `list_migrations` is the probe that
+exposes it), and `.env.sync.local` is gitignored, so it exists only in the main checkout, which a
+worktree session cannot reach. Migrations *applied* to prod, cron run counts, and the
+`SOCIAL_LOGIN_ENABLED` / `READINESS_GATE_ENABLED` flag rows are therefore **unverified, not
+verified-true**, and were left as written. *A refusal that names itself is the good failure.*
+
+**Lead, not a finding:** `outstand-proxy` and `social-proxy` answer
+`Access-Control-Allow-Origin: *` where the other 93 use the allow-list. Both authenticate by
+bearer token; exploitability untested, so it is recorded for an owner rather than called a defect.
+
+**Verified:** 3,549 tests pass (320 files); production build clean; **`npm run typecheck` passes
+clean**. An earlier draft of this entry — and the PR body, and several commit messages — called
+`middleware.ts(30): Cannot find module '@vercel/functions'` a **pre-existing repo error**. **It is
+not.** `@vercel/functions` is a declared dependency in `package.json` (`^3.9.5`); this *worktree*
+simply had no `node_modules/@vercel/`, and CI runs `npm ci`, which is why the same typecheck passed
+on #531 and #532 the same afternoon. Running `npm install` here made it pass. **A failing check in
+a worktree is a claim about the worktree until you have proven it is a claim about the repo** — and
+this one was repeated across four artefacts and echoed back by Codex before anyone tested it, which
+is the same "a plausible answer to the wrong question looks exactly like progress" shape this file
+records elsewhere.
+
+### A parallel session merged mid-branch and falsified two of this file's claims
+
+**#531 landed on `main` while this branch was open**, and it corrected exactly the kind of claim
+this cleanup exists to police — so the merge could not be a fast-forward of a tidy-up, it had to
+be an integration.
+
+- **The #1 founder blocker in the new "Open items" list was wrong.** It read *"Twilio Primary
+  Compliance Profile is unapproved — error 21608 means no real user can verify a phone.
+  Launch-blocking."* The profile is **Approved**, and **21608 was the trial-account restriction
+  all along** — a different door, already lifted. Merging this branch unchanged would have
+  reinstated a false launch-blocker at the top of the list the founder is meant to work from.
+- **"Nobody has completed an SMS round trip" was false.** Prod records `start/sent` →
+  `check/approved` on 2026-08-24, matched by a Twilio Verify log.
+- **The email-verification entry's `→ no wiki page yet` was false**, because #531 wrote
+  `docs/wiki/concepts/email-verification-routes.md`. That entry is now a proper index line
+  pointing at it, and the §5 header's exception list drops from two entries to one (TikTok).
+
+**The conflict resolution kept BOTH sides of every file.** `SHIPPED_LOG.md`, `log.md` and the
+skill's `MEMORY.md` each had two 2026-08-26 entries prepended independently; taking either side
+would have silently deleted a colleague's knowledge-sync work. Verified after resolving by
+confirming both headings survive in each file.
+
+**This is the `[scope-paths]` lesson arriving on schedule.** The knowledge-sync loop memory
+already says: on a repo with 30+ worktrees, *"has someone already shipped this?"* has a real
+answer one command away. It was found here only because the merge step checked CI first and the
+run list showed another branch's name. **On a long-running branch, re-check `origin/main` at
+merge time, not only at rebase time** — a docs branch is exactly the kind that sits open long
+enough for its own subject matter to move underneath it.
+
+→ `docs/wiki/concepts/context-tax.md`
+
+## Email verification by code — the signup tab stops being thrown away (2026-08-26, #528, #530)
+
+Signing up ended with `supabase.auth.signOut()`. The tab that had just done the work was
+discarded, and the only way forward was to open a mail client, click a link, land on a third page
+and log in again. On a phone, where mail is a different app, that is a round trip many people
+never finish. Logging in unverified did the same thing by a different route. The founder's report
+was blunter: *"it still strands the signup tab."*
+
+The session now survives signup, and the email carries a **six-digit code** entered on the page
+the user is already standing on. **The link is unchanged and still works** — it is the only thing
+that does if the tab is closed, if the code is mistyped past its budget, or if the mail is read on
+another device, so the panel polls `profiles.email_verified` and moves on by itself when the link
+is used.
+
+**The durable half is the entropy argument.** The emailed token is a UUID — ~122 bits, safe to
+accept with **no session at all**, which it must be since the link arrives from a mail client that
+has never seen our origin. A six-digit code is ~20 bits, and `verify-email` runs at
+`verify_jwt = false` **because of that same link**. So the gateway authenticates nobody and the
+function body must: it resolves the code against `caller.id` from the request's own JWT and
+refuses without one. **Not defence in depth — the only thing standing there.** Without it, six
+digits are brute-forceable anonymously against every account on the platform. The code is accepted
+from the POST body only, never a query string, because a URL reaches server logs, browser history
+and outbound `Referer` headers.
+
+**The attempt cap stops the attack the JWT does not**: sign up as `victim@example.com`, never open
+the inbox, and guess. Email verification exists to prove inbox control, so guessing past it defeats
+the feature entirely. Two properties make it real. It is enforced in **SQL, not TypeScript** —
+counting in the function and then acting on the count is check-then-act, and concurrent guesses all
+read the same pre-cap value; this project shipped that exact bug once in the phone-verification
+throttle, where it was a Codex P1 and moved into `reserve_phone_verification_send`. And it is per
+**user across every live code**, not per code, because a resend mints a fresh row with
+`attempts = 0` and a per-code budget would refill on demand.
+
+Proven on prod in a rolled-back transaction: two wrong guesses, a resend, a third wrong guess —
+`remaining` went **2 → 1 → 0 through the resend** — and the **correct** code was then refused, with
+the profile still unverified. A correct code inside budget verified and flipped the profile; a
+double submit returned `already_verified` rather than an error. Control in the other direction: the
+same call without the `service_role` claim raises `forbidden: service role required`. Function ACL
+reads exactly `postgres` + `service_role`, with an invented function name returning nothing so the
+probe could answer negatively. **A strict cap is affordable only because the link is unaffected** —
+nobody is ever locked out of verifying, they are moved from one route to the other.
+
+**Nothing was loosened by keeping the session.** #528 had already made `ProtectedRoute` gate every
+authenticated route on `email_verified`, and `AuthPage` refuses to route an unverified user onward.
+*Signing out was never the control — it was a side effect standing in for one.* In #528's shared
+derivation, `??` rather than `||` is load-bearing: Supabase's own confirmation is **disabled** here
+(45 of 45 users carry `email_confirmed_at`, 44 within one second of creation), so `||` would
+auto-verify every password signup and switch the gate off for everyone.
+
+**A dormant permission is one feature away from being live.** `email_verification_tokens` carried a
+client SELECT policy and 14 grants to `anon`/`authenticated` — harmless while nothing in `src/`
+read the table, and this change gave it something worth reading. Closed at TABLE level (a
+column-level `REVOKE` is a no-op against Supabase's ambient grant); policies 1 → 0, client grants
+14 → 0, `service_role` keeps its 7.
+
+**Forced controls on every claim that matters**, and two that *failed to fail*. Removing rejection
+sampling, removing the poll, taking `p_user_id` from the request body, dropping the bearer check,
+reading the code from a query string, and restoring a `signOut` each turn their pin red. But the
+"keeps polling across parent re-renders" test first passed a **stable** `vi.fn()`, so the callback
+identity never changed and it would have passed against the exact dependency-array bug it exists to
+catch; after that was fixed it *still* passed, because the loop stopped re-rendering before the
+restarted interval could have fired. The re-renders have to keep **outpacing** the interval. Both
+times the test was fixed rather than the claim softened.
+
+Deploy order was schema → functions → frontend; the gap that leaves is the benign one (an email
+carrying a code the page does not yet ask for, with the link still working). Boot-verified after
+deploy: the code path returns **401 with our JSON body** unauthenticated, an invented function name
+returns **404 with the gateway's**, the public anon key is refused, and the link path still **302**s.
+
+**Process notes.** A migration version was taken twice by a parallel session's TikTok work —
+`supabase/migrations.test.ts` compares the **repo tree** and cannot see a file living only on
+another branch; `db:apply`'s already-recorded refusal caught both, and **the ledger is the other
+half of the namespace**. Python edits silently converted CRLF → LF on both edge functions,
+inflating the diff from ~123 real lines to 513 (restored, and amended into the commit, since
+`git diff origin/main...HEAD` compares commits rather than the working tree).
+`deno check --node-modules-dir=auto` rewrote `node_modules` and broke the test runner outright.
+And the first prod verification probe grepped only the scripts named in the root HTML, where the
+lazy `AuthPage` chunk can never appear — the negative control returned 0 the same way, which was
+the tell.
+
+3528 tests, typecheck, lint and build green. Codex clean at round 1.
 
 ## [2026-08-25] Onboarding, tested on production for the first time — and three defects only production could show
 

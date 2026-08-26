@@ -36,6 +36,68 @@ added the section *"Three copies of this project exist on disk"*: three delete-a
 failed because Xcode was building a **different worktree** whose icon hashed byte-identical to the
 old one, which DerivedData's `WorkspacePath` answers in one command. ***"It didn't update" is a
 path question before it is a caching question.***
+## [2026-08-26] ingest | §5 regrew to 155 KB, and the fix that "makes it stick" did not
+
+**Created** `raw/sessions/2026-08-26-context-tax-regrowth.md`. **Updated** [[Context Tax]]
+(`concepts/context-tax.md` — new "The regrowth (2026-08-26)" section), `index.md` (two lines
+carrying the falsified "so it cannot regrow" claim, corrected in place), `log.md`,
+`docs/PROJECT_CONTEXT.md`, `docs/SHIPPED_LOG.md`, `.claude/skills/knowledge-sync/SKILL.md`.
+
+**Contradiction flagged, not overwritten.** [[Context Tax]] and both `index.md` lines asserted
+the July split "amended **both** generators so it cannot regrow". §5 regrew **73,742 →
+154,964 B in six weeks** — within 3.2% of its pre-split size. The old claim is struck through and
+dated rather than deleted, because the reason it was believed is the lesson.
+
+**The durable rule:** *a written rule that nothing enforces is not a control* — now
+`src/projectContextSize.test.ts` (per-entry line cap, byte caps, rule-text presence). Whole file
+**170,999 → 49,438 B (−71%)**; §5 **154,964 → 33,403 B (−78%)**.
+
+**And a rule about controls themselves.** The first draft's control asserted "§5 parses at least
+40 entries" — a **content floor, not a parser check**, which Codex correctly rejected: §5 getting
+*smaller* is the point of the file, so the floor would have failed on correct maintenance. *A
+control must be about the instrument, not about the reading.* Replaced by a fixed fixture plus
+parser-vs-raw-bullet agreement; both forced to fail before being trusted.
+
+**Five wrong claims corrected in §5**, from checking all 111 cited PRs against the repo's 530:
+#444/#452 open→merged, **#387 asserted merged but CLOSED unmerged** (work landed via #396),
+#249 closed (landed via #251/#254), and 13→**12** edge functions answering `.io` to a native
+origin. Two workstreams were **missing entirely** — TikTok (#525, #529) and email verification
+(#527, #528, #530), none of which has reached `SHIPPED_LOG.md` or the wiki.
+
+**Not verified:** the prod-DB half of the sweep. The Supabase MCP reports connected but holds no
+`SUPABASE_ACCESS_TOKEN`, and `.env.sync.local` is gitignored so it lives only in the main
+checkout. Recorded as unverified rather than assumed true.
+## [2026-08-26] ingest | Email verification by code, with the link kept working
+
+**Created** [[Email Verification Routes]] (`concepts/email-verification-routes.md`) and
+`raw/sessions/2026-08-26-email-verification-by-code.md`.
+**Updated** `index.md` (Concepts), `docs/SHIPPED_LOG.md`, `docs/PROJECT_CONTEXT.md` §5.
+
+Signup ended in `supabase.auth.signOut()`, discarding the tab that had just done the work; the
+only way forward was a mail client, a link, a third page and a second login. The session now
+survives and a six-digit code is entered in place — with the emailed link unchanged, because it
+is the only route that works when the tab is gone. The durable half is the entropy argument:
+`verify-email` runs at `verify_jwt = false` **because of the link**, so the gateway authenticates
+nobody and the code is safe only because the function body resolves it against the caller's own
+JWT. The attempt cap is per **user** rather than per code, since a resend would otherwise refill
+the budget — proven on prod in a rolled-back transaction where `remaining` went 2 → 1 → 0 through
+a resend, after which the correct code was refused. Two forced controls **failed to fail** before
+the tests were corrected rather than the claims softened.
+
+**Lint note (not fixed here):** the Codex pass caught `[[Verify Before Reporting]]` in the new
+page resolving to nothing. A sweep found this is systemic rather than a one-off — **52 of 203
+distinct wikilinks across `concepts/`, `entities/` and `analyses/` have no catalog entry in
+`index.md`**. The dangling link in the new page is repointed; the other 51 are left as a known
+lint backlog. The check that missed it was a bare `grep -F "[[Name]]"`, which also matches the
+link inside another entry's *prose* — resolution requires a catalog entry (`^- [[Name]](`).
+
+**Corrected two stale claims in `PROJECT_CONTEXT.md` §5, both about Twilio.** The Primary
+Compliance Profile is **Approved** (read off the console, which rendered "Pending review" until
+reloaded), and **21608 was never the compliance profile's doing** — it is the trial-account
+restriction, while the profile gates A2P 10DLC. The account is Pay-as-you-go with auto-recharge,
+so neither door is shut; note the green "Active" badge is account *status*, not type, and is not
+the evidence. The claim that "nobody has completed an SMS round trip" was also false — prod holds
+the full `start/sent` → `check/approved` sequence from 2026-08-24.
 
 ## [2026-08-24] ingest | The first production test of onboarding
 
