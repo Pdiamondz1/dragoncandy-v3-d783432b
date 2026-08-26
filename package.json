@@ -15,6 +15,7 @@
     "prepare": "node scripts/install-hooks.mjs",
     "hooks:install": "node scripts/install-hooks.mjs",
     "cap:assets": "node scripts/build-app-assets.mjs",
+    "legal:static": "npx tsx --tsconfig tsconfig.app.json scripts/build-legal-static.ts",
     "cap:sync": "npm run build && npx cap sync ios",
     "cap:open": "npx cap open ios",
     "cap:copy": "npm run build && npx cap copy ios",
