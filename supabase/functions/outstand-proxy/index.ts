@@ -16,6 +16,8 @@
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient, SupabaseClient } from "npm:@supabase/supabase-js@2";
+import { DEFAULT_ORIGIN } from "../_shared/origins.ts";
+import { withAllowedOrigin } from "../_shared/cors.ts";
 import { extractCreatedPostId } from "../_shared/outstand-post-ownership.ts";
 import { recordPostOwnership } from "../_shared/outstand-post-ownership-store.ts";
 import { recordMediaOwnership } from "../_shared/outstand-media-ownership-store.ts";
@@ -41,11 +43,21 @@ const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const OUTSTAND_BASE_URL = Deno.env.get("OUTSTAND_BASE_URL") ?? "https://api.outstand.so/v1";
 
 
+// CORS. `Access-Control-Allow-Origin` was `'*'` until 2026-08-26. The
+// `Allow-Headers` / `Allow-Methods` below are WIDER than the fleet default in
+// `_shared/cors.ts` (which is why this block exists at all rather than calling
+// `corsHeaders`) — but the ORIGIN is now decided in that one shared place.
+//
+// The value here is the fallback used by module-level helpers that have no
+// `req` in scope; it is deliberately `DEFAULT_ORIGIN` and never `'*'`, so no
+// path can emit a wildcard even if the boundary stamp below were bypassed.
+// `withAllowedOrigin` replaces it with the caller's own origin, per response.
 const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Origin": DEFAULT_ORIGIN,
   "Access-Control-Allow-Headers":
     "authorization, x-client-info, apikey, content-type, accept, x-org-unit-id, x-delegated-account-id, x-delegated-user-id",
   "Access-Control-Allow-Methods": "GET, POST, PATCH, PUT, DELETE, OPTIONS",
+  "Vary": "Origin",
 };
 
 type Platform = "facebook" | "instagram" | "tiktok" | "x" | "youtube";
@@ -798,7 +810,7 @@ async function recordDisconnect(
     .eq("outstand_social_account_id", outstandAccountId);
 }
 
-serve(async (req: Request) => {
+async function handleRequest(req: Request): Promise<Response> {
   if (req.method === "OPTIONS") {
     return new Response(null, { status: 200, headers: corsHeaders });
   }
@@ -1193,4 +1205,9 @@ serve(async (req: Request) => {
     status: upstream.status,
     headers: responseHeaders,
   });
-});
+}
+
+// Every response leaves through here, so the origin stamp cannot miss a path —
+// which is the whole reason the decision is made at the boundary rather than
+// threaded through 28 `jsonResponse` call sites.
+serve(async (req: Request) => withAllowedOrigin(req, await handleRequest(req)));

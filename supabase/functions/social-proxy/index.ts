@@ -28,6 +28,8 @@ import type {
   SocialProvider,
   TenantCtx,
 } from "../_shared/social-contract.ts";
+import { DEFAULT_ORIGIN } from "../_shared/origins.ts";
+import { withAllowedOrigin } from "../_shared/cors.ts";
 import { createOutstandAdapter } from "./adapters/outstand.ts";
 import { createZernioAdapter } from "./adapters/zernio.ts";
 import { resolveProviderFromRows, resolveProviderId } from "../_shared/social-provider.ts";
@@ -40,11 +42,21 @@ const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
+// CORS. `Access-Control-Allow-Origin` was `'*'` until 2026-08-26. The
+// `Allow-Headers` / `Allow-Methods` below are WIDER than the fleet default in
+// `_shared/cors.ts` (which is why this block exists at all rather than calling
+// `corsHeaders`) — but the ORIGIN is now decided in that one shared place.
+//
+// The value here is the fallback used by module-level helpers that have no
+// `req` in scope; it is deliberately `DEFAULT_ORIGIN` and never `'*'`, so no
+// path can emit a wildcard even if the boundary stamp below were bypassed.
+// `withAllowedOrigin` replaces it with the caller's own origin, per response.
 const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Origin": DEFAULT_ORIGIN,
   "Access-Control-Allow-Headers":
     "authorization, x-client-info, apikey, content-type, accept, x-org-unit-id",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
+  "Vary": "Origin",
 };
 
 const ALLOWED_PLATFORMS: ReadonlySet<string> = new Set([
@@ -703,7 +715,7 @@ async function handleOp(
   }
 }
 
-serve(async (req: Request) => {
+async function handleRequest(req: Request): Promise<Response> {
   if (req.method === "OPTIONS") {
     return new Response(null, { status: 200, headers: corsHeaders });
   }
@@ -798,4 +810,9 @@ serve(async (req: Request) => {
     console.error("social-proxy: provider_error", op, detail);
     return jsonResponse(502, { error: "provider_error" });
   }
-});
+}
+
+// Every response leaves through here, so the origin stamp cannot miss a path —
+// which is the whole reason the decision is made at the boundary rather than
+// threaded through 41 `jsonResponse` call sites.
+serve(async (req: Request) => withAllowedOrigin(req, await handleRequest(req)));
