@@ -187,8 +187,9 @@ Engineering cannot close these. Ordered by what blocks launch.
   (`@tumericturtle`, the four read scopes, `status=active`) — this entry called that
   "unverified" and also named the wrong acceptance signal. **`last_synced_at` does NOT land
   seconds after `connected_at` here**, unlike the other three connectors: TikTok's read fires
-  on card render, so the gap was 38 minutes and then 89 seconds, and a null stamp means nobody
-  opened the settings page. The reconnect proved #529 on prod — counters are written at
+  on card render, so the gap was 38 minutes and then 89 seconds, and a null stamp is
+  **inconclusive** — the card can show correct figures while the cache write fails, which is what
+  the `int4` overflow did. The reconnect proved #529 on prod — counters are written at
   connect, where before they landed null. Console is a **sandbox**, because the production form
   will not save without a demo video; that video was recorded 2026-08-26. **Pending:** save and
   submit the production form; **swap the secrets from sandbox to production after approval**,

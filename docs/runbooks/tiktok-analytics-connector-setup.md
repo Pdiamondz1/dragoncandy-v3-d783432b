@@ -271,10 +271,28 @@ with the other connectors.
 copied from YouTube, Instagram and Facebook, where the connect flow itself
 triggers the first read. **TikTok's read fires when the settings card first
 renders.** Measured on the first two real connections (2026-08-26): gaps of
-**38 minutes** and **89 seconds**, both healthy. So a null `last_synced_at`
-here means *nobody has opened the settings page yet* — it is not evidence of a
-broken connector, and waiting a few seconds and re-running this query proves
-nothing. Open the card, then check.
+**38 minutes** and **89 seconds**, both healthy. So re-running this query a few
+seconds after connecting proves nothing. Open the card, then check.
+
+**A null `last_synced_at` is INCONCLUSIVE — it is not proof the page was never
+opened.** An earlier draft of this section said it was, and that is wrong in the
+direction that hides faults. `tiktok-insights` returns the figures it fetched
+**even when `cache_tiktok_insights` errors** — deliberately, because the read
+already happened and losing a real answer over a bookkeeping failure is worse —
+so **the card can render correct numbers while the stamp stays null.**
+
+That is not hypothetical: it is exactly what the `int4` overflow did before
+`20260826230000`. A large account's `likes_count` raised `22003` inside the
+cache RPC, the card showed figures, and the stamp never moved.
+
+So read it as three cases, not two:
+
+| Card | `last_synced_at` | Meaning |
+|---|---|---|
+| Never opened | null | Nothing to conclude — open it |
+| Opened, shows figures | set | Working |
+| **Opened, shows figures** | **still null** | **The cache write failed** — check the function logs for `[tiktok-insights] could not cache snapshot` |
+| Opened, shows an error | null | The read itself failed — read the card's message |
 
 ```sql
 select username, display_name, follower_count, status,

@@ -171,10 +171,23 @@ so. Same family as the logo guard that watched the two files already fixed.
 be written without the platform ever being reached; that stamp cannot.
 
 **TikTok's read fires when the card first renders**, not at connect. Measured
-gaps: **38 minutes** on the first connection, **89 seconds** on the second. A
-null `last_synced_at` here means *nobody has opened the settings page*, not that
-the connector is broken. The runbook said "seconds after" and was wrong for this
-platform; corrected 2026-08-26.
+gaps: **38 minutes** on the first connection, **89 seconds** on the second. The
+runbook said "seconds after" and was wrong for this platform; corrected
+2026-08-26.
+
+**A null stamp is inconclusive, and the first correction got that wrong too.**
+The replacement text said a null meant *nobody had opened the page* — caught by
+the Codex second review against the code. `tiktok-insights` returns the figures
+it fetched **even when `cache_tiktok_insights` errors**, deliberately, because
+the read already happened and losing a real answer over a bookkeeping failure is
+worse. So **the card can render correct numbers while the stamp stays null**,
+which is precisely what the `int4` overflow did before `20260826230000`: `22003`
+inside the cache RPC, figures on screen, stamp frozen.
+
+So the wording that hid faults would have hidden *this connector's own headline
+bug*. **An acceptance signal is only as good as the failure it can still see** —
+and a signal borrowed from a sibling has not been checked against the failures of
+the platform you are pointing it at.
 
 ## The zero that deserved suspicion
 
