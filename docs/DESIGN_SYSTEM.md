@@ -457,10 +457,16 @@ same token/font system, unaffected; `/internal` stays dark.
   `location.pathname` is `/`, `/home` or `/landing`. Capacitor loads `capacitor://localhost/`,
   so it is **always** `/` at first paint, and the splash is grape to match. Get them out of step
   and the app flashes on every launch. Because that coupling is invisible from the iOS side,
-  `npm run cap:assets` **reads `index.html` and refuses to run** if the hex is no longer present
-  — change the shell's background and the generator fails loudly instead of shipping a flash
-  nobody notices. Note this is also why the splash needs no dark-mode variant: the shell paints
-  grape regardless of appearance.
+  `npm run cap:assets` **reads `index.html` and refuses to run** unless the colour the shell
+  actually assigns matches the one it is about to build — change the shell's background and the
+  generator fails loudly instead of shipping a flash nobody notices. **It matches the
+  `splash.style.background = "#RRGGBB"` assignment, deliberately not the hex**, because the hex
+  also appears in an explanatory comment a few lines above: a substring search would pass on the
+  stale comment while the real colour had moved, enforcing nothing while looking like a control
+  (caught by the Codex second review, and the first version of this guard had exactly that bug).
+  If the assignment is ever renamed or moved into a variable the regex stops matching and the
+  generator fails closed rather than assuming. Note this is also why the splash needs no
+  dark-mode variant: the shell paints grape regardless of appearance.
 * **A public page may not promise a dashboard.** `/help` is linked from the landing footer and is
   reachable with no session, and it told every visitor "Back to Dashboard" — including people who
   have never had one (founder-reported 2026-08-23, same pass as the logo). The *destination* was

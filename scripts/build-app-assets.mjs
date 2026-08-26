@@ -83,13 +83,29 @@ const check = (label, ok, detail) => {
 // references it. Without this check, changing the shell's background silently
 // makes the splash wrong -- a flash nobody notices for months.
 // ---------------------------------------------------------------------------
+// Match the ASSIGNMENT, not the hex. A substring search for "#241332" passes on the
+// explanatory comment a few lines above the assignment, so someone could repoint the
+// shell to a new colour, leave the comment stale, and this guard would wave it through
+// -- enforcing nothing while looking like a control. (Codex second review, P2.)
 const indexHtml = readFileSync(join(ROOT, 'index.html'), 'utf8');
-if (!indexHtml.includes(`#${SPLASH_BG}`)) {
+const assigned = indexHtml.match(
+  /splash\.style\.background\s*=\s*["']#([0-9a-fA-F]{6})["']/,
+);
+if (!assigned) {
   console.error(
-    `\nindex.html no longer contains #${SPLASH_BG}.\n` +
-      `The launch image exists to match the colour that prerendered shell paints, so\n` +
-      `they cannot be changed independently. Update SPLASH_BG in this file to whatever\n` +
-      `the shell now uses, then re-run.\n`,
+    `\nCannot find the shell's \`splash.style.background = "#RRGGBB"\` assignment in\n` +
+      `index.html. It may have been renamed or moved into a variable. This guard fails\n` +
+      `closed rather than assume the colour is still #${SPLASH_BG}: re-point the regex in\n` +
+      `this file at wherever the shell now sets its background.\n`,
+  );
+  process.exit(1);
+}
+if (assigned[1].toUpperCase() !== SPLASH_BG.toUpperCase()) {
+  console.error(
+    `\nThe shell paints #${assigned[1].toUpperCase()}; this generator builds #${SPLASH_BG}.\n` +
+      `The launch image exists to match the colour that prerendered shell paints, so they\n` +
+      `cannot be changed independently -- shipping this would flash on every launch.\n` +
+      `Set SPLASH_BG to #${assigned[1].toUpperCase()} and re-run.\n`,
   );
   process.exit(1);
 }
