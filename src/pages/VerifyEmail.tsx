@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/hooks/useAuth';
 import { CheckCircle2, XCircle, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { SEO } from '@/components/SEO';
@@ -11,6 +12,7 @@ import { publicOrigin } from '@/lib/publicOrigin';
 const VerifyEmail = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
+  const { refreshProfile } = useAuth();
   const [status, setStatus] = useState<'verifying' | 'success' | 'error'>('verifying');
   const [errorMessage, setErrorMessage] = useState('');
 
@@ -34,6 +36,26 @@ const VerifyEmail = () => {
           const redirect = encodeURIComponent(publicOrigin());
           window.location.replace(`${import.meta.env.VITE_SUPABASE_URL || 'https://zocahiffooqdybdhguqv.supabase.co'}/functions/v1/verify-email?token=${token}&redirect=${redirect}`);
           return;
+        }
+
+        /**
+         * Refresh the context BEFORE navigating. `verify-email` writes
+         * `profiles.email_verified` in the database, but `AuthContext.profile` still holds
+         * the row as it was loaded — `{ email_verified: false }`. Two readers of one fact,
+         * one fresh and one stale: `AuthPage.checkProfileCompletion` re-reads the DB, sees
+         * true, and sends the user to their dashboard, where `ProtectedRoute` reads the
+         * stale context, sees false, and sends them back to `/auth`. That is a redirect
+         * loop that only a hard reload breaks. Raised by the Codex second review.
+         *
+         * Awaited, not fired and forgotten: navigating first would race the very update the
+         * destination is about to be judged on. Failure is non-fatal — verification really
+         * did succeed, and the next auth event reloads the profile anyway — so it must not
+         * turn a successful verification into an error screen.
+         */
+        try {
+          await refreshProfile();
+        } catch (refreshError) {
+          console.warn('VerifyEmail: profile refresh failed after verification', refreshError);
         }
 
         setStatus('success');
