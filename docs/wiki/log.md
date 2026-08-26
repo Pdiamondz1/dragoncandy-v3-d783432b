@@ -36,7 +36,7 @@ spans, fenced blocks and indented blocks. Proven by forcing it red three ways; *
 first attempt and had to be redone**, because the injected bytes were Latin-1 where the check
 reads UTF-8. A control that fails to fail is the failure.
 
-**Codex then found the checker wrong eight times across five rounds, every one real, and every
+**Codex then found the checker wrong TEN times across six rounds, every one real, and every
 one in the checker rather than the cleanup.** The mojibake detector was a list of the five
 sequences this cleanup happened to contain — which is *"a guard that enumerates the bad cases
 treats every case it has not met as good"*, the lesson this repo already recorded on the X
@@ -71,7 +71,15 @@ been over-blanking, so sixteen real links were never checked at all. That is the
 of all seven findings — **a parser that is wrong about markdown does not merely mis-report, it
 silently changes how much the gate covers**, and the direction is not obvious from the code.
 Every fix since has been checked against the link count for exactly that reason.
-See [[Verify Before Reporting]].
+
+**Not one of the ten was in the cleanup; all ten were in the checker.** The link fixes were
+right the first time and the instrument took six rounds — which is the honest ratio for
+anything that parses markdown, and the argument for a linter having its own tests rather than
+being trusted because the corpus it was written against comes out clean. Writing the test for
+the last finding then exposed an eleventh nobody had reported: list context was reset by a
+bullet wrapping onto a two-space continuation, so the next nested bullet read as code and its
+links left the gate. The test failed first, which is the only reason it was visible.
+Clean at round 7. See [[Verify Before Reporting]].
 
 ## [2026-08-26] ingest | Email verification by code, with the link kept working
 
