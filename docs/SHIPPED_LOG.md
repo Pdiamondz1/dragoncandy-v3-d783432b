@@ -32,6 +32,132 @@
 >
 > **Adding an entry:** prepend it (newest first). See `knowledge-sync` step 4.
 
+## [2026-08-26] The package-order existence oracle: one answer for "no such order" and "not yours"
+
+**PR #545** (`54ca8b24`), both functions deployed and verified on prod the same day.
+→ [[Package-Order Existence Oracle Session]] · [[Service-Role Data Exposure]] (5th recorded instance)
+
+**Found by verifying a different fix.** The session before moved twenty edge functions from 500 to
+401 on an auth failure; `refund-package-order` and `release-package-payout` did not move, which read
+as "the fix didn't take". Supplying the field the error was asking for settled it:
+
+```
+empty body : {"error":"Missing required field: orderId"}                            [500]
+with field : {"error":"Order not found: Cannot coerce the result to a single JSON"}  [500]
+```
+
+The status had not moved because the auth check was **never reached**. Both functions parse the body,
+**read the order with `SUPABASE_SERVICE_ROLE_KEY`**, and authorize afterwards — so existence is
+established before identity, and an anonymous caller could tell a real order id from an invented one.
+`release-package-payout` leaked a second way and to a wider audience: `"Only the buyer can release
+this payout"` confirmed the order to **any authenticated user**. Bounded in practice, since
+`package_orders.id` is a UUID and not enumerable; still a service-role read answering a stranger.
+
+**Why the obvious fix is wrong.** "Authenticate before you read" **breaks guest refunds**: a guest
+buyer has no JWT and their credential, `buyer_guest_token`, is a **column on the order**, so the row
+genuinely must be fetched before that caller can be identified. What *can* move above the read is
+refusing a caller who presented **nothing at all** — no service-role key, no JWT, no guest token.
+Everything past that point had some credential to offer, so the read is no longer answering an
+anonymous question. Every remaining failure returns **one shared 404** from
+`_shared/package-order-access.ts`, with the real reason sent to `logStep` rather than to the caller.
+One shared constant and one shared status, deliberately not two "identical" strings in two files:
+two copies is the drift that re-opens the leak, because the difference between the two answers *is*
+the leak.
+
+Also finishes the previous session's leftover in these two files — the missing-`orderId` validation
+error was the last 500 on this surface and is now a **400**.
+
+**A hole the restructure opened, and closed before it shipped.** Flattening the authorization chain
+into `else if` branches introduced `callerUserId === order.buyer_user_id`. `buyer_user_id` is **NULL
+on a guest order**, and `callerUserId` is null exactly when the caller came in on a guest token — so
+`null === null` authorizes, and a caller holding a valid guest token for a **different** order would
+have been treated as this order's buyer. The old nested form was safe by *accident of structure*,
+never by an explicit check: it only reached the comparison after `getUser` had produced a real user.
+**Flattening control flow can delete a precondition that was never written down.**
+
+**Scope was re-derived, not inherited** — the immediate lesson from the session before was that a
+count carries its original investigation's sample. Six edge functions touch `package_orders`; all
+five package-order ones are `verify_jwt = false`.
+
+| function | verdict |
+|---|---|
+| `notify-package-order` | `isAuthorizedIngest` gates it before anything is read — no oracle |
+| `create-package-order-escrow` | creates the order; no pre-existing id to probe |
+| `verify-package-order-escrow` | **anonymous by design** — see below |
+| `refund-package-order`, `release-package-payout` | fixed |
+
+`verify-package-order-escrow` is deliberately out of scope and is **named in the guard rather than
+left unmentioned**. A guest returning from Stripe Checkout has no credential at that moment, which is
+why its own header already reasons about being safe unauthenticated: it flips escrow only when Stripe
+reports a paid payment whose `metadata.order_id` matches, and it returns order STATE, never order
+data. It *does* confirm an id exists — an accepted property of an endpoint with **no authorization
+step at all**, which is a different thing from one that has an authorization step and leaks around
+it.
+
+**The guard, and why it is a text check.** `_shared/package-order-access.test.ts` asserts per function
+that `auth.getUser(` appears above `.from("package_orders")` **inside the request handler**, that
+`orderNotAccessible()` is thrown at least twice, and that none of the three distinguishing messages
+survives. Source order is one of the rare security properties a text check can genuinely establish,
+and it **cannot** be a runtime test here: the guest branch legitimately reads the order before its
+credential can be evaluated, so a black-box test would have to distinguish "read for a guest" from
+"read for a stranger" — which is exactly what the fix makes impossible. Two controls: the sources are
+asserted non-empty, and the three "distinguishing" strings are quoted from the **pre-fix** sources so
+the `not.toContain` cannot pass vacuously.
+
+**Its first version failed a correctly-ordered file.** `release-package-payout` defines
+`finalizePackageOrderState` above `serve()`, and that helper reads `package_orders` too, so `indexOf`
+compared the auth call against the *helper's* read. It failed in the safe direction, but a guard that
+cannot say which read it is looking at is measuring the wrong thing either way; it is now scoped to
+the handler slice. Forced-red by hand afterwards: inverting the order in `refund-package-order` fails
+the assertion (`expected 2446 to be less than 1783`), and reverting returns it to green.
+
+**Verified on prod, both directions.** `verify_jwt` was probed before deploying — both declared
+`false` in `config.toml` **and** live `false`, so neither was the dangerous live-false-but-absent
+combination — and both upload logs listed `package-order-access.ts`, the evidence the new code
+shipped rather than the deploy reusing a bundle.
+
+```
+before, no credential : {"orderId":"1111…"} → 500 {"error":"Order not found: Cannot coerce…"}
+        control       : a made-up function name → 404 NOT_FOUND  (the probe reaches the gateway)
+
+after,  no credential : any orderId → 401 {"error":"User not authenticated"}   (read never happens)
+        guest token   : fake id A  → 404 {"error":"Order not found, or you are not authorized…"}
+        guest token   : fake id B  → 404  … byte-identical
+        empty body    → 400
+```
+
+Both halves matter: the 401 shows the read no longer runs for an anonymous caller, and the identical
+404s show that when a credential IS present and the read does run, the two failures are
+indistinguishable.
+
+**What could NOT be verified, stated rather than glossed.** Prod holds **zero `package_orders` rows**
+— control: `profiles` returns 46 on the same query, so the zero is a real count and not a broken
+query. Nothing here was exercised against a real order: not the guest refund path, not the buyer
+release, not the shared 404 on an order that genuinely exists but isn't the caller's. What is proven
+is that a fake id stops being distinguishable and that an anonymous caller is refused before the read;
+the rest rests on construction and tests, which is weaker.
+
+**A near-miss on that same control, and the lesson is the opposite of the obvious one.** It returned
+46 where `PROJECT_CONTEXT` §4 was *remembered* as saying 45, and the first instinct was to correct the
+doc. Reading it first showed §4 had already been corrected — hours earlier, by #541 — and to something
+more precise than the intended edit: **46 rows total, 45 organic**, the 46th being
+`dame+onboardtest@dragoncandy.com`, created after the original read. The control **corroborated** the
+doc, and the "correction" would have destroyed the organic-vs-total distinction while looking like a
+fix. *A number that disagrees with your memory of a doc is a reason to read the doc, not to overwrite
+it* — the same failure mode as a count inherited from an earlier investigation, one step further on.
+
+**Codex** passed clean on the first round: *"The changes consistently authenticate before the
+service-role lookup where possible and return the same opaque 404 for missing and unauthorized
+orders."* 3,604 tests pass; both changed functions are on the `typecheck:functions` checked list (not
+the pre-existing ignore list); build clean; ~230-line diff with no line-ending churn — the CRLF trap
+from the previous session was checked for before editing.
+
+**The durable lessons.** (1) A failure that does not move after a fix is a question, not a leftover.
+(2) The reorder that closes an oracle is often the one that breaks the feature, so record the
+mechanism with the finding. (3) Flattening control flow can delete a precondition nobody wrote down.
+(4) Two "identical" error strings in two files are a leak waiting to reopen — share the answer,
+including its status.
+
 ## [2026-08-26] Email verification exercised against prod — and the control that made it mean something
 
 Verification of shipped work, not new code. The §5 entry for the email-verification code flow

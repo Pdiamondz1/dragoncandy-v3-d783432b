@@ -1,5 +1,25 @@
 # Wiki Log
 
+## [2026-08-26] ingest | The package-order existence oracle, found by verifying a different fix
+
+**Created** `raw/sessions/2026-08-26-package-order-existence-oracle.md` and
+[[Package-Order Existence Oracle Session]] (`sources/package-order-existence-oracle-session.md`).
+**Updated** [[Service-Role Data Exposure]] (5th recorded instance + See Also), `index.md`
+(catalogues the new source, **and corrects [[Auth 401-Not-500 Session]]'s "Left open" clause**,
+which this closed the same day), `docs/SHIPPED_LOG.md`, `docs/PROJECT_CONTEXT.md` §5 (§4 needed no change — see below).
+
+**Compounded onto the class page rather than starting a thin new one.** This is a *weaker* form of
+[[Service-Role Data Exposure]] — it leaked existence, not data — which is exactly why it is worth
+recording: the weak form is the one a reviewer waves through, and this one had already been filed
+under a benign label ("validates the body before auth") consistent with everything visible from
+outside.
+
+**§4's user count was NOT corrected, and that is the point.** The `profiles` control returned 46
+against a remembered "45", and §4 turned out to have been corrected already by #541 — to **46 rows,
+45 organic**, which is more precise than the edit would have been. The control corroborated the doc.
+Recorded because the near-miss is the transferable part: *a number that disagrees with your memory of
+a doc is a reason to read the doc, not to overwrite it.*
+
 ## [2026-08-26] ingest | Email verification exercised on prod, and a P1 that was nearly filed
 
 **Created** `raw/sessions/2026-08-26-email-verification-prod-exercise.md` and

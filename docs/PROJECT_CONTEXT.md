@@ -379,10 +379,14 @@ Engineering cannot close these. Ordered by what blocks launch.
   around, not fixed. → `docs/wiki/concepts/donny-first-dashboard.md` · #410, #411, #423, #428, #429, #444
 - **An auth failure is not a server error** — 20 edge functions returned 500 (one 400) to an
   unauthenticated request, because every failure shared one hardcoded status. Authentication now
-  401; authorization/not-found/validation unchanged. **Pending:** `refund-package-order` and
-  `release-package-payout` look up the order with a service-role client BEFORE authenticating, so
-  an anonymous caller can tell whether an order exists — the naive reorder breaks guest refunds.
+  401; authorization/not-found/validation unchanged. Its one open item is **closed** below.
   → `docs/wiki/raw/sessions/2026-08-26-auth-401-not-500.md` · #542
+- **A service-role read answered a stranger** — the two functions that would not move to 401 read the
+  order with the service role and authorized after, so "this order exists" was distinguishable from
+  "it doesn't". The reorder that closes it breaks guest refunds, so a caller who presented *nothing*
+  is refused before the read and every later failure is one shared 404. Verified on prod; zero
+  package orders exist, so only the fake-id half is proven.
+  → `docs/wiki/concepts/service-role-data-exposure.md` (5th instance) · #545
 - **Two proxies answered every origin with `*`** — the only 2 of 125; they needed a wider
   `Allow-Headers` than `corsHeaders` gives, so copying the block beat sharing it. Fixed by
   sharing the origin *decision* and stamping it at the response boundary. Fleet sweep: 0.
