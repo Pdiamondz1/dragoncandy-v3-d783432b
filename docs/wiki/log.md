@@ -1,5 +1,29 @@
 # Wiki Log
 
+## [2026-08-26] ingest | TikTok connector: two locks not three, and four defects one real connection found
+
+**Created** [[TikTok Analytics Connector]] (`concepts/tiktok-analytics-connector.md`) and
+`raw/sessions/2026-08-26-tiktok-analytics-connector.md`. **Updated** `index.md`,
+`docs/SHIPPED_LOG.md`, `docs/PROJECT_CONTEXT.md` §5, `docs/DATABASE_SCHEMA.md`,
+`docs/runbooks/tiktok-analytics-connector-setup.md`.
+
+New page rather than a compound onto [[X Analytics Connector]]: this connector is defined by the
+places it deliberately **diverges** from X, so folding it in would bury the divergence as a
+retrieval key — and the divergence is the whole content.
+
+The durable half is not "TikTok works". It is three transferable rules. **A cost control is not a
+correctness control**: X's insights lock exists because X bills per read, TikTok's Display API is
+free, and carrying the lock anyway would add a place a claim can strand for no benefit.
+**Widening a column is not a local change** — every function *declaring* that type has to move
+with it, which is why the fix took three migrations rather than one. And **when a probe comes
+back clean, prove it could have come back dirty**: the status-RPC bug read as fine because every
+counter on the row was null, and a null coerces to anything.
+
+Also recorded, because it contradicts the other four connectors: **the acceptance signal differs
+per platform.** `last_synced_at` landing seconds after `connected_at` proves the API was really
+called on YouTube, Instagram and Facebook. TikTok's read fires on card render, so the gap was 38
+minutes, then 89 seconds. The runbook asserted the sibling rule and was wrong; corrected in place.
+
 ## [2026-08-26] ingest | The 12 money functions answering `.io` were stale bundles, not a bug
 
 **Created** `raw/sessions/2026-08-26-money-functions-stale-cors-bundles.md`.
