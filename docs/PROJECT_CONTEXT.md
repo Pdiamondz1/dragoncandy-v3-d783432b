@@ -303,20 +303,20 @@ Engineering cannot close these. Ordered by what blocks launch.
   → `docs/wiki/concepts/domain-migration-io-to-com.md`
 - **Apple App Store (Capacitor)** — phases 1–2 shipped; organization enrollment `5HA89RBHQH`
   approved; **ran on physical hardware 2026-08-14** (boot, login and Donny all pass, the last
-  proving the `capacitor://localhost` CORS path). **Pending:** deploying the **12** edge
-  functions that still answer `.io` to a native origin — re-measured 2026-08-26 by preflighting
-  all 125 functions from `capacitor://localhost` (this line said 13); 93 answer correctly and
-  the 12 are **exactly** the money surface — `release-creator-payout`, `release-package-payout`,
-  `release-sponsorship-payout`, `withdraw-pending-balance`, `refund-campaign-escrow`,
-  `refund-package-order`, `create-package-order-escrow`, `verify-campaign-escrow`,
-  `verify-package-order-escrow`, `verify-sponsorship-payment`, `invoice-rush-surcharges`,
-  `get-stripe-dashboard-link`. A `.com` origin echoes `.com` on the same function, so the `.io`
-  answer is real and not a probe artifact. In `WKWebView` this reads as a generic fetch error,
-  not a cosmetic mismatch; device
-  checks #4 camera, #6 purchase CTAs, #8 scrolling, #9 password reset; TestFlight (no App Store
-  Connect record yet); `.nvmrc` pinning Node 24 plus a vitest `.claude/worktrees/` exclude; a
-  private-window look at the landing footer on prod.
-  → `docs/superpowers/specs/2026-08-09-ios-testflight-first-build-design.md` · `docs/wiki/concepts/legal-entity-identity.md` · #439
+  proving the `capacitor://localhost` CORS path). **Icon + launch image replaced and confirmed on a
+  physical iPhone 2026-08-26 (#532)** — the "black eye" was a hole in the alpha channel, not paint;
+  the splash was still Capacitor's; `npm run cap:assets` rebuilds and asserts both. **Pending:** the
+  splash→shell **handoff** (not separately reported); deploying the **12** edge functions that still
+  answer `.io` to a native origin — re-measured 2026-08-26 across all 125 functions (this line said
+  13), 93 answer correctly, and the 12 are **exactly** the money surface: `release-creator-payout`,
+  `release-package-payout`, `release-sponsorship-payout`, `withdraw-pending-balance`,
+  `refund-campaign-escrow`, `refund-package-order`, `create-package-order-escrow`,
+  `verify-campaign-escrow`, `verify-package-order-escrow`, `verify-sponsorship-payment`,
+  `invoice-rush-surcharges`, `get-stripe-dashboard-link` — a `.com` control echoes `.com`, so it is
+  not a probe artifact, and in `WKWebView` it is a generic fetch error, not a cosmetic mismatch;
+  device checks #4/#6/#8/#9; TestFlight (no App Store Connect record yet); `.nvmrc` plus a vitest
+  worktrees exclude; a private-window look at the landing footer on prod.
+  → `docs/superpowers/specs/2026-08-09-ios-testflight-first-build-design.md` · `docs/wiki/concepts/legal-entity-identity.md` · `docs/wiki/concepts/ios-app-icon-and-launch-image.md` · #439, #532
 - **Content delivery system stabilization** — bug-fixing the creator→business content handoff
   and payment flow; gates production launch. → `docs/SHIPPED_LOG.md`
 - **Outstand social media integration** — IG/TikTok/YouTube linking + delegated posting; phases

@@ -1,5 +1,41 @@
 # Wiki Log
 
+## [2026-08-26] ingest | The app icon's black eye was the background showing through a hole
+
+**Created** [[iOS App Icon & Launch Image]] (`concepts/ios-app-icon-and-launch-image.md`) and
+`raw/sessions/2026-08-26-ios-app-icon-and-launch-image.md`. **Updated** `index.md`,
+`docs/DESIGN_SYSTEM.md` (two Design Rules), `docs/SHIPPED_LOG.md`,
+`docs/PROJECT_CONTEXT.md` §5.
+
+New page rather than a compound onto [[Brand Logo Sizing]]: that page is the same mark's size in
+**web** chrome, while this is asset catalogs, `scaleAspectFill` and generation tooling —
+compounding would have buried the native material as a retrieval key.
+
+The durable half is not the colour change. **The eye needed no artwork change at all** — it is a
+hole in the source's alpha channel, so the black was the navy background showing through, and a
+session hunting for black pixels to edit would have found none (224 → 0 over the eye rect).
+**Both new colours are derived rather than chosen**: the splash's `#241332` is copied from
+`index.html`'s prerendered shell because that is what paints next, and the logo's 423px width
+falls out of `scaleAspectFill` geometry (`2732/852` = 3.207 px/pt × the shell's 132pt).
+
+**Codex P2, real and generalisable**: the guard coupling the splash to `index.html` checked
+`includes("#241332")`, but that hex also appears in an HTML comment ten lines above the real
+assignment — so repointing the shell and leaving the comment stale would pass. *A guard that greps
+for a value will match the value's own documentation.* Match the thing that does the work.
+
+Two claims were corrected mid-session by measuring rather than reasoning: a predicted contrast
+regression that did not occur, and a file-size alarm that turned out to be a `sips` re-encode
+artifact (the "non-flat" region holds exactly **1** distinct colour). Both are recorded in place,
+with the wrong reasoning kept.
+
+**Updated the same day after hardware verification.** Both assets confirmed by the founder on a
+physical iPhone 15 Pro Max, so the "nothing has run on a device" caveat was struck from the
+concept page, `SHIPPED_LOG.md` and §5 within the hour — the splash→shell **handoff** remains
+separately unconfirmed and is recorded as such rather than folded in. Getting it onto the phone
+added the section *"Three copies of this project exist on disk"*: three delete-and-rebuild cycles
+failed because Xcode was building a **different worktree** whose icon hashed byte-identical to the
+old one, which DerivedData's `WorkspacePath` answers in one command. ***"It didn't update" is a
+path question before it is a caching question.***
 ## [2026-08-26] lint | Every dangling wikilink cleared, and the check that lets them regrow
 
 **Created** [[Verify Before Reporting]] (`concepts/verify-before-reporting.md`) and
