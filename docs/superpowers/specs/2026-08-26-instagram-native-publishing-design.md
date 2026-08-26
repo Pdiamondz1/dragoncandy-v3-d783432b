@@ -345,6 +345,68 @@ Then:
 
 ---
 
+## 10. Facebook, and why the queue became multi-platform
+
+A Facebook Page (**DragonCandy**, `1240103162522777`) was connected on 2026-08-26 and read
+insights successfully nine seconds later, clearing the "no Facebook Page exists to connect"
+founder item. That made Facebook publishing the obvious next platform, and forced a decision the
+Instagram-only design had deferred.
+
+### Facebook's publishing contract is NOT Instagram's
+
+Read from Meta's Pages, Video and Page Stories docs rather than inferred from the sibling:
+
+| | Instagram | Facebook |
+|---|---|---|
+| Photo | container → poll → publish | `POST /{page}/photos` — **one call** |
+| Text, no media | impossible | `POST /{page}/feed` — **one call** |
+| Reel | container → poll → publish | **start → upload → finish**, an upload session on a second host |
+| Story | container(`STORIES`) → poll → publish | photo: 2 steps; video: 3 |
+| Ready signal | `FINISHED` | `ready` — 7 statuses, lower case |
+| "Already published?" | `PUBLISHED` on the container | **no equivalent exists** |
+| Token | 60 days, dies unrefreshed | Page token, **never expires** |
+| Rate limit | flat 100 / 24h | a formula over engaged users |
+| Extra gate | one permission | a permission **and** a Page task |
+
+Two of those are load-bearing. **Facebook offers no equivalent of Instagram's `PUBLISHED`
+container status** — the single signal that resolves whether an interrupted publish landed — so
+the ambiguity Instagram lets us settle, Facebook does not. And **publishing needs both the
+`pages_manage_posts` permission and the `CREATE_CONTENT` task on the Page**, granted by different
+people and fixed different ways; the live connection already holds the task, so only the
+permission is outstanding.
+
+### The queue is shared; the protocol is not
+
+`publish_jobs` gained `platform`, `account_key`, `provider_ref`, `provider_post_id` and a nullable
+connection FK per platform, with a CHECK that exactly one is set. The claim/release/review/janitor
+machinery is untouched, because it is about *our* exactly-once guarantee rather than about Meta —
+and duplicating it per platform would produce five copies that drift, which is the shared-helper
+lesson #540 recorded.
+
+`CLAUDE.md` forbids renaming columns, so `ig_user_id`, `ig_container_id` and `ig_media_id` survive
+as **dead nullable columns**, superseded and never written again. Reusing them for Facebook data
+was the alternative and was rejected: `ig_user_id` holding a Page id is exactly the
+nearly-but-not-quite shape that makes the next reader believe a name that is lying.
+
+**A latent hole surfaced while writing it.** `publish_jobs_media_paths_check` was
+`CHECK (array_length(media_paths, 1) >= 1)` and had never rejected anything — `array_length('{}', 1)`
+is **NULL**, and a CHECK passes on NULL. Measured on prod, not reasoned. Nothing exploited it
+because the enqueue RPC tested for the empty case separately, so the table constraint was
+decorative while the RPC did the work. Replaced with a `coalesce(…, 0)` form that actually fires,
+and widened in the same statement for the one case Facebook genuinely has and Instagram does not.
+
+**Every guarantee from the six Codex rounds was re-proven against the new contract** — 23 checks,
+plus 23 more on the multi-platform behaviour, plus the function ACLs re-derived by object because
+four signatures changed and one function was renamed.
+
+### Still to do for Facebook
+
+The `facebook-publish-enqueue` and `facebook-publish-sweep` functions, plus
+`pages_manage_posts` on the Meta app and its own App Review. `_shared/facebook-publish.ts` and its
+23 tests are in place; the step machine that drives it is not.
+
+---
+
 ## 8. Not in this spec
 
 Facebook Pages, TikTok (draft mode needs no audit — a genuinely earlier win than assumed), X

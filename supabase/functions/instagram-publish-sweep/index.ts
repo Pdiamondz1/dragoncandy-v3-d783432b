@@ -129,12 +129,15 @@ interface Claim {
   job_id: string;
   claim_id: string;
   user_id: string;
-  connection_id: string;
-  ig_user_id: string;
+  platform: string;
+  /** The platform's own account id — here, the Instagram user id. */
+  account_key: string;
+  instagram_connection_id: string;
   content_type: ContentType;
   caption: string | null;
   media_paths: string[];
-  ig_container_id: string | null;
+  /** Instagram's container id. Facebook stores a video id in the same column. */
+  provider_ref: string | null;
 }
 
 /**
@@ -202,8 +205,15 @@ serve(async (req: Request) => {
         p_rate_limit: RATE_LIMIT_POSTS,
         p_rate_window_seconds: RATE_WINDOW_SECONDS,
         p_max_attempts: MAX_ATTEMPTS,
-        p_skip_ig_user_ids: rateLimited,
+        p_skip_account_keys: rateLimited,
         p_skip_job_ids: advanced,
+        // Scoped to this platform, because the rate limit is not the same
+        // number on both: Instagram is a flat 100 per rolling 24 hours per
+        // account, Facebook's Page limit is a formula over engaged users. A
+        // sweep that claimed the globally-oldest job and then applied
+        // Instagram's 100 to a Facebook Page would enforce a number that means
+        // nothing there.
+        p_platform: 'instagram',
       });
 
       if (error) {
@@ -215,8 +225,8 @@ serve(async (req: Request) => {
       flagged += Number(claim?.flagged ?? 0);
 
       if (!claim?.claimed) {
-        if (claim?.reason === 'rate_limited' && claim?.ig_user_id) {
-          rateLimited.push(String(claim.ig_user_id));
+        if (claim?.reason === 'rate_limited' && claim?.account_key) {
+          rateLimited.push(String(claim.account_key));
           counts.skipped++;
           continue;
         }
@@ -248,13 +258,13 @@ async function advance(db: any, job: Claim): Promise<Outcome> {
 
   try {
     // The connection is re-read rather than trusted from the job, and matched
-    // on `ig_user_id`. Instagram's row is upserted per user, so reconnecting to
+    // on `account_key`. Instagram's row is upserted per user, so reconnecting to
     // a DIFFERENT account reuses it — a job queued for account A must never
     // publish to account B. Same rule `cache_tiktok_insights` enforces with
     // `account_changed`, and the same failure if it does not: a real post
     // attributed to the wrong subject.
-    const conn = await loadConnection(db, job.user_id, job.ig_user_id);
-    if (!conn || conn.id !== job.connection_id) {
+    const conn = await loadConnection(db, job.user_id, job.account_key);
+    if (!conn || conn.id !== job.instagram_connection_id) {
       // Terminal: reconnecting writes a new row, so no number of retries brings
       // this connection back.
       await fail(
@@ -280,14 +290,14 @@ async function advance(db: any, job: Claim): Promise<Outcome> {
 
     const token = await ensureFreshToken(db, conn);
 
-    if (!job.ig_container_id) {
+    if (!job.provider_ref) {
       return await createStep(db, job, token);
     }
     return await publishStep(db, job, token);
   } catch (err) {
     if (err instanceof InstagramError) {
       if (err.code === 'needs_reconnect') {
-        await markNeedsReconnect(db, job.connection_id, err.message);
+        await markNeedsReconnect(db, job.instagram_connection_id, err.message);
         // Terminal: only the user re-consenting fixes a dead grant.
         await fail(db, job, err.message, { terminal: true });
         return 'failed';
@@ -343,15 +353,15 @@ async function createStep(db: any, job: Claim, token: string): Promise<Outcome> 
   }
 
   const containerId = await createContainer(
-    job.ig_user_id,
+    job.account_key,
     token,
     containerParams(job.content_type, path, signed.signedUrl, job.caption),
   );
 
-  const { data: recorded } = await db.rpc('record_publish_container', {
+  const { data: recorded } = await db.rpc('record_publish_ref', {
     p_job_id: job.job_id,
     p_claim_id: job.claim_id,
-    p_container_id: containerId,
+    p_ref: containerId,
   });
 
   if (!recorded) {
@@ -369,7 +379,7 @@ async function createStep(db: any, job: Claim, token: string): Promise<Outcome> 
 /** Steps 2 and 3 — poll, then publish once Meta says the container is ready. */
 // deno-lint-ignore no-explicit-any
 async function publishStep(db: any, job: Claim, token: string): Promise<Outcome> {
-  const containerId = job.ig_container_id!;
+  const containerId = job.provider_ref!;
   const { status, error } = await containerStatus(containerId, token);
 
   if (status === 'IN_PROGRESS') {
@@ -425,7 +435,7 @@ async function publishStep(db: any, job: Claim, token: string): Promise<Outcome>
 
   let mediaId: string;
   try {
-    mediaId = await publishContainer(job.ig_user_id, token, containerId);
+    mediaId = await publishContainer(job.account_key, token, containerId);
   } catch (err) {
     // THE POINT OF NO RETURN IS BEHIND US. A timeout, a dropped connection or a
     // Meta 5xx here does not mean the post did not go out — the request may
@@ -493,11 +503,11 @@ async function fail(
     p_claim_id: job.claim_id,
     p_error: reason,
     p_max_attempts: opts.terminal ? TERMINAL : MAX_ATTEMPTS,
-    // Waives the resume-from-stored-container protection, which is what stops a
-    // retry building a SECOND container and publishing twice. Only ever set for
-    // a container Meta has declared dead, where resuming is the thing that
-    // cannot work.
-    p_clear_container: opts.clearContainer === true,
+    // Waives the resume-from-stored-ref protection, which is what stops a retry
+    // building a SECOND container and publishing twice. Only ever set for a
+    // container Meta has declared dead, where resuming is the thing that cannot
+    // work.
+    p_clear_ref: opts.clearContainer === true,
   });
   if (error) console.error('[instagram-publish-sweep] fail_publish_job:', error);
   // Reported exactly once, on the transition — the `bump_flush_attempt`

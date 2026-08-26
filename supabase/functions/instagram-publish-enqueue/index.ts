@@ -222,6 +222,11 @@ serve(async (req: Request) => {
     // the connection's status in SQL — the copies of those checks that a future
     // caller cannot route around.
     const { data: result, error: rpcError } = await asUser.rpc('enqueue_publish_job', {
+      // The queue serves every platform since 20260826340000, so the platform
+      // is named rather than implied. `p_account_key` is left null: Instagram
+      // holds one connection per user and the RPC resolves it server-side,
+      // where Facebook must name which Page.
+      p_platform: 'instagram',
       p_content_type: contentType,
       p_media_paths: destinations,
       p_scheduled_at: typeof body?.scheduled_at === 'string' ? body.scheduled_at : null,
