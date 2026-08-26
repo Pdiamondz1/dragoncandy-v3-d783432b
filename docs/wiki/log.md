@@ -1,5 +1,37 @@
 # Wiki Log
 
+## [2026-08-26] ingest | Email verification by code, with the link kept working
+
+**Created** [[Email Verification Routes]] (`concepts/email-verification-routes.md`) and
+`raw/sessions/2026-08-26-email-verification-by-code.md`.
+**Updated** `index.md` (Concepts), `docs/SHIPPED_LOG.md`, `docs/PROJECT_CONTEXT.md` §5.
+
+Signup ended in `supabase.auth.signOut()`, discarding the tab that had just done the work; the
+only way forward was a mail client, a link, a third page and a second login. The session now
+survives and a six-digit code is entered in place — with the emailed link unchanged, because it
+is the only route that works when the tab is gone. The durable half is the entropy argument:
+`verify-email` runs at `verify_jwt = false` **because of the link**, so the gateway authenticates
+nobody and the code is safe only because the function body resolves it against the caller's own
+JWT. The attempt cap is per **user** rather than per code, since a resend would otherwise refill
+the budget — proven on prod in a rolled-back transaction where `remaining` went 2 → 1 → 0 through
+a resend, after which the correct code was refused. Two forced controls **failed to fail** before
+the tests were corrected rather than the claims softened.
+
+**Lint note (not fixed here):** the Codex pass caught `[[Verify Before Reporting]]` in the new
+page resolving to nothing. A sweep found this is systemic rather than a one-off — **52 of 203
+distinct wikilinks across `concepts/`, `entities/` and `analyses/` have no catalog entry in
+`index.md`**. The dangling link in the new page is repointed; the other 51 are left as a known
+lint backlog. The check that missed it was a bare `grep -F "[[Name]]"`, which also matches the
+link inside another entry's *prose* — resolution requires a catalog entry (`^- [[Name]](`).
+
+**Corrected two stale claims in `PROJECT_CONTEXT.md` §5, both about Twilio.** The Primary
+Compliance Profile is **Approved** (read off the console, which rendered "Pending review" until
+reloaded), and **21608 was never the compliance profile's doing** — it is the trial-account
+restriction, while the profile gates A2P 10DLC. The account is Pay-as-you-go with auto-recharge,
+so neither door is shut; note the green "Active" badge is account *status*, not type, and is not
+the evidence. The claim that "nobody has completed an SMS round trip" was also false — prod holds
+the full `start/sent` → `check/approved` sequence from 2026-08-24.
+
 ## [2026-08-24] ingest | The first production test of onboarding
 
 **Created** [[Onboarding Resume & Post-Login Routing]]

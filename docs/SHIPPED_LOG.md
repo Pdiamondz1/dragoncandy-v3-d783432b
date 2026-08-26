@@ -32,6 +32,89 @@
 >
 > **Adding an entry:** prepend it (newest first). See `knowledge-sync` step 4.
 
+
+## Email verification by code — the signup tab stops being thrown away (2026-08-26, #528, #530)
+
+Signing up ended with `supabase.auth.signOut()`. The tab that had just done the work was
+discarded, and the only way forward was to open a mail client, click a link, land on a third page
+and log in again. On a phone, where mail is a different app, that is a round trip many people
+never finish. Logging in unverified did the same thing by a different route. The founder's report
+was blunter: *"it still strands the signup tab."*
+
+The session now survives signup, and the email carries a **six-digit code** entered on the page
+the user is already standing on. **The link is unchanged and still works** — it is the only thing
+that does if the tab is closed, if the code is mistyped past its budget, or if the mail is read on
+another device, so the panel polls `profiles.email_verified` and moves on by itself when the link
+is used.
+
+**The durable half is the entropy argument.** The emailed token is a UUID — ~122 bits, safe to
+accept with **no session at all**, which it must be since the link arrives from a mail client that
+has never seen our origin. A six-digit code is ~20 bits, and `verify-email` runs at
+`verify_jwt = false` **because of that same link**. So the gateway authenticates nobody and the
+function body must: it resolves the code against `caller.id` from the request's own JWT and
+refuses without one. **Not defence in depth — the only thing standing there.** Without it, six
+digits are brute-forceable anonymously against every account on the platform. The code is accepted
+from the POST body only, never a query string, because a URL reaches server logs, browser history
+and outbound `Referer` headers.
+
+**The attempt cap stops the attack the JWT does not**: sign up as `victim@example.com`, never open
+the inbox, and guess. Email verification exists to prove inbox control, so guessing past it defeats
+the feature entirely. Two properties make it real. It is enforced in **SQL, not TypeScript** —
+counting in the function and then acting on the count is check-then-act, and concurrent guesses all
+read the same pre-cap value; this project shipped that exact bug once in the phone-verification
+throttle, where it was a Codex P1 and moved into `reserve_phone_verification_send`. And it is per
+**user across every live code**, not per code, because a resend mints a fresh row with
+`attempts = 0` and a per-code budget would refill on demand.
+
+Proven on prod in a rolled-back transaction: two wrong guesses, a resend, a third wrong guess —
+`remaining` went **2 → 1 → 0 through the resend** — and the **correct** code was then refused, with
+the profile still unverified. A correct code inside budget verified and flipped the profile; a
+double submit returned `already_verified` rather than an error. Control in the other direction: the
+same call without the `service_role` claim raises `forbidden: service role required`. Function ACL
+reads exactly `postgres` + `service_role`, with an invented function name returning nothing so the
+probe could answer negatively. **A strict cap is affordable only because the link is unaffected** —
+nobody is ever locked out of verifying, they are moved from one route to the other.
+
+**Nothing was loosened by keeping the session.** #528 had already made `ProtectedRoute` gate every
+authenticated route on `email_verified`, and `AuthPage` refuses to route an unverified user onward.
+*Signing out was never the control — it was a side effect standing in for one.* In #528's shared
+derivation, `??` rather than `||` is load-bearing: Supabase's own confirmation is **disabled** here
+(45 of 45 users carry `email_confirmed_at`, 44 within one second of creation), so `||` would
+auto-verify every password signup and switch the gate off for everyone.
+
+**A dormant permission is one feature away from being live.** `email_verification_tokens` carried a
+client SELECT policy and 14 grants to `anon`/`authenticated` — harmless while nothing in `src/`
+read the table, and this change gave it something worth reading. Closed at TABLE level (a
+column-level `REVOKE` is a no-op against Supabase's ambient grant); policies 1 → 0, client grants
+14 → 0, `service_role` keeps its 7.
+
+**Forced controls on every claim that matters**, and two that *failed to fail*. Removing rejection
+sampling, removing the poll, taking `p_user_id` from the request body, dropping the bearer check,
+reading the code from a query string, and restoring a `signOut` each turn their pin red. But the
+"keeps polling across parent re-renders" test first passed a **stable** `vi.fn()`, so the callback
+identity never changed and it would have passed against the exact dependency-array bug it exists to
+catch; after that was fixed it *still* passed, because the loop stopped re-rendering before the
+restarted interval could have fired. The re-renders have to keep **outpacing** the interval. Both
+times the test was fixed rather than the claim softened.
+
+Deploy order was schema → functions → frontend; the gap that leaves is the benign one (an email
+carrying a code the page does not yet ask for, with the link still working). Boot-verified after
+deploy: the code path returns **401 with our JSON body** unauthenticated, an invented function name
+returns **404 with the gateway's**, the public anon key is refused, and the link path still **302**s.
+
+**Process notes.** A migration version was taken twice by a parallel session's TikTok work —
+`supabase/migrations.test.ts` compares the **repo tree** and cannot see a file living only on
+another branch; `db:apply`'s already-recorded refusal caught both, and **the ledger is the other
+half of the namespace**. Python edits silently converted CRLF → LF on both edge functions,
+inflating the diff from ~123 real lines to 513 (restored, and amended into the commit, since
+`git diff origin/main...HEAD` compares commits rather than the working tree).
+`deno check --node-modules-dir=auto` rewrote `node_modules` and broke the test runner outright.
+And the first prod verification probe grepped only the scripts named in the root HTML, where the
+lazy `AuthPage` chunk can never appear — the negative control returned 0 the same way, which was
+the tell.
+
+3528 tests, typecheck, lint and build green. Codex clean at round 1.
+
 ## [2026-08-25] Onboarding, tested on production for the first time — and three defects only production could show
 
 The founder drove a real creator signup on prod (`dame+onboardtest@dragoncandy.com`) while an
