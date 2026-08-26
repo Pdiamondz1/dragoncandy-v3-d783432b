@@ -113,7 +113,8 @@ holds no Toast credentials. See §6.
 > task, forever.
 >
 > **The exception is load-bearing: an entry marked `→ no wiki page yet` is the ONLY copy.**
-> Two exist today (TikTok, email verification — the knowledge layer owes #525–#530). Do not
+> **One** exists today — the TikTok connector (#525, #529); email verification was the second
+> until #531 backfilled it hours later. Do not
 > trim one to an index line before its prose has been backfilled to `SHIPPED_LOG.md`; that is
 > the one edit in this file that can destroy information rather than relocate it. Trimming is
 > safe *because* the richer copy was checked to exist — never because this header says so.
@@ -135,8 +136,15 @@ holds no Toast credentials. See §6.
 
 Engineering cannot close these. Ordered by what blocks launch.
 
-- **Twilio Primary Compliance Profile is unapproved** — error 21608 means **no real user can
-  verify a phone**. Launch-blocking. (Onboarding; identity slice 2.)
+- **Twilio — CLEARED, and it was never what this list said it was (#531, 2026-08-26).** This
+  entry read "Primary Compliance Profile unapproved — error 21608 means no real user can verify
+  a phone. Launch-blocking." The profile is **Approved**, and **21608 was the *trial-account*
+  restriction all along** — a different door, already lifted (billing reads pay-as-you-go with
+  auto-recharge, which a trial account cannot be). The compliance profile gates A2P 10DLC and
+  toll-free registration instead. A real SMS round trip is recorded on prod from 2026-08-24
+  (`start/sent` → `check/approved`, matched by a Twilio Verify log, status Approved). **Residual,
+  not a blocker:** a send to a number never on the Verified Caller ID list is still unproven and
+  needs a real phone. → `docs/wiki/concepts/email-verification-routes.md`
 - **Site-gate go-live, in this order:** set the four Production-scope Vercel variables →
   deploy → run the runbook's checks → **only then** disable Supabase signup. `SITE_GATE_ENABLED`
   is the lever; deleting the variables is the wrong rollback, because it fails closed.
@@ -178,13 +186,20 @@ Engineering cannot close these. Ordered by what blocks launch.
   landing seconds after `connected_at`, and checking it needs prod DB access; App Review needs
   a demo video, and the site gate breaks its privacy-policy requirement exactly as it does
   Google's and Meta's. → no wiki page yet · #525, #529
-- **Email verification reworked, and signup made to finish** — verification is a **route
-  gate** rather than a side effect of signing the user out (#528); the wizard is entered only
-  when the account never finished it (#527); and the signup tab is allowed to complete instead
-  of being discarded (#530). Two migrations on `origin/main` (`20260826220000`,
-  `20260826250000`) add a verification **code** path beside the link. **Added to this index
-  2026-08-26 — same gap as TikTok above.** **Pending:** the knowledge-sync backfill; migration
-  applied-state and any prod exercise are unverified. → no wiki page yet · #527, #528, #530
+- **Email verification by code — the signup tab stops being thrown away** — signup used to end
+  in `signOut()`, discarding the tab that had just done the work; the session now survives and a
+  six-digit code is entered in place, with **the emailed link unchanged** (the only route that
+  works once the tab is closed, so the panel polls and moves on by itself). The durable half is
+  the entropy argument: the UUID link is safe with no session, which is why `verify-email` runs
+  at `verify_jwt = false` — and the ~20-bit code is safe **only** because the function body
+  resolves it against the caller's own JWT. The attempt cap lives in SQL because counting in
+  TypeScript is check-then-act, and is per **user**, since a resend mints a fresh row and would
+  otherwise refill the budget on demand. Verification is a **route gate** (#528); the wizard is
+  entered only when the account never finished it (#527). **Pending:** no real signup has
+  exercised the code flow end to end on prod; `dame+onboardtest@dragoncandy.com` is a live prod
+  account counted in the investor-facing user figure; and a distinct wizard-completion signal to
+  replace `is_completed` as the routing gate.
+  → `docs/wiki/concepts/email-verification-routes.md` · #527, #528, #530, #531
 - **X (Twitter) analytics connector** — merged, applied, deployed; `@dragoncandyco` connected
   2026-08-25 with a real refresh token, which is what finally proved `X_CLIENT_SECRET`. The
   analytics read answers **402 `credits-depleted`** — X deleted its free tier in February 2026.
@@ -221,7 +236,8 @@ Engineering cannot close these. Ordered by what blocks launch.
   requirements no brand could satisfy resolved and pinned by tests. **Tested on production
   2026-08-24**, and three defects only production could show are fixed (#521, #523).
   **Pending:** the Donny RAG sync; the creator address slide, the ready slide and the entire
-  restaurant flow, all still unexercised; Twilio compliance (founder, above).
+  restaurant flow, all still unexercised. **Twilio is no longer a blocker here** (#531) — see
+  Open items.
   → `docs/wiki/concepts/onboarding-wizard-and-depth.md` · `docs/wiki/concepts/onboarding-resume-and-routing.md` · `docs/wiki/concepts/csp-redirect-hops.md` · #521, #523
 - **The investor deck, rebuilt on the model** — fifteen slides, every figure read from
   `src/pitch/model/` so the deck, the diligence document and the Assumptions Ledger cannot
@@ -302,9 +318,11 @@ Engineering cannot close these. Ordered by what blocks launch.
   → `docs/wiki/concepts/site-access-lockdown.md` · `docs/runbooks/site-access-lockdown.md`
 - **Identity & verification (slice 2 of 4)** — merged (#484), 11 migrations applied and all five
   edge functions deployed and boot-verified 2026-08-23, each prerequisite checked by **object**
-  with a control that could have failed. **Pending:** nobody has completed an SMS round trip, so
-  the Twilio path is proven against a stub and nothing else; no address has been geocoded end to
-  end; the `READINESS_GATE_ENABLED` decision (founder, above); `send-promotion-notification`
+  with a control that could have failed. **The SMS round trip IS complete** — this clause said
+  nobody had done one and prod disagrees (#531): `phone_verification_attempts` records
+  `start/sent` → `check/approved` on 2026-08-24, matched by a Twilio Verify log. The Twilio path
+  is proven against the real provider, not a stub. **Pending:** no address has been geocoded end
+  to end; the `READINESS_GATE_ENABLED` decision (founder, above); `send-promotion-notification`
   still reads the three Twilio secrets that were overwritten and has not been re-checked; two
   functions surface an unauthenticated request as 500 rather than 401 (pre-existing); the
   pre-existing unauthenticated IDOR in `get_user_conversations`, found in scope and left for an

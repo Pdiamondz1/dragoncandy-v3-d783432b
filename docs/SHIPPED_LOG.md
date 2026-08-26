@@ -46,7 +46,7 @@ The July split (#294, #295) cut the file **176,620 → 73,742 B** and stated in 
 generators so it cannot regrow"*. **Six weeks later it was back within 3.2% of its pre-split
 size.** Both rules were still present, still correct, and still ignored.
 
-**Result: 170,999 → 47,384 B (−72%); §5 154,964 → 31,349 B (−80%).**
+**Result: 170,999 → 49,438 B (−71%); §5 154,964 → 33,403 B (−78%).**
 
 **Nothing was destroyed, and that was established before cutting rather than argued afterwards.**
 All **79** referenced wiki pages exist and each is *larger* than the §5 entry it backs;
@@ -135,6 +135,35 @@ bearer token; exploitability untested, so it is recorded for an owner rather tha
 **Verified:** 3,546 tests pass (315 files); production build clean. `npm run typecheck` reports
 one **pre-existing** error — `middleware.ts(30): Cannot find module '@vercel/functions'` — on a
 file this branch does not touch, which Codex independently confirmed as outside the patch.
+
+### A parallel session merged mid-branch and falsified two of this file's claims
+
+**#531 landed on `main` while this branch was open**, and it corrected exactly the kind of claim
+this cleanup exists to police — so the merge could not be a fast-forward of a tidy-up, it had to
+be an integration.
+
+- **The #1 founder blocker in the new "Open items" list was wrong.** It read *"Twilio Primary
+  Compliance Profile is unapproved — error 21608 means no real user can verify a phone.
+  Launch-blocking."* The profile is **Approved**, and **21608 was the trial-account restriction
+  all along** — a different door, already lifted. Merging this branch unchanged would have
+  reinstated a false launch-blocker at the top of the list the founder is meant to work from.
+- **"Nobody has completed an SMS round trip" was false.** Prod records `start/sent` →
+  `check/approved` on 2026-08-24, matched by a Twilio Verify log.
+- **The email-verification entry's `→ no wiki page yet` was false**, because #531 wrote
+  `docs/wiki/concepts/email-verification-routes.md`. That entry is now a proper index line
+  pointing at it, and the §5 header's exception list drops from two entries to one (TikTok).
+
+**The conflict resolution kept BOTH sides of every file.** `SHIPPED_LOG.md`, `log.md` and the
+skill's `MEMORY.md` each had two 2026-08-26 entries prepended independently; taking either side
+would have silently deleted a colleague's knowledge-sync work. Verified after resolving by
+confirming both headings survive in each file.
+
+**This is the `[scope-paths]` lesson arriving on schedule.** The knowledge-sync loop memory
+already says: on a repo with 30+ worktrees, *"has someone already shipped this?"* has a real
+answer one command away. It was found here only because the merge step checked CI first and the
+run list showed another branch's name. **On a long-running branch, re-check `origin/main` at
+merge time, not only at rebase time** — a docs branch is exactly the kind that sits open long
+enough for its own subject matter to move underneath it.
 
 → `docs/wiki/concepts/context-tax.md`
 

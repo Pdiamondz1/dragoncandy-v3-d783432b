@@ -354,8 +354,8 @@
 - **Output:** `docs/wiki/concepts/context-tax.md` (new "The regrowth (2026-08-26)" section) +
   `docs/wiki/raw/sessions/2026-08-26-context-tax-regrowth.md`, indexed and logged
   (`log.md` → `[2026-08-26] ingest | §5 regrew to 155 KB, and the fix that "makes it stick" did not`).
-- **Happened:** §5 was 154,964 B of a 170,999 B always-loaded file (90%). Cut to 31,349 B
-  (file −72%), added an `### Open items — founder action` subsection, corrected five wrong
+- **Happened:** §5 was 154,964 B of a 170,999 B always-loaded file (90%). Cut to 33,403 B
+  (file −71%), added an `### Open items — founder action` subsection, corrected five wrong
   claims, added two missing workstreams, and shipped `src/projectContextSize.test.ts`.
   Compounded onto the existing page rather than creating a new one; struck through the
   falsified "cannot regrow" claim in place and corrected both `index.md` lines carrying it.
@@ -397,6 +397,17 @@
     #530) had no entry anywhere in the knowledge layer. Bloat costs tokens; omission makes a
     reader conclude the work does not exist. `git log --oneline HEAD..origin/main` and check
     each merged PR has an index line — the natural extension of `[scope-paths]`.
+  - **`[recheck-at-merge]` Re-check `origin/main` at MERGE time, not only at rebase time.**
+    #531 merged while this branch was open and falsified two of its claims — including the **#1
+    entry in the new founder "Open items" list** (Twilio compliance "unapproved, launch-blocking";
+    the profile is Approved, and 21608 was the *trial-account* restriction, a different door
+    already lifted). Merging unchanged would have reinstated a false launch-blocker at the top of
+    the list the founder works from, **and** deleted #531's own §5 entry. It was caught only
+    because the merge step checked CI first and `gh run list` surfaced another branch's name. A
+    docs branch is exactly the kind that stays open long enough for its own subject matter to move
+    underneath it, so `[scope-paths]` applies **again at merge**, not once at the start. Resolve
+    both-prepended-an-entry conflicts by keeping **both** sides, then verify both headings survive
+    in each file — taking either side silently deletes a colleague's knowledge-sync run.
   - **`[codex-citation]` Check Codex's CITATION, not only its claim.** It cited `AGENTS.md`,
     which `CLAUDE.md` flags as a stale duplicate and which produced a refuted P1 on #519. Here
     the same sentence was in `CLAUDE.md` too, so the finding stood — but that had to be

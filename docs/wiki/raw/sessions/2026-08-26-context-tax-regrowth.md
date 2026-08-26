@@ -18,8 +18,8 @@ about six weeks. **That claim is now falsified and is corrected in place on the 
 ## What was done
 
 §5 rewritten as a strict index — one or two lines per entry, `**Pending:**` kept verbatim where
-work is genuinely blocked, narrative dropped. Result: file **170,999 → 47,384 B (−72%)**, §5
-**154,964 → 31,349 B (−80%)**.
+work is genuinely blocked, narrative dropped. Result: file **170,999 → 49,438 B (−71%)**, §5
+**154,964 → 33,403 B (−78%)**.
 
 New **`### Open items — founder action`** subsection hoists the 11 blockers engineering cannot
 close into one list, ordered by what blocks launch. Previously these were scattered across ~20

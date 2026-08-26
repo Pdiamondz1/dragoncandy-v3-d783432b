@@ -18,8 +18,8 @@ import { join } from 'node:path';
  * the reason `brandLogo.test.ts`, `profilesWriteGrants.test.ts` and `migrations.test.ts` exist.
  * So the rule is a test now.
  *
- * The caps carry deliberate headroom over the 2026-08-26 cleanup (§5 at 31,349 B / 85 entries /
- * whole file 47,384 B). They are a ceiling on drift, not a target: a
+ * The caps carry deliberate headroom over the 2026-08-26 cleanup (§5 at 33,403 B / 85 entries /
+ * whole file 49,438 B). They are a ceiling on drift, not a target: a
  * genuinely new workstream should fit comfortably. When one does not, the answer is almost never
  * to raise the cap — it is that the prose belongs in `docs/SHIPPED_LOG.md` (full session
  * narrative) or `docs/wiki/` (durable synthesis), which are richer than §5 for almost every entry

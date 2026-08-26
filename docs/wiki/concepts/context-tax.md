@@ -49,8 +49,8 @@ Result: **176,620 → 73,742 bytes (−58%)**, and growth per shipped branch fro
 
 | | 2026-07-18 | after #294/#295 | 2026-08-26 | after this cleanup |
 |---|---|---|---|---|
-| whole file | 176,620 B | 73,742 B | **170,999 B** | **47,384 B** |
-| §5 alone | — | — | **154,964 B (90%)** | **31,349 B** |
+| whole file | 176,620 B | 73,742 B | **170,999 B** | **49,438 B** |
+| §5 alone | — | — | **154,964 B (90%)** | **33,403 B** |
 
 Six weeks, back to within 3.2% of the pre-split size. The largest two entries were 13 KB **each**,
 in a section whose own header says *"Index only — one line per entry"*.

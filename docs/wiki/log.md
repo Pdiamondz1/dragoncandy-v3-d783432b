@@ -14,7 +14,7 @@ dated rather than deleted, because the reason it was believed is the lesson.
 
 **The durable rule:** *a written rule that nothing enforces is not a control* — now
 `src/projectContextSize.test.ts` (per-entry line cap, byte caps, rule-text presence). Whole file
-**170,999 → 47,384 B (−72%)**; §5 **154,964 → 31,349 B (−80%)**.
+**170,999 → 49,438 B (−71%)**; §5 **154,964 → 33,403 B (−78%)**.
 
 **And a rule about controls themselves.** The first draft's control asserted "§5 parses at least
 40 entries" — a **content floor, not a parser check**, which Codex correctly rejected: §5 getting
