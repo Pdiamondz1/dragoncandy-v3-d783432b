@@ -3,7 +3,8 @@ import Stripe from "https://esm.sh/stripe@18.5.0";
 import { createClient } from "npm:@supabase/supabase-js@2.57.2";
 import { writePaymentEvent } from "../_shared/payment-events.ts";
 import { corsHeaders } from "../_shared/cors.ts";
-import { statusFor, unauthorized } from "../_shared/http-error.ts";
+import { HttpError, statusFor, unauthorized } from "../_shared/http-error.ts";
+import { orderNotAccessible } from "../_shared/package-order-access.ts";
 
 // Refund a package order's held escrow to the buyer (powers the F4 "refunded if they don't deliver" promise).
 // DEPLOY WITH verify_jwt=false: a guest buyer (no JWT) can cancel via their order token. Authorized to either
@@ -40,16 +41,37 @@ serve(async (req) => {
     const isServiceRole = !!token && token === Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
 
     const { orderId, guestToken, reason } = await req.json();
-    if (!orderId) throw new Error("Missing required field: orderId");
+    if (!orderId) throw new HttpError(400, "Missing required field: orderId");
+
+    // ── Resolve the caller's JWT BEFORE the order is read ───────────────────────────────────────────────
+    // The order is fetched with the SERVICE ROLE, so reading it first and authorizing afterwards let an
+    // anonymous caller tell "this order exists" from "it doesn't" — an existence oracle on the payment
+    // surface (see _shared/package-order-access.ts). A guest's credential IS a column on the order, so the
+    // read cannot move below authorization entirely; what CAN move above it is refusing a caller who has
+    // presented nothing at all. Everything past this point had some credential to offer.
+    let callerUserId: string | null = null;
+    if (!isServiceRole) {
+      const { data: userData } = await supabaseClient.auth.getUser(token);
+      callerUserId = userData?.user?.id ?? null;
+      if (!callerUserId && !guestToken) throw unauthorized("User not authenticated");
+    }
 
     const { data: order, error: orderErr } = await supabaseClient
       .from("package_orders")
       .select("id, creator_id, buyer_user_id, buyer_guest_token, escrow_status, escrow_payment_intent_id, payout_executed_at, content_submitted_at")
       .eq("id", orderId)
       .single();
-    if (orderErr || !order) throw new Error(`Order not found: ${orderErr?.message}`);
+    // The real reason is logged; the CALLER is told only the shared opaque answer, identical to the one a
+    // non-participant gets below. Diagnosability without an oracle.
+    if (orderErr || !order) {
+      logStep("Order lookup failed", { orderId, error: orderErr?.message });
+      throw orderNotAccessible();
+    }
 
     // ── Authorize: service-role, OR a participant (buyer via JWT/guest-token, or the creator declining) ──
+    // Every identity comparison is guarded on a non-null callerUserId: buyer_user_id is NULL on a guest
+    // order, and `null === null` would have authorized a caller who holds a guest token for a DIFFERENT
+    // order as though they were the buyer of this one.
     let actorId: string | null = null;
     let actorRole: "business" | "creator" | "system" = "system";
     if (isServiceRole) {
@@ -57,20 +79,18 @@ serve(async (req) => {
     } else if (guestToken && order.buyer_guest_token && guestToken === order.buyer_guest_token) {
       actorRole = "business";
       logStep("Guest buyer refund", { orderId });
+    } else if (callerUserId && callerUserId === order.buyer_user_id) {
+      actorId = callerUserId;
+      actorRole = "business";
+      logStep("Participant authenticated", { userId: callerUserId, role: actorRole });
+    } else if (callerUserId && callerUserId === order.creator_id) {
+      actorId = callerUserId;
+      actorRole = "creator";
+      logStep("Participant authenticated", { userId: callerUserId, role: actorRole });
     } else {
-      const { data: userData, error: userError } = await supabaseClient.auth.getUser(token);
-      if (userError || !userData?.user) throw unauthorized("User not authenticated");
-      const uid = userData.user.id;
-      if (uid === order.buyer_user_id) {
-        actorId = uid;
-        actorRole = "business";
-      } else if (uid === order.creator_id) {
-        actorId = uid;
-        actorRole = "creator";
-      } else {
-        throw new Error("Not authorized to refund this order");
-      }
-      logStep("Participant authenticated", { userId: uid, role: actorRole });
+      // Deliberately the SAME error as "no such order" — a stranger must not learn this one exists.
+      logStep("Caller is not a participant", { orderId, userId: callerUserId });
+      throw orderNotAccessible();
     }
 
     // Guards: never refund after the creator was paid; act only from 'held' (fresh) or 'refunding'

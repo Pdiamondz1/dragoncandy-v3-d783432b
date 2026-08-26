@@ -21,6 +21,13 @@
  * validation failures all still return the function's existing generic status.
  * Fixing those is a larger behaviour change on payout and escrow endpoints and
  * belongs in its own review, not folded into a status correction.
+ *
+ * That review happened, for one case: the package-order endpoints answered
+ * "not found" and "not yours" differently, which is an existence oracle rather
+ * than a cosmetic status problem. `notFound` exists to serve the single opaque
+ * answer both cases now share — see `package-order-access.ts`. Everything else
+ * in the paragraph above still holds; a not-found error elsewhere on this
+ * surface is still whatever its function already returned.
  */
 export class HttpError extends Error {
   readonly status: number;
@@ -34,6 +41,13 @@ export class HttpError extends Error {
 
 /** An authentication failure — no credential, a rejected credential, or no user behind it. */
 export const unauthorized = (message: string): HttpError => new HttpError(401, message);
+
+/**
+ * "There is nothing here for you." Use this where the caller must not learn
+ * whether the thing exists — the message is then the same for a missing row and
+ * for a row that is not theirs, and the status has to match too.
+ */
+export const notFound = (message: string): HttpError => new HttpError(404, message);
 
 /**
  * The status a caught error should be reported as.
