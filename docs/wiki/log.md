@@ -2,8 +2,10 @@
 
 ## [2026-08-26] ingest | An auth failure is not a server error
 
-**Created** `raw/sessions/2026-08-26-auth-401-not-500.md`.
-**Updated** `docs/SHIPPED_LOG.md`, `docs/PROJECT_CONTEXT.md` §5.
+**Created** `raw/sessions/2026-08-26-auth-401-not-500.md` and
+[[Auth 401-Not-500 Session]] (`sources/auth-401-not-500-session.md`).
+**Updated** `index.md` (catalogues the new source), `docs/SHIPPED_LOG.md`,
+`docs/PROJECT_CONTEXT.md` §5.
 
 Code change + deploy (#542, `ced582f4`, 20 functions). Every failure in these functions returned
 one hardcoded status, so an unauthenticated request answered 500 — retryable and pageable, which
