@@ -29,24 +29,35 @@ so they point at it instead. One concept was genuinely missing: five pages point
 defect as the one that started this, a `grep -F` that matched a prose mention rather than a
 catalog definition. Both are instruments answering a different question than the one asked.
 
-`scripts/lib/wikilinks.test.ts` now gates CI on 1,942 links: no dangling target, every catalog
+`scripts/lib/wikilinks.test.ts` now gates CI on 1,958 links: no dangling target, every catalog
 path resolving to a real file, every page cataloged, no mojibake. It knows the two namespaces
 that are deliberate — skills (`.claude/skills/<name>/SKILL.md`) and the index itself — and
 ignores code spans. Proven by forcing it red three ways; **the mojibake control passed on the
 first attempt and had to be redone**, because the injected bytes were Latin-1 where the check
 reads UTF-8. A control that fails to fail is the failure.
 
-**Codex then found the checker wrong twice, both real.** The mojibake detector was a list of
-the five sequences this cleanup happened to contain — which is *"a guard that enumerates the
-bad cases treats every case it has not met as good"*, the lesson this repo already recorded on
-the X connector, reproduced inside the very tool built to enforce that discipline. It is now a
-round trip: a run is mojibake exactly when mapping it back through CP1252 yields valid UTF-8
-for a non-ASCII character, so a double-encoded curly apostrophe or accented `e` is caught
-without ever having been listed, while `café` and `naïve` are not. (Those examples are
-described rather than shown, because writing the damaged bytes into this page would trip the
-check — which is the check working.) And the fence regex required a *closing* fence, while markdown treats an
-unclosed one as running to end of document — so a quoted link after a stray opener would have
-failed CI over text that is not a link. Both fixed with paired controls.
+**Codex then found the checker wrong four times across two rounds, every one real, and every
+one in the checker rather than the cleanup.** The mojibake detector was a list of the five
+sequences this cleanup happened to contain — which is *"a guard that enumerates the bad cases
+treats every case it has not met as good"*, the lesson this repo already recorded on the X
+connector, reproduced inside the tool built to enforce that kind of discipline. It is now a
+round trip against the *good* case: a run is mojibake exactly when mapping it back through
+CP1252 yields valid UTF-8 for a non-ASCII character, so a double-encoded curly apostrophe or
+accented `e` is caught without ever having been listed, while `café` and `naïve` are not.
+(Those examples are described rather than shown, because writing the damaged bytes into this
+page trips the check — which is the check working.)
+
+The other three were markdown parsing, and all three fail in the same direction: **a false CI
+failure over text that is deliberately not a link.** Fences were matched in pairs, but
+markdown treats an unclosed fence as running to end of document. A line like an info-string
+fence *inside* a block was read as a closer, reopening the document and scanning the rest of
+the code as prose. And code spans were matched on a single backtick, so the multi-backtick
+form a page uses to write a literal link left the link exposed — the regex consumed the two
+adjacent backticks as an empty span.
+
+Fixing the last of those **raised coverage from 1,942 links to 1,958**: the old regex had been
+over-blanking, so sixteen real links were never checked at all. A parser that is wrong about
+markdown does not merely mis-report — it silently shrinks what the gate covers.
 See [[Verify Before Reporting]].
 
 ## [2026-08-26] ingest | Email verification by code, with the link kept working

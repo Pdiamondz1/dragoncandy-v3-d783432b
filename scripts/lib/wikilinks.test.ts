@@ -148,4 +148,25 @@ describe('the checker itself can fail', () => {
     const tildeInsideBackticks = ['```', '~~~', '[[Inside]]', '```', '[[Outside]]'].join('\n');
     expect(extractTargets(tildeInsideBackticks)).toEqual(['Outside']);
   });
+
+  it('does not treat an info-string line inside a block as a closing fence', () => {
+    // ```ts is content here, not a closer — reading it as one reopens the document and
+    // scans the remaining code as prose. (Codex second review, round 2.)
+    const nested = ['```', '```ts', '[[Inside The Block]]', '```', '[[After The Block]]'].join('\n');
+    expect(extractTargets(nested)).toEqual(['After The Block']);
+  });
+
+  it('honours multi-backtick code spans', () => {
+    // This is how a page writes a literal `[[Name]]` — a single-backtick regex matches the
+    // two adjacent backticks as an empty span and leaves the link exposed.
+    expect(extractTargets('quoting ``[[Ghost Page]]`` literally')).toEqual([]);
+    expect(extractTargets('quoting `` `[[Ghost Page]]` `` literally')).toEqual([]);
+    // control: the same text with no backticks at all is still found
+    expect(extractTargets('quoting [[Ghost Page]] literally')).toEqual(['Ghost Page']);
+  });
+
+  it('does not let a longer backtick run close a shorter span, or vice versa', () => {
+    // opener of 1 must close on a run of exactly 1, so the ``` run is not its closer
+    expect(extractTargets('a `b ``` c` [[Real]]')).toEqual(['Real']);
+  });
 });

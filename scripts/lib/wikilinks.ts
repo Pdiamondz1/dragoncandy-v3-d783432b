@@ -52,23 +52,84 @@ export function stripCode(text: string): string {
   const defenced = text
     .split('\n')
     .map((line) => {
-      const opener = line.match(/^\s*(`{3,}|~{3,})/);
+      const delimiter = line.match(/^\s*(`{3,}|~{3,})(.*)$/);
       if (fence !== null) {
-        // a closing fence must be the same character and at least as long as the opener
-        if (opener && opener[1][0] === fence[0] && opener[1].length >= fence.length) fence = null;
+        // A closing fence is the same character, at least as long, and followed by nothing
+        // but whitespace. ```` ```ts ```` inside a block is CONTENT — treating it as a
+        // closer reopens the document and scans the rest of the code as prose.
+        const closes =
+          delimiter !== null &&
+          delimiter[1][0] === fence[0] &&
+          delimiter[1].length >= fence.length &&
+          delimiter[2].trim() === '';
+        if (closes) fence = null;
         return blank(line);
       }
-      if (opener) {
-        fence = opener[1];
+      if (delimiter) {
+        fence = delimiter[1];
         return blank(line);
       }
       return line;
     })
     .join('\n');
 
-  // A code span runs to the next backtick and may wrap a line, but never spans a blank
-  // line — that is where markdown itself gives up, so the linter stops there too.
-  return defenced.replace(/`[^`]*?`/g, (m) => (/\n[ \t]*\n/.test(m) ? m : blank(m)));
+  return stripInlineCode(defenced);
+}
+
+/**
+ * Blank out inline code spans, honouring multi-backtick delimiters.
+ *
+ * A span opens with a run of N backticks and closes at the next run of EXACTLY N — which is
+ * how markdown lets `` `[[Name]]` `` be written literally. A single-backtick regex matches
+ * the two adjacent backticks as an empty span and leaves the link exposed, failing CI over
+ * text that is deliberately not a link. (Codex second review, round 2.)
+ */
+function stripInlineCode(text: string): string {
+  const blank = (m: string) => m.replace(/[^\n]/g, ' ');
+  let out = '';
+  let i = 0;
+
+  while (i < text.length) {
+    if (text[i] !== '`') {
+      out += text[i];
+      i += 1;
+      continue;
+    }
+
+    let openLen = 0;
+    while (text[i + openLen] === '`') openLen += 1;
+
+    // scan forward for a backtick run of exactly the same length
+    let j = i + openLen;
+    let closeAt = -1;
+    while (j < text.length) {
+      if (text[j] !== '`') {
+        j += 1;
+        continue;
+      }
+      let runLen = 0;
+      while (text[j + runLen] === '`') runLen += 1;
+      if (runLen === openLen) {
+        closeAt = j;
+        break;
+      }
+      j += runLen;
+    }
+
+    const span = closeAt === -1 ? null : text.slice(i, closeAt + openLen);
+    // An unclosed run, or one straddling a blank line, is literal text — markdown gives up
+    // there too, so an unbalanced backtick must not swallow the rest of the document.
+    if (span === null || /\n[ \t]*\n/.test(span)) {
+      out += text.slice(i, i + openLen);
+      i += openLen;
+      continue;
+    }
+
+    out += blank(span);
+    i = closeAt + openLen;
+  }
+
+  return out;
 }
 
 /** The catalog: `- [[Name]](path)` at the start of a line. Nothing else defines a page. */
