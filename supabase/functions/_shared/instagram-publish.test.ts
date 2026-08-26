@@ -4,6 +4,7 @@ import {
   isPublishPermissionGranted,
   mediaKind,
   metaErrorCode,
+  provesNothingWasPublished,
   RATE_LIMIT_CODES,
   REAUTH_CODES,
   requirePublishPermission,
@@ -153,5 +154,32 @@ describe('requirePublishPermission', () => {
 
   it('does not accept a permission that merely contains the name', () => {
     expect(isPublishPermissionGranted(['instagram_business_content_publish_x'])).toBe(false);
+  });
+});
+
+describe('provesNothingWasPublished', () => {
+  // The one branch allowed to requeue a job whose `publishing_at` is stamped.
+  it('CONTROL — a rejection Meta actually made is safe to retry', () => {
+    expect(provesNothingWasPublished('publish_rejected')).toBe(true);
+    expect(provesNothingWasPublished('missing_publish_permission')).toBe(true);
+    expect(provesNothingWasPublished('unsupported_media')).toBe(true);
+  });
+
+  // The regression this exists for. A timeout, a dropped connection or a Meta
+  // 5xx after `media_publish` left the process does NOT mean the post did not
+  // go out — routing those to `fail_publish_job` requeues them, and the next
+  // tick posts a duplicate on a customer's feed.
+  it('an ambiguous failure does NOT prove the post was not made', () => {
+    expect(provesNothingWasPublished('publish_failed')).toBe(false);
+    expect(provesNothingWasPublished('published_unknown_id')).toBe(false);
+    expect(provesNothingWasPublished('rate_limited')).toBe(false);
+  });
+
+  // The allowlist shape is load-bearing: an error code added to `graph()`
+  // tomorrow must default to ambiguous. A denylist would default it to "safe
+  // to retry", and the cost of being wrong that way is a duplicate post.
+  it('an unknown code defaults to ambiguous, not to safe', () => {
+    expect(provesNothingWasPublished('some_future_error')).toBe(false);
+    expect(provesNothingWasPublished('')).toBe(false);
   });
 });

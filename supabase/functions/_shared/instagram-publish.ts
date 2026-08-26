@@ -49,6 +49,30 @@ const { IG_GRAPH, IG_VERSION } = INSTAGRAM_INTERNALS;
 export const PUBLISH_PERMISSION = 'instagram_business_content_publish';
 
 /**
+ * Error codes that PROVE nothing was created, so a retry cannot duplicate.
+ *
+ * Everything not on this list is ambiguous once `publishing_at` has been
+ * stamped, and ambiguity after that point is a person's decision rather than a
+ * retry. Written as an allowlist deliberately: a new error code added to
+ * `graph()` defaults to ambiguous, which over-escalates a job to review. The
+ * inverse -- a denylist -- would default a new code to "safe to retry", and the
+ * cost of being wrong there is a duplicate post on a customer's feed.
+ */
+export const PROVEN_NOT_PUBLISHED_CODES = [
+  'publish_rejected',
+  'missing_publish_permission',
+  'unsupported_media',
+  'no_media',
+  'too_many_media',
+  'caption_on_story',
+  'reels_need_video',
+];
+
+export function provesNothingWasPublished(code: string): boolean {
+  return PROVEN_NOT_PUBLISHED_CODES.includes(code);
+}
+
+/**
  * Is publishing POSITIVELY known to be granted on this connection?
  *
  * Note this is the OPPOSITE asymmetry to `isInsightsPermissionMissing`, and the
@@ -267,12 +291,29 @@ async function graph(
     if (resp.status === 429 || (code !== null && RATE_LIMIT_CODES.includes(code))) {
       throw new InstagramError('rate_limited', 'Instagram is rate limiting this app', 429);
     }
-    throw new InstagramError('publish_failed', `Instagram rejected the ${what}`, 502);
+    // The distinction the caller needs AFTER `publishing_at` is stamped: did
+    // Meta definitively refuse, or do we simply not know?
+    //
+    // A 4xx carrying a parsed Meta error code is a decision -- the request was
+    // understood and rejected, so nothing was created and a retry is safe. A
+    // 5xx, or a 4xx we cannot parse, is Meta having a bad time somewhere in the
+    // middle of a request that may or may not have taken effect. Collapsing the
+    // two into one error is what let an ambiguous `media_publish` be requeued
+    // and posted twice.
+    const definitivelyRejected = resp.status >= 400 && resp.status < 500 && code !== null;
+    throw new InstagramError(
+      definitivelyRejected ? 'publish_rejected' : 'publish_failed',
+      `Instagram rejected the ${what}`,
+      502,
+    );
   }
 
   try {
     return JSON.parse(text);
   } catch {
+    // A 2xx we cannot parse is NOT a rejection. Meta accepted the call and we
+    // cannot read what it said, which for `media_publish` is the ambiguous case
+    // by definition.
     throw new InstagramError('publish_failed', `Instagram returned no JSON for the ${what}`, 502);
   }
 }

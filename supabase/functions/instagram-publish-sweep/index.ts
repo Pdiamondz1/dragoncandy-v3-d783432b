@@ -61,6 +61,7 @@ import {
   containerStatus,
   createContainer,
   publishContainer,
+  provesNothingWasPublished,
   RATE_LIMIT_POSTS,
   RATE_WINDOW_SECONDS,
   requirePublishPermission,
@@ -151,6 +152,15 @@ serve(async (req: Request) => {
   // and stalls publishing for every other account on the platform.
   const rateLimited: string[] = [];
 
+  // Jobs already advanced this run. `record_publish_container` and `release`
+  // both put a job straight back to `queued` with its original `scheduled_at`,
+  // so it is immediately the oldest due job again — and without this the loop
+  // would spend all ten iterations polling ONE container in the space of a few
+  // seconds, hammering the Graph API and starving every other due job. "One
+  // step per tick" is the whole scheduling model; this is what makes it true
+  // rather than merely intended.
+  const advanced: string[] = [];
+
   try {
     for (let i = 0; i < MAX_PER_RUN; i++) {
       const { data: claim, error } = await db.rpc('claim_publish_job', {
@@ -159,6 +169,7 @@ serve(async (req: Request) => {
         p_rate_window_seconds: RATE_WINDOW_SECONDS,
         p_max_attempts: MAX_ATTEMPTS,
         p_skip_ig_user_ids: rateLimited,
+        p_skip_job_ids: advanced,
       });
 
       if (error) {
@@ -179,6 +190,7 @@ serve(async (req: Request) => {
         break;
       }
 
+      advanced.push(String(claim.job_id));
       counts[await advance(db, claim as Claim)]++;
     }
 
@@ -349,7 +361,35 @@ async function publishStep(db: any, job: Claim, token: string): Promise<Outcome>
     return 'skipped';
   }
 
-  const mediaId = await publishContainer(job.ig_user_id, token, containerId);
+  let mediaId: string;
+  try {
+    mediaId = await publishContainer(job.ig_user_id, token, containerId);
+  } catch (err) {
+    // THE POINT OF NO RETURN IS BEHIND US. A timeout, a dropped connection or a
+    // Meta 5xx here does not mean the post did not go out — the request may
+    // have been received and acted on, and we simply never saw the answer.
+    //
+    // The outer catch cannot make this call, because from there every error
+    // looks the same. It used to, and it routed all of them to
+    // `fail_publish_job`, which requeues — so an ambiguous `media_publish`
+    // became a duplicate public post on the next tick. That is precisely the
+    // failure `publishing_at` was added to prevent, left open on the one path
+    // that does not go through the janitor.
+    //
+    // So: only an error that PROVES Meta created nothing is allowed to requeue.
+    // Everything else stops for a person.
+    const code = err instanceof InstagramError ? err.code : '';
+    if (provesNothingWasPublished(code)) throw err;
+
+    const detail = err instanceof Error ? err.message : String(err);
+    console.error(`[instagram-publish-sweep] job ${job.job_id}: ambiguous publish:`, detail);
+    await review(
+      db,
+      job,
+      `The publish call did not return a usable answer (${detail}). A post may be live — check the account before retrying.`,
+    );
+    return 'needs_review';
+  }
 
   const { data: confirmed } = await db.rpc('confirm_publish_job', {
     p_job_id: job.job_id,
