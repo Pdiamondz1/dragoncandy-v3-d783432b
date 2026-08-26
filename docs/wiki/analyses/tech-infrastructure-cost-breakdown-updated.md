@@ -83,7 +83,7 @@ The operating-leverage story in one table: cost-per-user falls at every mileston
 
 * **Lean by design.** Auto-improvement agents run as a \~$1.5–$3K/month compute line (not headcount), keeping the team at 9–11 people instead of 30+.
 
-* **Funds an 18-month, multi-metro push** consistent with the Year-1 $300–600K / Year-2 $2–$4.5M ARR plan.
+* **Funds an 18-month, multi-metro push** consistent with the **restated** Year-1 ~$100K / Year-2 ~$879K exit-ARR plan (2026-08-26, `PROJECT_CONTEXT.md` §3 — this read $300–600K / $2–$4.5M until then, the superseded top-down band). The ask is built bottom-up from the cost model, not sized off forward revenue, so it is not re-derived by the restatement — but anyone testing it against the plan is now testing it against a smaller plan.
 
 # **Part 2 — Detailed Cost Breakdown**
 
@@ -348,7 +348,7 @@ A \~$3.5M seed at $14–$18M post-money implies \~19–25% dilution — within t
 
 * Infrastructure is 1.0–1.3% of projected revenue at 100 users, shrinking to 0.4–0.6% at 1,000 users
 
-* The raise at \~$3.5M funds an 18-month, multi-metro, full-team push consistent with the Y1 $300–600K / Y2 $2–$4.5M ARR plan
+* The raise at \~$3.5M funds an 18-month, multi-metro, full-team push consistent with the **restated** Y1 ~$100K / Y2 ~$879K exit-ARR plan (2026-08-26, `PROJECT_CONTEXT.md` §3 — this read $300–600K / $2–$4.5M until then)
 
 * Auto-improvement agents remain a compute line (\~$1.5–$3K/mo), not headcount — keeping the team lean at 9–11 people vs. the 30+ a normally-staffed org would require
 

@@ -2,7 +2,7 @@
 title: North Star & KPI Scorecard
 type: analysis
 created: 2026-06-10
-updated: 2026-06-10
+updated: 2026-08-26
 sources: [docs/PROJECT_CONTEXT.md, external-saas-benchmarks-2025]
 tags: [strategy, kpi, metrics, kill-switches, investor, benchmarks]
 ---
@@ -35,13 +35,28 @@ These tie directly to [[Musk's Algorithm]] (delete keystrokes) and are the leadi
 
 From `PROJECT_CONTEXT.md` §3 — track these as the headline board metrics:
 
-| Metric | Y1 | Y2 | Y3 |
+**Restated 2026-08-26** from the bottom-up model (`src/pitch/model/`). "ARR" here means **exit ARR**
+— the year-end run rate — which is what the targets have always meant; booked revenue is the lower
+figure the same year invoices while customers ramp. Quoting one for the other is what made the
+top-down band look like it disagreed with the model.
+
+| Metric | Y1 (2026) | Y2 (2027) | Y3 (2028) |
 |--------|----|----|----|
-| ARR | $300–600K | $2–4.5M | $7–12M |
+| Exit ARR | ~$100K | ~$879K | ~$4.7M |
+| Booked revenue | $36K | $518K | $3.34M |
 | Headcount | 5–6 | 7–8 | 10–11 |
-| Metros | 2–3 | 8–12 | 20+ |
+| Metros | 2–3 (model: 2) | 8–12 (model: 10) | 20+ (model: 21) |
+| Customers | — | ~264 | ~1,423 |
 | NRR | — | >110% | (sustain) |
-| Profit | — | — | $2–5M |
+| Profit | — | — | see note |
+
+**Superseded top-down band: $300–600K / $2–4.5M / $7–12M.** It stays registered in
+`src/pitch/model/assumptions.ts` at those original values as the model's cross-check and must not
+be updated to match this table. **The metro counts survived the restatement intact** — the plan and
+the model do not disagree about reach, they disagree about price ($277.55 modeled ARPU against the
+plan's $400–500), and the model books only two of the four revenue streams. The **Profit** row's
+old "$2–5M" was computed against the old revenue and does not follow; against the registered
+$2.2–3.8M Y3 cost band and booked revenue it is −$0.5M to +$1.1M, which straddles zero.
 
 ## Kill-switch validation (internal threshold vs. external benchmark)
 
@@ -71,14 +86,30 @@ each frame (6%/mo ≈ 52%/yr logo loss). Recommend stating the unit explicitly; 
 reading is the defensible interpretation.
 
 **Flag 2 — Revenue/employee kill-switch reads as a maturity target, not an early-stage trigger.** At the
-Y1 plan ($300–600K ARR ÷ 5–6 staff ≈ **$50–120K/employee**), DragonCandy is structurally far below its own
-$400K floor, so the gate would false-trigger from day one. The Y3 plan ($7–12M ÷ 10–11 ≈ **$636K–$1.2M**)
-clears it comfortably. Recommend scoping this kill-switch to **Y2–Y3** (or restating the early-stage floor
-to a stage-appropriate number).
+Y1 plan, DragonCandy is structurally far below its own $400K floor, so the gate would false-trigger from
+day one. Recommend scoping this kill-switch to **Y2–Y3** (or restating the early-stage floor to a
+stage-appropriate number).
+
+**Restated 2026-08-26 — the recommendation stands, but the argument for it got stronger, and a new
+ambiguity appeared.** This flag used to rest on the Y3 plan clearing comfortably ($7–12M ÷ 10–11 ≈
+$636K–$1.2M). At the restated Y3 it no longer clears cleanly: **$431–474K on exit ARR (clears) but
+$304–334K on booked revenue (fails)**, in both staffing cases. So the gate now depends on a question it
+never answered — **which revenue does it measure?** That was not a live question while one number stood
+for both.
+
+**The benchmark row above already answers whether the floor itself is right, and it was written before
+anyone connected it to this.** A private-SaaS median of **~$130K**, and **~$100K in the $1–3M ARR band**,
+puts the restated Y3's $304–334K booked-revenue-per-employee at roughly **three times the benchmark for
+its own ARR band** — a strong result, not a failure. $400K is a $50M+ ARR figure. The gate is not
+failing; it is mis-scoped, which is what this flag said all along.
+
+The decision is the founder's and has not been made — see `PROJECT_CONTEXT.md` §3, which lists four
+candidate resolutions and notes that the "which revenue" question governs whether the other three are
+even in play.
 
 ## What to instrument from Day 1 (pre-revenue)
 
-Pre-revenue by choice (~30 organic users, $0 paying), so the scorecard above is mostly forward-looking.
+Pre-revenue by choice (45 organic users read off prod 2026-08-24, $0 paying — this said "~30", the figure PROJECT_CONTEXT carried while tagged MEASURED), so the scorecard above is mostly forward-looking.
 The capture-now metrics — feeding the [[Data Flywheel]] — are the leading indicators:
 
 - **Activation rate** — % of signups that complete a first campaign / DragonShare submission.
