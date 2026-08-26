@@ -122,7 +122,10 @@ draft of this section said "end to end" and cleared a gap it had not closed:
 | a fresh signup creating the account | **no** — the account pre-existed |
 | the login form | **no** — the session came from an admin `generate_link` exchange |
 
-So the link route has been walked by a human from mail client to verified session. The code route
+So the link route has been walked by a human from mail client to a verified *account* — note the
+endpoint stamps `verified_at` and `email_verified` and then redirects to
+`/auth?mode=login&verified=1`. **It does not create a session**; the destination is a login prompt,
+which is the whole reason the code route exists for the tab that is already signed in. The code route
 is proven from send through delivery to acceptance, with the browser input still untested, and
 neither route has been entered from a real signup. Raised by the Codex second review after this
 page claimed otherwise.

@@ -10,8 +10,10 @@ Compounded onto the two existing pages rather than creating a third. The session
 subject — it produced *evidence* about one page's subject and *an instance* of the other's, which
 is what those pages are for.
 
-Both verification routes now run end to end on production. The durable half is not that they
-work; it is what had to be true for the test to be capable of failing. The RPC short-circuits on
+Both verification routes were driven against production — **partially**, and the page carries a
+per-leg table saying which three legs were covered and which three were not: no fresh signup, no
+browser code entry, and no session from the login form. The durable half is not that they work; it
+is what had to be true for the test to be capable of failing. The RPC short-circuits on
 `already_verified` before reading the code, so on the verified test account a **wrong** code
 returned HTTP 200; only after `email_verified` was set false did the same request return 400.
 Recorded on [[Verify Before Reporting]] as its own section, because "ask what the system does when

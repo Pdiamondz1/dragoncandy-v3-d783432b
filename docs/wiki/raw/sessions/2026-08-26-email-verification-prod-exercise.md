@@ -1,4 +1,4 @@
-# Session — email verification exercised end to end on prod (2026-08-26)
+# Session — email verification driven against prod (2026-08-26)
 
 Founder asked: "Can you test this end-2-end with dame+onboardtest@dragoncandy.com?"
 Target: the email-verification code flow (#527, #528, #530, #531), whose §5 entry carried
