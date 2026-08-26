@@ -113,11 +113,18 @@ Paid-conversion mix (MODELED, registered as `tierMixFree/Starter/Growth/Pro`): 3
 
 Average campaign value is $338, derived from the app's own per-deliverable price bands.
 
-This table answers a different question from the Three-year trajectory below: it is
-steady-state economics AT a given business count, computed for one month and annualized —
-not a calendar-time projection of when we reach that count. The Year 3 trajectory band
-($7–12M) and the 10,000-business annual figure here (~$33M) are not in tension; they answer
-"what does the business look like at this size" versus "what do we expect by this date."
+This table answers a different question from the Three-year trajectory below. **Three
+distinct quantities appear across this document and `PROJECT_CONTEXT.md` §3, and they get
+confused because all three are called "revenue":**
+
+1. **Booked revenue** — what a calendar year actually invoices, summed month by month while customers ramp. Year 3 (2028): **$3,341,424**.
+2. **Exit ARR** — the run rate at year end: year-end customers at the registered mix, annualized. Always larger than (1), because it does not pay for the ramp. Year 3: **$4,739,444**. This is what "ARR" means in §3 and in every target this company has stated.
+3. **Steady-state annualized revenue at a given size** — *this table*. One month at N businesses, annualized, with no calendar attached. At 10,000 businesses: **$33,306,000**.
+
+They are not in tension: (1) and (2) answer "what do we expect by this date", (3) answers
+"what does the business look like at this size". The 10,000-business row is not a Year 3
+claim and never was. Separating (1) from (2) on 2026-08-26 also surfaced a live ambiguity in
+the revenue-per-employee kill-switch, which never said which of them it measures — see §3.
 
 | Businesses | Creators | Monthly GMV | Monthly revenue | Annual revenue | Gross margin |
 |---:|---:|---:|---:|---:|---:|

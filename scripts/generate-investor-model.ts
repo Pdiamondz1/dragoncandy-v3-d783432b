@@ -26,6 +26,7 @@ import {
   POST_LAUNCH_RESPONSIVENESS_TARGET_HOURS,
   threeYearTrajectory,
 } from '../src/pitch/model/derive';
+import { rollup } from '../src/pitch/model/rollup';
 import {
   PRE_SEED_BUDGET,
   PRE_SEED_HORIZON_MONTHS,
@@ -152,11 +153,27 @@ lines.push(`Paid-conversion mix (MODELED, registered as \`tierMixFree/Starter/Gr
 lines.push('');
 lines.push(`Average campaign value is ${usd(avgCampaignValue())}, derived from the app's own per-deliverable price bands.`);
 lines.push('');
-lines.push('This table answers a different question from the Three-year trajectory below: it is');
-lines.push('steady-state economics AT a given business count, computed for one month and annualized —');
-lines.push('not a calendar-time projection of when we reach that count. The Year 3 trajectory band');
-lines.push('($7–12M) and the 10,000-business annual figure here (~$33M) are not in tension; they answer');
-lines.push('"what does the business look like at this size" versus "what do we expect by this date."');
+// Three quantities get called "revenue" across this document and PROJECT_CONTEXT §3, and
+// conflating them is what made the top-down band look like it disagreed with the bottom-up
+// model when the two were measuring different things (ledger Ruling 13, 2026-08-26). Named
+// here, and DERIVED — the sentence below used to hardcode "$7–12M" and "~$33M", which is the
+// prose-cannot-fail failure this whole generator exists to prevent.
+const rollupYears = rollup();
+const y3 = rollupYears[rollupYears.length - 1];
+const steadyStateAt10k = businessStepTable([10000], MIX)[0].annualRevenue;
+
+lines.push('This table answers a different question from the Three-year trajectory below. **Three');
+lines.push('distinct quantities appear across this document and `PROJECT_CONTEXT.md` §3, and they get');
+lines.push('confused because all three are called "revenue":**');
+lines.push('');
+lines.push(`1. **Booked revenue** — what a calendar year actually invoices, summed month by month while customers ramp. Year 3 (${y3.year}): **${usd(y3.revenue)}**.`);
+lines.push(`2. **Exit ARR** — the run rate at year end: year-end customers at the registered mix, annualized. Always larger than (1), because it does not pay for the ramp. Year 3: **${usd(y3.exitArr)}**. This is what "ARR" means in §3 and in every target this company has stated.`);
+lines.push(`3. **Steady-state annualized revenue at a given size** — *this table*. One month at N businesses, annualized, with no calendar attached. At 10,000 businesses: **${usd(steadyStateAt10k)}**.`);
+lines.push('');
+lines.push('They are not in tension: (1) and (2) answer "what do we expect by this date", (3) answers');
+lines.push('"what does the business look like at this size". The 10,000-business row is not a Year 3');
+lines.push('claim and never was. Separating (1) from (2) on 2026-08-26 also surfaced a live ambiguity in');
+lines.push('the revenue-per-employee kill-switch, which never said which of them it measures — see §3.');
 lines.push('');
 lines.push('| Businesses | Creators | Monthly GMV | Monthly revenue | Annual revenue | Gross margin |');
 lines.push('|---:|---:|---:|---:|---:|---:|');
