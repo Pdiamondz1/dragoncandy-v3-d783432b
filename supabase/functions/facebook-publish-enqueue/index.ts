@@ -169,6 +169,13 @@ serve(async (req: Request) => {
       p_idempotency_key: idempotencyKey,
       p_content_type: contentType,
       p_media_paths: staging.destinations,
+      // The refs the CALLER named, passed for the request digest and nothing
+      // else. They have to be the SOURCES: `staging.destinations` carries a
+      // fresh random batch id on every invocation, so digesting those would
+      // make every retry of the same approval look like a different post and
+      // answer it with `idempotency_key_conflict` — the exact recovery the key
+      // exists to provide. See 20260826400000.
+      p_media_sources: media.map((m) => `${m.bucket}/${m.path}`),
       p_scheduled_at: typeof body?.scheduled_at === 'string' ? body.scheduled_at : null,
       p_caption: caption,
       p_source_schedule_id: typeof body?.source_schedule_id === 'string'

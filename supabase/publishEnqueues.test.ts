@@ -82,6 +82,21 @@ describe('publish enqueue functions', () => {
     expect(source).toMatch(/idempotency_key_conflict[\s\S]{0,200}409/);
   });
 
+  // The digest must key on the file the USER picked, never on where we staged
+  // it. `plannedDestinations` mints a fresh random batch directory every
+  // invocation — by design, so two approvals of one file are two frozen sets of
+  // bytes — so digesting destinations makes every retry look like a different
+  // post and answers it with a conflict. That is the two-fixes-cancelling-out
+  // defect (Codex, round 9); the only visible difference is one argument.
+  it.each(enqueueSources())('$name digests the media SOURCES, not the staged paths', ({ source }) => {
+    expect(source).toMatch(/p_media_sources:\s*media\.map/);
+    // The wrong version, spelled out so it cannot creep back in.
+    expect(source).not.toMatch(/p_media_sources:\s*staging\.destinations/);
+    // And the security check stays on destinations, which is the half sources
+    // deliberately do not touch.
+    expect(source).toMatch(/p_media_paths:\s*staging\.destinations/);
+  });
+
   // Claiming an outcome this branch cannot know is how a queued post gets
   // reported as a failure the user then re-creates by hand.
   it.each(enqueueSources())('$name reports an unconfirmed enqueue honestly', ({ source }) => {
