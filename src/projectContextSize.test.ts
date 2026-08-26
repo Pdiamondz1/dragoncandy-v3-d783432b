@@ -83,11 +83,16 @@ function sectionFive(): string {
  */
 type Entry = { title: string; lines: number; subsection: string; body: string };
 
+/** Lazy continuations seen by the LAST parseEntries() call (see the branch that fills it). */
+let lazyContinuations: string[] = [];
+
 function parseEntries(section: string): Entry[] {
+  lazyContinuations = [];
   const lines = section.split('\n');
   const entries: Entry[] = [];
   let current: Entry | null = null;
   let subsection = '';
+  let prevBlank = true;
 
   for (const line of lines) {
     const isTopLevelBullet = line.startsWith('- ');
@@ -97,23 +102,42 @@ function parseEntries(section: string): Entry[] {
     if (isTopLevelBullet) {
       if (current) entries.push(current);
       current = { title: line.slice(2, 90), lines: 1, subsection, body: line };
+      prevBlank = false;
       continue;
     }
     if (isHeading) {
       if (current) entries.push(current);
       current = null;
       if (line.startsWith('### ')) subsection = line.slice(4).trim();
+      prevBlank = false;
       continue;
     }
     if (isUnindentedProse) {
+      // A Markdown LAZY CONTINUATION — unindented prose with no blank line before it — still
+      // renders as part of the list item. Closing the entry here would let the rest of its prose
+      // escape both the size cap and the destination check while the raw-bullet control still
+      // agreed, which is how a 50-line entry could report as one line. So absorb it (the caps
+      // then apply) AND record it, because the style is also rejected below: §5 uses indented
+      // continuations, and one unambiguous convention is what keeps this parser honest.
+      if (current && !prevBlank) {
+        current.lines += 1;
+        current.body += '\n' + line;
+        lazyContinuations.push(`${current.title.slice(0, 60)} -> ${line.slice(0, 40)}`);
+        prevBlank = false;
+        continue;
+      }
+      // Separated by a blank line, it is a genuinely new block (e.g. the trailing
+      // "Workflow discipline" paragraph), so the entry really does end here.
       if (current) entries.push(current);
       current = null;
+      prevBlank = false;
       continue;
     }
     if (current && line.trim() !== '') {
       current.lines += 1;
       current.body += '\n' + line;
     }
+    prevBlank = line.trim() === '';
   }
   if (current) entries.push(current);
   return entries;
@@ -134,6 +158,13 @@ function hasDestination(entry: Entry): boolean {
 describe('PROJECT_CONTEXT.md stays an index', () => {
   const section = sectionFive();
   const entries = parseEntries(section);
+  // Snapshot IMMEDIATELY. `lazyContinuations` is module-level and reset by every parseEntries()
+  // call, so the fixture control below — which parses a different string — would otherwise wipe
+  // the real file's result before this describe's checks read it. Found by a forced control:
+  // an injected lazy-continuation entry tripped the size and destination caps while the
+  // lazy-continuation check itself passed, which is precisely the "guard that cannot fire" this
+  // file exists to prevent. Shared mutable state between a parser and its assertions is a trap.
+  const fileLazyContinuations = [...lazyContinuations];
 
   // ---- Controls. Without these, the size checks below can pass by finding nothing. ----
 
@@ -217,6 +248,19 @@ describe('PROJECT_CONTEXT.md stays an index', () => {
       'These §5 pointers name a file that does not exist, so the detail they promise cannot be ' +
         'reached. Either restore the file or correct the pointer — and never trim an entry ' +
         'whose pointer is broken, because §5 may be the only remaining copy.',
+    ).toEqual([]);
+  });
+
+  it('§5 uses indented continuations, never Markdown lazy continuations', () => {
+    // A lazy continuation (unindented prose with no blank line before it) is valid Markdown and
+    // renders inside the list item, but it makes "where does this entry end?" ambiguous — and
+    // an ambiguous parser is one an oversized entry can hide behind. The parser now absorbs
+    // them so the caps still apply; this check additionally rejects the style, so §5 keeps one
+    // unambiguous convention rather than relying on the parser to guess correctly forever.
+    expect(
+      fileLazyContinuations,
+      'These §5 lines continue an entry without indentation. Indent continuation lines by two ' +
+        'spaces, or separate a genuinely new paragraph with a blank line.',
     ).toEqual([]);
   });
 
