@@ -1,5 +1,12 @@
 import { describe, it, expect } from 'vitest';
-import { rollup, cohortMetroYear, COHORT_METRO_ID, COHORT_METRO_COUNTS } from './rollup';
+import {
+  rollup,
+  cohortMetroYear,
+  COHORT_METRO_ID,
+  COHORT_METRO_COUNTS,
+  COHORT_TEMPLATE_METRO_ID,
+} from './rollup';
+import { projectMetroYear } from './metroModel';
 // Shared cost, its allocation and consolidated EBITDA moved out of `rollup.ts` so a public
 // deck slide can import the rollup without pulling the pre-seed budget into the bundle.
 // They are still exercised here, against the REAL budget — `consolidated.ts` imports
@@ -42,10 +49,47 @@ describe('the later-metro cohort', () => {
     expect(cohortMetroYear(2026, REGISTERED_MIX).revenue).toBe(0);
   });
 
-  it('scales a single average metro by the cohort count', () => {
+  it('scales a single template metro by the cohort count', () => {
     const one = cohortMetroYear(2028, REGISTERED_MIX);
     expect(one.metroId).toBe(COHORT_METRO_ID);
     expect(one.revenue).toBeGreaterThan(0);
+  });
+
+  /**
+   * The template is Palm Beach County, and this pins BOTH halves of why.
+   *
+   * It was Hoboken, selected positionally as `named[0]`, and that was wrong twice: a
+   * one-square-mile town of 123 venues is not the shape of a "metro", and its 2028
+   * penetration is 35% — the founders' home-town rate, where they know the owners — applied
+   * to 17 cities nobody has entered. The result read conservative in total precisely because
+   * the base it multiplied was so small, which is how the most aggressive assumption in the
+   * model stayed invisible.
+   *
+   * Asserted as an exact multiple of the template's own projection rather than as a
+   * threshold: a `toBeGreaterThan` here would still pass if the template silently reverted.
+   */
+  it('scales from Palm Beach County, not from the founders\' home town', () => {
+    expect(COHORT_TEMPLATE_METRO_ID).toBe('palm-beach');
+
+    const count = COHORT_METRO_COUNTS[2028].value;
+    const template = projectMetroYear('palm-beach', 2028, REGISTERED_MIX);
+    const cohort = cohortMetroYear(2028, REGISTERED_MIX);
+    expect(cohort.revenue).toBeCloseTo(template.revenue * count, 6);
+    expect(cohort.customersAtYearEnd).toBe(template.customersAtYearEnd * count);
+
+    // ...and it is NOT Hoboken. Without this the test above would pass on any template
+    // whose arithmetic is internally consistent, including the one this change removes.
+    const hoboken = projectMetroYear('hoboken', 2028, REGISTERED_MIX);
+    expect(cohort.customersAtYearEnd).not.toBe(hoboken.customersAtYearEnd * count);
+  });
+
+  /**
+   * The count and the template are separately registered questions. "How many metros" has
+   * its own source; "what is a metro" is a different question, and answering the second is
+   * not licence to restate the first. Pinned so a future rebase cannot quietly take both.
+   */
+  it('leaves the cohort metro COUNT untouched by the template change', () => {
+    expect([2026, 2027, 2028].map((y) => COHORT_METRO_COUNTS[y as 2026].value)).toEqual([0, 6, 17]);
   });
 });
 

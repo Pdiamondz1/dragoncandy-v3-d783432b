@@ -20,7 +20,12 @@ import {
 } from './metros';
 import { loadCensusSnapshot, snapshotFor } from './censusTam';
 import { projectMetroYear, metroKpis } from './metroModel';
-import { rollup, COHORT_METRO_COUNTS } from './rollup';
+import {
+  rollup,
+  COHORT_METRO_COUNTS,
+  COHORT_METRO_ID,
+  COHORT_TEMPLATE_METRO_ID,
+} from './rollup';
 import { consolidated, sharedCostForYear } from './consolidated';
 import { REGISTERED_MIX } from './project';
 import { unitEconomics } from './derive';
@@ -345,9 +350,14 @@ function cohortSheet(): SheetSpec {
   return {
     name: 'Metros_4toN',
     rows: [
-      [t('Metros beyond the three named'), ...MODEL_YEARS.map((y) => t(String(y)))],
-      [t('These metros have not been chosen. Modeled as N copies of an average metro rather')],
+      [t('Metros beyond the four named'), ...MODEL_YEARS.map((y) => t(String(y)))],
+      [t('These metros have not been chosen. Modeled as N copies of a TEMPLATE metro rather')],
       [t('than as invented named cities. Change the count on the Assumptions sheet.')],
+      [t(`Template: ${COHORT_TEMPLATE_METRO_ID} — a real registered metro with real Census`)],
+      [t('counts and a ramp appropriate to a market entered in month 12 with no local presence,')],
+      [t('which is the situation every metro in this cohort is in. It was Hoboken until')],
+      [t('2026-08-26: a one-square-mile town of 123 venues carrying the founders’ home-town 35%')],
+      [t('penetration, applied to 17 cities nobody has entered.')],
       [blank],
       [t('Metros in cohort'), ...MODEL_YEARS.map((y) => n(COHORT_METRO_COUNTS[y].value, '#,##0'))],
       [t('Customers at year end'), ...years.map((y) => n(y.customersAtYearEnd, '#,##0'))],
@@ -392,19 +402,50 @@ function sharedCostsSheet(): SheetSpec {
 const SOURCE_COLS = ['B', 'C', 'D'] as const;
 const TOTALS_COLS = ['C', 'D', 'E'] as const;
 
-function totalsSheet(): SheetSpec {
+/**
+ * The 1-indexed Excel row on `sheet` whose label cell reads `label`.
+ *
+ * This replaces a hand-maintained map of row numbers per sheet. That map was a trap: adding
+ * an explanatory line to the cohort sheet silently shifted every row below it, and the map
+ * would have gone on pointing at whatever landed on the old row — a formula reading the
+ * wrong figure while its cached value stayed right, which is the one failure mode a live
+ * workbook must not have. Both failure directions throw rather than guess.
+ */
+function rowOf(sheet: SheetSpec, label: string): number {
+  const hits = sheet.rows
+    .map((row, i) => (row[0]?.v === label ? i + 1 : 0))
+    .filter((i) => i > 0);
+  if (hits.length !== 1) {
+    throw new Error(
+      `Sheet "${sheet.name}" has ${hits.length} rows labelled "${label}"; a cross-sheet ` +
+        `formula needs exactly one. Rename the duplicate or fix the label.`,
+    );
+  }
+  return hits[0];
+}
+
+function totalsSheet(sourceSheets: readonly SheetSpec[]): SheetSpec {
   const years = consolidated();
   const metroIds = years[0].metros.map((m) => m.metroId);
   const sheetFor = (id: string) => SHEET_BY_METRO[id] ?? 'Metros_4toN';
-  // Row of "Total revenue" / "Metro EBITDA" on each metro (or cohort) sheet, 1-indexed.
-  // Metro sheets and the cohort sheet have different layouts, so each is looked up rather
-  // than assumed — and the two rows are NOT at the same offset, so each gets its own map.
-  const REVENUE_ROW: Readonly<Record<string, number>> = {
-    hoboken: 16, manhattan: 16, 'palm-beach': 16, 'montauk-hamptons': 16, cohort: 7,
+  const specFor = (id: string) => {
+    const name = sheetFor(id);
+    const found = sourceSheets.find((s) => s.name === name);
+    if (!found) throw new Error(`Totals references sheet "${name}", which is not in the workbook.`);
+    return found;
   };
-  const EBITDA_ROW: Readonly<Record<string, number>> = {
-    hoboken: 27, manhattan: 27, 'palm-beach': 27, 'montauk-hamptons': 27, cohort: 10,
-  };
+  // Looked up by LABEL, never by a remembered row number. Metro sheets and the cohort sheet
+  // have different layouts, and both move when a line of explanation is added.
+  // The cohort sheet has no subscription/take-rate split to total up, so its revenue row is
+  // labelled plainly. A LABEL that differs per sheet is fine and visible in this file; a ROW
+  // NUMBER that differs per sheet is the thing that went stale.
+  const revenueLabel = (id: string) => (id === COHORT_METRO_ID ? 'Revenue' : 'Total revenue');
+  const REVENUE_ROW: Readonly<Record<string, number>> = Object.fromEntries(
+    metroIds.map((id) => [id, rowOf(specFor(id), revenueLabel(id))]),
+  );
+  const EBITDA_ROW: Readonly<Record<string, number>> = Object.fromEntries(
+    metroIds.map((id) => [id, rowOf(specFor(id), 'Metro EBITDA')]),
+  );
   // Every reference is sheet-qualified, even ones addressing this same Totals sheet — see
   // formulaEval.ts's header comment for why.
   const tref = (row: number, col: string) => `Totals!${col}${row}`;
@@ -561,6 +602,10 @@ function financingSheet(): SheetSpec {
 }
 
 export function buildWorkbookSpec({ confidential }: { confidential: boolean }): readonly SheetSpec[] {
+  // The metro and cohort sheets are built FIRST, because `totalsSheet` resolves its
+  // cross-sheet formula targets by reading their labels rather than by remembering their
+  // row numbers. See `rowOf`.
+  const sourceSheets: SheetSpec[] = [...enabledMetros().map((m) => metroSheet(m.id)), cohortSheet()];
   const sheets: SheetSpec[] = [
     readmeSheet(),
     { name: 'Assumptions', rows: [
@@ -568,10 +613,9 @@ export function buildWorkbookSpec({ confidential }: { confidential: boolean }): 
       ...assumptionRows(confidential),
     ] },
     sourcesSheet(),
-    ...enabledMetros().map((m) => metroSheet(m.id)),
-    cohortSheet(),
+    ...sourceSheets,
     sharedCostsSheet(),
-    totalsSheet(),
+    totalsSheet(sourceSheets),
     unitEconomicsSheet(),
   ];
   if (confidential) sheets.push(financingSheet());
