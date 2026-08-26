@@ -568,7 +568,7 @@ export function SlideUnitEconomics({ index, total }: SlideProps) {
         />
       </div>
 
-      <div className="mt-8 max-w-5xl space-y-2 text-lg text-dc-text-muted">
+      <div className="mt-6 max-w-5xl space-y-1.5 text-lg text-dc-text-muted">
         <p>
           <b className="text-dc-text">
             <Gloss t="LTV" />
@@ -636,10 +636,10 @@ export function SlideLiquidity({ index, total }: SlideProps) {
         <Gloss t="liquidity" />
       </p>
 
-      <div className="mt-5 grid grid-cols-2 gap-5">
-        <Card dark>
+      <div className="mt-3 grid grid-cols-2 gap-5">
+        <Card dark className="!p-6">
           <p className="text-sm font-bold uppercase tracking-wider text-dc-teal">Our definition</p>
-          <p className="mt-3 text-xl leading-relaxed text-white/85">
+          <p className="mt-2 text-lg leading-snug text-white/85">
             A posted campaign draws at least{' '}
             <b className="text-white">{LIQUIDITY_THRESHOLD.minApplicantsPerCampaign} applicants</b>{' '}
             over the {MARKET.campaignOpenDays.value} days it stays open,{' '}
@@ -650,21 +650,21 @@ export function SlideLiquidity({ index, total }: SlideProps) {
             they can apply to right now.
           </p>
         </Card>
-        <Card dark>
+        <Card dark className="!p-6">
           <p className="text-sm font-bold uppercase tracking-wider text-dc-teal">The answer</p>
-          <p className="mt-3 text-6xl font-extrabold text-white">
+          <p className="mt-2 text-6xl font-extrabold text-white">
             {atTarget === null ? 'Never' : `Month ${atTarget}`}
           </p>
-          <p className="mt-2 text-lg text-white/70">
+          <p className="mt-1.5 text-base text-white/70">
             at 2 restaurants and {2 * ratio} creators signed per month.
           </p>
         </Card>
       </div>
 
-      <div className="mt-5 grid grid-cols-2 gap-5">
-        <div className="rounded-2xl border border-dc-pink-accent/40 bg-dc-pink-accent/10 px-7 py-4">
+      <div className="mt-3 grid grid-cols-2 gap-5">
+        <div className="rounded-2xl border border-dc-pink-accent/40 bg-dc-pink-accent/10 px-6 py-3">
           <p className="text-lg font-bold text-dc-pink">More restaurants do not fix it.</p>
-          <p className="mt-1.5 text-base text-white/70">
+          <p className="mt-1 text-base text-white/70">
             Sign 2 restaurants a month but only 2 creators each and the market is{' '}
             <b className="text-white">
               {underRatio === null ? 'never liquid, at any restaurant count' : `liquid only in month ${underRatio}`}
@@ -673,9 +673,9 @@ export function SlideLiquidity({ index, total }: SlideProps) {
             to say so.
           </p>
         </div>
-        <div className="rounded-2xl border border-white/15 bg-white/5 px-7 py-4">
+        <div className="rounded-2xl border border-white/15 bg-white/5 px-6 py-3">
           <p className="text-lg font-bold text-white">The headline clears by very little.</p>
-          <p className="mt-1.5 text-base text-white/70">
+          <p className="mt-1 text-base text-white/70">
             At the target ratio we get {headline.toFixed(1)} applicants per campaign against a
             floor of {LIQUIDITY_THRESHOLD.minApplicantsPerCampaign.toFixed(1)} — about{' '}
             {(((headline - LIQUIDITY_THRESHOLD.minApplicantsPerCampaign) / headline) * 100).toFixed(0)}%
@@ -686,7 +686,7 @@ export function SlideLiquidity({ index, total }: SlideProps) {
 
       {/* The founder mark gets its own row. Inline inside `Source` it wrapped mid-sentence
           and pushed the whole block off the bottom of the canvas. */}
-      <div className="mt-4 flex items-baseline gap-3">
+      <div className="mt-3 flex items-baseline gap-3">
         <p className="shrink-0 text-base text-white/60">Restaurants in Hoboken, town-wide:</p>
         <PendingMark input={FOUNDER_INPUTS.hobokenRestaurantCount} dark />
       </div>
@@ -714,31 +714,31 @@ export function SlideScale({ index, total }: SlideProps) {
         while it holds that count, not a calendar prediction of when it gets there.
       </p>
 
-      <div className="mt-8 overflow-hidden rounded-2xl border border-dc-teal/20">
+      <div className="mt-6 overflow-hidden rounded-2xl border border-dc-teal/20">
         <table className="w-full">
           <thead className="bg-dc-teal/[0.07]">
             <tr className="text-left text-sm font-bold uppercase tracking-wider text-dc-text-muted">
-              <th className="px-7 py-4">Businesses</th>
-              <th className="px-7 py-4 text-right">Creators</th>
-              <th className="px-7 py-4 text-right">Campaign volume / mo</th>
-              <th className="px-7 py-4 text-right">Revenue / mo</th>
-              <th className="px-7 py-4 text-right">Revenue / yr</th>
-              <th className="px-7 py-4 text-right">Gross margin</th>
+              <th className="px-7 py-3">Businesses</th>
+              <th className="px-7 py-3 text-right">Creators</th>
+              <th className="px-7 py-3 text-right">Campaign volume / mo</th>
+              <th className="px-7 py-3 text-right">Revenue / mo</th>
+              <th className="px-7 py-3 text-right">Revenue / yr</th>
+              <th className="px-7 py-3 text-right">Gross margin</th>
             </tr>
           </thead>
           <tbody className="text-xl font-semibold tabular-nums">
             {rows.map((r) => (
               <tr key={r.businesses} className="border-t border-dc-teal/15">
-                <td className="px-7 py-4 font-extrabold">{count(r.businesses)}</td>
-                <td className="px-7 py-4 text-right text-dc-text-muted">{count(r.creators)}</td>
-                <td className="px-7 py-4 text-right text-dc-text-muted">
+                <td className="px-7 py-3 font-extrabold">{count(r.businesses)}</td>
+                <td className="px-7 py-3 text-right text-dc-text-muted">{count(r.creators)}</td>
+                <td className="px-7 py-3 text-right text-dc-text-muted">
                   {moneyShort(r.monthlyGmv)}
                 </td>
-                <td className="px-7 py-4 text-right">{moneyShort(r.monthlyRevenue)}</td>
-                <td className="px-7 py-4 text-right text-dc-teal-btn">
+                <td className="px-7 py-3 text-right">{moneyShort(r.monthlyRevenue)}</td>
+                <td className="px-7 py-3 text-right text-dc-teal-btn">
                   {moneyShort(r.annualRevenue)}
                 </td>
-                <td className="px-7 py-4 text-right">{pct(r.grossMarginPct, 1)}</td>
+                <td className="px-7 py-3 text-right">{pct(r.grossMarginPct, 1)}</td>
               </tr>
             ))}
           </tbody>
@@ -897,24 +897,24 @@ export function SlideCompounds({ index, total }: SlideProps) {
         that runs the <GradientText>next campaign.</GradientText>
       </H2>
 
-      <div className="mt-8 grid grid-cols-2 gap-5">
-        <Card>
+      <div className="mt-6 grid grid-cols-2 gap-5">
+        <Card className="!p-6">
           <IconBadge>
             <Database className="h-6 w-6" />
           </IconBadge>
-          <p className="mt-4 text-2xl font-bold">A campaign is not one row.</p>
-          <p className="mt-3 text-lg leading-relaxed text-dc-text-muted">
+          <p className="mt-3 text-2xl font-bold">A campaign is not one row.</p>
+          <p className="mt-2 text-base leading-snug text-dc-text-muted">
             It is a chain: a brief that states intent, several applicants resolving to one hire —
             a preference pair — an approve-or-reject that is a quality label, and a performance
             record that is the outcome. One campaign yields tens of labelled rows, not one.
           </p>
         </Card>
-        <Card>
+        <Card className="!p-6">
           <IconBadge tone="pink">
             <Bot className="h-6 w-6" />
           </IconBadge>
-          <p className="mt-4 text-2xl font-bold">Which is why the threshold is low.</p>
-          <p className="mt-3 text-lg leading-relaxed text-dc-text-muted">
+          <p className="mt-3 text-2xl font-bold">Which is why the threshold is low.</p>
+          <p className="mt-2 text-base leading-snug text-dc-text-muted">
             A few thousand campaigns produce tens of thousands of labelled preference pairs — the
             regime <Gloss t="LoRA" /> is sample-efficient in, at $50–300 a run. We tune three
             things: match ranking, brief generation, performance prediction.
@@ -922,9 +922,9 @@ export function SlideCompounds({ index, total }: SlideProps) {
         </Card>
       </div>
 
-      <div className="mt-6 flex items-center gap-4 rounded-2xl border-2 border-dc-teal/40 bg-dc-teal/[0.05] px-7 py-5">
+      <div className="mt-4 flex items-center gap-4 rounded-2xl border-2 border-dc-teal/40 bg-dc-teal/[0.05] px-6 py-3.5">
         <ArrowRight className="h-6 w-6 shrink-0 text-dc-teal-btn" />
-        <p className="text-lg text-dc-text">
+        <p className="text-base text-dc-text">
           <b>The unit is labelled examples, not campaigns.</b> If an investor with an AI
           background challenges "1,000 to 5,000 campaigns", that is the right challenge and this
           is the answer — the number was defensible, the unit was wrong, and we fixed the unit.
