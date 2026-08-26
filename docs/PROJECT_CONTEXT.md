@@ -377,6 +377,12 @@ Engineering cannot close these. Ordered by what blocks launch.
 - **Donny-first dashboard (business + creator)** — the dashboard body is Donny for both roles;
   #444 (creator, Phase 3) is **merged**. `billing_agent` is wrong for creators and is routed
   around, not fixed. → `docs/wiki/concepts/donny-first-dashboard.md` · #410, #411, #423, #428, #429, #444
+- **An auth failure is not a server error** — 20 edge functions returned 500 (one 400) to an
+  unauthenticated request, because every failure shared one hardcoded status. Authentication now
+  401; authorization/not-found/validation unchanged. **Pending:** `refund-package-order` and
+  `release-package-payout` look up the order with a service-role client BEFORE authenticating, so
+  an anonymous caller can tell whether an order exists — the naive reorder breaks guest refunds.
+  → `docs/wiki/raw/sessions/2026-08-26-auth-401-not-500.md` · #542
 - **Two proxies answered every origin with `*`** — the only 2 of 125; they needed a wider
   `Allow-Headers` than `corsHeaders` gives, so copying the block beat sharing it. Fixed by
   sharing the origin *decision* and stamping it at the response boundary. Fleet sweep: 0.

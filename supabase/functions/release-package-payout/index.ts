@@ -4,6 +4,7 @@ import { createClient, type SupabaseClient } from "npm:@supabase/supabase-js@2.5
 import { corsHeaders } from "../_shared/cors.ts";
 import { verifyPayoutReady } from "../_shared/payout-ready.ts";
 import { applyWalletFirstPayoutCore } from "../_shared/wallet-first-payout.ts";
+import { statusFor, unauthorized } from "../_shared/http-error.ts";
 
 // Release a package order's held escrow to the creator's wallet. DEPLOY WITH verify_jwt=false: the release
 // is triggered by the BUYER approving the work (a logged-in buyer via JWT, OR a guest via their order token)
@@ -84,7 +85,7 @@ serve(async (req) => {
       logStep("Guest buyer approval", { orderId });
     } else {
       const { data: userData, error: userError } = await supabaseClient.auth.getUser(token);
-      if (userError || !userData?.user) throw new Error("User not authenticated");
+      if (userError || !userData?.user) throw unauthorized("User not authenticated");
       if (userData.user.id !== order.buyer_user_id) {
         throw new Error("Only the buyer can release this payout");
       }
@@ -198,7 +199,7 @@ serve(async (req) => {
     logStep("ERROR", { message: errorMessage });
     return new Response(JSON.stringify({ error: errorMessage }), {
       headers: { ...corsHeaders(req), "Content-Type": "application/json" },
-      status: 500,
+      status: statusFor(error),
     });
   }
 });

@@ -9,6 +9,7 @@ import { testModeCustomText } from "../_shared/test-mode-text.ts";
 import { testModePaymentMethodTypes } from "../_shared/test-mode-payment-methods.ts";
 import { calculateDragonShareFee } from "../_shared/dragonshare-fee.ts";
 import { verifyPayoutReady } from "../_shared/payout-ready.ts";
+import { statusFor, unauthorized } from "../_shared/http-error.ts";
 
 const logStep = (step: string, details?: unknown) => {
   console.log(`[BOOST-PAYMENT] ${step}${details ? " - " + JSON.stringify(details) : ""}`);
@@ -36,10 +37,10 @@ serve(async (req) => {
     if (!stripeKey) throw new Error("STRIPE_SECRET_KEY not configured");
 
     const authHeader = req.headers.get("Authorization");
-    if (!authHeader) throw new Error("No authorization header");
+    if (!authHeader) throw unauthorized("No authorization header");
     const token = authHeader.replace("Bearer ", "");
     const { data: userData, error: userError } = await supabase.auth.getUser(token);
-    if (userError || !userData.user) throw new Error(`Auth failed: ${userError?.message}`);
+    if (userError || !userData.user) throw unauthorized(`Auth failed: ${userError?.message}`);
     const userId = userData.user.id;
     const userEmail = userData.user.email;
 
@@ -254,6 +255,6 @@ serve(async (req) => {
   } catch (error) {
     const msg = error instanceof Error ? error.message : String(error);
     logStep("ERROR", { message: msg });
-    return json({ error: msg }, 500);
+    return json({ error: msg }, statusFor(error));
   }
 });
