@@ -157,6 +157,17 @@ const AuthPage = () => {
         // with gaps is not mid-onboarding; it is an account with gaps, and the readiness
         // CHECKLIST is the surface for that: non-blocking, dismissal-aware, already built,
         // and reached without clicking through a wizard.
+        //
+        // KNOWN NARROWING, and a Codex P1 deliberately NOT taken. Someone who quits ON the
+        // payments slide has `is_completed` true and is no longer auto-resumed; they land on
+        // the dashboard with a checklist row pointing at payments. Codex proposed a distinct
+        // wizard-completion signal instead. That is the better long-term answer and it is a
+        // MIGRATION: a new nullable column is NULL for every existing account, so "null means
+        // never finished" reproduces this exact regression on all 45 of them unless it also
+        // ships a backfill — which is a considered change to a live auth path, not a hotfix
+        // for a live regression. Weigh the two failures: one costs a returning user a single
+        // click on a checklist row; the other trapped 20 established accounts in a wizard on
+        // every login. Follow-up, not a blocker.
         if (!businessProfile?.is_completed) {
           const resumeAt = await wizardResumeStep(user.id, 'business_client');
           // Carry the slide, so a returning user lands on the thing they still have to
@@ -211,6 +222,17 @@ const AuthPage = () => {
         // with gaps is not mid-onboarding; it is an account with gaps, and the readiness
         // CHECKLIST is the surface for that: non-blocking, dismissal-aware, already built,
         // and reached without clicking through a wizard.
+        //
+        // KNOWN NARROWING, and a Codex P1 deliberately NOT taken. Someone who quits ON the
+        // payments slide has `is_completed` true and is no longer auto-resumed; they land on
+        // the dashboard with a checklist row pointing at payments. Codex proposed a distinct
+        // wizard-completion signal instead. That is the better long-term answer and it is a
+        // MIGRATION: a new nullable column is NULL for every existing account, so "null means
+        // never finished" reproduces this exact regression on all 45 of them unless it also
+        // ships a backfill — which is a considered change to a live auth path, not a hotfix
+        // for a live regression. Weigh the two failures: one costs a returning user a single
+        // click on a checklist row; the other trapped 20 established accounts in a wizard on
+        // every login. Follow-up, not a blocker.
         if (!creatorProfile?.is_completed) {
           const resumeAt = await wizardResumeStep(user.id, 'content_creator');
           // Carry the slide, so a returning user lands on the thing they still have to
@@ -269,6 +291,17 @@ const AuthPage = () => {
         // with gaps is not mid-onboarding; it is an account with gaps, and the readiness
         // CHECKLIST is the surface for that: non-blocking, dismissal-aware, already built,
         // and reached without clicking through a wizard.
+        //
+        // KNOWN NARROWING, and a Codex P1 deliberately NOT taken. Someone who quits ON the
+        // payments slide has `is_completed` true and is no longer auto-resumed; they land on
+        // the dashboard with a checklist row pointing at payments. Codex proposed a distinct
+        // wizard-completion signal instead. That is the better long-term answer and it is a
+        // MIGRATION: a new nullable column is NULL for every existing account, so "null means
+        // never finished" reproduces this exact regression on all 45 of them unless it also
+        // ships a backfill — which is a considered change to a live auth path, not a hotfix
+        // for a live regression. Weigh the two failures: one costs a returning user a single
+        // click on a checklist row; the other trapped 20 established accounts in a wizard on
+        // every login. Follow-up, not a blocker.
         if (!brandProfile?.is_completed) {
           const resumeAt = await wizardResumeStep(user.id, 'brand');
           // Carry the slide, so a returning user lands on the thing they still have to
