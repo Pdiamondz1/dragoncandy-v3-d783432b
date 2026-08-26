@@ -2,9 +2,11 @@
 
 ## [2026-08-26] ingest | The two proxies answered every origin with `*`
 
-**Created** `raw/sessions/2026-08-26-proxy-cors-wildcard.md`.
+**Created** `raw/sessions/2026-08-26-proxy-cors-wildcard.md` and
+[[Proxy CORS Wildcard Session]] (`sources/proxy-cors-wildcard-session.md`).
 **Updated** [[Edge-Function Deploy & Bundling]] (the "left alone" bullet closed, and its tally
-annotated), `docs/SHIPPED_LOG.md` (two cross-refs marked closed plus a new top entry).
+annotated), `index.md` (both the concept entry and the new source), `docs/SHIPPED_LOG.md` (two
+cross-refs marked closed plus a new top entry), `docs/PROJECT_CONTEXT.md` §5 Shipped.
 
 Code change + deploy (#539, `8bd8b3c0`). `outstand-proxy` and `social-proxy` were the only 2 of
 125 answering a wildcard ACAO — because both need a WIDER `Allow-Headers` than `corsHeaders`
