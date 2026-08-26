@@ -2,15 +2,18 @@
 
 ## [2026-08-26] ingest | Email verification exercised on prod, and a P1 that was nearly filed
 
-**Created** `raw/sessions/2026-08-26-email-verification-prod-exercise.md`. **Updated**
+**Created** `raw/sessions/2026-08-26-email-verification-prod-exercise.md` and
+[[Email Verification Prod Exercise Session]] (`sources/email-verification-prod-exercise-session.md`).
+**Updated**
 [[Email Verification Routes]], [[Verify Before Reporting]], `docs/SHIPPED_LOG.md`,
-`docs/PROJECT_CONTEXT.md` §5. No new pages, so `index.md` is unchanged.
+`docs/PROJECT_CONTEXT.md` §5, `index.md`.
 
-**No `sources/` page, deliberately.** The workflow in `docs/KNOWLEDGE_WIKI.md` lists one per raw
-source and the Codex review flagged its absence; measured against practice, 29 of 182 raw sessions
-have one. A summary here would restate the raw file without synthesising anything the two concept
-pages do not already carry, which is what "compound, don't duplicate" exists to prevent. Reversible
-if the query workflow is ever found missing this evidence.
+**The `sources/` page was skipped, then added.** The first pass declined it: the workflow lists one
+per raw source, but practice is 29 of 182 raw sessions, and a summary risks restating the raw file
+while both concept pages already carry the synthesis. The Codex review raised it twice, and the
+second time correctly — *an exception argued from prior noncompliance is not an argument*. Changing
+the workflow is a separate decision from quietly not following it. The page is a claims summary
+with provenance, not a copy, and `index.md` now carries it so the query workflow can reach it.
 
 Compounded onto the two existing pages rather than creating a third. The session produced no new
 subject — it produced *evidence* about one page's subject and *an instance* of the other's, which
