@@ -447,27 +447,45 @@ making enqueue idempotent (`20260826380000`): a required client-generated key, a
 `(user_id, idempotency_key)` unique index that referees concurrent replays, and a catch that
 **never deletes on an unknown outcome**.
 
+### A disconnect must not delete the posts queued for it
+
+Codex first reported the connection cascade as a storage leak, and I filed it as one. That
+reading was too narrow, and it came back as a P1 with the half I had under-weighted:
+**the row can go while the publish is in flight.** The sweep loads the connection, stamps
+`publishing_at`, calls Meta; the user disconnects in another tab; the cascade removes the row;
+Meta publishes; and `confirm_publish_job` updates nothing, because there is nothing left to
+update. So does `review_publish_job`, which is the branch written for exactly that failure. A
+live post, and a console line as its only trace.
+
+That is not storage cost. It is the one outcome the whole design exists to prevent. The quieter
+half is bad too: a queued post vanished with **no terminal status**, so nothing ever told its
+owner it would not go out.
+
+Fixed by `ON DELETE SET NULL` (`20260826430000`). The sweep already fails a job whose connection
+has gone, with a sentence naming what happened — that path was simply unreachable, because the
+row was deleted before anything could reach it. Now the job survives, reaches `stuck`, and
+because `stuck` is the branch that discards staged media, takes its bytes with it.
+
+The `publish_jobs_one_connection` CHECK had to relax to allow both-null, so a **`BEFORE INSERT`
+trigger** takes over what only has to be true at creation: a new job names exactly one connection.
+A CHECK cannot tell an insert from an update, and the rule here is about a transition, not a row —
+the same split the `guard_*_verification_columns` triggers make.
+
 ### Open — a storage reaper, which is its own slice
 
-Codex also found that deleting a connection cascades its queued jobs away, taking `media_paths`
-with them and leaving the staged objects in `publish-media` with nothing referencing them. That is
-real. It is **storage cost, not correctness** — paths are `<user>/<batch-uuid>/<n>`, so nothing
-can collide with them or read them.
+Three orphan paths remain, down from four:
 
-The proposed remedy was to clean up before each delete. That is the wrong shape: it asks every
-future deletion path to remember, which is the enumeration failure this repo has already watched
-happen three times on `profiles` write grants. There are **four** orphan paths today, not one:
-
-1. a connection deleted while jobs are queued (the cascade Codex found);
-2. a job given up on by the deadline branch, which is SQL and cannot reach Storage;
-3. a job routed to `needs_review`, where the bytes are kept **on purpose** so a person can see
+1. a job given up on by the deadline branch, which is SQL and cannot reach Storage;
+2. a job routed to `needs_review`, where the bytes are kept **on purpose** so a person can see
    what was about to go out, and then never collected;
-4. an enqueue whose RPC genuinely did not commit, where the new rule keeps the media precisely
+3. an enqueue whose RPC genuinely did not commit, where the rule keeps the media precisely
    because that outcome is unknowable.
 
-One reaper — list `publish-media`, drop any object older than N days with no referencing
-`publish_jobs` row — closes all four and needs nothing remembered at any call site. Not built:
-it is an edge function, a cron and a Vault secret, and the bucket currently holds zero objects.
+Cleaning up at each site was the proposed remedy and is the wrong shape: it asks every future
+path to remember, which is the enumeration failure this repo has watched three times on
+`profiles` write grants. One reaper — list `publish-media`, drop any object older than N days
+with no referencing `publish_jobs` row — closes all three and needs nothing remembered anywhere.
+Not built: it is an edge function, a cron and a Vault secret, and the bucket holds zero objects.
 
 ### Still to do for Facebook
 
