@@ -373,6 +373,10 @@ Engineering cannot close these. Ordered by what blocks launch.
 - **Donny-first dashboard (business + creator)** — the dashboard body is Donny for both roles;
   #444 (creator, Phase 3) is **merged**. `billing_agent` is wrong for creators and is routed
   around, not fixed. → `docs/wiki/concepts/donny-first-dashboard.md` · #410, #411, #423, #428, #429, #444
+- **Two proxies answered every origin with `*`** — the only 2 of 125; they needed a wider
+  `Allow-Headers` than `corsHeaders` gives, so copying the block beat sharing it. Fixed by
+  sharing the origin *decision* and stamping it at the response boundary. Fleet sweep: 0.
+  → `docs/wiki/concepts/edge-function-deploy-bundling.md` · #539
 - **A third of Donny's internal corpus was never embedded** — a 24,000-char slice dropped 33% of
   the corpus, silent in every signal the run produced; now chunked ~6k server-side. Verified on
   prod by content: 144 documents → 401 rows.
