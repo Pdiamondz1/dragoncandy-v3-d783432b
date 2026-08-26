@@ -5,6 +5,32 @@
 
 ## Lessons (read FIRST every run; curated — rewrite/prune as they evolve)
 
+- **[propagate-the-correction] The number you just disproved is still sitting in three other
+  files.** On 2026-08-26 Codex filed three findings across three rounds on a docs-only PR, and
+  **every one was a fact I had already established correctly elsewhere in the same patch** — a
+  tally that summed to 123 against a fleet of 125 I had stated two lines above; a "500 not 401"
+  count I measured as five while `PROJECT_CONTEXT` still said two; an invariant I narrowed in one
+  copy and left overstated in two. The failure mode is not missing the fact, it is failing to
+  propagate it. **Before committing, grep for the OLD value** — the superseded number, the
+  superseded phrasing — and expect to find it, because a session that writes the same claim into a
+  wiki page, `SHIPPED_LOG`, a raw source and `PROJECT_CONTEXT` has made four copies by hand.
+
+- **[probe-the-deployment-not-the-repo] A deployed edge-function bundle is not the repo, and
+  reading files cannot tell you what is running.** On 2026-08-26 twelve functions — exactly the
+  money surface — answered `.io` to `capacitor://localhost` while `_shared/cors.ts` on `main` had
+  been correct the whole time. **Both halves were true at once:** a code review would have found
+  nothing, and a probe found it in one pass. The corollary is that the *fix* must be verified the
+  same way: an empty diff, a green build and the CLI printing `Deployed Functions.` are all
+  compatible with nothing having changed. Read the upload log for the `_shared/*` assets, then
+  re-probe.
+
+- **[pair-every-probe-with-a-second-origin] A single-origin CORS probe cannot tell a per-origin
+  header from a constant.** Preflighting each function from `capacitor://localhost` *and*
+  `https://dragoncandy.com` did more than confirm the 2026-08-26 defect — the `.com` origin echoed
+  correctly while the native one fell through, which **dated the bundle** to the window between
+  two separate changes. Without the pair, "everything answers `.com`" is indistinguishable from
+  "the function ignores `Origin` entirely", in either direction.
+
 - **[guard-greps-its-own-docs] A guard that greps for a VALUE will match the value's own
   documentation.** On 2026-08-26 a generator coupled the iOS launch image to `index.html` by
   checking `indexHtml.includes("#241332")` — and that hex appears **twice** in the file: in the
@@ -392,6 +418,47 @@
   `[orphans]`, which matches on the `(path/to/file.md)` link target and does not have this problem.
 
 ## Run log (newest first — add each new entry at the TOP; never edit/delete past entries)
+
+### 2026-08-26 — 12 money edge functions answered `.io` to the native origin; stale bundles, not a bug (PR #536)
+
+**Output:** [[Edge-Function Deploy & Bundling]] new 2026-08-26 section + [[iOS TestFlight First Build]]
+closure, `docs/wiki/log.md` top entry, `docs/SHIPPED_LOG.md` top entry, `PROJECT_CONTEXT` §5 Apple entry.
+Raw source: `docs/wiki/raw/sessions/2026-08-26-money-functions-stale-cors-bundles.md`.
+
+**Happened.** A CORS preflight from `capacitor://localhost` was answered `.io` by 12 deployed
+functions — exactly the money surface. The repo was already correct, so the fix was 12 redeploys
+with no code change. This PR is the knowledge layer only.
+
+**Worked.**
+- **Pairing every probe with a second origin.** Preflighting from `.com` alongside the native origin
+  did not merely confirm the defect, it *dated the bundle*: `.com` echoed correctly while native fell
+  through, which places the bundle after the domain migration and before the native widening. A
+  single-origin probe cannot tell a per-origin header from a constant.
+- **Measuring `verify_jwt` before deploying, with no credential.** POST unauthenticated and read
+  *which body* comes back — gateway `UNAUTHORIZED_NO_AUTH_HEADER` means `true`, our JSON means
+  `false`, an invented name returns 404 as the control. Two of the 12 are absent from `config.toml`,
+  which is the dangerous case *because it is silent*; the probe proved the default would re-apply the
+  posture they already had.
+- **Proving a secret by SHA-256 digest instead of by value.** `supabase secrets list` returns digests,
+  so `printf | shasum` proves equality without the value entering the transcript.
+- **Sweeping all 125 rather than re-testing the 12 touched.** Strictly stronger — it also catches a
+  regression elsewhere or a function the earlier count missed. It found the earlier 13-vs-12 delta
+  reconciles: two incidentally fixed by an unrelated deploy, one newly found by widening the probe.
+
+**Failed.**
+- **I overstated an invariant and shipped it in three copies.** I wrote "current source cannot emit
+  `.io` for any origin". False — both TLDs are in `APP_ORIGINS` deliberately and `corsHeaders` echoes
+  an allowed origin verbatim, so an `.io` caller correctly gets `.io`. Codex caught it. The true claim
+  is narrower and about the *fallback*.
+- **My first tally summed to 123 against a stated fleet of 125.** The missing 2 were the wildcard
+  proxies, which I discussed further down the same page but dropped from the count. Codex caught it.
+- **I measured five functions answering 500 instead of 401 and left `PROJECT_CONTEXT` saying two.**
+  Codex caught that too — refreshing the affected core doc is the whole point of the knowledge step.
+
+**Remember.** Three findings, three rounds, and **all three were a number or a claim I had already
+disproved elsewhere in my own patch**. The pattern is not sloppiness about facts I did not check; it
+is failing to propagate a fact I *did* check into every copy of it. Grep for the old number before
+committing.
 
 ### 2026-08-26 — iOS app icon + launch image, and a guard that matched its own documentation
 - **Output:** `docs/wiki/concepts/ios-app-icon-and-launch-image.md`, indexed and logged
