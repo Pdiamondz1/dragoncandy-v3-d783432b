@@ -87,3 +87,63 @@ describe('an auth-header guard throws a typed error', () => {
     expect(offenders).toEqual([]);
   });
 });
+
+/**
+ * The second shape, which the first version of this guard missed.
+ *
+ * Typing the "no Authorization header" throw only fixes a MISSING credential. A
+ * header that is present but invalid or expired takes a different branch —
+ * `if (userError || !userData.user) throw ...` — and stayed bare, so a rejected
+ * credential still reported 500. Found by the Codex second review, not by me,
+ * and it is the more common failure of the two in normal use: tokens expire.
+ *
+ * The lesson is about the first guard, not the bug: it matched ONE syntactic
+ * shape and so could only ever vouch for that shape. A guard's silence means
+ * "nothing matched my pattern", never "nothing is wrong".
+ *
+ * Scope is the money surface, and the one exclusion is NAMED rather than left
+ * as a hole: `suggest-package`, which is not a money endpoint and already
+ * answers 401 behind `verify_jwt = true`.
+ *
+ * A THIRD shape exists and this guard deliberately does not claim it:
+ * `donny-campaign-preview` and `donny-schedule` throw a bare
+ * `new Error("Unauthorized")` with no `userError` on the line, so neither
+ * pattern here matches them. They are out of scope because each has multiple
+ * catch blocks per handler — wiring them is a materially larger change on
+ * Donny's surface, not the money surface — and both already answer 401 today.
+ * Recorded in prose rather than pretended away: **the exclusion list below is
+ * exactly what these two patterns match, not everything that is unfixed.**
+ *
+ * The PARKED list was initially written from memory and named those two files;
+ * the exact-equality assertion below rejected it, because they never matched
+ * these patterns at all. That is the assertion doing its job — a subset check
+ * would have accepted the wrong list silently.
+ */
+const BARE_CREDENTIAL_THROW =
+  /(userError|userErr|authError)[^\n]*throw new Error\(/;
+
+/** Known-parked, non-money surfaces. Anything else matching is a failure. */
+const PARKED = ['suggest-package/index.ts'];
+
+describe('a rejected credential throws a typed error on the money surface', () => {
+  const sources = edgeSources(FUNCTIONS_DIR);
+
+  it('matches the rejection shape, and not the fixed one', () => {
+    expect(BARE_CREDENTIAL_THROW.test(
+      'if (userError || !userData.user) throw new Error("Auth failed");')).toBe(true);
+    expect(BARE_CREDENTIAL_THROW.test(
+      'if (userErr || !userData?.user) throw new Error("Not authenticated");')).toBe(true);
+    expect(BARE_CREDENTIAL_THROW.test(
+      'if (userError || !userData.user) throw unauthorized("Auth failed");')).toBe(false);
+  });
+
+  it('finds only the named, parked exclusions', () => {
+    const offenders = sources
+      .filter((f) => BARE_CREDENTIAL_THROW.test(readFileSync(f, 'utf8')))
+      .map((f) => f.slice(FUNCTIONS_DIR.length + 1))
+      .sort();
+    // Exact equality, not a subset check: a parked file that gets FIXED should
+    // also fail here, so the list cannot quietly rot into a stale allowlist.
+    expect(offenders).toEqual([...PARKED].sort());
+  });
+});

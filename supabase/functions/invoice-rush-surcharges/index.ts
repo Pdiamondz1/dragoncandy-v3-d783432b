@@ -34,7 +34,7 @@ serve(async (req) => {
       { global: { headers: { Authorization: authHeader } } },
     );
     const { data: { user }, error: authError } = await supabaseUser.auth.getUser();
-    if (!user || authError) throw new Error("Unauthorized");
+    if (!user || authError) throw unauthorized("Unauthorized");
 
     const { userId } = await req.json() as { userId: string };
     if (userId !== user.id) throw new Error("User ID mismatch");

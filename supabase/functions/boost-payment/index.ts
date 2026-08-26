@@ -40,7 +40,7 @@ serve(async (req) => {
     if (!authHeader) throw unauthorized("No authorization header");
     const token = authHeader.replace("Bearer ", "");
     const { data: userData, error: userError } = await supabase.auth.getUser(token);
-    if (userError || !userData.user) throw new Error(`Auth failed: ${userError?.message}`);
+    if (userError || !userData.user) throw unauthorized(`Auth failed: ${userError?.message}`);
     const userId = userData.user.id;
     const userEmail = userData.user.email;
 
