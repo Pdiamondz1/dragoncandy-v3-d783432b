@@ -176,6 +176,83 @@ which nothing enforces and which fails at token exchange if missed; and App Revi
 Google's and Meta's. Both TikTok buttons on the settings page also read "Connect TikTok" — one
 publishes via Outstand, one measures — and nothing on the buttons says which.
 
+## [2026-08-26] An auth failure is not a server error: 401 instead of 500 across 20 edge functions
+
+**#542, merged `ced582f4`, all 20 deployed and verified.** Third and last of the day's
+edge-function corrections, after the `.io` CORS sweep and the proxy wildcard.
+
+These functions share one shape: a big `try` whose `catch` returns `error.message` with a single
+hardcoded status. Every failure therefore became a 500 — a missing `Authorization` header, a bad
+campaign id and a genuinely broken Stripe key all reported identically as "the server broke".
+Measured on prod: **twelve** functions answered an unauthenticated request
+`500 {"error":"No authorization header provided"}`; `get-stripe-dashboard-link` answered 400. The
+body already named the problem; only the status disagreed.
+
+**Why it matters beyond tidiness:** a 500 is the one status a client may retry and monitoring may
+page on. An auth failure is neither retryable nor an incident, so the wrong status makes a routine
+event indistinguishable from an outage — on the payout and escrow surface, where a real outage is
+exactly what someone needs to be able to see.
+
+**The scope went five → fourteen → eighteen → twenty, and each step has a cause.** "Five" was my
+own earlier figure, taken from a probe of only the twelve money functions carrying the `.io`
+defect — a count bounded by a *previous investigation's sample* rather than by this defect.
+Grepping the message found fourteen. The fleet guard found four more that a message-based grep
+structurally could not (same code shape, different message string). And Codex found the branch
+missed entirely: typing the `!authHeader` throw only fixes a MISSING credential, while a header
+that is present but invalid or expired takes `if (userError || !userData.user) throw ...`, which
+stayed bare. Tokens expire; that is the commoner failure. **The lesson is about the guard, not the
+bug — it matched ONE syntactic shape, so it could only ever vouch for that shape. A guard's
+silence means "nothing matched my pattern", never "nothing is wrong."**
+
+**Deliberately minimal.** `HttpError` + `unauthorized()` + `statusFor(error, fallback)` map
+AUTHENTICATION failures to 401 and change nothing else; authorization, not-found and validation
+keep each function's existing generic status, which is why `get-stripe-dashboard-link` passes 400
+rather than being silently promoted. Three functions already returned 401 by **string-matching the
+error message** — correct today, silently a 500 the moment anyone rewords it; the typed error is
+now authoritative and the heuristic is kept as the fallback for the other throws it covers. No
+client behaviour changed: every caller uses `functions.invoke()` and supabase-js turns any non-2xx
+into the same `FunctionsHttpError`; nothing in `src/` branches on a status and there is no 401
+auto-signout.
+
+**The guard states what it does NOT cover.** Two patterns; one named exclusion
+(`suggest-package`). A third shape — a bare `throw new Error("Unauthorized")` in
+`donny-campaign-preview` and `donny-schedule` — is deliberately unclaimed, because each has
+multiple catch blocks per handler and both already answer 401. The `PARKED` list was first written
+from memory and named those two files; the **exact-equality** assertion rejected it, because they
+never matched the patterns at all. A subset check would have accepted the wrong list silently.
+
+**A line-ending trap.** These files are a per-file mix of CRLF and LF from the repo's move off
+Windows. A naive Python read/write rewrote them all to LF — **1,777 phantom line changes** across
+the payout surface on the first attempt, reverted. A diff that size is unreviewable, which is the
+same outcome as not being reviewed.
+
+**Deploy verification.** `verify_jwt` was checked BEFORE deploying, because the dangerous
+combination is live-`false` + absent from `config.toml`, where the deploy applies the platform
+default `true` and the function starts rejecting its own callers. All 20 matched; none was
+live-false-but-absent. Every upload log carried `http-error.ts`. After: the 12 moved 500 → 401,
+`get-stripe-dashboard-link` 400 → 401, the five gateway-protected ones stayed 401, `donny-chat`
+stayed 401, and CORS still answers `capacitor://localhost` everywhere.
+
+**Two did not move, and that is a finding rather than a failure.** `refund-package-order` and
+`release-package-payout` still answer `500 {"error":"Missing required field: orderId"}` because
+their auth check is never reached. Proven by supplying the field: they then answer
+**`"Order not found"`** — so the order is parse body → **look up the order with a service-role
+client** → then authenticate, and **an unauthenticated caller can distinguish "order exists" from
+"order not found"**. That is an existence oracle on a service-role read, worse than the "validates
+the body before auth" note it had been filed under. **The naive fix breaks guest refunds** — the
+branch above the auth check compares `order.buyer_guest_token`, so the order genuinely must be
+fetched before the caller can be identified. The correct fix is to stop leaking existence, not to
+reorder. Bounded because `package_orders.id` is a UUID and not enumerable. Left for its own change,
+with the mechanism recorded so the next session does not reach for the reordering that breaks
+guests.
+
+**The durable lesson: a count inherited from an earlier investigation carries that investigation's
+sample, not the current question's.** "Five" was never wrong about the twelve money functions
+probed for a CORS defect; it was wrong about this defect, and nothing in the number said which it
+was.
+
+→ `docs/wiki/raw/sessions/2026-08-26-auth-401-not-500.md`
+
 ## [2026-08-26] The two proxies answered every origin with `*`, because copying was easier than sharing
 
 **#539, merged `8bd8b3c0`, deployed and swept.** Code change plus deploy — the follow-up to the

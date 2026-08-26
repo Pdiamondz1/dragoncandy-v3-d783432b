@@ -1,5 +1,26 @@
 # Wiki Log
 
+## [2026-08-26] ingest | An auth failure is not a server error
+
+**Created** `raw/sessions/2026-08-26-auth-401-not-500.md` and
+[[Auth 401-Not-500 Session]] (`sources/auth-401-not-500-session.md`).
+**Updated** `index.md` (catalogues the new source), `docs/SHIPPED_LOG.md`,
+`docs/PROJECT_CONTEXT.md` §5.
+
+Code change + deploy (#542, `ced582f4`, 20 functions). Every failure in these functions returned
+one hardcoded status, so an unauthenticated request answered 500 — retryable and pageable, which
+an auth failure is not. Scope went 5 → 14 → 18 → 20: the "5" was inherited from an earlier
+investigation's sample, a message-grep found 14, the fleet guard found 4 more with the same shape
+and a different message, and Codex found the rejected-credential branch (expired tokens — the
+commoner failure). **A guard's silence means "nothing matched my pattern", never "nothing is
+wrong."** `verify_jwt` probed before and after and unchanged.
+
+**Surfaced in the process:** `refund-package-order` and `release-package-payout` look up the order
+with a service-role client BEFORE authenticating, so an anonymous caller can distinguish "order
+exists" from "order not found". Proven by supplying the field. The naive reorder breaks guest
+refunds (the guest branch needs `order.buyer_guest_token`), so the fix is to stop leaking
+existence. Left for its own change.
+
 ## [2026-08-26] ingest | The two proxies answered every origin with `*`
 
 **Created** `raw/sessions/2026-08-26-proxy-cors-wildcard.md` and
