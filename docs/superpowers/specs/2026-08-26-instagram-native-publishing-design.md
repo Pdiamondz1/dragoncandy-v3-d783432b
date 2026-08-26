@@ -399,11 +399,80 @@ and widened in the same statement for the one case Facebook genuinely has and In
 plus 23 more on the multi-platform behaviour, plus the function ACLs re-derived by object because
 four signatures changed and one function was renamed.
 
+## 11. The Facebook step machine, 2026-08-26 — and two things the queue got wrong
+
+`facebook-publish-enqueue` and `facebook-publish-sweep` are built. Four protocols share one
+queue: `feed_text` and `photo_single` are one call, `photo_story` two, `video_session` three. The
+protocol is **derived, never stored** — `validateJobShape` returns it, and both the enqueue path
+and the sweep call the same function, so `provider_ref` needs no discriminator and the two callers
+cannot come to disagree about one job.
+
+**The point of no return moves with the protocol**, which is the design difference worth
+remembering. Instagram's first call always builds a container and publishes nothing. Two of
+Facebook's four protocols publish on their FIRST call — there is no container to hide behind for a
+text post or a single photo — so the marker is stamped in step one for those and step two for the
+others. The two-step protocols keep Instagram's safety for the same reason it had it:
+`published=false` is not on the feed, and an upload session with no `finish` publishes nothing.
+
+`video_session` opens the session **and** uploads in one tick, recording the video id only once
+both succeed. The tidier-looking split is a bug: record after `start` and upload next tick, and a
+video that never receives bytes sits at `uploading` for ever, polled and released every tick
+without ever charging an attempt.
+
+### The staging path is shared, because it is the ownership check
+
+`_shared/publish-staging.ts` holds the copy that freezes the approved bytes and the two-client
+split that proves the caller owns them. It existed twice for about an hour; two copies of an
+authorization check is #540's shape, and a drift there is one platform checking ownership and the
+other not. `publish-staging.test.ts` pins **which credential does which operation**, and that test
+was proven to fail by swapping the two clients in the module.
+
+### Two defects in the shared queue, both pre-existing
+
+**A job that is only ever POLLED could never run out of attempts.** `MAX_ATTEMPTS` bounds
+failures, and a poll is not one — it gives its attempt back on purpose. In practice Meta ends it
+(a container or upload session expires in about a day), so the loop was bounded by a third party's
+behaviour that neither sweep can verify. Fixed by a wall-clock deadline in
+`claim_publish_job` (`20260826370000`), measured from `scheduled_at` at 48 hours — deliberately
+longer than Meta's own expiry, so Meta's terminal status stays the primary mechanism, since it
+carries a reason a person can act on. It **defaults on**, because a deadline a future caller
+silently omits is the `p_claim_ttl_seconds` defect again.
+
+**A lost enqueue response could produce a duplicate post** (Codex, round 7). If the RPC commits
+and its response is lost, the catch used to delete media a committed job referenced. The obvious
+remedy — keep the media — is *worse*: the discard was accidentally buying safety, because an
+orphaned job with no media cannot publish. That accident does not cover a Facebook feed post,
+which has no media at all, so the orphan publishes and the user's retry publishes again. Fixed by
+making enqueue idempotent (`20260826380000`): a required client-generated key, a
+`(user_id, idempotency_key)` unique index that referees concurrent replays, and a catch that
+**never deletes on an unknown outcome**.
+
+### Open — a storage reaper, which is its own slice
+
+Codex also found that deleting a connection cascades its queued jobs away, taking `media_paths`
+with them and leaving the staged objects in `publish-media` with nothing referencing them. That is
+real. It is **storage cost, not correctness** — paths are `<user>/<batch-uuid>/<n>`, so nothing
+can collide with them or read them.
+
+The proposed remedy was to clean up before each delete. That is the wrong shape: it asks every
+future deletion path to remember, which is the enumeration failure this repo has already watched
+happen three times on `profiles` write grants. There are **four** orphan paths today, not one:
+
+1. a connection deleted while jobs are queued (the cascade Codex found);
+2. a job given up on by the deadline branch, which is SQL and cannot reach Storage;
+3. a job routed to `needs_review`, where the bytes are kept **on purpose** so a person can see
+   what was about to go out, and then never collected;
+4. an enqueue whose RPC genuinely did not commit, where the new rule keeps the media precisely
+   because that outcome is unknowable.
+
+One reaper — list `publish-media`, drop any object older than N days with no referencing
+`publish_jobs` row — closes all four and needs nothing remembered at any call site. Not built:
+it is an edge function, a cron and a Vault secret, and the bucket currently holds zero objects.
+
 ### Still to do for Facebook
 
-The `facebook-publish-enqueue` and `facebook-publish-sweep` functions, plus
-`pages_manage_posts` on the Meta app and its own App Review. `_shared/facebook-publish.ts` and its
-23 tests are in place; the step machine that drives it is not.
+`pages_manage_posts` on the Meta app and its own App Review. The live Page already holds the
+`CREATE_CONTENT` task, so of the two gates only the permission is outstanding.
 
 ---
 
