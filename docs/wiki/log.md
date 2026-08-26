@@ -31,12 +31,12 @@ catalog definition. Both are instruments answering a different question than the
 
 `scripts/lib/wikilinks.test.ts` now gates CI on 1,958 links: no dangling target, every catalog
 path resolving to a real file, every page cataloged, no mojibake. It knows the two namespaces
-that are deliberate — skills (`.claude/skills/<name>/SKILL.md`) and the index itself — and
-ignores code spans. Proven by forcing it red three ways; **the mojibake control passed on the
+that are deliberate — skills, under EITHER skill root, and the index itself — and ignores code
+spans, fenced blocks and indented blocks. Proven by forcing it red three ways; **the mojibake control passed on the
 first attempt and had to be redone**, because the injected bytes were Latin-1 where the check
 reads UTF-8. A control that fails to fail is the failure.
 
-**Codex then found the checker wrong seven times across four rounds, every one real, and every
+**Codex then found the checker wrong eight times across five rounds, every one real, and every
 one in the checker rather than the cleanup.** The mojibake detector was a list of the five
 sequences this cleanup happened to contain — which is *"a guard that enumerates the bad cases
 treats every case it has not met as good"*, the lesson this repo already recorded on the X

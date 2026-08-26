@@ -106,6 +106,16 @@ describe('the checker itself can fail', () => {
     expect(skills.length).toBeGreaterThan(5);
   });
 
+  it('reads BOTH skill roots, so a skill in only one of them still resolves', () => {
+    // `plaid` exists under .agents/skills and not under .claude/skills; reading a single
+    // root reports a valid link to it as dangling. (Codex second review, round 5.)
+    expect(existsSync(join(REPO, '.agents/skills/plaid/SKILL.md'))).toBe(true);
+    expect(existsSync(join(REPO, '.claude/skills/plaid/SKILL.md'))).toBe(false);
+    expect(listSkills(REPO)).toContain('plaid');
+    // control: a name in neither root is still not a skill
+    expect(listSkills(REPO)).not.toContain('definitely-not-a-skill');
+  });
+
   it('detects mojibake by round trip, not from a list of sequences it has seen', () => {
     // The five that were actually present in the 2026-08-26 cleanup...
     for (const [bad, good] of [

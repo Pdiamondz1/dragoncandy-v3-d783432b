@@ -199,10 +199,25 @@ export function isPageFile(absolutePath: string): boolean {
   return statSync(absolutePath).isFile();
 }
 
+/**
+ * Skill names, from BOTH skill roots.
+ *
+ * `.agents/skills` is the canonical location and `.claude/skills` the legacy one; today they
+ * hold the same set apart from one skill that exists only under `.agents/`. Reading a single
+ * root would report a valid link to that skill as dangling. (Codex second review, round 5.)
+ */
+export const SKILL_ROOTS = ['.agents/skills', '.claude/skills'];
+
 export function listSkills(repoRoot: string): string[] {
-  const dir = join(repoRoot, '.claude/skills');
-  if (!existsSync(dir)) return [];
-  return readdirSync(dir).filter((n) => existsSync(join(dir, n, 'SKILL.md')));
+  const names = new Set<string>();
+  for (const root of SKILL_ROOTS) {
+    const dir = join(repoRoot, root);
+    if (!existsSync(dir)) continue;
+    for (const name of readdirSync(dir)) {
+      if (existsSync(join(dir, name, 'SKILL.md'))) names.add(name);
+    }
+  }
+  return [...names].sort();
 }
 
 function walkMarkdown(dir: string, out: string[] = []): string[] {

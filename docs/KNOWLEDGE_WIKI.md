@@ -43,8 +43,8 @@ frontmatter. `[[Wikilinks]]` use display names, resolved via `index.md`.
 line of the shape `- [[Name]](path)` defines a page. The same name appearing in another
 entry's *description* is a use — a check that cannot tell the two apart calls a broken
 link fine, which is how one survived a hand-run `grep` on 2026-08-26. Two other
-namespaces resolve on purpose: **skills** (`[[codex-review]]` →
-`.claude/skills/codex-review/SKILL.md`) and the index itself (`[[Wiki Index]]`).
+namespaces resolve on purpose: **skills** (`[[codex-review]]` → a `SKILL.md` under either
+`.agents/skills/` or `.claude/skills/`) and the index itself (`[[Wiki Index]]`).
 **Memory notes are not a namespace** — cite them in backticks, since they are not pages.
 A wikilink inside a code span is a quotation and is ignored.
 
