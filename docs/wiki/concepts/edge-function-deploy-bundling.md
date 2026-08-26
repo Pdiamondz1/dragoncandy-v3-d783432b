@@ -2,9 +2,9 @@
 title: Edge-Function Deploy & Bundling
 type: concept
 created: 2026-08-09
-updated: 2026-08-09
-sources: [2026-08-09-dotcom-phase1-and-esm-sh-bundler-outage.md]
-tags: [edge-functions, supabase, deploy, deno, bundling, incident]
+updated: 2026-08-26
+sources: [2026-08-09-dotcom-phase1-and-esm-sh-bundler-outage.md, 2026-08-26-money-functions-stale-cors-bundles.md]
+tags: [edge-functions, supabase, deploy, deno, bundling, incident, cors, capacitor]
 ---
 # Edge-Function Deploy & Bundling
 
@@ -126,6 +126,97 @@ concurrent merge plus a deploy from a stale tree is a silent revert. Repair by r
 current `main` and verifying by **reading the deployed source for the other change's symbols**
 — never by the version number, which increments either way.
 
+## 2026-08-26: a stale bundle broke the whole money surface in the iOS shell, and the repo was clean
+
+The sharpest instance so far of "merged ≠ deployed", because **both halves were true at
+once**: the source was already correct, so a code review would have found nothing, and the
+behaviour was still wrong, so a probe found it in one pass.
+
+A CORS preflight from `Origin: capacitor://localhost` — the origin every fetch carries inside
+the Capacitor shell — was answered `Access-Control-Allow-Origin: https://dragoncandy.io` by
+**12** deployed functions, which were **exactly the money surface**: the three payout releases,
+`withdraw-pending-balance`, two refunds, `create-package-order-escrow`, three verifies,
+`invoice-rush-surcharges` and `get-stripe-dashboard-link`. The browser blocks that response,
+and in `WKWebView` it surfaces as a generic fetch error naming nothing.
+
+`_shared/cors.ts` on `main` composes `NATIVE_APP_ORIGINS` into its allow-set and defaults to
+`https://dragoncandy.com`. **Current source cannot emit `.io` for any origin.** So there was
+nothing to fix and something to ship — 12 redeploys, no code change, no migration, no PR for
+the fix itself.
+
+### The control did more than confirm the finding
+
+Each function was preflighted **twice** — once from `capacitor://localhost`, once from
+`https://dragoncandy.com`. The `.com` origin echoed back correctly while the native one fell to
+`.io`. So the deployed bundle *did* know `.com`: it was stranded in the window **after** the
+domain migration added `.com` to `APP_ORIGINS` but **before** `DEFAULT_ORIGIN` was flipped and
+`NATIVE_APP_ORIGINS` existed. Two separate changes, one bundle caught between them — see
+[[Domain Migration (.io → .com)]].
+
+**Without the paired origin, "everything answers `.com`" is indistinguishable from "the
+function ignores `Origin` entirely."** A single-origin probe cannot tell a per-origin header
+from a constant, in either direction.
+
+### The real hazard was `verify_jwt`, not the code
+
+`supabase functions deploy` reads `supabase/config.toml` **relative to the working directory**
+and applies the platform default `verify_jwt = true` to any function the file does not mention.
+Ten of the 12 are declared `false`. **Two — `invoice-rush-surcharges` and
+`refund-campaign-escrow` — are absent from the file entirely**, which is the dangerous case
+precisely because it is silent.
+
+Live posture was therefore **measured before deploying**, with no credential, by POSTing
+unauthenticated and reading *which body came back*: the platform's `UNAUTHORIZED_NO_AUTH_HEADER`
+means the gateway rejected the call before our code ran (`true`); our own JSON means our code
+ran and rejected it (`false`). An invented function name returns 404, separating "registered and
+rejecting" from "absent".
+
+Posture matched `config.toml` on all 12 — the two absent ones are live `true`, exactly what the
+default would re-apply. **That is what made the deploy safe, and it was established rather than
+assumed.** It also means the safety depended on deploying from the worktree that has those
+entries; the main checkout's `config.toml` lacks several of them.
+
+### A constant that is not only a header
+
+`create-package-order-escrow` is one of three functions that mint **real user-facing URLs** from
+`DEFAULT_ORIGIN` when their env var is unset, so moving it moves more than CORS. Checked by
+**digest, not by value** — `supabase secrets list` returns each secret's SHA-256, and `APP_URL`,
+`DRAGONCANDY_APP_URL` and `PUBLIC_SITE_URL` all hash to the digest of `https://dragoncandy.com`.
+All set, fallback unreachable, no minted URL changed. **A digest proves equality without ever
+printing the value**, which is the right way to check a secret in a transcript.
+
+### Verifying a deploy has to use the method that found the defect
+
+Every upload log listed `_shared/origins.ts` and `_shared/cors.ts` among its assets. That is the
+evidence the fix shipped — a deploy that fails to bundle keeps serving the old version, so
+`Deployed Functions.` alone proves nothing, and neither does an empty diff or a green build.
+
+After the deploy: all 12 echo `capacitor://localhost` with the `.com` control still echoing
+`.com`, and the `verify_jwt` table is byte-identical to before.
+
+Then a **full sweep of all 125 deployed functions**, which is strictly stronger than re-testing
+the 12 that were touched — it also catches a regression elsewhere, or a function the original
+count missed. **stale = 0**, ok = 105, nocors = 18 unchanged.
+
+Those 18 answer no preflight at all, and are deliberately kept as their own bucket: they are
+cron and webhook endpoints with no browser caller, and folding "no header" into "wrong header"
+would have inflated the count and hidden the real defect inside it.
+
+### Found in scope, left alone on purpose
+
+- **`outstand-proxy` and `social-proxy` answer `Access-Control-Allow-Origin: *`** — in the
+  **repo source**, not a stale bundle, so it is a code change and out of scope for a redeploy.
+  Neither sets `Access-Control-Allow-Credentials`, so a cross-origin page still cannot read a
+  response without holding the user's JWT: a real deviation from the shared `corsHeaders`
+  helper, not a live hole.
+- **Five of the 12 answer 500 rather than 401 unauthenticated**;
+  `docs/PROJECT_CONTEXT.md` records that class as two. Four others validate the request body
+  *before* checking auth, so an unauthenticated caller gets `Missing required field: …`.
+
+All three are pre-existing. **Mixing a behaviour change into a redeploy makes a failure
+impossible to attribute to one or the other**, which is the whole reason a no-code-change deploy
+is verifiable at all.
+
 ## Known Issues
 
 - **Docker is not installed on the founder's machine**, so the local bundler — the more robust
@@ -140,3 +231,4 @@ current `main` and verifying by **reading the deployed source for the other chan
 - [[verify_jwt Is Not Authorization]] — the other merged-but-not-deployed gap
 - [[Domain Migration (.io → .com)]] — the migration this incident interrupted
 - [[Service-Role Data Exposure]] — orphaned endpoints as attack surface
+- [[iOS TestFlight First Build]] — the Capacitor shell whose origin this defect blocked
