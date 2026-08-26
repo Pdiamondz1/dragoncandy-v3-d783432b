@@ -96,6 +96,22 @@ const MAX_ATTEMPTS = 5;
 const MAX_PER_RUN = 10;
 
 /**
+ * Fail a job ONCE rather than retrying it to exhaustion.
+ *
+ * `fail_publish_job` marks a job `stuck` when `attempts >= p_max_attempts`, so
+ * passing zero makes the very first failure terminal. That is the whole trick,
+ * and it is deliberate rather than clever-for-its-own-sake: it reuses the
+ * contract that already reports the `stuck` transition exactly once, instead of
+ * adding a second failure path that could report it differently.
+ *
+ * Used for conditions no retry can change — a revoked permission, a dead grant,
+ * a connection that now points at a different account, a file Instagram will
+ * never accept. Retrying those spends five ticks arriving at the same answer
+ * while the owner reads "queued" and waits.
+ */
+const TERMINAL = 0;
+
+/**
  * How long Meta has to fetch the media, from the moment the container is
  * created. Meta fetches once, during container creation, so this only has to
  * outlast that single request — but a signed URL that expires mid-fetch fails
@@ -120,6 +136,24 @@ interface Claim {
   media_paths: string[];
   ig_container_id: string | null;
 }
+
+/**
+ * Errors about the JOB rather than about the moment — no retry can change them.
+ *
+ * Kept as an explicit list rather than derived from
+ * `PROVEN_NOT_PUBLISHED_CODES`, which overlaps but answers a different
+ * question. That one asks "is it safe to retry"; this asks "is it worth
+ * retrying". `publish_rejected` is on that list and deliberately not on this
+ * one: a Meta 4xx can be a transient media-download failure, so retrying is
+ * both safe AND worth doing.
+ */
+const TERMINAL_SHAPE_CODES = [
+  'unsupported_media',
+  'reels_need_video',
+  'caption_on_story',
+  'too_many_media',
+  'no_media',
+];
 
 type Outcome =
   | 'container_created'
@@ -221,7 +255,14 @@ async function advance(db: any, job: Claim): Promise<Outcome> {
     // attributed to the wrong subject.
     const conn = await loadConnection(db, job.user_id, job.ig_user_id);
     if (!conn || conn.id !== job.connection_id) {
-      await fail(db, job, 'The Instagram account this post was queued for is no longer connected');
+      // Terminal: reconnecting writes a new row, so no number of retries brings
+      // this connection back.
+      await fail(
+        db,
+        job,
+        'The Instagram account this post was queued for is no longer connected',
+        { terminal: true },
+      );
       return 'failed';
     }
 
@@ -247,7 +288,8 @@ async function advance(db: any, job: Claim): Promise<Outcome> {
     if (err instanceof InstagramError) {
       if (err.code === 'needs_reconnect') {
         await markNeedsReconnect(db, job.connection_id, err.message);
-        await fail(db, job, err.message);
+        // Terminal: only the user re-consenting fixes a dead grant.
+        await fail(db, job, err.message, { terminal: true });
         return 'failed';
       }
       if (err.code === 'rate_limited') {
@@ -257,17 +299,23 @@ async function advance(db: any, job: Claim): Promise<Outcome> {
         return 'skipped';
       }
       if (err.code === 'missing_publish_permission') {
-        // Terminal until the user reconnects, so it must not be retried into
-        // `stuck` over five ticks. Failed once, with the reason on the row.
-        await fail(db, job, err.message);
+        // Terminal until the user reconnects. This comment used to claim the
+        // job was "failed once" while the call below requeued it four more
+        // times — the comment was right about the intent and the code was not.
+        await fail(db, job, err.message, { terminal: true });
         return 'failed';
       }
       if (err.code === 'published_unknown_id') {
         await review(db, job, err.message);
         return 'needs_review';
       }
+      // A job whose SHAPE Meta will never accept — the wrong file format, a
+      // caption on a story, a still image submitted as a Reel. Retrying cannot
+      // change the file. Everything else keeps its retries, including
+      // `publish_rejected`, because a 4xx can be a transient media fetch
+      // failure on Meta's side rather than a verdict on the job.
       console.error(label, err.code, err.message);
-      await fail(db, job, err.message);
+      await fail(db, job, err.message, { terminal: TERMINAL_SHAPE_CODES.includes(err.code) });
       return 'failed';
     }
     console.error(label, 'unexpected:', err);
@@ -420,12 +468,17 @@ async function publishStep(db: any, job: Claim, token: string): Promise<Outcome>
 }
 
 // deno-lint-ignore no-explicit-any
-async function fail(db: any, job: Claim, reason: string): Promise<void> {
+async function fail(
+  db: any,
+  job: Claim,
+  reason: string,
+  opts: { terminal?: boolean } = {},
+): Promise<void> {
   const { data, error } = await db.rpc('fail_publish_job', {
     p_job_id: job.job_id,
     p_claim_id: job.claim_id,
     p_error: reason,
-    p_max_attempts: MAX_ATTEMPTS,
+    p_max_attempts: opts.terminal ? TERMINAL : MAX_ATTEMPTS,
   });
   if (error) console.error('[instagram-publish-sweep] fail_publish_job:', error);
   // Reported exactly once, on the transition — the `bump_flush_attempt`
