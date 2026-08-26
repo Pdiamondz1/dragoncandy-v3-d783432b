@@ -113,6 +113,24 @@ describe('publish enqueue functions', () => {
     expect(resolve).toBeLessThan(stage);
   });
 
+  // A malformed `scheduled_at` or `source_schedule_id` fails inside PostgREST's
+  // argument coercion — which reads as "the RPC failed", so the handler stages
+  // the media, sets `rpcAttempted`, suppresses the cleanup, and reports an
+  // unknown outcome for a request that could never have committed (Codex,
+  // round 11). Refusing them up front is the only place that costs nothing.
+  it.each(enqueueSources())('$name validates its scalar fields before staging', ({ source }) => {
+    expect(source).toMatch(/const scheduledAt = parseScheduledAt\(body\?\.scheduled_at\)/);
+    expect(source).toMatch(/parseOptionalUuid\(body\?\.source_schedule_id/);
+    // The typeof-only form is what let them through.
+    expect(source).not.toMatch(/typeof body\?\.scheduled_at === 'string'/);
+    expect(source).not.toMatch(/typeof body\?\.source_schedule_id === 'string'/);
+
+    const validate = source.indexOf('parseScheduledAt(');
+    const stage = source.indexOf('await staging.stage()');
+    expect(validate).toBeGreaterThan(-1);
+    expect(validate).toBeLessThan(stage);
+  });
+
   // Claiming an outcome this branch cannot know is how a queued post gets
   // reported as a failure the user then re-creates by hand.
   it.each(enqueueSources())('$name reports an unconfirmed enqueue honestly', ({ source }) => {

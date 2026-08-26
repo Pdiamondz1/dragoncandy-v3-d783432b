@@ -3,6 +3,8 @@ import {
   extensionOf,
   mediaStaging,
   parseMediaRefs,
+  parseOptionalUuid,
+  parseScheduledAt,
   plannedDestinations,
   PUBLISH_BUCKET,
   StagingError,
@@ -228,5 +230,68 @@ describe('mediaStaging — which credential does what', () => {
     await staging.stage();
     expect(log).toHaveLength(0);
     expect(staging.destinations).toEqual([]);
+  });
+});
+
+describe('parseScheduledAt', () => {
+  it('CONTROL — a real instant survives, as an unambiguous UTC one', () => {
+    expect(parseScheduledAt('2026-09-01T18:00:00Z')).toBe('2026-09-01T18:00:00.000Z');
+    expect(parseScheduledAt('2026-09-01T18:00:00+00:00')).toBe('2026-09-01T18:00:00.000Z');
+  });
+
+  it('absent means "post now", which is a real request rather than an error', () => {
+    expect(parseScheduledAt(undefined)).toBeNull();
+    expect(parseScheduledAt(null)).toBeNull();
+  });
+
+  // A bare date-time is read as LOCAL by JS and as the SESSION TIMEZONE by
+  // Postgres — two different moments. Normalising is what stops the post going
+  // out at the wrong hour depending on how either side is configured.
+  it('pins a bare date-time to one instant rather than leaving it ambiguous', () => {
+    expect(parseScheduledAt('2026-09-01T18:00:00')).toMatch(/^2026-09-0\dT\d\d:00:00\.000Z$/);
+  });
+
+  // The one that mattered: a malformed value used to reach PostgREST's argument
+  // coercion, fail there, and be reported as an unknown outcome — after the
+  // media had been staged and the cleanup suppressed.
+  it.each(['not a date', '', '   ', '2026-13-45T99:99:99Z'])(
+    'refuses %p rather than letting Postgres reject it later',
+    (value) => {
+      expect(() => parseScheduledAt(value)).toThrow(StagingError);
+    },
+  );
+
+  // Present-but-wrong is refused, never read as "no schedule" — that would post
+  // immediately something the user asked to go out on Friday.
+  it.each([[0], [1756742400000], [{}], [['2026-09-01']], [true]])(
+    'refuses a non-string %p instead of silently ignoring it',
+    (value) => {
+      expect(() => parseScheduledAt(value)).toThrow(/must be a date and time/);
+    },
+  );
+});
+
+describe('parseOptionalUuid', () => {
+  it('CONTROL — a uuid survives, in either case', () => {
+    const id = '11111111-2222-3333-4444-555555555555';
+    expect(parseOptionalUuid(id, 'source_schedule_id')).toBe(id);
+    expect(parseOptionalUuid(id.toUpperCase(), 'source_schedule_id')).toBe(id.toUpperCase());
+  });
+
+  it('absent is fine — the field is optional', () => {
+    expect(parseOptionalUuid(undefined, 'source_schedule_id')).toBeNull();
+    expect(parseOptionalUuid(null, 'source_schedule_id')).toBeNull();
+  });
+
+  it.each(['', 'nope', '11111111-2222-3333-4444-55555555555', '1111111122223333444455555555555z'])(
+    'refuses %p',
+    (value) => {
+      expect(() => parseOptionalUuid(value, 'source_schedule_id')).toThrow(StagingError);
+    },
+  );
+
+  it('names the field in its code, so two uuid fields do not report as one', () => {
+    expect(() => parseOptionalUuid('nope', 'source_schedule_id'))
+      .toThrow(expect.objectContaining({ code: 'bad_source_schedule_id' }));
   });
 });

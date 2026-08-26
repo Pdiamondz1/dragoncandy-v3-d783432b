@@ -131,6 +131,60 @@ export function parseMediaRefs(
   });
 }
 
+/**
+ * The two scalar fields both enqueue functions forward to Postgres, validated
+ * HERE rather than left to PostgREST's parameter coercion.
+ *
+ * They live beside `parseMediaRefs` for one reason: everything in this file is
+ * about refusing a bad request BEFORE anything irreversible or expensive
+ * happens, and these two are the fields that were not.
+ *
+ * WHY IT MATTERS, WHICH IS NOT OBVIOUS (Codex, round 11). A malformed
+ * `scheduled_at` or `source_schedule_id` is rejected by PostgREST while it
+ * coerces the arguments -- so it fails the idempotency fast path, which is
+ * treated as "the fast path is unavailable" and falls through; then it stages
+ * the media; then it fails the enqueue RPC the same way, by which point
+ * `rpcAttempted` is set, so the staged copy is deliberately NOT cleaned up and
+ * the caller is told the outcome could not be confirmed.
+ *
+ * Every step of that is correct in isolation. Together they leak a staged file
+ * and report an ambiguous 502 for a request that could never have committed --
+ * which is exactly the "unknown outcome" contract being spent on something that
+ * is not unknown at all.
+ *
+ * A PRESENT-BUT-WRONG value is refused rather than ignored. Reading a number as
+ * "no schedule" would silently post immediately something the user asked to go
+ * out on Friday.
+ */
+export function parseScheduledAt(value: unknown): string | null {
+  if (value === undefined || value === null) return null;
+  if (typeof value !== 'string' || !value.trim()) {
+    throw new StagingError('bad_scheduled_at', 'scheduled_at must be a date and time', 400);
+  }
+
+  const at = Date.parse(value);
+  if (!Number.isFinite(at)) {
+    throw new StagingError('bad_scheduled_at', 'scheduled_at is not a valid date and time', 400);
+  }
+
+  // NORMALISED to an explicit UTC instant, not passed through. A bare
+  // `2026-09-01 18:00` is read as local time by JS and as the SESSION timezone
+  // by Postgres, and those are two different moments. Sending an unambiguous
+  // instant means the post goes out when the client meant, whatever either side
+  // happens to be configured as.
+  return new Date(at).toISOString();
+}
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+export function parseOptionalUuid(value: unknown, field: string): string | null {
+  if (value === undefined || value === null) return null;
+  if (typeof value !== 'string' || !UUID_RE.test(value.trim())) {
+    throw new StagingError(`bad_${field}`, `${field} must be a uuid`, 400);
+  }
+  return value.trim();
+}
+
 /** `a/b/clip.MP4` -> `mp4`. Empty when the FILENAME carries no extension. */
 export function extensionOf(path: string): string {
   const name = path.slice(path.lastIndexOf('/') + 1);

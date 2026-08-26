@@ -28,6 +28,8 @@ import {
 import {
   mediaStaging,
   parseMediaRefs,
+  parseOptionalUuid,
+  parseScheduledAt,
   StagingError,
   type Staging,
 } from '../_shared/publish-staging.ts';
@@ -124,10 +126,12 @@ serve(async (req: Request) => {
     // Hoisted: the lookup below and the enqueue further down must agree
     // exactly, and reading `body` twice is how they would come to differ.
     const mediaSources = media.map((m) => `${m.bucket}/${m.path}`);
-    const scheduledAt = typeof body?.scheduled_at === 'string' ? body.scheduled_at : null;
-    const sourceScheduleId = typeof body?.source_schedule_id === 'string'
-      ? body.source_schedule_id
-      : null;
+    // Validated, not merely typeof-checked. A malformed value here is rejected
+    // by PostgREST during argument coercion, which reads as "the RPC failed"
+    // and spends the unknown-outcome contract on a request that could never
+    // have committed. See `parseScheduledAt` for the full trace.
+    const scheduledAt = parseScheduledAt(body?.scheduled_at);
+    const sourceScheduleId = parseOptionalUuid(body?.source_schedule_id, 'source_schedule_id');
 
     // RESOLVE THE KEY BEFORE STAGING ANYTHING.
     //
@@ -173,7 +177,7 @@ serve(async (req: Request) => {
         job_id: resolved.job_id,
         content_type: contentType,
         media_count: media.length,
-        scheduled_at: body?.scheduled_at ?? null,
+        scheduled_at: scheduledAt,
         duplicate: true,
       });
     }
@@ -274,7 +278,7 @@ serve(async (req: Request) => {
       job_id: result.job_id,
       content_type: contentType,
       media_count: staging.destinations.length,
-      scheduled_at: body?.scheduled_at ?? null,
+      scheduled_at: scheduledAt,
       duplicate: result.deduplicated === true,
     });
   } catch (err) {
