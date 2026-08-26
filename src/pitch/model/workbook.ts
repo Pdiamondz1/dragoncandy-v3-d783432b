@@ -17,7 +17,7 @@ import {
   enabledMetros,
 } from './metros';
 import { loadCensusSnapshot, snapshotFor } from './censusTam';
-import { projectMetroYear } from './metroModel';
+import { projectMetroYear, metroKpis } from './metroModel';
 import { rollup, COHORT_METRO_COUNTS, sharedCostForYear } from './rollup';
 import { REGISTERED_MIX } from './project';
 import { unitEconomics } from './derive';
@@ -189,9 +189,9 @@ function metroSheet(metroId: string): SheetSpec {
       [t('Metro EBITDA'), ...years.map((y) => n(y.metroEbitda))],
       [blank],
       [t('KPIs')],
-      line('Gross margin', (y) => (y.revenue === 0 ? 0 : y.grossProfit / y.revenue), '0.0%'),
-      line('Marketing as % of revenue', (y) => (y.revenue === 0 ? 0 : y.marketingCost / y.revenue), '0.0%'),
-      line('Cost of revenue as % of revenue', (y) => (y.revenue === 0 ? 0 : y.costOfRevenue / y.revenue), '0.0%'),
+      line('Gross margin', (y) => metroKpis(y).grossMarginPct, '0.0%'),
+      line('Marketing as % of revenue', (y) => metroKpis(y).marketingPctOfRevenue, '0.0%'),
+      line('Cost of revenue as % of revenue', (y) => metroKpis(y).costOfRevenuePctOfRevenue, '0.0%'),
     ],
   };
 }

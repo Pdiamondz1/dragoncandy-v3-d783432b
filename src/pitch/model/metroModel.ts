@@ -43,6 +43,26 @@ export interface MetroYear {
   readonly metroEbitda: number;
 }
 
+export interface MetroKpis {
+  readonly grossMarginPct: number;
+  readonly marketingPctOfRevenue: number;
+  readonly costOfRevenuePctOfRevenue: number;
+}
+
+/**
+ * The three ratio KPIs shown under each metro's "KPIs" block. Extracted so the workbook and
+ * `workbookProvenance.test.ts` share one computation rather than each re-deriving the same
+ * ratio from `MetroYear` fields — two copies of a formula is how they'd drift apart.
+ */
+export function metroKpis(y: Pick<MetroYear, 'revenue' | 'grossProfit' | 'marketingCost' | 'costOfRevenue'>): MetroKpis {
+  const shareOfRevenue = (numerator: number) => (y.revenue === 0 ? 0 : numerator / y.revenue);
+  return {
+    grossMarginPct: shareOfRevenue(y.grossProfit),
+    marketingPctOfRevenue: shareOfRevenue(y.marketingCost),
+    costOfRevenuePctOfRevenue: shareOfRevenue(y.costOfRevenue),
+  };
+}
+
 function metroById(metroId: string) {
   const found = METROS.find((m) => m.id === metroId);
   if (!found) throw new Error(`Unknown metro "${metroId}".`);
