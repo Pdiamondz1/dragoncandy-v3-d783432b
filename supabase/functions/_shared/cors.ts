@@ -55,6 +55,31 @@ const ALLOWED = new Set<string>([
  * preview build will now see them fail. If that workflow turns out to matter,
  * add the narrowest possible project-scoped pattern here — one place, and every
  * consumer picks it up — rather than reintroducing a wildcard in a function.
+ *
+ * The SAME applies to `http://127.0.0.1:8080`, the `npm run dev` origin, raised
+ * separately by Codex as a P1. It is not allow-listed either, and this is a
+ * deliberate decision rather than an oversight — but it is the one an owner is
+ * most likely to want to revisit, so here is the measurement it rests on.
+ *
+ * Probed against PROD on 2026-08-26 with a `.com` control on the same function:
+ *
+ *     donny-orchestrator       localhost -> https://dragoncandy.com
+ *     create-notification      localhost -> https://dragoncandy.com
+ *     release-creator-payout   localhost -> https://dragoncandy.com
+ *     outstand-proxy           localhost -> *
+ *     social-proxy             localhost -> *
+ *
+ * So a browser at `127.0.0.1:8080` is ALREADY blocked from Donny, notifications
+ * and every money function; `npm run dev` against prod has never been able to
+ * call them. The two proxies were the last exception, not a working norm, and
+ * removing it costs local social development specifically.
+ *
+ * The reason that is not simply fixed here: adding localhost to `ALLOWED`
+ * widens CORS on ALL 125 functions, the payout and escrow surface included.
+ * That is a fleet-wide decision with a real blast radius, not a footnote to a
+ * wildcard cleanup, and it belongs to an owner rather than to this change.
+ * Adding it to only these two would rebuild the exact per-function divergence
+ * this change exists to remove.
  */
 
 export const resolveAllowedOrigin = (req: Request): string => {
