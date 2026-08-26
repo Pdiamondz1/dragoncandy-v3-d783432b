@@ -139,6 +139,19 @@ sees. A product decision, not a cleanup.
 **Codex** clean on the first round. 3,611 tests pass; typecheck clean; lint 0 errors; build emits
 `dist/privacy.html`.
 
+**A correction that had to be made five times, after a reviewer found one.** Codex's only finding on
+the knowledge PR was a [P2]: `PROJECT_CONTEXT`'s TikTok entry still listed the privacy policy as
+blocked by the gate, three sections below the correction saying it was not. Grepping the distinctive
+phrase across `docs/` found the same claim in **five** places — the TikTok and Instagram §5 entries,
+`concepts/tiktok-analytics-connector.md`, `concepts/x-analytics-connector.md`, and
+`runbooks/tiktok-analytics-connector-setup.md`, the last being the one that tells a human which URL
+to paste into a console.
+
+**This is the same session's own `[propagate-the-correction]` lesson, repeating.** Correcting a claim
+where you found it is not correcting the claim. And a reviewer is structurally the wrong backstop
+here: Codex reads the diff, so it can only ever catch survivors that sit near the change. The
+mechanical fix is to grep the distinctive phrase across `docs/` **before** committing a correction.
+
 ## [2026-08-26] The package-order existence oracle: one answer for "no such order" and "not yours"
 
 **PR #545** (`54ca8b24`), both functions deployed and verified on prod the same day.

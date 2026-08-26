@@ -201,8 +201,8 @@ Engineering cannot close these. Ordered by what blocks launch.
   connect, where before they landed null. Console is a **sandbox**, because the production form
   will not save without a demo video; that video was recorded 2026-08-26. **Pending:** save and
   submit the production form; **swap the secrets from sandbox to production after approval**,
-  which nothing enforces and which fails at token exchange; App Review's anonymously reachable
-  privacy policy, which the site gate breaks as it does Google's and Meta's.
+  which nothing enforces and which fails at token exchange. **The privacy-policy blocker is GONE**
+  (#547) — register `/privacy.html`, never `/privacy`.
   → `docs/wiki/concepts/tiktok-analytics-connector.md` · #525, #529
 - **Email verification by code — the signup tab stops being thrown away** — signup used to end
   in `signOut()`, discarding the tab that had just done the work; the session now survives and a
@@ -246,8 +246,9 @@ Engineering cannot close these. Ordered by what blocks launch.
   exists; `cron.job_run_details` holds 0 runs)" and prod disagrees (checked 2026-08-26):
   `instagram-refresh-sweep` ran at 04:00 UTC on 25 and 26 August, both `succeeded`. Control:
   `auto-approve-content` returns 3,271 runs on the same query, so a 0 would have meant
-  something. **Pending:** App Review, which needs a
-  demo video and an anonymously reachable privacy policy.
+  something. **Pending:** App Review, which needs a demo video. **The privacy-policy half is no
+  longer pending** — #547 put a generated `/privacy.html` on the site gate's allowlist, so it
+  survives the lockdown; register that URL, never `/privacy`.
   → `docs/wiki/concepts/instagram-insights-connector.md` · #489
 - **YouTube read-only analytics connector** — merged, applied, deployed and **working end to
   end** 2026-08-23; published to production; console work done and read back. **Pending:** the

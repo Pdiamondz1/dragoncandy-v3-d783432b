@@ -18,6 +18,20 @@ get approved — when it was an artifact of how the gate was built. **A "decisio
 planning doc is sometimes an unexamined engineering constraint wearing a decision's
 clothes**, and the tell is that nobody had asked why the two were coupled.
 
+**Codex named ONE stale copy; the sweep found FIVE.** The [P2] was that `PROJECT_CONTEXT`'s TikTok
+entry still listed the privacy policy as blocked by the gate, contradicting the correction three
+sections above it. Grepping `anonymously reachable privacy` across `docs/` turned up the same claim
+in the **Instagram** §5 entry, in `concepts/tiktok-analytics-connector.md`, in
+`concepts/x-analytics-connector.md`, and in `runbooks/tiktok-analytics-connector-setup.md` — the last
+of which tells a human which URL to paste into the console, so it was the copy most likely to be
+acted on.
+
+**This is the `[propagate-the-correction]` lesson repeating in the same session it was written
+down.** Correcting the claim where you found it is not correcting the claim. The mechanical fix is
+to grep the distinctive phrase across `docs/` **before** committing a correction, not after a
+reviewer notices one survivor — a reviewer sees the diff, so it can only ever catch the copies that
+happen to sit near it.
+
 ## [2026-08-26] ingest | The package-order existence oracle, found by verifying a different fix
 
 **Created** `raw/sessions/2026-08-26-package-order-existence-oracle.md` and

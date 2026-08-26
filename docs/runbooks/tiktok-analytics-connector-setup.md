@@ -375,9 +375,12 @@ Posting API attached.
   end of a consent flow the user has already completed, not at deploy time.
   Sandbox client keys carry an `sba` prefix, which is how to tell which is
   loaded without ever printing the value.
-- **App Review** needs an anonymously reachable privacy policy, so switching on
-  the site gate breaks it exactly as it breaks Google's and Meta's. See
-  `docs/runbooks/google-oauth-demo-video.md`.
+- **App Review** needs an anonymously reachable privacy policy. Use
+  **`https://dragoncandy.com/privacy.html`**, not `/privacy`. This said the site gate
+  breaks it "exactly as it breaks Google's and Meta's" until 2026-08-26, when #547
+  added a generated, self-contained static page to the gate's allowlist; `/privacy`
+  is a SPA route and still answers 401 under the gate. See
+  `docs/runbooks/site-access-lockdown.md` and `docs/runbooks/google-oauth-demo-video.md`.
 - **DNS for `dragoncandy.com` is at GoDaddy**, reached through delegate access on
   Joe Castelo's account — and the domain is **leased, not owned**. Worth knowing,
   since Meta, YouTube, X and TikTok registrations all point at it.
