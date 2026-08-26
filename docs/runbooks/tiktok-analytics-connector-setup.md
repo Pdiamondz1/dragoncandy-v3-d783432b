@@ -124,7 +124,24 @@ around the audit.
 
 ---
 
-## 4. Secrets — three, none of them set
+## 4. Secrets — three, and **all three are set** (2026-08-26)
+
+> **This heading said "none of them set" until 2026-08-26.** They are set, and the
+> commands below are for a **fresh environment**, not for the production cutover
+> that is still outstanding.
+>
+> **Do NOT re-run the third command.** `TIKTOK_OAUTH_STATE_SECRET` signs OAuth
+> state, so rotating it invalidates every state already in flight: anyone
+> mid-consent at that moment comes back to a signature that no longer verifies,
+> and the connect fails at the callback with nothing on screen explaining why.
+> There is no reason to rotate it when swapping client credentials — it is not a
+> TikTok credential at all, it is ours.
+>
+> **The production swap is the first two only**, after App Review approves:
+> `TIKTOK_CLIENT_KEY` and `TIKTOK_CLIENT_SECRET` move from the sandbox app to the
+> production app. Sandbox keys carry an `sba` prefix, which is how to tell which
+> is loaded without printing the value. A sandbox key in prod fails at the **token
+> exchange** — the end of a consent flow the user has already completed.
 
 ```bash
 npx supabase secrets set --project-ref zocahiffooqdybdhguqv \
@@ -160,11 +177,30 @@ mismatch tells you about the subject rather than about your instrument.
 
 ---
 
-## 5. Apply the migration **before** the frontend deploys
+## 5. Apply the migrations **before** the frontend deploys
+
+**All four, in order.** This section named only the first until 2026-08-26, which
+would have rebuilt the connector with `integer` counters and both RPC signatures
+in the state that produced the overflow — a runbook that reconstructs a fixed
+defect is worse than no runbook, because it carries the authority of having been
+followed.
 
 ```bash
 npm run db:apply -- supabase/migrations/20260826200000_tiktok_account_connections.sql
+npm run db:apply -- supabase/migrations/20260826210000_store_tiktok_connection_stats.sql
+npm run db:apply -- supabase/migrations/20260826230000_tiktok_counters_bigint.sql
+npm run db:apply -- supabase/migrations/20260826240000_tiktok_status_bigint.sql
 ```
+
+Order matters and the gap is not a typo: `20260826220000` belongs to another
+branch (`email_verification_code`), which is why the third file is numbered
+`230000`. `db:apply` refuses a version already recorded, so a re-run is safe;
+forcing past that refusal is exactly how `recorded ≠ actual` happens.
+
+`210000` teaches the connect write to carry the four counters, `230000` widens
+them to `bigint` in the columns and both write RPCs, and `240000` widens the read
+RPC's `RETURNS TABLE`. Stopping after any one of them leaves a connector that
+looks fine until a large account touches it.
 
 **This ordering is not advice; it is the defect this project shipped twice in two
 days.** `useTikTokConnection` does `if (error) throw error` on
@@ -193,6 +229,19 @@ where table_name = 'tiktok_account_connections';
 -- The status function is granted to authenticated but NOT anon; every other RPC
 -- is service_role only.
 select proname, proacl from pg_proc where proname like '%tiktok%';
+
+-- All four counters are bigint. `id` is the control: it must still read `uuid`,
+-- which is what proves this query distinguishes types rather than answering the
+-- same thing for every column. An `integer` here means a follow-up migration was
+-- skipped, and the connector will revoke a large account's token on connect.
+select column_name, data_type from information_schema.columns
+where table_name = 'tiktok_account_connections'
+  and column_name in ('follower_count','following_count','likes_count','video_count','id');
+
+-- ...and so does the READ path, which is a separate declaration and was missed
+-- once already: an SQL function coerces its result to its declared type, so an
+-- `integer` in this RETURNS TABLE narrows bigint back on the way out.
+select pg_get_function_result(oid) from pg_proc where proname = 'tiktok_connection_status';
 ```
 
 ---
@@ -261,10 +310,38 @@ shows a log-in and a stats read.
 `@dragoncandyco` is the company handle. The connect button is on Creator,
 Business and Location settings.
 
-**The acceptance signal is `last_synced_at` landing seconds after
-`connected_at`.** A row can be written without TikTok ever being called; that
-stamp cannot — `cache_tiktok_insights` is the only thing that sets it, and it
-runs only after a real response.
+**The acceptance signal is that `last_synced_at` is set at all — NOT that it
+lands seconds after `connected_at`.** A row can be written without TikTok ever
+being called; that stamp cannot, because `cache_tiktok_insights` is the only
+thing that sets it and it runs only after a real response. That much is shared
+with the other connectors.
+
+**The timing is not.** This line used to say "seconds after `connected_at`",
+copied from YouTube, Instagram and Facebook, where the connect flow itself
+triggers the first read. **TikTok's read fires when the settings card first
+renders.** Measured on the first two real connections (2026-08-26): gaps of
+**38 minutes** and **89 seconds**, both healthy. So re-running this query a few
+seconds after connecting proves nothing. Open the card, then check.
+
+**A null `last_synced_at` is INCONCLUSIVE — it is not proof the page was never
+opened.** An earlier draft of this section said it was, and that is wrong in the
+direction that hides faults. `tiktok-insights` returns the figures it fetched
+**even when `cache_tiktok_insights` errors** — deliberately, because the read
+already happened and losing a real answer over a bookkeeping failure is worse —
+so **the card can render correct numbers while the stamp stays null.**
+
+That is not hypothetical: it is exactly what the `int4` overflow did before
+`20260826230000`. A large account's `likes_count` raised `22003` inside the
+cache RPC, the card showed figures, and the stamp never moved.
+
+So read it as four cases, not two:
+
+| Card | `last_synced_at` | Meaning |
+|---|---|---|
+| Never opened | null | Nothing to conclude — open it |
+| Opened, shows figures | set | Working |
+| **Opened, shows figures** | **still null** | **The cache write failed** — check the function logs for `[tiktok-insights] could not cache snapshot` |
+| Opened, shows an error | null | The read itself failed — read the card's message |
 
 ```sql
 select username, display_name, follower_count, status,
@@ -282,8 +359,22 @@ Posting API attached.
 
 ## 9. Still open
 
-- **Nothing is configured yet.** No secrets, no saved console form, no connected
-  account. The code is deployed-ready and proven only against stubs.
+- **This section said "Nothing is configured yet — no secrets, no saved console
+  form, no connected account" until 2026-08-26. All three are now done.** The
+  three secrets are set, the console form is saved as a **sandbox**, and
+  `@tumericturtle` has connected and measured. What follows is what is genuinely
+  left.
+- **The production console form is not saved.** It cannot be until a demo video
+  exists — TikTok says so on the page — which is why the sandbox was used. That
+  video was recorded 2026-08-26. Remaining: `Import ⌄` the sandbox config, add
+  the icon, the ≤1000-char app-review explanation and the video, save, submit.
+- **After approval, swap `TIKTOK_CLIENT_KEY` and `TIKTOK_CLIENT_SECRET` from the
+  sandbox credentials to the production ones.** Nothing enforces this and
+  nothing will warn about it. A sandbox key fails at the **token exchange** —
+  the first and only place the secret is used — so the symptom appears at the
+  end of a consent flow the user has already completed, not at deploy time.
+  Sandbox client keys carry an `sba` prefix, which is how to tell which is
+  loaded without ever printing the value.
 - **App Review** needs an anonymously reachable privacy policy, so switching on
   the site gate breaks it exactly as it breaks Google's and Meta's. See
   `docs/runbooks/google-oauth-demo-video.md`.
