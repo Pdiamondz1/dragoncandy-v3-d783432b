@@ -176,6 +176,47 @@ describe('the counters are bigint, in the columns AND in both RPCs', () => {
     );
   });
 
+  it('widens the READ path too, not only the two write RPCs', () => {
+    // The bigint migration moved the columns and both write RPCs and stopped
+    // there. `tiktok_connection_status()` declares the same four columns as
+    // `integer` in its RETURNS TABLE, and an SQL function coerces its result to
+    // the declared type -- so it narrowed bigint back to int4 on the way out and
+    // raised 22003 for exactly the values the widening existed to permit. That
+    // is the UI-facing function, and `useTikTokConnection` throws on error, so
+    // one big account would have taken the card's red branch on all three
+    // settings surfaces.
+    //
+    // Widening a column is not a local change: every function DECLARING a type
+    // over that column has to move with it. Codex found this one; the schema
+    // grep for the rest turned up only `p_skew_seconds` and
+    // `p_claim_ttl_seconds`, which are seconds and correctly small.
+    const statusMigration = readFileSync(
+      join(__dirname, '..', '..', 'migrations', '20260826240000_tiktok_status_bigint.sql'),
+      'utf8',
+    );
+    for (const col of COUNTERS) {
+      expect(statusMigration).toMatch(new RegExp(`${col} bigint`));
+      expect(statusMigration).not.toMatch(new RegExp(`${col} integer`));
+    }
+    // Not optional here: PostgreSQL refuses to change an existing function's
+    // return type, so `create or replace` errors rather than making an overload.
+    //
+    // Anchored to the start of a line, because `toContain` passed when a forced
+    // control COMMENTED THE DROP OUT -- `-- drop function ...` still contains
+    // the substring. Second time today a substring assertion of mine was
+    // satisfied by text that does not do the thing: the earlier one was
+    // `p_likes_count bigint` matching a different function's `bigint default
+    // null`. Substring matching over source is a weak instrument; anchor it.
+    expect(statusMigration).toMatch(
+      /^drop function if exists public\.tiktok_connection_status\(\);$/m,
+    );
+    // The drop takes the grants with it. `anon` must be named -- a bare REVOKE
+    // FROM PUBLIC does not lock a definer function down against Supabase's
+    // default privileges.
+    expect(statusMigration).toMatch(/revoke execute on function public\.tiktok_connection_status\(\) from public, anon;/);
+    expect(statusMigration).toMatch(/grant execute on function public\.tiktok_connection_status\(\) to authenticated, service_role;/);
+  });
+
   it('keeps coalesce in the cache path and set-from-excluded in the connect path', () => {
     // Opposite rules, deliberately. cache_tiktok_insights returns
     // `account_changed` unless open_id matches, so it is always refreshing the
