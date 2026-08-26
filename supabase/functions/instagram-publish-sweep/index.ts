@@ -84,10 +84,24 @@ const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 const CLAIM_TTL_SECONDS = 15 * 60;
 
 /**
- * A job that has failed this many times stops and waits for a person.
+ * A job that has FAILED this many times stops and waits for a person.
  *
- * Only ticks that did real work count — a poll that found the container still
- * transcoding gives its attempt back.
+ * Polling is not failing, and the distinction is load-bearing enough to have
+ * been measured rather than reasoned. `claim_publish_job` increments `attempts`
+ * on every claim, and `release_publish_job` does `greatest(attempts - 1, 0)` --
+ * so a tick that finds the media still processing hands its attempt straight
+ * back and the cycle is net zero.
+ *
+ * Verified on prod (rolled back): TEN full poll cycles leave `attempts` at 0
+ * and the job still claimable, while the control -- five real failures -- takes
+ * it to 5 and `stuck`. So a slow transcode cannot exhaust the budget; the bound
+ * on a job that is only ever polled is the 48-hour deadline (20260826370000),
+ * which is why that exists as a separate mechanism rather than as a smaller
+ * number here.
+ *
+ * Raised as a finding twice now. If it comes up again, re-run the probe rather
+ * than re-reading the code: the refund is one `greatest()` in a migration and
+ * is easy to miss from the call site.
  */
 const MAX_ATTEMPTS = 5;
 
