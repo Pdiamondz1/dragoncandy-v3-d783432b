@@ -24,6 +24,7 @@
     "typecheck:functions": "node scripts/check-edge-functions.mjs",
     "docs:scale": "node scripts/update-scale-numbers.mjs",
     "model:doc": "npx tsx scripts/generate-investor-model.ts",
+    "model:tam": "npx tsx scripts/fetch-census-tam.ts",
     "build:workspace": "node scripts/workspace/build-gs.mjs",
     "preview:url": "node scripts/preview-url.mjs",
     "pitch:pdf": "vite build && npx tsx scripts/emit-pitch-notes.ts && node scripts/export-pitch-pdf.mjs",

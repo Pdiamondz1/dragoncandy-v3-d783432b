@@ -1,0 +1,299 @@
+{
+  "generatedAt": "2026-08-26",
+  "metros": [
+    {
+      "metroId": "hoboken",
+      "geography": {
+        "kind": "zip",
+        "code": "07030",
+        "label": "Hoboken, NJ"
+      },
+      "rows": [
+        {
+          "naics": "722",
+          "establishments": 258,
+          "buckets": {
+            "lt5": 75,
+            "b5_9": 53,
+            "b10_19": 59,
+            "b20_49": 61,
+            "b50_99": 8,
+            "b100_249": null,
+            "b250_499": null,
+            "b500_999": null,
+            "b1000": null
+          }
+        },
+        {
+          "naics": "7223",
+          "establishments": 22,
+          "buckets": {
+            "lt5": 12,
+            "b5_9": 5,
+            "b10_19": null,
+            "b20_49": null,
+            "b50_99": null,
+            "b100_249": null,
+            "b250_499": null,
+            "b500_999": null,
+            "b1000": null
+          }
+        },
+        {
+          "naics": "722410",
+          "establishments": 24,
+          "buckets": {
+            "lt5": 6,
+            "b5_9": 3,
+            "b10_19": 8,
+            "b20_49": 5,
+            "b50_99": null,
+            "b100_249": null,
+            "b250_499": null,
+            "b500_999": null,
+            "b1000": null
+          }
+        },
+        {
+          "naics": "722511",
+          "establishments": 102,
+          "buckets": {
+            "lt5": 20,
+            "b5_9": 15,
+            "b10_19": 22,
+            "b20_49": 41,
+            "b50_99": 4,
+            "b100_249": null,
+            "b250_499": null,
+            "b500_999": null,
+            "b1000": null
+          }
+        },
+        {
+          "naics": "722513",
+          "establishments": 69,
+          "buckets": {
+            "lt5": 25,
+            "b5_9": 15,
+            "b10_19": 17,
+            "b20_49": 10,
+            "b50_99": null,
+            "b100_249": null,
+            "b250_499": null,
+            "b500_999": null,
+            "b1000": null
+          }
+        },
+        {
+          "naics": "722515",
+          "establishments": 41,
+          "buckets": {
+            "lt5": 12,
+            "b5_9": 15,
+            "b10_19": 10,
+            "b20_49": 4,
+            "b50_99": null,
+            "b100_249": null,
+            "b250_499": null,
+            "b500_999": null,
+            "b1000": null
+          }
+        }
+      ],
+      "vintage": 2023,
+      "sourceUrl": "https://www2.census.gov/programs-surveys/cbp/datasets/2023/zbp23detail.zip",
+      "fetchedAt": "2026-08-26"
+    },
+    {
+      "metroId": "manhattan",
+      "geography": {
+        "kind": "county",
+        "code": "36061",
+        "label": "New York County, NY"
+      },
+      "rows": [
+        {
+          "naics": "722",
+          "establishments": 9647,
+          "buckets": {
+            "lt5": 2952,
+            "b5_9": 1854,
+            "b10_19": 2087,
+            "b20_49": 1944,
+            "b50_99": 592,
+            "b100_249": 195,
+            "b250_499": 21,
+            "b500_999": null,
+            "b1000": null
+          }
+        },
+        {
+          "naics": "7223",
+          "establishments": 846,
+          "buckets": {
+            "lt5": 370,
+            "b5_9": 177,
+            "b10_19": 136,
+            "b20_49": 105,
+            "b50_99": 38,
+            "b100_249": 14,
+            "b250_499": 6,
+            "b500_999": null,
+            "b1000": null
+          }
+        },
+        {
+          "naics": "722410",
+          "establishments": 722,
+          "buckets": {
+            "lt5": 149,
+            "b5_9": 152,
+            "b10_19": 221,
+            "b20_49": 158,
+            "b50_99": 35,
+            "b100_249": 7,
+            "b250_499": null,
+            "b500_999": null,
+            "b1000": null
+          }
+        },
+        {
+          "naics": "722511",
+          "establishments": 4054,
+          "buckets": {
+            "lt5": 958,
+            "b5_9": 628,
+            "b10_19": 820,
+            "b20_49": 1066,
+            "b50_99": 413,
+            "b100_249": 158,
+            "b250_499": 10,
+            "b500_999": null,
+            "b1000": null
+          }
+        },
+        {
+          "naics": "722513",
+          "establishments": 2574,
+          "buckets": {
+            "lt5": 1018,
+            "b5_9": 530,
+            "b10_19": 518,
+            "b20_49": 402,
+            "b50_99": 87,
+            "b100_249": 15,
+            "b250_499": 3,
+            "b500_999": null,
+            "b1000": null
+          }
+        },
+        {
+          "naics": "722515",
+          "establishments": 1416,
+          "buckets": {
+            "lt5": 444,
+            "b5_9": 355,
+            "b10_19": 388,
+            "b20_49": 209,
+            "b50_99": 18,
+            "b100_249": null,
+            "b250_499": null,
+            "b500_999": null,
+            "b1000": null
+          }
+        }
+      ],
+      "vintage": 2023,
+      "sourceUrl": "https://www2.census.gov/programs-surveys/cbp/datasets/2023/cbp23co.zip",
+      "fetchedAt": "2026-08-26"
+    },
+    {
+      "metroId": "palm-beach",
+      "geography": {
+        "kind": "zip",
+        "code": "33480",
+        "label": "Palm Beach, FL"
+      },
+      "rows": [
+        {
+          "naics": "722",
+          "establishments": 38,
+          "buckets": {
+            "lt5": 9,
+            "b5_9": null,
+            "b10_19": 4,
+            "b20_49": 5,
+            "b50_99": 16,
+            "b100_249": null,
+            "b250_499": null,
+            "b500_999": null,
+            "b1000": null
+          }
+        },
+        {
+          "naics": "7223",
+          "establishments": 3,
+          "buckets": {
+            "lt5": null,
+            "b5_9": null,
+            "b10_19": null,
+            "b20_49": null,
+            "b50_99": null,
+            "b100_249": null,
+            "b250_499": null,
+            "b500_999": null,
+            "b1000": null
+          }
+        },
+        {
+          "naics": "722511",
+          "establishments": 26,
+          "buckets": {
+            "lt5": null,
+            "b5_9": null,
+            "b10_19": null,
+            "b20_49": 5,
+            "b50_99": 16,
+            "b100_249": null,
+            "b250_499": null,
+            "b500_999": null,
+            "b1000": null
+          }
+        },
+        {
+          "naics": "722513",
+          "establishments": 4,
+          "buckets": {
+            "lt5": 3,
+            "b5_9": null,
+            "b10_19": null,
+            "b20_49": null,
+            "b50_99": null,
+            "b100_249": null,
+            "b250_499": null,
+            "b500_999": null,
+            "b1000": null
+          }
+        },
+        {
+          "naics": "722515",
+          "establishments": 5,
+          "buckets": {
+            "lt5": null,
+            "b5_9": null,
+            "b10_19": 3,
+            "b20_49": null,
+            "b50_99": null,
+            "b100_249": null,
+            "b250_499": null,
+            "b500_999": null,
+            "b1000": null
+          }
+        }
+      ],
+      "vintage": 2023,
+      "sourceUrl": "https://www2.census.gov/programs-surveys/cbp/datasets/2023/zbp23detail.zip",
+      "fetchedAt": "2026-08-26"
+    }
+  ]
+}
