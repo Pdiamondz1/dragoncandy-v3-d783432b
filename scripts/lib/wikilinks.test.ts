@@ -1,5 +1,4 @@
 import { describe, it, expect } from 'vitest';
-import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import {
   stripCode,
@@ -8,7 +7,6 @@ import {
   listSkills,
   lintWikilinks,
   findMojibake,
-  MOJIBAKE,
 } from './wikilinks';
 
 const REPO = join(__dirname, '../..');
@@ -42,11 +40,13 @@ describe('wiki link integrity', () => {
     expect(result.linksChecked).toBeGreaterThan(500);
   });
 
-  it('index.md is free of CP1252 double-encoding', () => {
-    // 92 of these were present until 2026-08-26, and four of them sat INSIDE catalog
-    // display names, so the correctly-encoded links pointing at those pages dangled.
-    const found = findMojibake(readFileSync(join(REPO, 'docs/wiki/index.md'), 'utf8'));
-    expect(found.map((f) => `${f.sequence} x${f.count}`).join(', ')).toBe('');
+  it('carries no CP1252 double-encoding in any linted file', () => {
+    // 92 of these were live in index.md until 2026-08-26, and four sat INSIDE catalog
+    // display names, so correctly-encoded links to those pages could never resolve.
+    const report = result.mojibake
+      .map((m) => `  ${m.file}: ${JSON.stringify(m.sequence)} x${m.count}`)
+      .join('\n');
+    expect(report, `CP1252 double-encoding:\n${report}`).toBe('');
   });
 });
 
@@ -103,8 +103,49 @@ describe('the checker itself can fail', () => {
     expect(skills.length).toBeGreaterThan(5);
   });
 
-  it('detects mojibake it is given, and reports none for clean text', () => {
-    expect(findMojibake(`a ${MOJIBAKE[0]} b`)).toEqual([{ sequence: MOJIBAKE[0], count: 1 }]);
-    expect(findMojibake('a — b')).toEqual([]);
+  it('detects mojibake by round trip, not from a list of sequences it has seen', () => {
+    // The five that were actually present in the 2026-08-26 cleanup...
+    for (const [bad, good] of [
+      ['â€”', '—'],
+      ['â†’', '→'],
+      ['ï¼‹', '＋'],
+      ['â‰ ', '≠'],
+      ['Ã—', '×'],
+    ]) {
+      expect(findMojibake(`a ${bad} b`), `should flag ${JSON.stringify(bad)}`).toHaveLength(1);
+      expect(findMojibake(`a ${good} b`), `should NOT flag ${JSON.stringify(good)}`).toEqual([]);
+    }
+    // ...and four the first version silently passed, which is why it is a round trip now
+    // (Codex second review, 2026-08-26).
+    for (const bad of ['â€™', 'â€œ', 'Â©', 'Ã©']) {
+      expect(findMojibake(`a ${bad} b`), `should flag ${JSON.stringify(bad)}`).toHaveLength(1);
+    }
+  });
+
+  it('does not flag legitimate accented or non-ASCII prose', () => {
+    for (const clean of [
+      'café society',
+      'Ça va — naïve résumé',
+      'Größe · Ångström · piñata',
+      'a — b → c ≠ d × e',
+      'no high characters at all',
+    ]) {
+      expect(findMojibake(clean), `false positive on ${JSON.stringify(clean)}`).toEqual([]);
+    }
+  });
+
+  it('treats an UNCLOSED fence as running to end of document', () => {
+    // Markdown does; a paired-fence regex does not, so quoted links after the opener were
+    // reported as dangling and would fail CI over text that is not a link.
+    const unclosed = ['intro', '```', '- [[Example Name]](path.md)', 'still code'].join('\n');
+    expect(extractTargets(unclosed)).toEqual([]);
+    // control: close the fence and the link AFTER it is found again
+    const closed = [...unclosed.split('\n'), '```', 'see [[Real Link]]'].join('\n');
+    expect(extractTargets(closed)).toEqual(['Real Link']);
+  });
+
+  it('only closes a fence with the same character and at least the same length', () => {
+    const tildeInsideBackticks = ['```', '~~~', '[[Inside]]', '```', '[[Outside]]'].join('\n');
+    expect(extractTargets(tildeInsideBackticks)).toEqual(['Outside']);
   });
 });

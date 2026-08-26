@@ -34,7 +34,20 @@ path resolving to a real file, every page cataloged, no mojibake. It knows the t
 that are deliberate — skills (`.claude/skills/<name>/SKILL.md`) and the index itself — and
 ignores code spans. Proven by forcing it red three ways; **the mojibake control passed on the
 first attempt and had to be redone**, because the injected bytes were Latin-1 where the check
-reads UTF-8. A control that fails to fail is the failure. See [[Verify Before Reporting]].
+reads UTF-8. A control that fails to fail is the failure.
+
+**Codex then found the checker wrong twice, both real.** The mojibake detector was a list of
+the five sequences this cleanup happened to contain — which is *"a guard that enumerates the
+bad cases treats every case it has not met as good"*, the lesson this repo already recorded on
+the X connector, reproduced inside the very tool built to enforce that discipline. It is now a
+round trip: a run is mojibake exactly when mapping it back through CP1252 yields valid UTF-8
+for a non-ASCII character, so a double-encoded curly apostrophe or accented `e` is caught
+without ever having been listed, while `café` and `naïve` are not. (Those examples are
+described rather than shown, because writing the damaged bytes into this page would trip the
+check — which is the check working.) And the fence regex required a *closing* fence, while markdown treats an
+unclosed one as running to end of document — so a quoted link after a stray opener would have
+failed CI over text that is not a link. Both fixed with paired controls.
+See [[Verify Before Reporting]].
 
 ## [2026-08-26] ingest | Email verification by code, with the link kept working
 
