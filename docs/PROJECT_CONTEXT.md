@@ -303,17 +303,13 @@ Engineering cannot close these. Ordered by what blocks launch.
   → `docs/wiki/concepts/domain-migration-io-to-com.md`
 - **Apple App Store (Capacitor)** — phases 1–2 shipped; organization enrollment `5HA89RBHQH`
   approved; **ran on physical hardware 2026-08-14** (boot, login and Donny all pass, the last
-  proving the `capacitor://localhost` CORS path). **Icon + launch image replaced and confirmed on a
-  physical iPhone 2026-08-26 (#532)** — the "black eye" was a hole in the alpha channel, not paint;
+  proving the `capacitor://localhost` CORS path). **The 12 money edge functions that answered `.io`
+  to a native origin were redeployed 2026-08-26 and all 125 now sweep clean** — stale bundles, no
+  code change; `verify_jwt` was probed before and after and did not move. **Icon + launch image
+  replaced and confirmed on a physical iPhone 2026-08-26 (#532)** — the "black eye" was a hole in
+  the alpha channel, not paint;
   the splash was still Capacitor's; `npm run cap:assets` rebuilds and asserts both. **Pending:** the
-  splash→shell **handoff** (not separately reported); deploying the **12** edge functions that still
-  answer `.io` to a native origin — re-measured 2026-08-26 across all 125 functions (this line said
-  13), 93 answer correctly, and the 12 are **exactly** the money surface: `release-creator-payout`,
-  `release-package-payout`, `release-sponsorship-payout`, `withdraw-pending-balance`,
-  `refund-campaign-escrow`, `refund-package-order`, `create-package-order-escrow`,
-  `verify-campaign-escrow`, `verify-package-order-escrow`, `verify-sponsorship-payment`,
-  `invoice-rush-surcharges`, `get-stripe-dashboard-link` — a `.com` control echoes `.com`, so it is
-  not a probe artifact, and in `WKWebView` it is a generic fetch error, not a cosmetic mismatch;
+  splash→shell **handoff** (not separately reported);
   device checks #4/#6/#8/#9; TestFlight (no App Store Connect record yet); `.nvmrc` plus a vitest
   worktrees exclude; a private-window look at the landing footer on prod.
   → `docs/superpowers/specs/2026-08-09-ios-testflight-first-build-design.md` · `docs/wiki/concepts/legal-entity-identity.md` · `docs/wiki/concepts/ios-app-icon-and-launch-image.md` · #439, #532
@@ -341,7 +337,7 @@ Engineering cannot close these. Ordered by what blocks launch.
   is proven against the real provider, not a stub. **Pending:** no address has been geocoded end
   to end; the `READINESS_GATE_ENABLED` decision (founder, above); `send-promotion-notification`
   still reads the three Twilio secrets that were overwritten and has not been re-checked; two
-  functions surface an unauthenticated request as 500 rather than 401 (pre-existing); the
+  functions surface an unauthenticated request as 500 rather than 401 — **re-measured 2026-08-26 as FIVE, not two** (`release-creator-payout`, `release-sponsorship-payout`, `verify-campaign-escrow`, `verify-sponsorship-payment`, `withdraw-pending-balance`), all pre-existing; the
   pre-existing unauthenticated IDOR in `get_user_conversations`, found in scope and left for an
   owner. → `docs/wiki/concepts/identity-verification.md`
 - **Notification + invitation authorization** — three pre-existing holes closed, each proven on

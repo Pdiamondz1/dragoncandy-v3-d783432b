@@ -2,8 +2,8 @@
 title: iOS TestFlight First Build
 type: concept
 created: 2026-08-10
-updated: 2026-08-14
-sources: [raw/sessions/2026-08-09-ios-testflight-first-build.md, raw/sessions/2026-08-14-ios-first-physical-device-build.md]
+updated: 2026-08-26
+sources: [raw/sessions/2026-08-09-ios-testflight-first-build.md, raw/sessions/2026-08-14-ios-first-physical-device-build.md, raw/sessions/2026-08-26-money-functions-stale-cors-bundles.md]
 tags: [ios, capacitor, testflight, cors, origin, bundle-id, safe-area, xcode]
 ---
 # iOS TestFlight First Build
@@ -190,6 +190,10 @@ enforces your rules is itself unverified**; check the enforcers, not just the co
   payment surface, so on iOS today every payout, escrow, withdrawal and refund path fails
   this way. The sweep is still unowned, but it is no longer optional-looking: **the same
   mixed state that is cosmetic for the web is a broken feature for the shell.**
+  ~~"The sweep is still unowned"~~ — **CLOSED 2026-08-26.** The 12 remaining functions were
+  redeployed and a sweep of **all 125** deployed functions now returns **zero** answering
+  `.io` to a native origin. No code change: `_shared/cors.ts` on `main` had been correct the
+  whole time, and the bundles were stale. See [[Edge-Function Deploy & Bundling]].
 - Push notifications and universal links (Slices A/D) remain out of scope — both need
   Apple enrollment.
   ~~"which is itself gated on this branch's bundle-ID merge"~~ — **corrected 2026-08-10:**
@@ -216,7 +220,20 @@ enforces your rules is itself unverified**; check the enforcers, not just the co
   original verification, not the deploy:** "verified live by preflight probe" was true of
   the function that was probed and got generalised to the fleet. A sample proves a sample —
   and the `.com` control is what made this readable at all, since without it the `.io`
-  answer looks like a dead endpoint rather than a fallback. ~~What genuinely remains: Apple's **approval** of `5HA89RBHQH` (submitted, not
+  answer looks like a dead endpoint rather than a fallback.
+  **Closed 2026-08-26, and the two counts reconcile rather than contradicting each other.**
+  The 2026-08-26 sweep found **12**, not 13, and the sets differ in both directions for two
+  separate and legitimate reasons. `check-creator-payout-status` and
+  `disconnect-stripe-account` had been fixed in between, carried along by the identity
+  slice-2 deploy that redeployed them for unrelated work — the incidental-fix direction
+  [[Edge-Function Deploy & Bundling]] predicts, since a bundle picks up every `_shared`
+  change at whatever moment it happens to ship. And `refund-campaign-escrow` was **newly
+  found**, because this probe covered **all 125 deployed functions** where the 2026-08-14
+  one covered only the 50 that `src/` invokes.
+  **That second half is the durable point, and it is the same lesson one layer up:** the
+  2026-08-14 entry corrects a *sample* generalised to the fleet, and then bounded its own
+  re-measurement by a different sample — what the frontend calls. A function the frontend
+  does not call today is still deployed, still reachable, and still wrong. ~~What genuinely remains: Apple's **approval** of `5HA89RBHQH` (submitted, not
   granted) and the physical-device build + on-device verification, which waits on the
   founder's Mac (expected 2026-08-12).~~ **Both gates cleared 2026-08-14** — enrollment is
   approved, and the Mac arrived and is provisioned (Xcode 26.6, CocoaPods 1.17.0, pods

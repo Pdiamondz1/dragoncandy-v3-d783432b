@@ -1,5 +1,20 @@
 # Wiki Log
 
+## [2026-08-26] ingest | The 12 money functions answering `.io` were stale bundles, not a bug
+
+**Created** `raw/sessions/2026-08-26-money-functions-stale-cors-bundles.md`.
+**Updated** [[Edge-Function Deploy & Bundling]] (new 2026-08-26 section — the paired-origin
+control, measuring `verify_jwt` with no credential before deploying, digest-not-value secret
+proof, the full-125 sweep, and the three findings deliberately left out of a redeploy),
+[[iOS TestFlight First Build]] (the "sweep is still unowned" claim closed; the 13 → 12 delta
+reconciled — two incidentally fixed by an unrelated deploy, one newly found by widening the
+probe from the 50 `src/` invokes to all 125), `index.md`, `docs/PROJECT_CONTEXT.md` §5,
+`docs/SHIPPED_LOG.md`.
+
+Deploy only — no code change, no migration. Verified by re-probing: all 12 now echo
+`capacitor://localhost` with a `.com` control still echoing `.com`, `verify_jwt` byte-identical
+before and after, and a sweep of all 125 deployed functions returning **stale = 0**.
+
 ## [2026-08-26] ingest | The app icon's black eye was the background showing through a hole
 
 **Created** [[iOS App Icon & Launch Image]] (`concepts/ios-app-icon-and-launch-image.md`) and
