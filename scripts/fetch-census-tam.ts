@@ -23,7 +23,10 @@ const NAICS = ['722', '722511', '722513', '722515', '722410', '7223'];
 const GEOGRAPHIES: ReadonlyArray<{ metroId: string; geography: CensusGeography }> = [
   { metroId: 'hoboken', geography: { kind: 'zip', code: '07030', label: 'Hoboken, NJ' } },
   { metroId: 'manhattan', geography: { kind: 'county', code: '36061', label: 'New York County, NY' } },
-  { metroId: 'palm-beach', geography: { kind: 'zip', code: '33480', label: 'Palm Beach, FL' } },
+  {
+    metroId: 'palm-beach',
+    geography: { kind: 'county', code: '12099', label: 'Palm Beach County, FL' },
+  },
 ];
 
 async function newestVintage(): Promise<number> {

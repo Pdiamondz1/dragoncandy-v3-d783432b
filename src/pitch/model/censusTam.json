@@ -210,21 +210,21 @@
     {
       "metroId": "palm-beach",
       "geography": {
-        "kind": "zip",
-        "code": "33480",
-        "label": "Palm Beach, FL"
+        "kind": "county",
+        "code": "12099",
+        "label": "Palm Beach County, FL"
       },
       "rows": [
         {
           "naics": "722",
-          "establishments": 38,
+          "establishments": 3194,
           "buckets": {
-            "lt5": 9,
-            "b5_9": null,
-            "b10_19": 4,
-            "b20_49": 5,
-            "b50_99": 16,
-            "b100_249": null,
+            "lt5": 940,
+            "b5_9": 492,
+            "b10_19": 661,
+            "b20_49": 769,
+            "b50_99": 262,
+            "b100_249": 70,
             "b250_499": null,
             "b500_999": null,
             "b1000": null
@@ -232,13 +232,28 @@
         },
         {
           "naics": "7223",
-          "establishments": 3,
+          "establishments": 249,
           "buckets": {
-            "lt5": null,
-            "b5_9": null,
-            "b10_19": null,
-            "b20_49": null,
-            "b50_99": null,
+            "lt5": 141,
+            "b5_9": 34,
+            "b10_19": 29,
+            "b20_49": 29,
+            "b50_99": 12,
+            "b100_249": 4,
+            "b250_499": null,
+            "b500_999": null,
+            "b1000": null
+          }
+        },
+        {
+          "naics": "722410",
+          "establishments": 80,
+          "buckets": {
+            "lt5": 21,
+            "b5_9": 23,
+            "b10_19": 16,
+            "b20_49": 14,
+            "b50_99": 4,
             "b100_249": null,
             "b250_499": null,
             "b500_999": null,
@@ -247,14 +262,14 @@
         },
         {
           "naics": "722511",
-          "establishments": 26,
+          "establishments": 1370,
           "buckets": {
-            "lt5": null,
-            "b5_9": null,
-            "b10_19": null,
-            "b20_49": 5,
-            "b50_99": 16,
-            "b100_249": null,
+            "lt5": 365,
+            "b5_9": 185,
+            "b10_19": 212,
+            "b20_49": 345,
+            "b50_99": 207,
+            "b100_249": 56,
             "b250_499": null,
             "b500_999": null,
             "b1000": null
@@ -262,14 +277,14 @@
         },
         {
           "naics": "722513",
-          "establishments": 4,
+          "establishments": 1081,
           "buckets": {
-            "lt5": 3,
-            "b5_9": null,
-            "b10_19": null,
-            "b20_49": null,
-            "b50_99": null,
-            "b100_249": null,
+            "lt5": 309,
+            "b5_9": 155,
+            "b10_19": 264,
+            "b20_49": 309,
+            "b50_99": 37,
+            "b100_249": 7,
             "b250_499": null,
             "b500_999": null,
             "b1000": null
@@ -277,12 +292,12 @@
         },
         {
           "naics": "722515",
-          "establishments": 5,
+          "establishments": 395,
           "buckets": {
-            "lt5": null,
-            "b5_9": null,
-            "b10_19": 3,
-            "b20_49": null,
+            "lt5": 97,
+            "b5_9": 89,
+            "b10_19": 138,
+            "b20_49": 68,
             "b50_99": null,
             "b100_249": null,
             "b250_499": null,
@@ -292,7 +307,7 @@
         }
       ],
       "vintage": 2023,
-      "sourceUrl": "https://www2.census.gov/programs-surveys/cbp/datasets/2023/zbp23detail.zip",
+      "sourceUrl": "https://www2.census.gov/programs-surveys/cbp/datasets/2023/cbp23co.zip",
       "fetchedAt": "2026-08-26"
     }
   ]
