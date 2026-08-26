@@ -279,4 +279,21 @@ describe('wizardHasWorkLeft', () => {
     rows.creator = { ...COMPLETE_CREATOR, creator_name: null, avatar_url: null };
     expect(await wizardResumeStep('u1', 'content_creator')).toBe('identity');
   });
+
+  /**
+   * THE REGRESSION, pinned at the level that matters. An established restaurant that never
+   * uploaded a logo has `profile_basics` unmet — `deriveProfileBasics` requires BOTH a name
+   * and an image — so `wizardResumeStep` DOES return a slide for it. That is correct and is
+   * not the bug: the bug was `AuthPage` acting on that answer for an account which had
+   * already completed onboarding, bouncing it into the wizard on every login.
+   *
+   * This test records what the function is entitled to say, so nobody "fixes" the
+   * regression here by teaching it to lie. The gate lives in `AuthPage` and is pinned by
+   * `authRedirect.test.ts`.
+   */
+  it('still names a slide for an onboarded account with gaps — the gate, not this, is the fix', async () => {
+    rows.profiles = { phone_verified_at: '2026-08-24T00:00:00Z', email_verified: true, org_id: null };
+    rows.creator = { ...COMPLETE_CREATOR, avatar_url: null };   // long-standing, no photo
+    expect(await wizardResumeStep('u1', 'content_creator')).toBe('identity');
+  });
 });

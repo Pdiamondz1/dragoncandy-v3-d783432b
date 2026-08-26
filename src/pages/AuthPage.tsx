@@ -141,8 +141,24 @@ const AuthPage = () => {
         // `/profile/setup` DIRECTLY, not `/profile/business`: those are
         // `<Navigate>` redirect routes, and bouncing through one is the hop the blank-page
         // race ran through. `replace` so Back does not return to /auth.
-        const resumeAt = await wizardResumeStep(user.id, 'business_client');
-        if (!businessProfile?.is_completed || resumeAt) {
+        // `is_completed` decides WHETHER; the registry decides WHICH SLIDE.
+        //
+        // Shipping `|| resumeAt` here was a regression, and a bad one: `profile_basics`
+        // is `required` and `deriveProfileBasics` needs BOTH a name and an image, so a
+        // long-standing account that never uploaded a logo derived `unmet` and was sent
+        // into the wizard on EVERY login, with no way to reach its dashboard but to click
+        // through the slides again. Measured on production: 20 of the 29 fully-onboarded
+        // accounts — the majority of the real user base.
+        //
+        // The previous note here said `is_completed` is not "onboarding finished". True,
+        // and over-corrected: it IS a reliable answer to the narrower question this gate
+        // actually asks — did this account get through the COLLECT phase — because
+        // `saveCore` is its only writer and sets it exactly there. An established account
+        // with gaps is not mid-onboarding; it is an account with gaps, and the readiness
+        // CHECKLIST is the surface for that: non-blocking, dismissal-aware, already built,
+        // and reached without clicking through a wizard.
+        if (!businessProfile?.is_completed) {
+          const resumeAt = await wizardResumeStep(user.id, 'business_client');
           // Carry the slide, so a returning user lands on the thing they still have to
           // do rather than walking back through slides they already completed.
           navigate(resumeAt ? `/profile/setup?step=${resumeAt}` : '/profile/setup', { replace: true });
@@ -179,8 +195,24 @@ const AuthPage = () => {
         // `/profile/setup` DIRECTLY, not `/profile/content`: those are
         // `<Navigate>` redirect routes, and bouncing through one is the hop the blank-page
         // race ran through. `replace` so Back does not return to /auth.
-        const resumeAt = await wizardResumeStep(user.id, 'content_creator');
-        if (!creatorProfile?.is_completed || resumeAt) {
+        // `is_completed` decides WHETHER; the registry decides WHICH SLIDE.
+        //
+        // Shipping `|| resumeAt` here was a regression, and a bad one: `profile_basics`
+        // is `required` and `deriveProfileBasics` needs BOTH a name and an image, so a
+        // long-standing account that never uploaded a logo derived `unmet` and was sent
+        // into the wizard on EVERY login, with no way to reach its dashboard but to click
+        // through the slides again. Measured on production: 20 of the 29 fully-onboarded
+        // accounts — the majority of the real user base.
+        //
+        // The previous note here said `is_completed` is not "onboarding finished". True,
+        // and over-corrected: it IS a reliable answer to the narrower question this gate
+        // actually asks — did this account get through the COLLECT phase — because
+        // `saveCore` is its only writer and sets it exactly there. An established account
+        // with gaps is not mid-onboarding; it is an account with gaps, and the readiness
+        // CHECKLIST is the surface for that: non-blocking, dismissal-aware, already built,
+        // and reached without clicking through a wizard.
+        if (!creatorProfile?.is_completed) {
+          const resumeAt = await wizardResumeStep(user.id, 'content_creator');
           // Carry the slide, so a returning user lands on the thing they still have to
           // do rather than walking back through slides they already completed.
           navigate(resumeAt ? `/profile/setup?step=${resumeAt}` : '/profile/setup', { replace: true });
@@ -221,8 +253,24 @@ const AuthPage = () => {
         // `/profile/setup` DIRECTLY, not `/profile/brand`: those are
         // `<Navigate>` redirect routes, and bouncing through one is the hop the blank-page
         // race ran through. `replace` so Back does not return to /auth.
-        const resumeAt = await wizardResumeStep(user.id, 'brand');
-        if (!brandProfile?.is_completed || resumeAt) {
+        // `is_completed` decides WHETHER; the registry decides WHICH SLIDE.
+        //
+        // Shipping `|| resumeAt` here was a regression, and a bad one: `profile_basics`
+        // is `required` and `deriveProfileBasics` needs BOTH a name and an image, so a
+        // long-standing account that never uploaded a logo derived `unmet` and was sent
+        // into the wizard on EVERY login, with no way to reach its dashboard but to click
+        // through the slides again. Measured on production: 20 of the 29 fully-onboarded
+        // accounts — the majority of the real user base.
+        //
+        // The previous note here said `is_completed` is not "onboarding finished". True,
+        // and over-corrected: it IS a reliable answer to the narrower question this gate
+        // actually asks — did this account get through the COLLECT phase — because
+        // `saveCore` is its only writer and sets it exactly there. An established account
+        // with gaps is not mid-onboarding; it is an account with gaps, and the readiness
+        // CHECKLIST is the surface for that: non-blocking, dismissal-aware, already built,
+        // and reached without clicking through a wizard.
+        if (!brandProfile?.is_completed) {
+          const resumeAt = await wizardResumeStep(user.id, 'brand');
           // Carry the slide, so a returning user lands on the thing they still have to
           // do rather than walking back through slides they already completed.
           navigate(resumeAt ? `/profile/setup?step=${resumeAt}` : '/profile/setup', { replace: true });

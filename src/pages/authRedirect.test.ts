@@ -48,15 +48,44 @@ describe('AuthPage post-login redirect', () => {
   });
 
   /**
-   * `is_completed` is set at the COLLECT boundary and means "the core rows exist", not
-   * "onboarding is finished". Reading it alone is the bug; it must be paired with a real
-   * check of what the wizard still has to ask.
+   * THE REGRESSION THIS REPLACES. The first version gated on
+   * `if (!profile?.is_completed || resumeAt)`, so an ESTABLISHED account with any unmet
+   * required requirement was routed into the wizard on EVERY login. `profile_basics` is
+   * `required` and `deriveProfileBasics` needs BOTH a name and an image, so a
+   * long-standing restaurant that never uploaded a logo could not reach its dashboard
+   * without clicking through the slides again. Measured on production: 20 of the 29
+   * fully-onboarded accounts.
+   *
+   * `is_completed` decides WHETHER (did this account get through the collect phase —
+   * `saveCore` is its only writer and sets it exactly there); the registry decides WHICH
+   * SLIDE. So `wizardResumeStep` must be called INSIDE the `!is_completed` branch, never
+   * as a second condition beside it.
    */
-  it('does not treat is_completed alone as "onboarding finished"', () => {
-    expect(src).toContain('wizardResumeStep');
-    const gates = src.match(/if \(![a-zA-Z]+Profile\?\.is_completed \|\| resumeAt\)/g) ?? [];
+  it('routes on is_completed alone, and resolves the slide only inside that branch', () => {
+    // Asserted against CODE with comments stripped. The note above the gate quotes the old
+    // `|| resumeAt` to explain why it is gone, and a raw source match cannot tell an
+    // explanation from the thing it explains — the first version of this test failed on its
+    // own comment.
+    const code = src
+      .replace(/\/\*[\s\S]*?\*\//g, '')
+      .replace(/^\s*\/\/.*$/gm, '');
+
+    // The disjunction that caused the regression must not come back in any form.
+    expect(code).not.toMatch(/is_completed \|\|/);
+    expect(code).not.toMatch(/\|\|\s*resumeAt/);
+
+    const gates = code.match(/if \(![a-zA-Z]+Profile\?\.is_completed\)/g) ?? [];
     expect(gates.length).toBe(3); // creator, business, brand
-    // Each gate must be preceded by its own resolve, not share one from another branch.
-    expect((src.match(/await wizardResumeStep\(user\.id, '/g) ?? []).length).toBe(3);
+
+    // Every resolve is INSIDE a gate: each call must be preceded by an `is_completed`
+    // check with no intervening `navigate`, which is what "inside the branch" means here.
+    const calls = [...code.matchAll(/await wizardResumeStep\(user\.id, '/g)];
+    expect(calls.length).toBe(3);
+    for (const c of calls) {
+      const before = code.slice(0, c.index);
+      const lastGate = before.lastIndexOf('?.is_completed)');
+      expect(lastGate).toBeGreaterThan(-1);
+      expect(before.slice(lastGate)).not.toContain('navigate(');
+    }
   });
 });
