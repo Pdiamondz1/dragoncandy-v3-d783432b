@@ -9,6 +9,22 @@ import {
   type NaicsRow,
 } from './censusTam';
 
+/**
+ * Every NAICS row in the snapshot, flattened across both shapes: a single-geography metro
+ * carries `rows` directly, a zipset carries them in `parts[].rows` with its own `rows` empty.
+ */
+function allRows(snapshot: ReturnType<typeof loadCensusSnapshot>): NaicsRow[] {
+  const out: NaicsRow[] = [];
+  for (const metro of Object.values(snapshot) as unknown[]) {
+    for (const entry of Array.isArray(metro) ? metro : [metro]) {
+      const m = entry as { rows?: NaicsRow[]; parts?: { rows: NaicsRow[] }[] };
+      if (m?.rows) out.push(...m.rows);
+      if (m?.parts) for (const p of m.parts) out.push(...p.rows);
+    }
+  }
+  return out;
+}
+
 function row(naics: string, establishments: number, partial: Partial<NaicsRow['buckets']>): NaicsRow {
   const buckets = Object.fromEntries(SIZE_BUCKETS.map((b) => [b, 0])) as NaicsRow['buckets'];
   return { naics, establishments, buckets: { ...buckets, ...partial } };
@@ -63,6 +79,37 @@ describe('bucketSum', () => {
 
 describe('the committed snapshot', () => {
   const snapshot = loadCensusSnapshot();
+
+  /**
+   * Pins how suppressed this vintage actually is, because a prose claim about it was wrong and
+   * had been copied onto the investor-facing Sources sheet, where a reader could check it.
+   *
+   * `resolveSuppressed` recovers a bucket only when exactly ONE of a row's nine is unknown. No
+   * row here qualifies — the fewest any row has is two. So the recovery step changes nothing on
+   * this data, every band figure is a floor, and any surface claiming a specific row is
+   * "recovered" is asserting something false.
+   *
+   * If a future vintage makes this fail, that is the good outcome: it means recovery has work to
+   * do, and the sheet's wording must change with it. Do not relax the assertion to keep it green.
+   */
+  it('has no row with exactly one suppressed bucket, so nothing is recoverable', () => {
+    const rows = allRows(snapshot);
+    expect(rows.length).toBe(67);
+
+    const nullCounts = rows.map((r) => Object.values(r.buckets).filter((v) => v === null).length);
+    expect(nullCounts.filter((n) => n === 1)).toEqual([]);
+    expect(Math.min(...nullCounts)).toBe(2);
+    expect(Math.max(...nullCounts)).toBe(9);
+
+    // The control: a row with exactly one null IS recoverable, so the assertion above is about
+    // this data rather than about the function being incapable.
+    const forced: NaicsRow = {
+      naics: '722511',
+      establishments: 10,
+      buckets: { lt5: 3, b5_9: 2, b10_19: null, b20_49: 1, b50_99: 1, b100_249: 1, b250_499: 1, b500_999: 1, b1000: 0 },
+    };
+    expect(resolveSuppressed(forced).buckets.b10_19).toBe(0);
+  });
 
   it('covers the three single-geography metros', () => {
     for (const id of ['hoboken', 'manhattan', 'palm-beach']) {

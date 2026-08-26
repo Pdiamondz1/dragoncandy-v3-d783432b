@@ -61,6 +61,11 @@ which is what "ARR" has always meant here. Booked revenue is the lower figure th
 years actually invoice, because customers ramp through the year; both are in the
 generated workbook (`npm run model:xlsx`). Do not quote one for the other.
 
+**Both revenue columns are a TWO-of-four-streams figure.** §8 stacks four — subscription, take
+rate, Donny credit overages, DragonDash rush surcharge — and the model books the first two and
+values the other two at **$0**, because nothing has ever been charged for them. So every number in
+this table, and every ratio computed from it below, is a floor.
+
 | Year | Exit ARR | Booked | Headcount | Metros | Notes |
 |------|----------|--------|-----------|--------|-------|
 | Y1 (2026) | $100K | $36K   | 5–6   | 2  | 2026 = Y1 is founder-confirmed, not assumed |
@@ -89,7 +94,12 @@ $6.8M. Changing the mix or the take rate is a founder decision and has not been 
 
 > **OPEN FOUNDER DECISION — three numbers in this section disagree, and nobody has picked.**
 > At the restated Y3, revenue per employee is **$431–474K on exit ARR** (clears the $400K
-> floor) but **$304–334K on booked revenue** (fails it, in both staffing cases). Four
+> floor) but **$304–334K on booked revenue** (fails it, in both staffing cases). **Both
+> numerators exclude two of the four revenue streams** (see above), so both are floors — a
+> fifth resolution is that the gate is being applied to a deliberately partial revenue figure.
+> Worth weighing against the benchmark: the private-SaaS median is ~$130K per employee and
+> ~$100K in the $1–3M ARR band (`docs/wiki/analyses/north-star-kpi-scorecard.md`), which puts
+> even the failing reading at roughly 3× the norm for this size. Four
 > candidate resolutions, none chosen: (a) Y3 headcount of 10–11 is too high for this
 > revenue; (b) $400K is the wrong floor for a company at this stage; (c) the Y3 target is
 > too low to carry the planned team; (d) the gate never said WHICH revenue it measures —

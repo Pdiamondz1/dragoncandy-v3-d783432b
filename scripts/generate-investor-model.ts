@@ -159,6 +159,17 @@ lines.push('');
 // here, and DERIVED — the sentence below used to hardcode "$7–12M" and "~$33M", which is the
 // prose-cannot-fail failure this whole generator exists to prevent.
 const rollupYears = rollup();
+// The trajectory table pairs these two sources BY POSITION, because they number their years
+// differently: threeYearTrajectory() uses 1/2/3 and rollup() uses calendar years. Joining on
+// `year` matches nothing and fails silently, so the pairing is positional and asserted here.
+if (rollupYears.length !== threeYearTrajectory().length) {
+  console.error(
+    `Refusing to generate: rollup has ${rollupYears.length} years, the cost trajectory has ` +
+      `${threeYearTrajectory().length}. They are paired by position; a mismatch would pair the ` +
+      'wrong cost band with the wrong revenue.',
+  );
+  process.exit(1);
+}
 const y3 = rollupYears[rollupYears.length - 1];
 const steadyStateAt10k = businessStepTable([10000], MIX)[0].annualRevenue;
 
@@ -231,6 +242,19 @@ lines.push('');
 
 lines.push('## Three-year trajectory');
 lines.push('');
+lines.push('> **The bottom-up model is the current forecast. The band table below is the SUPERSEDED');
+lines.push('> top-down plan**, kept because it is what the registered cross-check compares against.');
+lines.push('> Restated 2026-08-26 — see `PROJECT_CONTEXT.md` §3.');
+lines.push('>');
+lines.push('> | Year | Exit ARR | Booked revenue | Metros live |');
+lines.push('> |---:|---:|---:|---:|');
+for (const r of rollupYears) {
+  lines.push(`> | ${r.year} | ${usd(r.exitArr)} | ${usd(r.revenue)} | ${r.metrosLive} |`);
+}
+lines.push('>');
+lines.push('> Exit ARR is the year-end run rate; booked revenue is what the year invoices while');
+lines.push('> customers ramp. The band below is a REVENUE band, so compare it against booked.');
+lines.push('');
 lines.push('Revenue and cost bands are our own forward projections — MODELED, not a measurement of');
 lines.push('anything that exists yet. The cost figures are **all-in cost**, not operating expense');
 lines.push('alone: they include Stripe fees, AI and infrastructure spend alongside payroll, marketing');
@@ -240,16 +264,35 @@ lines.push('Low EBITDA pairs low revenue with high cost (the worst case); high E
 lines.push('revenue with low cost (the best case) — pairing low revenue with low cost would understate');
 lines.push('the downside.');
 lines.push('');
-lines.push('| Year | Revenue | Total cost | EBITDA |');
+lines.push('| Year | Revenue (superseded plan) | Total cost | EBITDA (superseded plan) |');
 lines.push('|---:|---:|---:|---:|');
 for (const y of threeYearTrajectory()) {
   lines.push(`| ${y.year} | ${usd(y.revenueLow)}–${usd(y.revenueHigh)} | ${usd(y.totalCostLow)}–${usd(y.totalCostHigh)} | ${usd(y.ebitdaLow)}–${usd(y.ebitdaHigh)} |`);
 }
 lines.push('');
-lines.push('**Year 1 EBITDA runs from -$530,000 to +$10,000.** `docs/DragonCandy_Pricing_Profitability_Briefing_v2.md`');
-lines.push('section 7 describes Year 1 as "Breakeven to slight loss" — that is not true of a $530,000');
-lines.push('loss on $300,000 of revenue at the low end of the band. State the real range, not the');
-lines.push('prose summary.');
+lines.push('**The cost column is current; the revenue and EBITDA columns are not.** Against BOOKED');
+lines.push('revenue from the bottom-up model, the same registered cost bands give:');
+lines.push('');
+lines.push('| Year | Booked revenue | Total cost | EBITDA |');
+lines.push('|---:|---:|---:|---:|');
+threeYearTrajectory().forEach((y, i) => {
+  const r = rollupYears[i];
+  lines.push(
+    // " to ", not an en dash: both ends of the Year 1 and Year 2 ranges are negative, and
+    // "-$794,196–-$554,196" is unreadable.
+    `| ${r.year} | ${usd(r.revenue)} | ${usd(y.totalCostLow)}–${usd(y.totalCostHigh)} | ${usd(r.revenue - y.totalCostHigh)} to ${usd(r.revenue - y.totalCostLow)} |`,
+  );
+});
+lines.push('');
+lines.push(
+  `**Year 1 EBITDA is ${usd(rollupYears[0].revenue - threeYearTrajectory()[0].totalCostHigh)} to ` +
+    `${usd(rollupYears[0].revenue - threeYearTrajectory()[0].totalCostLow)}.** ` +
+    '`docs/DragonCandy_Pricing_Profitability_Briefing_v2.md`',
+);
+lines.push('section 7 describes Year 1 as "Breakeven to slight loss". That was already untrue of the');
+lines.push('superseded plan, whose own low end was a $530,000 loss on $300,000 of revenue, and the');
+lines.push('bottom-up model makes it further from true, not closer: it books $35,804 in the first');
+lines.push('calendar year against the same cost base. State the real range, not the prose summary.');
 lines.push('');
 
 if (confidential) {

@@ -91,9 +91,14 @@ export const METROS: readonly Metro[] = [
         label: 'Palm Beach penetration 2028',
         source: SOURCE,
         note:
-          'Restated 2026-08-26 from 0.25 when the geography moved from the ZIP 33480 town ' +
-          '(which has no recoverable 722410 row and two suppressed buckets each in 722511 and ' +
-          '722515) to Palm Beach County. The county base is ~9x the town figure the original ' +
+          'Restated 2026-08-26 from 0.25 when the geography moved from the ZIP 33480 town to ' +
+          'Palm Beach County, because the town ZIP was too suppressed to model. NOTE that ' +
+          'claim is NOT checkable from this repo: 33480 is not in censusTam.json (the move is ' +
+          'exactly why it was never snapshotted), so it records a probe run at the time rather ' +
+          'than something a reader can reproduce. An earlier draft of this note counted the ' +
+          'suppressed buckets, which invited exactly the arithmetic that turned out to be wrong ' +
+          'elsewhere in this slice -- "bucket" means one of the row\'s NINE size classes, not ' +
+          'one of the three in the addressable band. The county base is ~9x the town figure the original ' +
           'ratio was picked against, so the un-rescaled 0.25 would have implied roughly 268 ' +
           'customers in a market entered in month 12 -- of the three penetration assumptions ' +
           'in this file, this is the one most worth challenging.',

@@ -169,11 +169,30 @@ export interface BandCount {
  *
  * ## Why resolution is per-part and happens BEFORE the sum
  *
- * Order is the whole point. `resolveSuppressed` recovers a bucket whose value is FORCED by
- * its row's establishment total — which only holds when exactly one bucket in that row is
- * unknown. Montauk's 722511 row has exactly one suppressed bucket, so its value is
- * recoverable; Water Mill's has two, so it is not. Summing the raw rows first collapses both
- * into a single row with several unknowns, and the recoverable one is lost for nothing.
+ * `resolveSuppressed` recovers a bucket whose value is FORCED by its row's establishment
+ * total, which holds only when exactly one of the row's nine buckets is unknown. Summing raw
+ * rows first would collapse several rows' unknowns into one row with many, so a recoverable
+ * bucket would be lost for nothing. Hence per-geography, before the sum.
+ *
+ * **On the committed 2023 vintage it recovers NOTHING, and that must be said plainly rather
+ * than left to be discovered.** Measured across all 67 rows in `censusTam.json`: the fewest
+ * suppressed buckets any row has is TWO, and the distribution runs 2–9 (17 rows have eight,
+ * 11 have all nine). **Zero rows have exactly one.** So `bandFloorAcross` returns byte-identical
+ * results with and without the resolution step, every band figure is a floor, and
+ * `suppressedCells` is the whole story.
+ *
+ * This comment previously claimed "Montauk's 722511 row has exactly one suppressed bucket, so
+ * its value is recoverable; Water Mill's has two, so it is not." That is false against this
+ * snapshot — Montauk's 722511 has six and Water Mill's seven — and the same worked example had
+ * been copied onto the investor-facing Sources sheet, where a reader could check it and find it
+ * wrong. It was true only under a different reading of "bucket" (the three inside the
+ * addressable band, rather than the nine in the row), which is not the mechanism the sentence
+ * describes.
+ *
+ * The function and its ordering test are KEPT rather than deleted: the test proves the ordering
+ * rule on synthetic one-null fixtures, and the rule is correct — it simply has no work to do on
+ * this vintage. A later vintage, or a narrower geography, can produce a one-null row. What must
+ * not happen again is a surface asserting that it currently does.
  */
 export function bandFloorAcross(
   rowsPerGeography: ReadonlyArray<readonly NaicsRow[]>,

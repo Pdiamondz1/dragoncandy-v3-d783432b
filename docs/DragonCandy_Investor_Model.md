@@ -174,6 +174,19 @@ Both ends of the CAC band clear both guardrails.
 
 ## Three-year trajectory
 
+> **The bottom-up model is the current forecast. The band table below is the SUPERSEDED
+> top-down plan**, kept because it is what the registered cross-check compares against.
+> Restated 2026-08-26 — see `PROJECT_CONTEXT.md` §3.
+>
+> | Year | Exit ARR | Booked revenue | Metros live |
+> |---:|---:|---:|---:|
+> | 2026 | $99,918 | $35,804 | 2 |
+> | 2027 | $879,278 | $517,631 | 10 |
+> | 2028 | $4,739,444 | $3,341,424 | 21 |
+>
+> Exit ARR is the year-end run rate; booked revenue is what the year invoices while
+> customers ramp. The band below is a REVENUE band, so compare it against booked.
+
 Revenue and cost bands are our own forward projections — MODELED, not a measurement of
 anything that exists yet. The cost figures are **all-in cost**, not operating expense
 alone: they include Stripe fees, AI and infrastructure spend alongside payroll, marketing
@@ -183,14 +196,24 @@ Low EBITDA pairs low revenue with high cost (the worst case); high EBITDA pairs 
 revenue with low cost (the best case) — pairing low revenue with low cost would understate
 the downside.
 
-| Year | Revenue | Total cost | EBITDA |
+| Year | Revenue (superseded plan) | Total cost | EBITDA (superseded plan) |
 |---:|---:|---:|---:|
 | 1 | $300,000–$600,000 | $590,000–$830,000 | -$530,000–$10,000 |
 | 2 | $2,000,000–$4,500,000 | $1,100,000–$1,800,000 | $200,000–$3,400,000 |
 | 3 | $7,000,000–$12,000,000 | $2,200,000–$3,800,000 | $3,200,000–$9,800,000 |
 
-**Year 1 EBITDA runs from -$530,000 to +$10,000.** `docs/DragonCandy_Pricing_Profitability_Briefing_v2.md`
-section 7 describes Year 1 as "Breakeven to slight loss" — that is not true of a $530,000
-loss on $300,000 of revenue at the low end of the band. State the real range, not the
-prose summary.
+**The cost column is current; the revenue and EBITDA columns are not.** Against BOOKED
+revenue from the bottom-up model, the same registered cost bands give:
+
+| Year | Booked revenue | Total cost | EBITDA |
+|---:|---:|---:|---:|
+| 2026 | $35,804 | $590,000–$830,000 | -$794,196 to -$554,196 |
+| 2027 | $517,631 | $1,100,000–$1,800,000 | -$1,282,369 to -$582,369 |
+| 2028 | $3,341,424 | $2,200,000–$3,800,000 | -$458,576 to $1,141,424 |
+
+**Year 1 EBITDA is -$794,196 to -$554,196.** `docs/DragonCandy_Pricing_Profitability_Briefing_v2.md`
+section 7 describes Year 1 as "Breakeven to slight loss". That was already untrue of the
+superseded plan, whose own low end was a $530,000 loss on $300,000 of revenue, and the
+bottom-up model makes it further from true, not closer: it books $35,804 in the first
+calendar year against the same cost base. State the real range, not the prose summary.
 

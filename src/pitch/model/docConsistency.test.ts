@@ -40,6 +40,14 @@ const SUPERSEDED_BAND = [
   /\$300K?[–-]\$?600K/g,
   /\$2M?[–-]\$?4\.5M/g,
   /\$7M?[–-]\$?12M/g,
+  // Fully expanded, as the generated documents render it. Added after a reviewer found
+  // `$7,000,000–$12,000,000` sitting in `docs/DragonCandy_Investor_Model.md` presented as
+  // current, and noted that the abbreviated patterns above structurally cannot see it. Two
+  // successive sweeps had missed the same table for the same reason: matching the notation
+  // people write, rather than every notation the corpus contains.
+  /\$300,000[–-]\$?600,000/g,
+  /\$2,000,000[–-]\$?4,500,000/g,
+  /\$7,000,000[–-]\$?12,000,000/g,
 ] as const;
 
 /**
@@ -261,6 +269,7 @@ describe('live documents versus the superseded three-year band', () => {
     ['$300–600K', '$2–4.5M', '$7–12M'],
     ['$300-600K', '$2-4.5M', '$7-12M'],
     ['$300K–$600K', '$2–$4.5M', '$7M–$12M'],
+    ['$300,000–$600,000', '$2,000,000–$4,500,000', '$7,000,000–$12,000,000'],
   ])('CONTROL: matches the written form %s / %s / %s', (y1, y2, y3) => {
     for (const form of [y1, y2, y3]) {
       expect(matchesBand(`target ${form} by then`), `did not match ${form}`).toBe(true);

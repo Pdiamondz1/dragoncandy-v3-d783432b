@@ -173,10 +173,14 @@ function sourcesSheet(): SheetSpec {
     [t('Cells marked "N" are suppressed to protect respondent confidentiality. They are treated')],
     [t('as unknown, never as zero. A bucket forced by the establishment total is recovered as')],
     [t('the residual; where more than one is suppressed the model states a range.')],
-    [t('Recovery runs PER GEOGRAPHY and BEFORE any summing. Montauk’s full-service row has one')],
-    [t('suppressed bucket, so its value is forced by the establishment total and is recovered;')],
-    [t('Water Mill’s has two and is not. Summing first would collapse both into "unknown" and')],
-    [t('lose the recoverable one for nothing.')],
+    [t('ON THIS 2023 VINTAGE NOTHING IS RECOVERABLE, and we would rather you read that here than')],
+    [t('find it yourself. A bucket is forced only when exactly one of a row’s nine is unknown.')],
+    [t('Across all 67 rows in our snapshot the fewest any row has is TWO — the distribution runs')],
+    [t('2 to 9 — so ZERO rows qualify and the recovery step changes no number in this workbook.')],
+    [t('Every addressable count here is therefore a floor, and "suppressed cells" is the whole')],
+    [t('story. The recovery step is kept because a later vintage or a narrower geography can')],
+    [t('produce a one-unknown row; it runs PER GEOGRAPHY and BEFORE any summing, since summing')],
+    [t('first would pool several rows’ unknowns and lose a recoverable bucket for nothing.')],
     [t('Across a SET of ZIPs the addressable count is then a FLOOR — the sum of what is known —')],
     [t('rather than a refusal. Refusing is right for one geography (a hidden cell means the metro')],
     [t('is not modelable, which is why Palm Beach moved from the town ZIP to the county); across')],
@@ -458,6 +462,11 @@ function totalsSheet(sourceSheets: readonly SheetSpec[]): SheetSpec {
   const EBITDA_ROW: Readonly<Record<string, number>> = Object.fromEntries(
     metroIds.map((id) => [id, rowOf(specFor(id), 'Metro EBITDA')]),
   );
+  // Both sheet layouts label this row identically, so unlike revenue it needs no per-sheet
+  // variant. Added when the Totals Exit ARR row became live — see the note there.
+  const EXIT_ARR_ROW: Readonly<Record<string, number>> = Object.fromEntries(
+    metroIds.map((id) => [id, rowOf(specFor(id), 'Exit ARR (year-end run rate)')]),
+  );
   // Every reference is sheet-qualified, even ones addressing this same Totals sheet — see
   // formulaEval.ts's header comment for why.
   const tref = (row: number, col: string) => `Totals!${col}${row}`;
@@ -537,7 +546,25 @@ function totalsSheet(sourceSheets: readonly SheetSpec[]): SheetSpec {
   rows.push(
     [blank],
     [t('Exit ARR — the year-end RUN RATE, not what was booked during the year')],
-    [t('Exit ARR'), blank, ...years.map((y) => n(y.exitArr))],
+    // Live and toggled, for the same reason the revenue and EBITDA rows above are. This
+    // shipped as a plain value on the argument that a live formula would need ARPU as a cell
+    // and ARPU is derived from the tier mix -- true of the METRO sheets, false here, because
+    // every metro sheet already prints its own Exit ARR row and this is only their sum.
+    // The cost of the plain value was not cosmetic: the README advertises the YES/NO toggles,
+    // so a reader switches Manhattan off, watches booked revenue drop by a third, and sees
+    // Exit ARR and the cross-check multiple below it refuse to move. A cross-check that
+    // silently ignores the control the sheet tells you to use is worse than no cross-check.
+    [
+      t('Exit ARR'),
+      blank,
+      ...MODEL_YEARS.map((_, i) => {
+        const terms = metroIds.map((id) => {
+          const source = `${sheetFor(id)}!${SOURCE_COLS[i]}${EXIT_ARR_ROW[id]}`;
+          return `IF(${tref(toggleRowByMetro[id], 'B')}="NO",0,${source})`;
+        });
+        return { v: years[i].exitArr, f: `SUM(${terms.join(',')})`, fmt: '$#,##0' };
+      }),
+    ],
   );
   const exitArrRow = rows.length;
   rows.push(
