@@ -5,6 +5,7 @@ import { useNavigate, useSearchParams, useLocation, Link } from "react-router-do
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { AuthForm } from "@/components/auth/AuthForm";
+import { EmailVerificationPanel } from "@/components/auth/EmailVerificationPanel";
 import { AuthModeToggle } from "@/components/auth/AuthModeToggle";
 import { RoleSelection } from "@/components/auth/RoleSelection";
 import { toast } from 'sonner';
@@ -43,7 +44,7 @@ const AuthPage = () => {
 
   const navigate = useNavigate();
   const location = useLocation();
-  const { user, isAuthenticated, migrateCampaignData } = useAuth();
+  const { user, isAuthenticated, migrateCampaignData, refreshProfile } = useAuth();
 
   const routerReturnTo = (location.state as { from?: { pathname: string; search: string } })?.from;
   // A full-page OAuth round trip destroys `location.state`, so the destination a
@@ -382,6 +383,28 @@ const AuthPage = () => {
     }
   };
 
+  /**
+   * Verification just succeeded — by a code typed here, or by the emailed link being
+   * opened somewhere else and noticed by the panel's poll.
+   *
+   * `refreshProfile` is AWAITED before re-running the completion check. The check reads
+   * the database and would route the user onward, where `ProtectedRoute` judges them on
+   * the CONTEXT copy of the profile — still `{ email_verified: false }` until this call
+   * lands. Two readers of one fact, one fresh and one stale, is the redirect loop the
+   * `/verify-email` page already had to fix once. A failed refresh is not fatal: the
+   * verification really did happen, and the next auth event reloads the profile anyway.
+   */
+  const handleVerified = useCallback(async () => {
+    setNeedsVerification(false);
+    setError(null);
+    try {
+      await refreshProfile();
+    } catch (refreshError) {
+      console.warn('AuthPage: profile refresh failed after verification', refreshError);
+    }
+    await checkProfileCompletion();
+  }, [refreshProfile, checkProfileCompletion]);
+
   const handleDismissVerification = async () => {
     setNeedsVerification(false);
     setError(null);
@@ -461,26 +484,12 @@ const AuthPage = () => {
           />
 
           {error === 'verify_email' ? (
-            <div className="bg-red-50 border border-red-200 px-4 py-3 rounded-xl mt-3 max-w-sm md:max-w-md mx-auto text-center space-y-2">
-              <p className="text-sm text-red-600">
-                Please verify your email before continuing. Check your inbox for the verification link.
-              </p>
-              <button
-                onClick={handleResendVerification}
-                disabled={resendCooldown > 0}
-                className="text-sm font-semibold text-landing-pink hover:text-landing-pink disabled:text-landing-ink-soft/40 transition-colors"
-              >
-                {resendCooldown > 0
-                  ? `Resend in ${resendCooldown}s`
-                  : 'Resend verification email'}
-              </button>
-              <button
-                onClick={handleDismissVerification}
-                className="block mx-auto text-xs text-landing-ink-soft hover:text-landing-ink transition-colors"
-              >
-                Back to login
-              </button>
-            </div>
+            <EmailVerificationPanel
+              onVerified={handleVerified}
+              onResend={handleResendVerification}
+              resendCooldown={resendCooldown}
+              onDismiss={handleDismissVerification}
+            />
           ) : error ? (
             <div className="text-sm text-red-600 bg-red-50 border border-red-200 px-4 py-2 rounded-xl mt-3 max-w-sm md:max-w-md mx-auto">
               {error}
@@ -524,26 +533,12 @@ const AuthPage = () => {
           />
 
           {error === 'verify_email' ? (
-            <div className="bg-red-50 border border-red-200 px-4 py-3 rounded-xl mt-3 max-w-sm md:max-w-md mx-auto text-center space-y-2">
-              <p className="text-sm text-red-600">
-                Please verify your email before continuing. Check your inbox for the verification link.
-              </p>
-              <button
-                onClick={handleResendVerification}
-                disabled={resendCooldown > 0}
-                className="text-sm font-semibold text-landing-pink hover:text-landing-pink disabled:text-landing-ink-soft/40 transition-colors"
-              >
-                {resendCooldown > 0
-                  ? `Resend in ${resendCooldown}s`
-                  : 'Resend verification email'}
-              </button>
-              <button
-                onClick={handleDismissVerification}
-                className="block mx-auto text-xs text-landing-ink-soft hover:text-landing-ink transition-colors"
-              >
-                Back to login
-              </button>
-            </div>
+            <EmailVerificationPanel
+              onVerified={handleVerified}
+              onResend={handleResendVerification}
+              resendCooldown={resendCooldown}
+              onDismiss={handleDismissVerification}
+            />
           ) : error ? (
             <div className="text-sm text-red-600 bg-red-50 border border-red-200 px-4 py-2 rounded-xl mt-3 max-w-sm md:max-w-md mx-auto">
               {error}

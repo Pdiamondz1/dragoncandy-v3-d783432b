@@ -87,21 +87,36 @@ export const AuthForm = ({ mode, onError, preSelectedRole, onChangeRole }: AuthF
             } else {
               toast({
                 title: "Check your email",
-                description: "We've sent you a verification link. Please verify your email before logging in.",
+                description: "We've sent you a 6-digit code. Enter it here to continue.",
               });
             }
           } catch (emailError) {
             console.error('Error sending verification email:', emailError);
           }
 
-          // Sign out the user - they must verify first
-          await supabase.auth.signOut();
+          /**
+           * THE SESSION SURVIVES SIGNUP. This used to end in
+           * `supabase.auth.signOut()`, which threw away the tab that had just done the
+           * work: the only way forward was a mail client, a link, a third page and a
+           * second login. On a phone, where mail is a different app, that is a round trip
+           * many people never finish.
+           *
+           * Nothing is loosened by keeping the session. An unverified user is stopped by
+           * `ProtectedRoute`, which gates every authenticated route on `email_verified`,
+           * and by `AuthPage.checkProfileCompletion`, which refuses to route them onward.
+           * Signing out was never the control — it was a side effect standing in for one,
+           * which is exactly what #528 replaced.
+           *
+           * Keeping it is also what makes the code path possible at all: the six-digit
+           * code is only safe because `verify-email` resolves it against the caller's own
+           * JWT, and there is no JWT to resolve it against once the user is signed out.
+           */
         }
 
         setLoading(false);
       } else {
         // Login mode
-        const { data, error: loginError } = await supabase.auth.signInWithPassword({
+        const { error: loginError } = await supabase.auth.signInWithPassword({
           email,
           password
         });
@@ -113,21 +128,16 @@ export const AuthForm = ({ mode, onError, preSelectedRole, onChangeRole }: AuthF
           return;
         }
 
-        // Check if email is verified
-        if (data.user) {
-          const { data: profile } = await supabase
-            .from('profiles')
-            .select('email_verified')
-            .eq('id', data.user.id)
-            .single();
-
-          if (profile && !profile.email_verified) {
-            await supabase.auth.signOut();
-            onError('Please verify your email before logging in. Check your inbox for the verification link.');
-            setLoading(false);
-            return;
-          }
-        }
+        /**
+         * The unverified-login case is deliberately NOT handled here any more.
+         *
+         * It used to read the profile, sign the user out, and report a dead-end string —
+         * leaving them with no session, and therefore no way to enter a code. One screen
+         * further on, `AuthPage.checkProfileCompletion` performs the same check and raises
+         * `verify_email`, which renders the panel that can actually resolve it. Two
+         * readers deciding the same thing differently is how the signup tab got stranded;
+         * this leaves one.
+         */
 
         toast({
           title: "Welcome back!",
