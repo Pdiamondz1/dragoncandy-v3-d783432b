@@ -62,7 +62,15 @@
   and routinely differ from the page's `title:` frontmatter (this run guessed
   `Onboarding Wizard & Account Depth`; the index says `Onboarding Wizard & Depth`), and a wrong
   one is a silently broken link, not an error. Cheap check: extract every `[[…]]` from the new
-  pages and `grep -F` each against `index.md`.
+  pages and match each against `index.md` — **as a CATALOG ENTRY (`^- \[\[Name\]\](`), not as a
+  bare string.** A plain `grep -F "[[Name]]"` also matches the link where it appears inside
+  ANOTHER entry's prose, which is not a definition and does not resolve. That is how
+  `[[Verify Before Reporting]]` passed my own check on 2026-08-26 and was then caught by Codex:
+  the string occurs exactly once in `index.md`, inside the [[Social Provider Decision]] entry's
+  closing sentence, and no page file has ever existed. **Repo-wide this is systemic, not a
+  one-off — 52 of 203 distinct wikilinks resolve to no catalog entry** (swept 2026-08-26; left
+  unfixed as out of scope for a sync, but it means a link that "looks used elsewhere" is not
+  evidence it resolves).
 - **[orphans] Run the orphan check every run — by PATH, not title.** The `wiki-save-answer`
   flow adds `analyses/` pages + syncs RAG but does NOT update `index.md`, so its pages land as
   catalog orphans (caught 2: [[Competitive Advantage]], [[Influencer/Creator Outreach]]). Before
@@ -111,6 +119,20 @@
   migration never created (it adds columns + an index to `outstand_media_ownership`). Read the
   migration for the real identifiers before querying for them. Re-sweep whenever the section looks
   long, or when any entry is older than ~2 weeks.
+- **[stale-mechanism] A `**Pending:**` clause can be false in its CAUSAL STORY, not just its
+  status — check what it says causes what.** On 2026-08-26 §5 read: the Twilio *Primary Compliance
+  Profile* "is unapproved — error 21608 means **no real user can verify a phone**, so it is
+  launch-blocking". Two independent errors. The profile was **Approved**; and **21608 was never
+  the compliance profile's doing** — it is the *trial-account* restriction, lifted by upgrading,
+  while the compliance profile gates A2P 10DLC and toll-free registration. Two different doors,
+  welded into one sentence. Correcting only the status would have left the wrong mechanism in an
+  always-loaded doc, pointing every future session at the wrong remedy. Corollary to
+  `[status-correction]`, one level deeper. Two instrument traps came with it, both worth the
+  reflex: **the vendor console rendered "Pending review" until reloaded**, so an approval email is
+  a claim about a claim until the console agrees; and the green **"Active"** badge is account
+  *status* (not suspended), which trial accounts show too — the evidence for "upgraded" is the
+  billing TYPE (`Pay-as-you-go`). Same family as `[gap-claims]`: **check the claim against the
+  system, and check that what you read is the field you think it is.**
 - **[gap-claims] Verify a claimed knowledge gap against `origin/main`, never a worktree.** A worktree
   drifts silently — **absence in one proves nothing.** On 2026-07-19 I asserted "PR #288 shipped
   without its knowledge-sync" from a worktree 15 commits behind; PR #290 had already done the sync and
@@ -290,6 +312,33 @@
   `[orphans]`, which matches on the `(path/to/file.md)` link target and does not have this problem.
 
 ## Run log (newest first — add each new entry at the TOP; never edit/delete past entries)
+
+### 2026-08-26 — Email verification by code (#528, #530)
+
+**Output:** [[Email Verification Routes]] (`concepts/email-verification-routes.md`) +
+`raw/sessions/2026-08-26-email-verification-by-code.md`; `log.md` entry
+`## [2026-08-26] ingest | Email verification by code, with the link kept working`.
+
+**Happened:** synced the email-verification work — concept page, index entry, log entry,
+`SHIPPED_LOG.md` entry, a §5 line, and the two migrations documented in `DATABASE_SCHEMA.md`.
+Also corrected **two stale Twilio claims** in §5 after reading the console and prod.
+
+**Worked:** `[index-sections]` earned its place twice in one run. I guessed
+`[[Internal-Only Users]]` from the filename; the index says `[[Internal-Only AIOS Users]]` —
+caught only by resolving every link before committing. And I first inserted the new entry
+*after* `Error Handling Patterns`, when `Emai` sorts before `Erro`. `[scope-paths]` and
+`[gap-claims]` each came back clean in one command. `[superseded-mechanism]` was a live check
+this time: the session DELETED `supabase.auth.signOut()` from signup, so I grepped the
+always-loaded docs for a rule telling future sessions to do it — nothing but my own new entry.
+
+**Failed:** nothing in the sync. Worth carrying from the session it documents: a migration
+version was taken twice by a parallel branch, and `supabase/migrations.test.ts` structurally
+cannot see that — it compares the repo TREE, and the colliding file lives only on another
+branch. `db:apply`'s already-recorded refusal caught it both times.
+
+**Remember:** a `**Pending:**` clause can be wrong about the MECHANISM, not just the status —
+see the new `[stale-mechanism]` Lesson.
+
 
 ### 2026-08-24 — Onboarding tested on production; two new concept pages
 - **Output:** `docs/wiki/concepts/onboarding-resume-and-routing.md` +

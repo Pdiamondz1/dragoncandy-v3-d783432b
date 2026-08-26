@@ -232,13 +232,55 @@ holds no Toast credentials. See §6.
   geocoding fix had **never worked**, because `api.bigdatacloud.net` 307s to `api-bdc.io` and CSP is
   enforced on every hop, leaving city/country null for every user ever; and `is_completed` means
   "the core rows exist", not "onboarding is done", so logging back in skipped onboarding.
+  **The Twilio blocker this line described is GONE, and the line was wrong about the mechanism
+  as well as the status (2026-08-26).** It read: the **Primary Compliance Profile** "is unapproved
+  — error 21608 means no real user can verify a phone, so it is launch-blocking". Two corrections.
+  The profile is **Approved** — read off the console, not the email, because the page rendered
+  **Pending review** until it was reloaded and the email alone would have been a claim about a
+  claim. And **21608 was never the compliance profile's doing**: it is the *trial-account*
+  restriction, lifted by upgrading, while the compliance profile gates A2P 10DLC and toll-free
+  registration. Both doors are in fact open — billing type reads **Pay-as-you-go with auto-recharge
+  enabled**, which a trial account cannot be. Note the badge that says **Active** is NOT the
+  evidence: that is account *status* (not suspended), which trial accounts show too. **Still
+  unproven:** a send to a number that has never been on the Verified Caller ID list, which is the
+  only test that settles it and needs a real phone.
   **Pending:** the Donny RAG sync; the creator address slide, the ready slide and the entire
-  restaurant flow, all still unexercised; and the Twilio **Primary Compliance Profile**, which is
-  unapproved — error 21608 means **no real user can verify a phone**, so it is launch-blocking and
-  is founder action, not engineering. Social login is no longer blocked here — it shipped dark; see
+  restaurant flow, all still unexercised. Social login is no longer blocked here — it shipped dark; see
   its own entry. → `docs/wiki/concepts/onboarding-wizard-and-depth.md` ·
   `docs/wiki/concepts/onboarding-resume-and-routing.md` ·
   `docs/wiki/concepts/csp-redirect-hops.md` · #521, #523
+- **Email verification by code — the signup tab stops being thrown away** — signup ended with
+  `supabase.auth.signOut()`, discarding the tab that had just done the work; the only way forward
+  was a mail client, a link, a third page and a second login, which on a phone is a round trip many
+  people never finish. The session now survives and a **six-digit code** is entered in place, with
+  **the emailed link unchanged** — it is the only route that works once the tab is closed, so the
+  panel polls and moves on by itself when it is used. **The durable half is the entropy argument:**
+  the token is a UUID (~122 bits) and is safe with no session at all, which it must be since the
+  link arrives from a mail client — and that is exactly why `verify-email` runs at
+  `verify_jwt = false`, so the gateway authenticates nobody and the ~20-bit code is safe **only**
+  because the function body resolves it against the caller's own JWT. Not defence in depth; the
+  only thing standing there. The attempt cap stops the other attack (sign up as somebody else's
+  address, never open the inbox, guess), lives in **SQL** because counting in TypeScript is
+  check-then-act — the exact Codex P1 this project already took on the phone throttle — and is per
+  **user** rather than per code, since a resend mints a fresh row and would refill the budget on
+  demand. Proven on prod in a rolled-back transaction: `remaining` went **2 → 1 → 0 through a
+  resend**, and the correct code was then refused; the control without the `service_role` claim
+  raises. A strict cap is affordable only because the link is unaffected — nobody is locked out,
+  they are moved between routes. Removing the sign-out loosened nothing, because #528 had already
+  made `ProtectedRoute` the real gate; **signing out was never the control, it was a side effect
+  standing in for one**. In that gate `??` not `||` is load-bearing — Supabase confirmation is
+  disabled here, so 45 of 45 users carry `email_confirmed_at` and `||` would switch the gate off
+  for everyone. Also closed a **dormant** client SELECT policy + 14 grants on
+  `email_verification_tokens`: harmless until this change gave it something worth reading. **Two
+  forced controls failed to fail** — a re-render test passing a stable callback identity, then one
+  that stopped re-rendering before the interval could restart — and the tests were fixed rather
+  than the claims softened. Deployed and boot-verified (401 with OUR body unauthenticated, 404 for
+  an invented name as the control, anon key refused, link path still 302). **Pending:** no real
+  signup has exercised the code flow end to end on prod; `dame+onboardtest@dragoncandy.com` is a
+  live prod account counted in the investor-facing user figure; and a distinct wizard-completion
+  signal to replace `is_completed` as the routing gate (a rejected Codex P1, recorded in code,
+  needing a migration plus backfill).
+  → `docs/wiki/concepts/email-verification-routes.md` · #528, #530
 - **Retrieval quality measured, not assumed** — chunking proved the text was reachable; it did not
   prove Donny *finds* it. `npm run eval:rag` now answers that against **53 real queries** taken from
   `donny_tool_executions` (every internal search Donny has ever run — they predate the work and
@@ -1132,9 +1174,17 @@ holds no Toast credentials. See §6.
   **All five boot-verified after deploy, not merely uploaded:** every one answers with OUR JSON body
   rather than the platform's, with a nonexistent name returning 404 as the control, and the public
   anon key gets through none of them.
-  **Pending (2026-08-23):** nobody has completed an SMS round trip, so the Twilio path is proven
-  against a stubbed provider and nothing else (and the Twilio **Primary Compliance Profile** is a
-  separate gate from funding); no address has been geocoded end to end; a
+  **The SMS round trip IS complete — this clause said nobody had done one, and prod disagrees
+  (2026-08-26).** `phone_verification_attempts` records the whole sequence from 2026-08-24:
+  `start/rejected` 22:45:21, `start/throttled` 22:46:19 (our own cooldown, working), then
+  `start/sent` 22:54:14 and `check/approved` 22:54:31 — matched by a single Twilio Verify log,
+  status **Approved**, 1 sent / 1 verified. So the Twilio path is proven against the real provider,
+  not a stub. The rejection at 22:45 preceded adding a Verified Caller ID and **never reached
+  Twilio's Debugger**, which is empty across 30 days — 21608 comes back synchronously from the API
+  rather than as a logged event, so that empty log is not evidence in either direction. The
+  **Primary Compliance Profile** is now Approved; see the onboarding entry above for why it was
+  never the thing 21608 was about.
+  **Pending (2026-08-23):** no address has been geocoded end to end; a
   `READINESS_GATE_ENABLED` flag-row decision (founder call — **do not enable it until a real address
   verifies**, since until then the `required` address item is display-only);
   `send-promotion-notification` still reads the three Twilio secrets that were overwritten
