@@ -3,6 +3,7 @@ import Stripe from "https://esm.sh/stripe@18.5.0";
 import { createClient } from "npm:@supabase/supabase-js@2.57.2";
 import { writePaymentEvent } from "../_shared/payment-events.ts";
 import { corsHeaders } from "../_shared/cors.ts";
+import { statusFor, unauthorized } from "../_shared/http-error.ts";
 
 // Refund a package order's held escrow to the buyer (powers the F4 "refunded if they don't deliver" promise).
 // DEPLOY WITH verify_jwt=false: a guest buyer (no JWT) can cancel via their order token. Authorized to either
@@ -58,7 +59,7 @@ serve(async (req) => {
       logStep("Guest buyer refund", { orderId });
     } else {
       const { data: userData, error: userError } = await supabaseClient.auth.getUser(token);
-      if (userError || !userData?.user) throw new Error("User not authenticated");
+      if (userError || !userData?.user) throw unauthorized("User not authenticated");
       const uid = userData.user.id;
       if (uid === order.buyer_user_id) {
         actorId = uid;
@@ -190,7 +191,7 @@ serve(async (req) => {
     logStep("ERROR", { message: errorMessage });
     return new Response(JSON.stringify({ error: errorMessage }), {
       headers: { ...corsHeaders(req), "Content-Type": "application/json" },
-      status: 500,
+      status: statusFor(error),
     });
   }
 });

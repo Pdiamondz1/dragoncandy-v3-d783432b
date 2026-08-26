@@ -14,6 +14,7 @@ import { resolveDonnyProfile, type DonnyProfile } from "./profile.ts";
 import { handleWebSearch, handleReadUrl } from "./web-tools.ts";
 import { resolveSearchCenter, rankCreators } from "./creator-discovery.ts";
 import { evaluateApplyAccess } from "../_shared/campaign-access.ts";
+import { statusFor, unauthorized } from "../_shared/http-error.ts";
 import {
   GoogleWorkspaceError,
   assertDriveFileId,
@@ -2024,7 +2025,7 @@ serve(async (req) => {
 
   try {
     const authHeader = req.headers.get("Authorization");
-    if (!authHeader) throw new Error("No authorization header");
+    if (!authHeader) throw unauthorized("No authorization header");
 
     const supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
@@ -2677,7 +2678,7 @@ serve(async (req) => {
     const isAuthError = msg.includes("Unauthorized") || msg.includes("authorization") || msg.includes("scope");
     return new Response(
       JSON.stringify({ error: msg }),
-      { status: isAuthError ? 401 : 500, headers: { ...corsHeaders(req), "Content-Type": "application/json" } }
+      { status: statusFor(err, isAuthError ? 401 : 500), headers: { ...corsHeaders(req), "Content-Type": "application/json" } }
     );
   }
 });
