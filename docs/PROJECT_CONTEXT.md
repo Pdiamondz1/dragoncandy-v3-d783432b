@@ -337,7 +337,7 @@ Engineering cannot close these. Ordered by what blocks launch.
   is proven against the real provider, not a stub. **Pending:** no address has been geocoded end
   to end; the `READINESS_GATE_ENABLED` decision (founder, above); `send-promotion-notification`
   still reads the three Twilio secrets that were overwritten and has not been re-checked; two
-  functions surface an unauthenticated request as 500 rather than 401 (pre-existing); the
+  functions surface an unauthenticated request as 500 rather than 401 — **re-measured 2026-08-26 as FIVE, not two** (`release-creator-payout`, `release-sponsorship-payout`, `verify-campaign-escrow`, `verify-sponsorship-payment`, `withdraw-pending-balance`), all pre-existing; the
   pre-existing unauthenticated IDOR in `get_user_conversations`, found in scope and left for an
   owner. → `docs/wiki/concepts/identity-verification.md`
 - **Notification + invitation authorization** — three pre-existing holes closed, each proven on

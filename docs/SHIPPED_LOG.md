@@ -47,7 +47,10 @@ a generic fetch error naming nothing. The 12 were **exactly the money surface**:
 
 **The repo was already correct.** `_shared/cors.ts` on `main` composes `NATIVE_APP_ORIGINS`
 into its allow-set and defaults to `https://dragoncandy.com`, so current source cannot emit
-`.io` for any origin. Nothing to fix; something to ship.
+`.io` **to an origin that is not itself allow-listed**. It can and does emit `.io` to an `.io`
+caller — both TLDs stay in `APP_ORIGINS` on purpose, because GoTrue honours `.io` redirect
+targets, and `corsHeaders` echoes an allowed origin verbatim. The invariant is about the
+*fallback*, not the string. Nothing to fix; something to ship.
 
 **The control did more than confirm the finding.** Preflighting each function twice — once from
 `capacitor://localhost`, once from `https://dragoncandy.com` — showed the `.com` origin echoed

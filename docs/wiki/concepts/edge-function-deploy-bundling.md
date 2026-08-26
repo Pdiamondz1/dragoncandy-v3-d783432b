@@ -140,7 +140,7 @@ the Capacitor shell — was answered `Access-Control-Allow-Origin: https://drago
 and in `WKWebView` it surfaces as a generic fetch error naming nothing.
 
 `_shared/cors.ts` on `main` composes `NATIVE_APP_ORIGINS` into its allow-set and defaults to
-`https://dragoncandy.com`. **Current source cannot emit `.io` for any origin.** So there was
+`https://dragoncandy.com`. **Current source cannot emit `.io` to an origin that is not itself allow-listed.** (It certainly can emit `.io` to an `.io` caller — both TLDs are still in `APP_ORIGINS` on purpose, because GoTrue honours `.io` redirect targets, and `corsHeaders` echoes an allowed origin verbatim. The invariant is about the *fallback*, not about the string.) So there was
 nothing to fix and something to ship — 12 redeploys, no code change, no migration, no PR for
 the fix itself.
 

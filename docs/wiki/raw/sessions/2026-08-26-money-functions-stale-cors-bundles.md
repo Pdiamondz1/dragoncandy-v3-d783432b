@@ -22,7 +22,10 @@ The 12 were **exactly the money surface**: `release-creator-payout`,
 
 The repo's `_shared/cors.ts` composes `NATIVE_APP_ORIGINS` into its allow-set
 and falls back to `DEFAULT_ORIGIN = 'https://dragoncandy.com'`. **Current source
-cannot emit `.io` for any origin.** So the defect could only be a stale
+cannot emit `.io` to an origin that is not itself allow-listed** — it certainly can
+emit `.io` to an `.io` caller, since both TLDs remain in `APP_ORIGINS` on purpose
+(GoTrue honours `.io` redirect targets) and `corsHeaders` echoes an allowed origin
+verbatim. The invariant is about the *fallback*. So the defect could only be a stale
 deployed bundle — nothing to fix in the repo, only something to ship.
 
 The control sharpened that further rather than merely confirming it. Preflighting
