@@ -113,16 +113,31 @@ pressed, say plainly that the first event is what tests it.
 
 ## Slide 12 — the trajectory
 
-| Year | Revenue | Total cost | EBITDA |
-|---|---|---|---|
-| Y1 | $300K–$600K | $590K–$830K | -$530K to $10.0K |
-| Y2 | $2.0M–$4.5M | $1.1M–$1.8M | $200K to $3.4M |
-| Y3 | $7.0M–$12M | $2.2M–$3.8M | $3.2M to $9.8M |
+**What slide 12 actually shows**, per year: revenue **booked** during the year (the bar), the
+metro contribution — that metro's own delivery and marketing cost netted off — and, in smaller
+type, exit ARR and the number of metros live.
 
-Cost is all-in — Stripe, AI, infrastructure, payroll, marketing, legal — so it is not
+| Year | Booked revenue | Metro contribution | Exit ARR | Metros live |
+|---|---|---|---|---|
+| 2026 | $35.8K | -$1.6K | $99.9K | 2 |
+| 2027 | $518K | $169K | $879K | 10 |
+| 2028 | $3.3M | $1.7M | $4.7M | 21 |
+
+**Metro contribution is not EBITDA, and the difference matters if you are asked.** It nets only
+what the metros themselves cost. Shared costs — the team, the platform, everything not
+attributable to a metro — sit below it, and the consolidated line that includes them renders
+only on the confidential build. So a positive metro contribution does *not* mean the company is
+profitable that year.
+
+The registered all-in cost bands are unchanged:
+**2026 $590K–$830K** · **2027 $1.1M–$1.8M** · **2028 $2.2M–$3.8M**.
+Against booked revenue that is
+**2026: -$794K to -$554K** · **2027: -$1.3M to -$582K** · **2028: -$459K to $1.1M**.
+
+Cost here is all-in — Stripe, AI, infrastructure, payroll, marketing, legal — so it is not
 comparable to the gross-margin figure on slide 9, which excludes everything below the
-gross-profit line. The low EBITDA pairs low revenue with **high** cost, which is not
-how most decks draw a downside. Point that out.
+gross-profit line. The pessimistic end of each range pairs our revenue with the **high** end of
+the cost band, which is not how most decks draw a downside. Point that out.
 
 ## Slide 13 — the fine-tune claim
 

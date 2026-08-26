@@ -321,7 +321,8 @@ consistent with the staffing plan's all-in cost ramp ($480–600K Y1 → $1.5–
 
 **The proportionality argument survives the restatement, but it is no longer generous, and that is
 worth saying plainly here rather than letting a reader discover it.** ~$3M to reach ~$879K exit ARR
-in 18 months is an ordinary seed shape; ~$3M against a $2–4.5M Y2 would have been conservative. The
+in 18 months is an ordinary seed shape; ~$3M against the superseded $2–4.5M Y2 would have been
+conservative. The
 raise is not re-derived by this restatement — it is built bottom-up from the cost model in §5–§8,
 not sized as a multiple of forward revenue — but anyone testing the ask against the plan is now
 testing it against a smaller plan, and should be told so before they do the arithmetic themselves.

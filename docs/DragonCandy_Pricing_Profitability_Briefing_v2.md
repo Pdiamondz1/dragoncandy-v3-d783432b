@@ -478,6 +478,26 @@ This is what the business looks like financially over the next three years. The 
 
 **Important:** We are starting from zero revenue. These projections begin from launch day, not from today.
 
+> **RESTATED 2026-08-26. The three tables in this section are the SUPERSEDED top-down plan.** They
+> are kept because what they *assume* is the most useful thing in this document — read the ARPU row
+> in particular — but they are no longer what we forecast. The bottom-up model (`src/pitch/model/`:
+> US Census venue counts per metro × a stated penetration × our live pricing) gives:
+>
+> | | Exit ARR | Booked revenue | Customers (EOY) | Metros live |
+> |---|---|---|---|---|
+> | 2026 | ~$100K | $35.8K | 30 | 2 |
+> | 2027 | ~$879K | $518K | 264 | 10 |
+> | 2028 | ~$4.7M | $3.34M | 1,423 | 21 |
+>
+> **The customer and metro counts below are close to right; the ARPU row is where the plan and the
+> model part company.** These tables assume blended ARPU rising $250 → $350–450 → $400–500. The
+> model computes **$277.55, flat**, because it bills two of the four revenue streams — subscription
+> and take rate — and books Donny credit overages and DragonDash rush surcharges at zero, neither
+> having ever been charged to anyone. At this section's own Year 3 ARPU of $400, the model's own
+> 1,423 customers reach **$6.8M**, 97.6% of the $7M low end. So the plan below is not refuted by
+> the model; it is unproven by it, and what would settle it is billing history on those two
+> streams. See `PROJECT_CONTEXT.md` §3.
+
 ### Launch Year — Default Alive (Months 1-12)
 
 Focus: 2-3 metro markets. Onboard creators first, restaurants second. Manual playbooks. No paid acquisition.
@@ -487,7 +507,7 @@ Focus: 2-3 metro markets. Onboard creators first, restaurants second. Manual pla
 | Starting point | $0 revenue, ~30 users, $569/mo operating cost |
 | Paying restaurant customers (end of year) | 100-200 |
 | Blended ARPU per month | $250 |
-| Annual recurring revenue (ARR) at year end | $300K-$600K |
+| Annual recurring revenue (ARR) at year end | $300K-$600K (superseded — see above) |
 | Headcount | 3-4 (founder + engineer + ops) |
 | Annual cost run-rate | $480K-$600K |
 | Profit / (Loss) | **Breakeven to slight loss** |
@@ -501,7 +521,7 @@ Expand to 8-12 metros. Word-of-mouth from creators accelerates restaurant onboar
 |----------|--------|
 | Paying restaurant customers (end of year) | 500-1,000 |
 | Blended ARPU per month | $350-$450 |
-| ARR at year end | **$2M-$4.5M** |
+| ARR at year end | **$2M-$4.5M** (superseded — see above) |
 | Headcount | 5-7 |
 | Annual cost run-rate | $1.5M-$2M |
 | Profit / (Loss) | **$500K-$2M profit** |
@@ -515,7 +535,7 @@ Penetrate 20+ markets. DragonDash rush orders and AI usage drive expansion reven
 |----------|--------|
 | Paying restaurant customers (end of year) | 1,500-3,000 |
 | Blended ARPU per month | $400-$500 |
-| ARR at year end | **$7M-$12M** |
+| ARR at year end | **$7M-$12M** (superseded — see above) |
 | Headcount | 8-12 |
 | Annual cost run-rate | $2.5M-$3.5M |
 | Profit / (Loss) | **$2M-$5M profit** |
@@ -539,9 +559,13 @@ Penetrate 20+ markets. DragonDash rush orders and AI usage drive expansion reven
 
 Revenue increases 6-8% at each scale point. Cost structure stays the same. Net effect:
 
+Computed on the **superseded** §7 revenue plan, not the restated bottom-up model. That is fine for
+what this table argues — the claim is a 6–8% uplift at each scale point, and a percentage uplift
+does not depend on the base — but do not lift the absolute rows out of it as current forecasts.
+
 | | Launch Year | Year 2 | Year 3 |
 |-|-----------|--------|--------|
-| Revenue (current pricing) | $300K-$600K | $2M-$4.5M | $7M-$12M |
+| Revenue (superseded plan) | $300K-$600K | $2M-$4.5M | $7M-$12M |
 | Revenue (hybrid pricing) | $320K-$640K | $2.1M-$4.8M | $7.5M-$13M |
 | **Additional profit from hybrid** | **$20K-$40K** | **$100K-$300K** | **$500K-$1M** |
 
@@ -691,7 +715,10 @@ Profitability is a function of three things: ARPU goes up, churn goes down, and 
 
 ### Phase 2 — Metro 2 and 3 (Months 4-9)
 
-**Goal: 100-200 paying restaurants across 2-3 metros, ARR $300-$600K**
+**Goal: 100-200 paying restaurants across 2-3 metros, ARR $300-$600K** — the *superseded* plan's
+Year 1 target; the bottom-up model puts the same period at 2 metros, ~30 restaurants and ~$100K
+exit ARR. The metro count holds and the restaurant count does not, which is the honest thing to
+plan the playbook against.
 
 - Document the metro launch playbook from Phase 1. Replicate.
 - City-specific SEO landing pages for free Google traffic.

@@ -26,6 +26,7 @@ import {
   threeYearTrajectory,
   unitEconomics,
 } from '../src/pitch/model/derive';
+import { rollup } from '../src/pitch/model/rollup';
 import { count, money, moneyShort, pct } from '../src/pitch/deck/format';
 import { GLOSSARY } from '../src/pitch/deck/glossary';
 import { FOUNDER_FACTS, OUTSTANDING } from '../src/pitch/deck/pending';
@@ -208,18 +209,62 @@ p();
 
 p('## Slide 12 — the trajectory');
 p();
-p('| Year | Revenue | Total cost | EBITDA |');
-p('|---|---|---|---|');
-for (const y of years) {
+// Built from `rollup()`, the SAME source slide 12 renders from — not from
+// `threeYearTrajectory()`, which derives off the superseded top-down band. This block used to
+// print a revenue band against a cost band, and slide 12 has not looked like that since it was
+// rebuilt bottom-up: it shows one number per year. So a founder walking an investor through this
+// crib sheet was reading figures that disagreed with the screen in front of them, which is the
+// worst way for staleness to surface. Restated 2026-08-26.
+p('**What slide 12 actually shows**, per year: revenue **booked** during the year (the bar), the');
+p("metro contribution — that metro's own delivery and marketing cost netted off — and, in smaller");
+p('type, exit ARR and the number of metros live.');
+p();
+p('| Year | Booked revenue | Metro contribution | Exit ARR | Metros live |');
+p('|---|---|---|---|---|');
+for (const y of rollup()) {
   p(
-    `| Y${y.year} | ${moneyShort(y.revenueLow)}–${moneyShort(y.revenueHigh)} | ${moneyShort(y.totalCostLow)}–${moneyShort(y.totalCostHigh)} | ${moneyShort(y.ebitdaLow)} to ${moneyShort(y.ebitdaHigh)} |`,
+    `| ${y.year} | ${moneyShort(y.revenue)} | ${moneyShort(y.metroEbitda)} | ${moneyShort(y.exitArr)} | ${y.metrosLive} |`,
   );
 }
 p();
-p('Cost is all-in — Stripe, AI, infrastructure, payroll, marketing, legal — so it is not');
+p('**Metro contribution is not EBITDA, and the difference matters if you are asked.** It nets only');
+p('what the metros themselves cost. Shared costs — the team, the platform, everything not');
+p('attributable to a metro — sit below it, and the consolidated line that includes them renders');
+p('only on the confidential build. So a positive metro contribution does *not* mean the company is');
+p('profitable that year.');
+p();
+// `threeYearTrajectory()` numbers its years 1/2/3; `rollup()` numbers them 2026/2027/2028. They
+// are the same three years and joining them on `year` matches NOTHING — silently, since a `find`
+// that fails just yields undefined. Paired by POSITION, and asserted, rather than by a key the two
+// sources happen to spell differently.
+if (years.length !== rollup().length) {
+  console.error(
+    `Refusing to generate: the cost trajectory has ${years.length} years and the rollup has ` +
+      `${rollup().length}. They are paired by position, so a length mismatch would silently ` +
+      'pair the wrong cost band with the wrong revenue.',
+  );
+  process.exit(1);
+}
+p('The registered all-in cost bands are unchanged:');
+p(
+  rollup()
+    .map((r, i) => `**${r.year} ${moneyShort(years[i].totalCostLow)}–${moneyShort(years[i].totalCostHigh)}**`)
+    .join(' · ') + '.',
+);
+p('Against booked revenue that is');
+p(
+  rollup()
+    .map(
+      (r, i) =>
+        `**${r.year}: ${moneyShort(r.revenue - years[i].totalCostHigh)} to ${moneyShort(r.revenue - years[i].totalCostLow)}**`,
+    )
+    .join(' · ') + '.',
+);
+p();
+p('Cost here is all-in — Stripe, AI, infrastructure, payroll, marketing, legal — so it is not');
 p('comparable to the gross-margin figure on slide 9, which excludes everything below the');
-p('gross-profit line. The low EBITDA pairs low revenue with **high** cost, which is not');
-p('how most decks draw a downside. Point that out.');
+p('gross-profit line. The pessimistic end of each range pairs our revenue with the **high** end of');
+p('the cost band, which is not how most decks draw a downside. Point that out.');
 p();
 
 p('## Slide 13 — the fine-tune claim');

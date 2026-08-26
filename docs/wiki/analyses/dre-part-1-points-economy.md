@@ -62,10 +62,14 @@ All reward thresholds and point values are calibrated against these projected re
 - Campaign completion rate target: 80%+  
 - GMV target: $10K/month by Month 3; path to $200K/month at 5% market capture
 
-**Platform-wide targets (Y1 ARR: $300K–$600K; Y2: $2–$4.5M):**
+**Platform-wide targets — restated 2026-08-26** (Y1 exit ARR ~$100K, $36K booked; Y2 ~$879K, $518K
+booked). The superseded top-down band was Y1 $300K–$600K / Y2 $2–$4.5M. See `PROJECT_CONTEXT.md` §3.
 
 - 10 completed campaigns/week by Day 90  
-- Average ARPU: $350–$500/month (blended)  
+- Average ARPU: **$277.55/month blended** in the model, against the **$350–$500** this line
+  asserted. The model books only two of the four revenue streams — subscription and take rate —
+  and books Donny credit overages and DragonDash rush surcharges at zero, because neither has ever
+  been charged to anyone. Treat $277.55 as the floor and $350–500 as the plan, not as a conflict.  
 - CAC target: $0 organic (referral \+ sharing \= the growth engine)  
 - 30% of new creator signups from referrals by Month 2
 
