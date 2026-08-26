@@ -130,6 +130,41 @@ export const OPERATING = {
   }),
 } satisfies Record<string, Assumption<number>>;
 
+/**
+ * When Year 1 IS.
+ *
+ * The model equates 2026 = Y1, 2027 = Y2, 2028 = Y3 and always has -- `MODEL_YEARS`, every
+ * penetration anchor, and `threeYearTrajectory`'s mapping onto PROJECT_CONTEXT section 3's
+ * Y1/Y2/Y3 bands all depend on it. But section 4 says production launch is TBD, so the
+ * mapping was an UNSTATED DEFAULT sitting under every figure in the deck: if Year 1 is
+ * really 2027, every year label on the trajectory slide is off by one and the cross-check
+ * compares the wrong rows.
+ *
+ * It is registered here because that is the difference between an assumption and a habit.
+ * An unstated default cannot be challenged, cannot be found by anyone auditing the model,
+ * and cannot appear on the Assumptions sheet -- which is where an investor looks to find out
+ * what we assumed.
+ *
+ * Deliberately NOT a `FOUNDER_FACTS` entry in `src/pitch/deck/pending.ts`: those are facts
+ * the DECK prints with attribution on a slide, and `model/` importing `deck/` would invert
+ * the layering. This is a modelling convention, so it lives with the modelling assumptions.
+ */
+export const CALENDAR = {
+  year1CalendarYear: modeled({
+    value: 2026,
+    unit: 'calendar year',
+    label: 'The calendar year that is Year 1',
+    source: 'founder confirmation, Damon Williams (CTO), in session 2026-08-26',
+    note:
+      'Raised as an open question because PROJECT_CONTEXT.md section 4 states production ' +
+      'launch is TBD, and confirmed by the founder: 2026 IS Year 1. MODELED rather than ' +
+      'MEASURED because a decision is not a reading -- there is no command that re-runs it, ' +
+      'and MEASURED means read off production, an invoice or the codebase. If launch slips ' +
+      'into 2027 this value moves and every year label in the deck moves with it; that is ' +
+      'the point of stating it here rather than leaving it implicit.',
+  }),
+} satisfies Record<string, Assumption<number>>;
+
 export const MARKET = {
   campaignPriceStandardLow: measured({ value: 75, unit: 'USD/deliverable', label: 'Standard delivery, low band', source: PRICE_BANDS, asOf: '2026-08-23' }),
   campaignPriceStandardHigh: measured({ value: 150, unit: 'USD/deliverable', label: 'Standard delivery, high band', source: PRICE_BANDS, asOf: '2026-08-23' }),
@@ -330,6 +365,7 @@ export const REGISTER: Readonly<Record<string, Assumption<number>>> = {
   ...Object.fromEntries(Object.entries(PRICING).map(([k, v]) => [`price_${k}`, v])),
   ...Object.fromEntries(Object.entries(TIER_TAKE_RATES).map(([k, v]) => [`takeRate_${k}`, v])),
   ...OPERATING,
+  ...CALENDAR,
   ...MARKET,
   ...UNIT_ECONOMICS,
   ...TRAJECTORY,

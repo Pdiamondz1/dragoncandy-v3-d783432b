@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { findStale, MAX_MEASURED_AGE_DAYS } from './types';
-import { REGISTER, PRICING, TIER_TAKE_RATES, MARKET } from './assumptions';
+import { REGISTER, PRICING, TIER_TAKE_RATES, MARKET, CALENDAR } from './assumptions';
+import { MODEL_YEARS } from './metros';
 
 describe('the assumptions register', () => {
   it('has no stale MEASURED rows', () => {
@@ -53,5 +54,23 @@ describe('the assumptions register', () => {
     const total =
       MARKET.tierMixFree.value + MARKET.tierMixStarter.value + MARKET.tierMixGrowth.value + MARKET.tierMixPro.value;
     expect(total).toBeCloseTo(1, 10);
+  });
+
+  /**
+   *2026 = Year 1 was an UNSTATED DEFAULT under every figure in the deck until 2026-08-26.
+   * PROJECT_CONTEXT section 4 says production launch is TBD, so nothing in the repo said
+   * which calendar year the Y1/Y2/Y3 bands land on -- and if it were 2027, every year label
+   * on the trajectory slide is off by one and the cross-check compares the wrong rows.
+   *
+   * Tied to `MODEL_YEARS` rather than asserted as a bare 2026, so the registered value and
+   * the horizon the model actually walks cannot drift apart: moving one without the other
+   * fails here.
+   */
+  it('states which calendar year is Year 1, and agrees with MODEL_YEARS', () => {
+    expect(CALENDAR.year1CalendarYear.value).toBe(MODEL_YEARS[0]);
+    expect(REGISTER.year1CalendarYear).toBe(CALENDAR.year1CalendarYear);
+    // Founder-confirmed, so the source must name a person and a date -- not a document.
+    expect(CALENDAR.year1CalendarYear.source).toMatch(/founder confirmation/i);
+    expect(CALENDAR.year1CalendarYear.source).toMatch(/\d{4}-\d{2}-\d{2}/);
   });
 });

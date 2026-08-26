@@ -198,10 +198,20 @@ export const FOUNDER_FACTS = {
    *
    * Note what this is NOT. It is not a change to the metro sequence: the capital-raise cost
    * model's own plan is Hoboken (Mo 0-6) -> Manhattan (Mo 5-12) -> Palm Beach (Mo 11-18),
-   * each gated on density before the next, and Montauk is not a metro under anyone's
-   * definition (year-round population ~4,000). An event is a night; a market is a year.
+   * each gated on density before the next. An event is a night; a market is a year.
    * Conflating the two would put the deck at odds with its own liquidity slide, which argues
    * that creator-side lag is what kills local marketplaces.
+   *
+   * **This note used to end "and Montauk is not a metro under anyone's definition (year-round
+   * population ~4,000)", and the model now carries a `montauk-hamptons` metro. That is not a
+   * reversal, and the distinction is the reason it is not.** Montauk ALONE is 11-17
+   * addressable venues, which is exactly why the model does not model Montauk: it models the
+   * whole South Fork as one commercial market -- fourteen ZIPs, 396 food-service venues, at
+   * least 97 in the addressable band. The sentence was right about the thing it named and
+   * would have been wrong as a reason not to enter the East End, so it is corrected here
+   * rather than quietly deleted. Launch month 17 (May 2027) also keeps the "gated on density"
+   * discipline intact: it is the LAST metro in, entered at the start of a season, and the
+   * event remains a night rather than a market.
    */
   launchEvents: {
     statement: describeLaunchEvents(),
