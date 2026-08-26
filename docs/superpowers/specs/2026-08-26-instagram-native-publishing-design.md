@@ -244,12 +244,31 @@ Instagram and Facebook only.
 
 ### Applied to prod
 
+Verified by object and by behaviour after each one — **91 behavioural checks across six suites**,
+every rejection paired with a control that had to succeed, everything rolled back.
+
+
 | Migration | What |
 |---|---|
 | `20260826264500` | `publish_jobs` + `enqueue_publish_job` and the four service-role RPCs |
 | `20260826270000` | claim recovery, `publishing_at`, `needs_review`, the `publish-media` bucket |
 | `20260826290000` | Codex round 1: staged-path ownership, and an in-flight rate reservation |
 | `20260826300000` | Codex round 2: enqueue refuses a connection without the publish permission |
+| `20260826310000` | Codex round 3: a per-job skip list, so one tick advances a job once |
+| `20260826320000` | Codex round 4: `source_schedule_id` must belong to the caller |
+| `20260826330000` | Codex round 5: a requeue resets the marker and, on request, the container |
+
+**Six Codex rounds, nine findings, all real.** Two were P1s in the exact property this design
+exists to guarantee — an ambiguous `media_publish` was requeued and would have posted twice, and
+the rate limit counted nothing in flight so two overlapping sweeps could both publish. One was a
+cross-tenant hole: `enqueue_publish_job` accepted any plain path, so a caller who skipped the edge
+function could have published another tenant's staged file to their own account. Round 6 returned
+clean.
+
+The pattern worth keeping from that: **every finding was a check that existed one layer up.** The
+edge function verified media ownership, so the RPC did not. The janitor handled an expired claim
+mid-publish, so the in-process throw did not. A foreign key proved a schedule existed, so nothing
+proved it was the caller's. A guard in the layer above is not a guard.
 
 **`20260826280000` (the pg_cron schedule) is written and NOT applied**, on purpose. It calls the
 sweep every minute, so applying it before the function is deployed and the Vault URL exists would
