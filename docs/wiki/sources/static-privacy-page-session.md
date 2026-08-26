@@ -13,11 +13,18 @@ the site gate allowlists. PR #547 (`f467b3ed`), live and verified on prod. Full 
 live on [[Site Access Lockdown (Private Preview)]].
 
 **Scope, precisely — this page originally overstated it as "no longer breaks four platform
-reviews".** It closes the **privacy-policy** requirement for all four. That fully unblocks
-**Meta, TikTok and X**. **Google is only half-unblocked**: its verification also requires the
-**HOMEPAGE** to be reachable by a reviewer signed in to nothing, and `/` is the SPA and still
-answers 401 under the gate. Nothing in #547 touched that. Do not enable the gate during a
-Google verification on the strength of this page.
+reviews", and TWO rounds of review narrowed it.**
+
+It closes the **legal-URL** requirement for all four platforms: `privacy.html` **and
+`terms.html`**, because every console asks for both on the same form. Shipping only privacy
+would have left an anonymously inaccessible legal URL in a live submission — briefly hedged in
+the runbook as "TikTok does not appear to fetch it", which is an assumption about a reviewer's
+behaviour, not evidence.
+
+That fully unblocks **Meta, TikTok and X**. **Google is only half-unblocked**: its verification
+also requires the **HOMEPAGE** reachable by a reviewer signed in to nothing, and `/` is the SPA
+and still 401s. Nothing here touched that. **Do not enable the gate during a Google verification
+on the strength of this page.**
 → `docs/runbooks/google-oauth-demo-video.md`
 
 ## A deadlock that was never a decision
@@ -80,8 +87,8 @@ signal whose success and failure states are identical.**
 
 ## Register the right URL
 
-`/privacy.html` goes in the Google, Meta, TikTok and X consoles. It works gated **and**
-ungated; `/privacy` only ever works ungated.
+`/privacy.html` **and `/terms.html`** go in the Google, Meta, TikTok and X consoles. They work
+gated **and** ungated; the pretty routes only ever work ungated.
 
 ## See Also
 

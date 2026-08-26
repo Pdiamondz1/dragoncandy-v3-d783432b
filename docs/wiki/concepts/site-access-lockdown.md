@@ -122,10 +122,20 @@ a planning doc is sometimes an unexamined engineering constraint wearing a decis
 this one survived at the top of the list precisely because it reads as a genuine trade-off, right up
 until you ask why the two are coupled at all.
 
-The fix obeys the allowlist rule instead of bending it. `public/privacy.html` is a real file,
-**generated** from the app's own policy source (`src/pages/legal/PrivacyPolicyBody.tsx`, extracted
-hook-free so it renders with no React context) by `npm run legal:static`. `/privacy` itself stays
-gated; the pretty URL is still a SPA route and allowlisting it would serve the whole product.
+The fix obeys the allowlist rule instead of bending it. `public/privacy.html` **and
+`public/terms.html`** are real files, **generated** from the app's own legal sources
+(`PrivacyPolicyBody.tsx` / `TermsOfServiceBody.tsx`, extracted hook-free so they render with no
+React context) by `npm run legal:static`. `/privacy` and `/terms` themselves stay gated; the
+pretty URLs are SPA routes and allowlisting one would serve the whole product.
+
+**Terms was not in the first cut, and the reason it had to be is worth keeping.** Four platform
+reviews name a *privacy policy* explicitly, so privacy shipped alone — but every console that
+asks for a privacy URL asks for a **terms URL on the same form**, so a 401 there is an
+anonymously inaccessible legal URL sitting in a live submission. The runbook briefly hedged this
+as "TikTok does not appear to fetch it": an assumption about a reviewer's behaviour, which is not
+a basis for calling a submission complete. Caught by the Codex second review — and note the
+repo's own `google-oauth-demo-video.md` had proposed **both** files from the start, and only one
+got built.
 
 Four things the design encodes, each easy to get wrong by hand:
 
@@ -152,8 +162,14 @@ Verified on prod 2026-08-26: `/privacy.html` serves 7,782 bytes, all 11 numbered
 `/nope.html` returns the shell — demonstrating rather than arguing why the pathless allowlist entry
 would have been a disaster.
 
-**Register `/privacy.html`, not `/privacy`, in the four platform consoles.** It works gated *and*
-ungated; the pretty URL only ever works ungated.
+**Register `/privacy.html` and `/terms.html`, not the pretty routes, in the four platform
+consoles.** They work gated *and* ungated; the SPA routes only ever work ungated.
+
+**This does NOT unblock Google on its own.** Google's verification additionally requires the
+**HOMEPAGE** to be reachable by a reviewer signed in to nothing, and `/` is the SPA — it still
+401s. So the gate is now a **task** for Meta, TikTok and X, and still a **decision** for Google,
+which needs the gate off through verification or a static homepage nobody has built. The wording
+here said "and so do all four reviews" for a few hours; it was wrong about Google.
 
 **Left open:** whether `/privacy` should collapse into the static page entirely — one URL, no drift
 risk at all — which would delete the React route and change what a logged-in user sees. A product

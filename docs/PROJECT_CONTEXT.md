@@ -154,13 +154,13 @@ Engineering cannot close these. Ordered by what blocks launch.
 - **Site-gate go-live, in this order:** set the four Production-scope Vercel variables →
   deploy → run the runbook's checks → **only then** disable Supabase signup. `SITE_GATE_ENABLED`
   is the lever; deleting the variables is the wrong rollback, because it fails closed.
-  **The privacy-policy blocker is closed; a HOMEPAGE one is not.** #547 put a generated,
-  self-contained `public/privacy.html` on the allowlist, verified on prod, so the anonymously
-  reachable privacy policy Google, Meta, TikTok and X each require survives the gate — register
-  `/privacy.html`, never `/privacy`. **But Google's verification also requires the HOMEPAGE to be
-  reachable signed out**, and `/` is the SPA and still 401s. This entry then said "it is now a
-  task"; that is right for Meta/TikTok/X and wrong for Google, which still needs the gate off or a
-  static homepage nobody has built. → `docs/runbooks/google-oauth-demo-video.md`
+  **The legal-URL blocker is closed; a HOMEPAGE one is not.** Generated, self-contained
+  `public/privacy.html` **and `public/terms.html`** are on the allowlist (#547, #548) — every
+  console asks for both on the same form. Register the `.html` URLs, never the pretty routes.
+  **But Google's verification also requires the HOMEPAGE reachable signed out**, and `/` is the
+  SPA and still 401s. So this is now a **task** for Meta/TikTok/X and still a **decision** for
+  Google, which needs the gate off through verification or a static homepage nobody has built.
+  → `docs/runbooks/google-oauth-demo-video.md`
 - **No Facebook Page exists to connect** — creating one is public, outward-facing content. The
   connector is deployed and stops at Meta's Page-selection step until a Page exists.
 - **Demo videos for platform app review** — Google (YouTube) and Meta (Instagram, Facebook).
@@ -386,11 +386,11 @@ Engineering cannot close these. Ordered by what blocks launch.
   unauthenticated request, because every failure shared one hardcoded status. Authentication now
   401; authorization/not-found/validation unchanged. Its one open item is **closed** below.
   → `docs/wiki/raw/sessions/2026-08-26-auth-401-not-500.md` · #542
-- **The site gate and the platform approvals were mutually exclusive** — four app reviews need an
-  anonymously reachable privacy policy and `/privacy` is a SPA route. Closes it for Meta/TikTok/X;
-  **Google also needs the homepage, which still 401s**. Closed by a generated,
-  self-contained `public/privacy.html` on the allowlist; the gate's "real file behind every entry"
-  rule is now machine-checked rather than a comment. Verified on prod.
+- **The site gate and the platform approvals were mutually exclusive** — four app reviews need
+  anonymously reachable legal URLs and `/privacy` + `/terms` are SPA routes. Closed by generated,
+  self-contained `privacy.html` + `terms.html` on the allowlist; the gate's "real file behind
+  every entry" rule is now machine-checked rather than a comment. Unblocks Meta/TikTok/X;
+  **Google also needs the homepage, which still 401s**. Verified on prod.
   → `docs/wiki/concepts/site-access-lockdown.md` · #547
 - **A service-role read answered a stranger** — the two functions that would not move to 401 read the
   order with the service role and authorized after, so "this order exists" was distinguishable from

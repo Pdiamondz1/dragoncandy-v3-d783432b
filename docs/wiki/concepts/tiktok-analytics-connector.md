@@ -243,8 +243,11 @@ one place the secret is actually used.
   on the gate's allowlist — it survives the lockdown, and so does TikTok's review. (Said "and
   so do all four reviews" for a few hours; that is right for Meta and X too, and **wrong for
   Google**, whose verification additionally needs the HOMEPAGE reachable signed out.)
-  **Register `/privacy.html`, never `/privacy`**, which is a SPA route and stays
-  gated. See [[Site Access Lockdown (Private Preview)]].
+  **Register `/privacy.html` AND `/terms.html`**, never the pretty routes, which are SPA
+  routes and stay gated. The console asks for both on one form, so shipping only privacy
+  left an anonymously inaccessible legal URL in a live submission — briefly hedged as
+  "TikTok does not appear to fetch it", which is an assumption about a reviewer, not
+  evidence. See [[Site Access Lockdown (Private Preview)]].
 
 ## See Also
 

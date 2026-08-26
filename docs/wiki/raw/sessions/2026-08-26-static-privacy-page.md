@@ -150,36 +150,27 @@ could have come out the other way.
 ## What this does and does not change
 
 Nothing to deploy: it is a Vercel artifact that ships on merge. The gate is still
-**off** in production, so nothing changed for any visitor today. What changed is
-that switching it on no longer breaks four app reviews, and `/privacy.html` is the
-URL to register in the Google, Meta, TikTok and X consoles — it works gated *or*
-ungated, which `/privacy` never will.
+**off** in production, so nothing changed for any visitor today.
+
+**What changed, stated precisely — the first draft of this file overstated it as "no
+longer breaks four app reviews".** Two rounds of the Codex second review narrowed it,
+and both narrowings matter:
+
+- **The legal URLs.** Every console asks for a privacy URL **and a terms URL on the
+  same form**, so shipping only `privacy.html` left an anonymously inaccessible legal
+  URL in a live submission. The runbook briefly hedged that as "TikTok does not appear
+  to fetch it" — an assumption about a reviewer's behaviour, not a basis for calling a
+  platform unblocked. `terms.html` now ships alongside, from the same generator.
+  Register **`/privacy.html` and `/terms.html`**, never the pretty routes.
+- **Google needs more than legal pages.** Its verification also requires the
+  **HOMEPAGE** reachable by a reviewer signed in to nothing, and `/` is the SPA and
+  still 401s. Nothing here touched that.
+
+So: **Meta, TikTok and X are unblocked. Google is not** — it still needs the gate off
+during verification, or a static homepage nobody has built.
+→ `docs/runbooks/google-oauth-demo-video.md`
 
 **Left open deliberately:** whether `/privacy` should collapse into the static page
 entirely. That would delete the React route, give one URL instead of two, and
 remove the drift risk at its root — but it changes what a logged-in user sees, so
 it is a product decision, not a cleanup.
-
----
-
-## Correction — appended 2026-08-26, original text above left intact
-
-**"switching it on no longer breaks four app reviews" (above) is too strong.** #547 closes
-the **privacy-policy** requirement for all four platforms, which fully unblocks **Meta,
-TikTok and X**. **Google is only half-unblocked:** its verification also requires the
-**HOMEPAGE** to be reachable by a reviewer signed in to nothing, and `/` is the SPA and still
-answers 401 under the gate. Nothing in #547 touched that.
-
-Found by the Codex second review on the knowledge PR, at its third round, after the same
-over-claim had already been corrected in `PROJECT_CONTEXT`, the Google runbook, the concept
-pages, `index.md` and `SHIPPED_LOG.md`. **That is the third time in one session that
-correcting a claim where I found it was mistaken for correcting the claim.**
-
-This file is appended to rather than edited, per `docs/KNOWLEDGE_WIKI.md`: `raw/` is immutable
-input, and the same file says to flag contradictions explicitly rather than silently overwrite.
-Note also that Codex's stated reason — "this raw session feeds the project knowledge layer" —
-is **not** the mechanism: `sync-internal-docs.mjs` reads `concepts/`, `entities/` and
-`analyses/` only, so `raw/` reaches neither `internal_docs` nor `donny_knowledge`. The real
-exposure is a **human** reading it during session continuity, which is reason enough.
-
-→ `docs/runbooks/google-oauth-demo-video.md` splits the fixed half from the open half.

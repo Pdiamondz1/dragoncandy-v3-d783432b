@@ -285,13 +285,18 @@ working integration to film.
 |---|---|
 | Category | Business |
 | Description (≤120) | Businesses and creators plan campaigns together, then publish the approved videos to their own TikTok accounts. |
-| Terms / Privacy | `https://dragoncandy.com/terms` · **`https://dragoncandy.com/privacy.html`** |
+| Terms / Privacy | **`https://dragoncandy.com/terms.html`** · **`https://dragoncandy.com/privacy.html`** |
 
-> **Privacy must be `/privacy.html`, not `/privacy`.** `/privacy` is a SPA route and answers
-> 401 once `SITE_GATE_ENABLED` is on; `/privacy.html` is a real static file on the gate's
-> allowlist (#547) and works in both states. This table said `/privacy` until 2026-08-26.
-> `/terms` has **no** static equivalent yet and would still 401 under the gate — TikTok does
-> not appear to fetch it during review, but do not assume the same of a future platform.
+> **Both must be the `.html` files, not the pretty routes.** `/terms` and `/privacy` are SPA
+> routes and answer 401 once `SITE_GATE_ENABLED` is on; `/terms.html` and `/privacy.html` are
+> real static files on the gate's allowlist and work in both states. This table said `/privacy`
+> and `/terms` until 2026-08-26.
+>
+> It then briefly said privacy was fixed and `/terms` "would still 401 — TikTok does not appear
+> to fetch it during review". **That was an assumption about a reviewer's behaviour, not
+> evidence**, and it is not a basis for calling a submission complete: a 401 on a legal URL you
+> supplied is an anonymously inaccessible legal URL, whoever does or does not fetch it. Both
+> pages now ship from the same generator.
 | Platforms | **Web only** — ticking iOS demands an App Store URL that does not exist |
 | Web/Desktop URL | `https://dragoncandy.com` |
 | Products | **Login Kit only** |

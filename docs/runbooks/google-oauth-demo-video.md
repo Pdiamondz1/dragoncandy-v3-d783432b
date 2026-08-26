@@ -106,13 +106,17 @@ reachable by a reviewer who is signed in to nothing.**
 
 **Half of this is now fixed, and half is not. Read both halves before sequencing anything.**
 
-**FIXED (2026-08-26, #547) — the privacy policy.** The second option below shipped: a real
-static `public/privacy.html`, generated from the app's own policy source and on the gate's
-allowlist. Verified live on prod. So **use `https://dragoncandy.com/privacy.html`** wherever a
-console asks for a privacy-policy URL — it works gated *and* ungated, which `/privacy` never
-will. (The shipped path is `public/privacy.html`, not the `public/legal/…` this section
-originally proposed.) That closes the privacy-policy requirement for Google, Meta, TikTok and X
-alike.
+**FIXED (2026-08-26, #547) — the legal pages, BOTH of them.** The second option below shipped:
+real static `public/privacy.html` **and `public/terms.html`**, generated from the app's own
+legal sources and on the gate's allowlist. So **use `https://dragoncandy.com/privacy.html` and
+`https://dragoncandy.com/terms.html`** wherever a console asks — they work gated *and* ungated,
+which the pretty routes never will. (The shipped paths are `public/*.html`, not the
+`public/legal/…` this section originally proposed.)
+
+Privacy shipped first and terms followed at the Codex second review, which is worth recording:
+every console asks for **both** URLs on the same form, so shipping only privacy left an
+anonymously inaccessible legal URL in a live submission. That closes the legal-URL requirement
+for Google, Meta, TikTok and X alike.
 
 **STILL OPEN — the HOMEPAGE.** Google's verification requires the homepage to be "hosted on a
 verified domain you own" and to "describe your app's functionality to its users", **also
