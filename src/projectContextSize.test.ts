@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 /**
@@ -18,12 +18,14 @@ import { join } from 'node:path';
  * the reason `brandLogo.test.ts`, `profilesWriteGrants.test.ts` and `migrations.test.ts` exist.
  * So the rule is a test now.
  *
- * The caps carry deliberate headroom over the 2026-08-26 cleanup (§5 at 28,538 B / 83 entries /
- * longest entry 12 lines, whole file 44,573 B). They are a ceiling on drift, not a target: a
+ * The caps carry deliberate headroom over the 2026-08-26 cleanup (§5 at 31,349 B / 85 entries /
+ * whole file 47,384 B). They are a ceiling on drift, not a target: a
  * genuinely new workstream should fit comfortably. When one does not, the answer is almost never
  * to raise the cap — it is that the prose belongs in `docs/SHIPPED_LOG.md` (full session
- * narrative) or `docs/wiki/` (durable synthesis), both of which are already richer than §5 for
- * every entry it carries.
+ * narrative) or `docs/wiki/` (durable synthesis), which are richer than §5 for almost every entry
+ * it carries. NOT all: an entry marked "no wiki page yet" is the ONLY copy, and trimming it
+ * destroys information rather than relocating it. The pointer check below is what keeps that
+ * distinction honest.
  *
  * THE CONTROLS MATTER MORE THAN THE CAPS. "No entry exceeds 16 lines" is vacuously true if the
  * parser finds no entries — exactly how `brandLogo.test.ts` reported green for a day while three
@@ -57,6 +59,11 @@ const MAX_ENTRY_LINES = 16;
  */
 function countEntryBullets(section: string): number {
   return section.split('\n').filter((line) => /^[-*+] +\*\*/.test(line)).length;
+}
+
+/** Every `docs/...md` pointer an entry offers as the place its detail actually lives. */
+function extractDocPointers(section: string): string[] {
+  return [...section.matchAll(/`(docs\/[A-Za-z0-9._\-/]+\.md)`/g)].map((m) => m[1]);
 }
 
 const raw = readFileSync(CONTEXT_PATH, 'utf8');
@@ -137,6 +144,10 @@ describe('PROJECT_CONTEXT.md stays an index', () => {
     expect(parsed.map((e) => e.lines)).toEqual([3, 1, 2]);
     expect(parsed[0].title).toContain('First entry');
     expect(countEntryBullets(fixture)).toBe(3);
+
+    // Same fixture discipline for the pointer extractor used by the check below.
+    expect(extractDocPointers('see `docs/wiki/concepts/a.md` and `docs/SHIPPED_LOG.md` here'))
+      .toEqual(['docs/wiki/concepts/a.md', 'docs/SHIPPED_LOG.md']);
   });
 
   it('CONTROL: every entry bullet in §5 is accounted for by the parser', () => {
@@ -158,6 +169,24 @@ describe('PROJECT_CONTEXT.md stays an index', () => {
         '(full session prose) or docs/wiki/ (durable synthesis) and leave a one-line pointer, ' +
         'plus a **Pending:** clause if the work is genuinely blocked. Raising the cap is almost ' +
         'never the right fix — see this file\'s header.',
+    ).toEqual([]);
+  });
+
+  it('every doc pointer in §5 resolves to a file that exists', () => {
+    // Trimming an entry is only safe because the richer copy was CHECKED to exist. A pointer to
+    // a file that is not there turns "the detail lives over there" into a claim nobody can cash,
+    // and the §5 header explicitly tells the next author that trimming is safe — so this is the
+    // assertion that makes the header true rather than merely reassuring.
+    //
+    // Entries whose detail has NOT been written yet carry no pointer (they say "no wiki page
+    // yet"), so they are correctly invisible here rather than silently passing.
+    const pointers = [...new Set(extractDocPointers(section))];
+    const missing = pointers.filter((rel) => !existsSync(join(ROOT, rel)));
+    expect(
+      missing,
+      'These §5 pointers name a file that does not exist, so the detail they promise cannot be ' +
+        'reached. Either restore the file or correct the pointer — and never trim an entry ' +
+        'whose pointer is broken, because §5 may be the only remaining copy.',
     ).toEqual([]);
   });
 

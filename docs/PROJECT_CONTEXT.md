@@ -107,10 +107,16 @@ holds no Toast credentials. See §6.
 ## 5. Active Workstreams
 
 > **Index only — one or two lines per entry, plus a `**Pending:**` clause where work is
-> genuinely blocked.** Full prose for every entry lives in `docs/SHIPPED_LOG.md`; durable
-> synthesis lives in `docs/wiki/`. Both are richer than anything that belongs here. This
+> genuinely blocked.** For **almost** every entry, full prose lives in `docs/SHIPPED_LOG.md`
+> and durable synthesis in `docs/wiki/`, both richer than anything that belongs here. This
 > section loads into every session, so a paragraph written here is paid for on every future
 > task, forever.
+>
+> **The exception is load-bearing: an entry marked `→ no wiki page yet` is the ONLY copy.**
+> Two exist today (TikTok, email verification — the knowledge layer owes #525–#530). Do not
+> trim one to an index line before its prose has been backfilled to `SHIPPED_LOG.md`; that is
+> the one edit in this file that can destroy information rather than relocate it. Trimming is
+> safe *because* the richer copy was checked to exist — never because this header says so.
 >
 > **This is an index, not a log — and saying so has not been enough.** The section was cut
 > 176,620 → 73,742 B in July 2026 and had regrown to 154,964 B by 2026-08-26, with its two
