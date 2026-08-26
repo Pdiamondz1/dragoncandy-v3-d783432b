@@ -10,11 +10,18 @@
  * rounding difference, it is a different and much friendlier claim. The public build has only
  * the first, because the second is derived from the confidential pre-seed budget.
  *
- * These tests run in the DEFAULT (public) configuration: vitest shares `vite.config.ts`, so
- * `@pitch/confidential` resolves to the stub and `__PITCH_CONFIDENTIAL__` is `false`. The
- * confidential half of the slide is therefore asserted absent here rather than present; the
- * assertion that it is present is `npm run pitch:verify-public`'s inverse, run by hand
- * against a `VITE_PITCH_CONFIDENTIAL=1` build.
+ * Vitest shares `vite.config.ts`, so which of those two configurations is under test is
+ * decided by the SAME `VITE_PITCH_CONFIDENTIAL` env var the real build reads:
+ *
+ *   npx vitest run src/pitch/                                # public: `__PITCH_CONFIDENTIAL__` false
+ *   VITE_PITCH_CONFIDENTIAL=1 npx vitest run src/pitch/       # confidential: `__PITCH_CONFIDENTIAL__` true
+ *
+ * The confidential half of the slide is asserted ABSENT in the first run and PRESENT
+ * (matching `consolidated()` exactly) in the second — see `__PITCH_CONFIDENTIAL__` gating
+ * below, the same pattern `ask.confidential.tsx` uses. Both runs must be green: a test
+ * whose assertion doesn't change with the flag is exactly how this suite went red under
+ * `VITE_PITCH_CONFIDENTIAL=1` — the one build whoever exports the real, complete deck
+ * actually runs.
  */
 import { afterEach, describe, expect, it } from 'vitest';
 import { cleanup, render, screen } from '@testing-library/react';
@@ -29,6 +36,8 @@ import { SlideTrajectory } from './slides';
 import { moneyShort } from '../deck/format';
 import { rollup } from '../model/rollup';
 import { consolidated } from '../model/consolidated';
+
+declare const __PITCH_CONFIDENTIAL__: boolean;
 
 afterEach(cleanup);
 
@@ -103,10 +112,20 @@ describe('the trajectory slide', () => {
     expect(byYear.get(2028)).toBeGreaterThan(0);
   });
 
-  it('omits the company EBITDA line entirely from a public build', () => {
-    renderSlide();
-    expect(screen.queryByTestId('trajectory-consolidated')).toBeNull();
-  });
+  if (__PITCH_CONFIDENTIAL__) {
+    it('renders the company EBITDA line in a confidential build, matching consolidated() exactly', () => {
+      renderSlide();
+      const row = screen.getByTestId('trajectory-consolidated');
+      for (const y of consolidated()) {
+        expect(row.textContent).toContain(moneyShort(y.ebitda));
+      }
+    });
+  } else {
+    it('omits the company EBITDA line entirely from a public build', () => {
+      renderSlide();
+      expect(screen.queryByTestId('trajectory-consolidated')).toBeNull();
+    });
+  }
 
   // Every other slide carries a provenance tag; this is the one rendering the model's
   // headline numbers, so it is the last place to drop one.
