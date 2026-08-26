@@ -64,8 +64,12 @@ connector at round 7 — three operations on one grant serialising against nothi
 
 Platform facts were read at source rather than inferred from a sibling, because the Facebook
 connector shipped a real defect by pattern-matching Instagram. Access token **24 hours**; refresh
-token **365 days**, so a dormant connection survives a year and **no dormancy sweep exists** —
-the opposite of Instagram, where a connection nobody reads dies. A **revoke endpoint does exist**,
+token **365 days**, and each refresh writes a fresh expiry, so an account read even once a year
+never dies and **no dormancy sweep exists**. That **defers** Instagram's failure rather than
+removing it — refresh is on demand only, so a connection nobody reads for over 365 days expires
+before anything tries to renew it and needs re-consent. This entry first called that "a failure
+that cannot happen"; the Codex second review refuted it, and the difference from Instagram is
+quantitative (365 days vs 60), not categorical. A **revoke endpoint does exist**,
 unlike Instagram and Facebook. `username` needs `user.info.profile` while only `display_name`
 comes with `basic` — and the connector reads just `username` and `profile_deep_link` from that
 scope, because **a scope is not the same as what you fetch**.

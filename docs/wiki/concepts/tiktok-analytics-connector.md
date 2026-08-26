@@ -61,7 +61,7 @@ each of these came from docs.tiktok.com:
 | Fact | Consequence |
 |---|---|
 | Access token **24 hours** | Not X's 2h, not Instagram's 60d, not a FB Page token's forever |
-| Refresh token **365 days** | A dormant connection survives a year, so **no dormancy sweep** — the opposite of Instagram, where a connection nobody reads dies |
+| Refresh token **365 days**, and each refresh writes a fresh expiry | A dormant connection survives a year, so **no dormancy sweep** — but see the limitation below: this defers Instagram's failure, it does not remove it |
 | Refresh token **rotates** | The refresh lock above |
 | A **revoke endpoint exists** | Unlike Instagram and Facebook, disconnect can genuinely withdraw access |
 | `username` needs `user.info.profile` | Only `display_name` comes with `basic`, and display names are not unique |
@@ -218,8 +218,21 @@ one place the secret is actually used.
 
 ## Known and deliberately not done
 
-- **No dormancy sweep**, because a 365-day refresh token makes Instagram's
-  guard protect a failure that cannot happen here.
+- **No dormancy sweep — and the reasoning behind that was overstated.** It was
+  written as "a 365-day refresh token makes Instagram's guard protect a failure
+  that *cannot happen* here", which the Codex second review refuted. Refresh is
+  **on demand only**, so a connection nobody reads for more than 365 days has its
+  refresh token expire before anything tries to use it, and the grant is then
+  recoverable only by the user re-consenting. **That is Instagram's failure
+  exactly, on a 365-day clock instead of a 60-day one** — deferred, not removed,
+  and the difference is quantitative.
+
+  Each refresh does write a fresh `refresh_token_expires_at` from TikTok's
+  `refresh_expires_in`, so an account read even once a year never dies. **A sweep
+  is still not built**, which is a deliberate, recorded limitation rather than a
+  proof of safety: a connection can silently die after a year of neglect. Revisit
+  when any connection approaches its first anniversary — the earliest possible
+  date is **2027-08-26**, one year after the first real connect.
 - **No insights lock**, because the API is free — see above.
 - **Both TikTok buttons on the settings page read "Connect TikTok"** — the
   Outstand one publishes, this one measures, and nothing on the buttons says

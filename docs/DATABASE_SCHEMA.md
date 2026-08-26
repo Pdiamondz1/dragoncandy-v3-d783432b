@@ -962,11 +962,17 @@ the token models do. Read the notes under the table before assuming a pattern ca
 > account and an absent stat should leave the last known value. Opposite rules on adjacent
 > functions; a test pins both.
 >
-> **There is no dormancy sweep, and that is deliberate.** Instagram needs one because Meta only
-> extends a still-valid token, so a connection nobody reads dies. TikTok's refresh token lasts
-> **365 days**, so refresh-on-expiry is correct and a guard here would protect a failure that
-> cannot happen. TikTok also **has** a revoke endpoint (`/v2/oauth/revoke/`), unlike Instagram
-> and Facebook, so disconnect can genuinely withdraw access.
+> **There is no dormancy sweep, and that DEFERS Instagram's failure rather than removing it.**
+> Instagram needs a sweep because Meta only extends a still-valid token, so a connection nobody
+> reads dies. TikTok's refresh token lasts **365 days** and every refresh writes a fresh
+> `refresh_token_expires_at`, so an account read even once a year never dies. But refresh here is
+> **on demand only** — a connection nobody reads for more than 365 days has its refresh token
+> expire before anything tries to use it, and is then recoverable only by the user re-consenting.
+> **That is exactly Instagram's failure on a 365-day clock**; the difference is quantitative.
+> Written here as "a failure that cannot happen" until the Codex second review refuted it. No
+> sweep is built, which is an accepted limitation, not a proof of safety — earliest possible
+> occurrence is **2027-08-26**. TikTok also **has** a revoke endpoint (`/v2/oauth/revoke/`),
+> unlike Instagram and Facebook, so disconnect can genuinely withdraw access.
 >
 > Lockdown matches the sibling tables and was verified rather than assumed on prod 2026-08-26:
 > RLS enabled with **zero policies for any role** plus TABLE-level revocation, grants reading
