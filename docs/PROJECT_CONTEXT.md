@@ -182,7 +182,8 @@ Engineering cannot close these. Ordered by what blocks launch.
 ### In flight
 
 - **TikTok read-only analytics connector** — the fifth direct platform API under the
-  2026-08-23 scope decision. #525 and #529 merged; five migrations, four functions, all
+  2026-08-23 scope decision. #525 and #529 merged; **four** migrations (this said five, copied
+  from the entry that added it — only two widen counters, not three), four functions, all
   `verify_jwt = true` and verified on prod by object. **CONNECTED AND MEASURING 2026-08-26**
   (`@tumericturtle`, the four read scopes, `status=active`) — this entry called that
   "unverified" and also named the wrong acceptance signal. **`last_synced_at` does NOT land

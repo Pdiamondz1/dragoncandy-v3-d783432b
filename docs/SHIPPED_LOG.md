@@ -329,7 +329,9 @@ All 111 cited PRs checked against the repo's 530 in one call.
 ### Two workstreams were missing entirely
 
 The **TikTok read-only analytics connector** (#525, #529 — four deployed functions, five
-migrations) had **no §5 entry at all**, and neither did the **email-verification rework** (#527,
+migrations — **four**, corrected 2026-08-26: only two widen counters, not three, and the
+miscount was copied straight into §5 by the entry that fixed the omission)
+had **no §5 entry at all**, and neither did the **email-verification rework** (#527,
 #528, #530). None of #525–#530 has reached `SHIPPED_LOG.md` or the wiki either, so **the knowledge
 layer owes five PRs**; both new entries say so rather than implying coverage. Found only because a
 mid-session `git fetch` moved `origin/main` and prompted a check of what had landed.
