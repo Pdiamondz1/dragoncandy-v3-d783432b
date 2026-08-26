@@ -221,7 +221,7 @@ column read, and the self-healing live-Stripe verification behind `useTransactio
 
 Calling the verifier here was rejected — it puts an external round-trip on the path gating first
 paint. The spec's original answer was **silence** for the ambiguous state, on the grounds that a
-false "you aren't set up" is the [[Internal-Only Users]] #357 false-"verify your email" class on the
+false "you aren't set up" is the [[Internal-Only AIOS Users]] #357 false-"verify your email" class on the
 page's top row. But silence abandoned the largest reachable group: only **3 of 18** creators have
 completed onboarding.
 
@@ -484,4 +484,4 @@ defect wearing four costumes.
 - [[Stripe Webhook Delivery]] — `stripe_onboarding_complete` going stale-false (#173), the reason
   Phase 3's payout copy is worded to be true whether or not the flag is right
 - [[Dragon Rewards Engine (DRE)]] — `rewards_agent`, the only tap verified creator-real
-- [[Internal-Only Users]] — the #357 false-"verify your email" class Phase 3's payout copy avoids
+- [[Internal-Only AIOS Users]] — the #357 false-"verify your email" class Phase 3's payout copy avoids

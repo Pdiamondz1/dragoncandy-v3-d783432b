@@ -11,7 +11,7 @@ tags: [gamification, rewards, growth, edge-functions, rls, cron]
 DragonCandy's platform-wide **gamification + growth system**: every valuable user
 action earns **Dragon Points (DP)**, which drive tiers, badges, and (in later phases)
 referrals and redemption. The full vision is a 16-week, 6-phase program (see the parent
-spec [[DragonCandy — Dragon Rewards Engine (DRE) Full System Spec]]); it was decomposed
+spec *DragonCandy — Dragon Rewards Engine (DRE) Full System Spec*); it was decomposed
 because it is six independent subsystems. **v1 = "Engine + Tiers + Badges"** (≈ parent
 Phases 1–2): the configurable points ledger + an idempotent award engine + the 5-tier
 system + tier-badge display. Built on branch `worktree-DC-DRE-AI`; founder-run go-live
@@ -271,7 +271,7 @@ events stay silent (their `occurred_at` < cutover) — the intended "no retroact
 
 ## See Also
 
-- [[DragonCandy — Dragon Rewards Engine (DRE) Full System Spec]] — the 6-phase parent.
+- *DragonCandy — Dragon Rewards Engine (DRE) Full System Spec* — the 6-phase parent.
 - [[DragonShare]] — the main event source the engine consumes.
 - [[Notification Delivery]] — the bell choke point.
 - [[Data Flywheel]] — DRE feeds the moat.

@@ -36,7 +36,7 @@ Donny writes **one** audience — *"Date-night couples, 25–40, who live within
 St"* — pre-filled from the business context he already extracted, editable, with **two alternates
 as one-tap swaps**. The swap set is `[primary, ...alternates]` minus the current value, so swapping
 back falls out for free with no extra state. Zero keystrokes to accept, one tap to change — the
-[[Less Typing = More Margin]] test.
+[[North Star & KPI Scorecard]] test.
 
 `audience_alternates` lives on `CampaignIdea` **only** — not on `EditableCampaign`, not in
 `ai_analysis`. Once a campaign is live, "swap to an alternate" is meaningless, and omitting it
@@ -142,7 +142,7 @@ still parse.
   imperatives in new guidance.
 - **`codex review --base main` reviews NOTHING when work is staged-but-uncommitted** — HEAD equals
   main's tip, so `git diff main...HEAD` is empty. Use `--uncommitted`, or commit first. A returned
-  "clean" verdict would be false assurance. See [[Codex Second Review]].
+  "clean" verdict would be false assurance. See [[codex-review]].
 - Removing a field from `EditableCampaign` is a useful safety net: `noUnusedLocals` + strict mode
   surface every consumer. If it compiles clean immediately, suspect a `string[]`-typed consumer
   was missed.
@@ -151,6 +151,6 @@ still parse.
 
 - [[Campaign Generation Creativity]] — the same prompt, from the "are the ideas any good" angle
 - [[AI Creator Matching]] — what actually matches creators (skills, not personas)
-- [[Campaign Price Anchoring]] — the sibling "the generated value reads as a demand" problem
+- [[Campaign Price Anchoring & Negotiation Reach]] — the sibling "the generated value reads as a demand" problem
 - [[Delivery Tier Selection]] — the sibling "one control, two fields" cleanup in the same section
 - [[Content Delivery State Machine]] — what happens after a campaign is launched

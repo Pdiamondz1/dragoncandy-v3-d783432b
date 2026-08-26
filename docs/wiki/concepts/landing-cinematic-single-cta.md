@@ -74,7 +74,7 @@ values, but Helmet **appends** rather than replacing a static tag it did not cre
 except `/landing` served two canonicals that disagreed — and conflicting canonicals are discarded,
 not resolved. `/landing` passed only because it is the one page where the static value is right.
 Both removed; `/how-it-works` now scores **100 accessibility / 100 best practices / 100 SEO** and
-the landing keeps SEO 1.00. See [[Domain Migration .io → .com]], whose claim that `SITE_URL` drives
+the landing keeps SEO 1.00. See [[Domain Migration (.io → .com)]], whose claim that `SITE_URL` drives
 *every* canonical is corrected there. **A gate that tests one URL is evidence about one URL.**
 
 Also fixed on the new page: `dc-pink-accent` (`#EC4899`) as text on white is **3.52:1** against the

@@ -42,7 +42,7 @@ unit tests). `buildForecast({ measured, assumptions })` → `{ scenarios, coeffi
   dbConnsPerConcurrent; compute tier = smallest `COMPUTE_TIERS` meeting `peak ≤ ramGb ×
   PEAK_CONCURRENT_PER_GB` (2000), else "Custom"; Supabase $ = base + compute + disk overage + egress overage;
   revenue via the **business funnel** (registered × business_share × paying_conversion × ARPU); **AI $ =
-  min(uncapped, max($250 floor, 15% of revenue))** (the [[Donny AI Cost Architecture]] kill-switch);
+  min(uncapped, max($250 floor, 15% of revenue))** (the [[AIOS Runtime Spend Source-of-Truth]] kill-switch);
   gross margin $ + % (null on revenue 0); cost/DAU.
 
 ## Why admin-only

@@ -8,7 +8,7 @@ tags: [find-creators, geocoding, radius, frontend, browse]
 ---
 # Creator Location Search
 
-The "near me" location + radius filter on the restaurant [[Find Creators]] page
+The "near me" location + radius filter on the restaurant Find Creators page
 (`src/pages/CreatorBrowse.tsx`) — how a business finds creators near a place. Client-side, no schema
 change; reuses the existing geo stack (Google geocoding, haversine, a static US-city table, the creator
 map). Also wired onto the hidden brand `BrandCreators` browse. Shipped 2026-07-07 on branch
@@ -86,5 +86,5 @@ refreshed — so restore the value **directly in that path**, don't rely on the 
 - [[AI Creator Matching]] — the "Find Perfect Creators" matcher reuses this geo stack, **ported**
   into `supabase/functions/_shared/geo.ts` (edge functions can't import from `src/`); the tested
   `src/lib` helpers here remain the source of truth.
-- [[Find Creators]] · [[Deep-Link Param Query Race]] · [[Musk's Algorithm]] (deletes county + 3 buried fields)
-- [[Google Maps]] geocoding · [[Organizations]] (per-location centering is a future enhancement)
+- The **Find Creators** page · [[Deep-Link Param Query Race]] · [[Musk's Algorithm]] (deletes county + 3 buried fields)
+- Google Maps geocoding · [[Organizations]] (per-location centering is a future enhancement)

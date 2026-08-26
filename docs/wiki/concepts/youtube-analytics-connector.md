@@ -157,14 +157,14 @@ opening Settings saw the red *"Could not check your YouTube connection"* branch.
 handling worked exactly as designed; the sequencing was wrong. **Ship the schema before the UI
 that reads it** — and when describing a merge that needs a migration, "inert" is the wrong word.
 
-The ledger row was written by hand rather than by `supabase db push` ([[supabase-db-push-is-unsafe]] —
+The ledger row was written by hand rather than by `supabase db push` (`supabase-db-push-is-unsafe` —
 the ledger has diverged by 234 files). That step is not optional bookkeeping here: this
 migration's `CREATE TRIGGER` has no `IF NOT EXISTS`, so an unrecorded version would fail the
 whole batch the next time anyone pushes.
 
 ## Why it exists
 
-The 2026-08-23 scope decision ([[direct-apis-are-analytics-not-publishing]]) settled what the
+The 2026-08-23 scope decision (`direct-apis-are-analytics-not-publishing`) settled what the
 direct platform APIs are for: Outstand publishes, direct APIs measure. That removed the
 publish scopes from every platform's review and left one job here — get the numbers Outstand
 does not expose.
