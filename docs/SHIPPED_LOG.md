@@ -32,6 +32,94 @@
 >
 > **Adding an entry:** prepend it (newest first). See `knowledge-sync` step 4.
 
+## [2026-08-26] The app icon's black eye was the background showing through a hole
+
+**PR #532, open at time of writing.** Codex clean at round 2; `npm run build` clean; 3493 tests
+across 314 files pass. **Nothing has run on a device or simulator** — see Not verified below.
+
+The founder sent one word ("logo") and a home-screen screenshot, then: change the app icon's black
+background to white, and the black in the dragon's eye with it.
+
+**The eye needed no artwork change, and that is the finding.** It is a **hole in the source's
+alpha channel**, so the `#1A1A2A` on screen was the navy background showing through, not paint —
+a session that went looking for black pixels to recolour would have found none. Change the
+background and the eye follows. Measured over a 140×140 rect at the eye: **224 near-black pixels →
+0**, darkest `#1A1A2A` (= `dc-dark`) → `#006943` (the dragon's own shadow). The generator now
+asserts that count stays zero, pinning the *reported defect* rather than a proxy for it.
+
+**Rebuilt from `public/icons/icon-512.png`, not recoloured.** The navy 1024's dragon edges are
+anti-aliased *against navy*, so any background swap on that file leaves a dark fringe. The two
+turned out to share a composition exactly — both `0.6699 × 0.9727` of canvas, identical insets to
+four decimal places — which is strong evidence the navy 1024 came from this same 512 art, and is
+why the 2× upscale costs no detail the old icon had (eye crops from both compared at 160×160).
+
+**Off-white `#F7F9F7`, and the stated reason was corrected before the founder chose.** Off-white
+does **not** rescue the dragon's pale interior panels: `#C9FCAF` is **1.14:1** against it versus
+**1.17:1** against pure white. What it buys is an **icon boundary** on a light home screen and in
+Settings lists, where a pure-white icon has no edge. A second prediction — that the dragon would
+become "a green line drawing" — was **withdrawn after looking at the render**; the body mint stays
+solid, because the shape is enclosed by a `#1D9E63` outline at 3.43:1 and the maths compared two
+flat colours while ignoring the enclosure. A suspicion that the source's **102 opaque pure-black
+pixels** would appear as specks on off-white was checked and dismissed: all 64 clusters sit inside
+the dragon's own dark-green outline.
+
+**The splash was still the stock Capacitor blue X** — the app had been launching under another
+company's logo, unreported because nobody looks at a splash for 400ms. **Its colour is derived,
+not chosen:** `LaunchScreen.storyboard` fills the screen `scaleAspectFill`, then the WebView paints
+`index.html`'s prerendered shell, whose inline script sets `#241332` whenever `location.pathname`
+is `/` — always true under `capacitor://localhost/`. Grape is what appears next, so a grape splash
+hands off invisibly; the intuitive choice of matching the *new icon's* off-white would flash
+white→grape on every launch. It is also why no dark-mode variant is needed.
+
+**The logo's 423px width is derived too.** `scaleAspectFill` renders a square at **852×852pt** on a
+393×852pt iPhone, so one point is `2732/852` = **3.207 image px**; the shell draws the logo at
+132pt, so `132 × 3.207` = **423px** matches it. Verified at `0.1548` of canvas = **131.9pt** against
+132. The same maths bounds the design: only the central `393/852` = **46%** (1260px) is visible in
+portrait, so the logo cannot simply be made bigger.
+
+**Made repeatable — `npm run cap:assets`.** Composes from artwork already in the repo, so neither
+mark gets a second copy that drifts. Swift/CoreGraphics over `@capacitor/assets` or Node+sharp
+because compositing needs an image library and every cross-platform option costs a dependency;
+macOS-only is free since iOS assets can only be built on macOS. Not in CI, which runs Linux.
+`scripts/lib/app-assets.swift` does pixels only; `scripts/build-app-assets.mjs` holds policy.
+**The honest limit:** most assertions compare output against the same constants used to build it,
+so they catch a broken build, never a wrong constant. Only two are independent, and both were
+forced to fail before being trusted.
+
+**Codex found the coupling guard enforced nothing (P2, real).** It read `index.html` and checked
+`includes("#241332")` — but that hex appears **twice**, in the real `splash.style.background`
+assignment and in an HTML comment ten lines above. Repoint the shell, leave the comment stale, and
+the check passes while the generator builds a splash that flashes; `DESIGN_SYSTEM.md` had already
+been written claiming the guard held that invariant. Now matches the **assignment** and compares
+the captured value, failing **closed** if it is renamed or moved into a variable. Durable form:
+***a guard that greps for a value will match the value's own documentation*** — match the thing
+that does the work.
+
+**A file-size alarm that was a confounded measurement.** Assets grew ~1.4MB (icon 294KB → 557KB;
+splash 41KB → 411KB ×3) on a binary this project had cut 54MB → 39MB. Suspected a dithered fill; a
+400×400 crop of flat background came back **236KB**, which looked like proof. It was a `sips`
+re-encode artifact — measured directly the region holds **exactly 1 distinct colour**. Legitimate
+lossless PNG cost for the logo's gradients; recorded, not fixed, since no optimizer is installed
+and adding one would undo the zero-dependency decision.
+
+**Why the founder's phone kept showing the old app** — not the icon cache and not a failed build:
+these changes exist **only on this branch**, so building from the main checkout rebuilds the old
+assets forever. The worktree could not build at all until this session (no `node_modules`, and no
+`ios/App/App/public/`); running the review gates plus `npx cap sync ios` fixed both.
+
+**Gotchas:** `sips` cannot composite, only crop and scale. CoreGraphics has **no unpremultiplied
+8bpc RGBA context** — `CGImageAlphaInfo.last` returns nil and traps. `noneSkipLast` is what makes
+the encoder emit RGB, i.e. an icon with no alpha, which App Store submission requires. And
+**ESLint never linted the new `.mjs`**: `scripts/` is not ignored, but the rule block matches
+`**/*.{ts,tsx}`, so the file is unmatched and skipped — `npx eslint <file>` exiting 0 is not
+evidence it is clean.
+
+**Not verified:** nothing has run on a device or simulator. The colour match rests on reading
+`index.html` and reasoning that Capacitor loads `/`. Open on first launch: whether the
+splash→shell handoff is seamless, and whether the icon reads well at real size.
+
+→ `docs/wiki/concepts/ios-app-icon-and-launch-image.md` · #532
+
 ## [2026-08-25] Onboarding, tested on production for the first time — and three defects only production could show
 
 The founder drove a real creator signup on prod (`dame+onboardtest@dragoncandy.com`) while an

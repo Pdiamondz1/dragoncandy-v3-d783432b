@@ -1010,8 +1010,20 @@ holds no Toast credentials. See §6.
   `.claude/worktrees/` exclude (Node 26 shadows jsdom's `localStorage`, breaking 50 tests CI passes);
   and a private-window look at the landing footer on prod (the signed-in session redirects
   `/landing`, so it is verified at bundle level only).
+  **The native assets are new (2026-08-26, #532, OPEN).** The icon moved to off-white — the
+  reported "black eye" was a **hole in the alpha channel** showing the old navy through, not paint,
+  so it needed no artwork change (224 near-black pixels → 0) — and the splash, which was **still
+  the stock Capacitor blue X**, is now the brand mark on `#241332`, copied from `index.html`'s
+  shell because that is what paints next. Both regenerate via `npm run cap:assets`, zero-dependency
+  and self-asserting; a Codex P2 caught its coupling guard matching the hex in a *comment* rather
+  than the assignment, i.e. enforcing nothing. **Pending:** merge #532; then the first device
+  launch, which is the only thing that can confirm the splash→shell handoff is seamless — nothing
+  here has run on hardware or a simulator. Note the founder's phone showed the old app for a
+  reason worth remembering: **these files exist only on the branch**, so building from the main
+  checkout rebuilds the old assets no matter how often the app is deleted.
   → `docs/superpowers/specs/2026-08-09-ios-testflight-first-build-design.md`
-  · `docs/wiki/concepts/legal-entity-identity.md` · #439
+  · `docs/wiki/concepts/legal-entity-identity.md`
+  · `docs/wiki/concepts/ios-app-icon-and-launch-image.md` · #439, #532
 
 ### Built — awaiting founder go-live
 

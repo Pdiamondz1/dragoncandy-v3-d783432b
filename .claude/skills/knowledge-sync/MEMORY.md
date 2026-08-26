@@ -5,6 +5,35 @@
 
 ## Lessons (read FIRST every run; curated — rewrite/prune as they evolve)
 
+- **[guard-greps-its-own-docs] A guard that greps for a VALUE will match the value's own
+  documentation.** On 2026-08-26 a generator coupled the iOS launch image to `index.html` by
+  checking `indexHtml.includes("#241332")` — and that hex appears **twice** in the file: in the
+  real `splash.style.background` assignment, and in an explanatory HTML comment ten lines above.
+  Repoint the shell to a new colour and leave the comment stale — the likeliest way it would
+  actually happen — and the check passes while the generator builds a splash that flashes on every
+  launch. Worse, `DESIGN_SYSTEM.md` had *already* been written claiming the guard held that
+  invariant, so the doc was vouching for a control that enforced nothing. Caught by the Codex
+  second review, not by me. **Match the thing that DOES the work** — the assignment, the call
+  site, the export — never a string that also appears where the behaviour is merely described,
+  and prefer a match that **fails closed** when the shape changes (a renamed property should stop
+  the run, not be assumed unchanged). Same family as the `INTERNAL_RETRIEVAL_K` rule that a pin
+  holding a value nothing reads is worse than no pin because it looks green; and the corollary of
+  `[core-doc-markers]` — there, prose is load-bearing for a test; here, prose is what *fools* one.
+- **[eslint-unmatched-file] `npx eslint <file>` exiting 0 can mean the file was never read.**
+  `eslint.config.js` ignores `dist`/`.claude/**`/`supabase/**` etc., so `scripts/` looks covered —
+  but the only rule block declares `files: ["**/*.{ts,tsx}"]`, so a new `.mjs` matches **no**
+  config and is silently skipped. A clean exit is not evidence it is clean. Consequence worth
+  knowing rather than "fixing": `no-console` therefore does **not** apply to `scripts/**/*.mjs`,
+  which is why `install-hooks.mjs` has always used `console.log` — so do not "correct" a script's
+  logging to `console.error` on the strength of `CLAUDE.md`'s rule, which is about the app. To
+  actually lint a new file type, add a config block for it; to check whether a file is covered,
+  run `npx eslint --print-config <file>` rather than trusting a green run — measured 2026-08-26,
+  `scripts/build-app-assets.mjs` resolves **0** rules with `no-console` **absent**, against
+  `src/lib/brandLogo.ts`'s **92** with `no-console` present, which is the control proving the 0 is
+  the answer and not a broken invocation. General form of
+  `[memory-scope]`: **run the thing once and confirm it addressed your question**, because a tool
+  that skips its input reports success exactly like a tool that approved it.
+
 - **[scope-paths] Point the `[scope]` check at the branch's SOURCE paths, not just the core
   docs.** On 2026-08-10 the check ran clean against `PROJECT_CONTEXT.md`/`SHIPPED_LOG.md`/
   `docs/wiki/` — and `origin/main` had, that same morning, merged a **parallel implementation of
@@ -290,6 +319,34 @@
   `[orphans]`, which matches on the `(path/to/file.md)` link target and does not have this problem.
 
 ## Run log (newest first — add each new entry at the TOP; never edit/delete past entries)
+
+### 2026-08-26 — iOS app icon + launch image, and a guard that matched its own documentation
+- **Output:** `docs/wiki/concepts/ios-app-icon-and-launch-image.md`, indexed and logged
+  (`log.md` → `[2026-08-26] ingest | The app icon's black eye was the background showing
+  through a hole`).
+- **Happened:** wrote the raw session, created ONE concept page (not a compound onto
+  [[Brand Logo Sizing]] — that page is the mark's size in *web* chrome; this is asset
+  catalogs, `scaleAspectFill` and generation tooling), prepended `SHIPPED_LOG.md`, and
+  edited the existing Apple App Store §5 entry in place per `[status-correction]` rather
+  than appending a second one. Codex clean at round 2 (one P2, real).
+- **Worked:** `[scope-ordering]` run before the first doc edit — clean on both the core
+  docs *and* the branch's source paths (`ios/ scripts/ index.html package.json`), so no
+  parallel work. `[gap-claims]` caught a near-miss: `git ls-tree origin/main` surfaced
+  `2026-08-24-page-drag-and-logo-size.md`, which *sounds* like this session; reading it
+  showed it is the **web** logo sizes, a different subject. `[index-sections]` paid twice —
+  resolving `[[...]]` against `index.md` **before** committing found `[[Codex Second
+  Review]]` does not exist as a page (dropped the brackets rather than ship a broken link),
+  and both insertions were placed by finding the local alphabetical run rather than
+  scanning from the top. `[core-doc-markers]` — re-ran the full suite after the doc edits,
+  3493/3493.
+- **Failed:** nothing lost, but two of my own claims needed retracting mid-session, both
+  found by measuring rather than reasoning. I told the founder off-white would help the
+  dragon's pale panels (it does not — 1.14:1 vs 1.17:1, no difference) and predicted the
+  dragon would become "a green line drawing" (it does not). Corrected before they chose.
+  Separately, a 236KB flat-colour crop looked like a dithering bug and was a `sips`
+  re-encode artifact — the region holds exactly **1** distinct colour.
+- **Remember:** see the new `[guard-greps-its-own-docs]` and `[eslint-unmatched-file]`
+  Lessons above.
 
 ### 2026-08-24 — Onboarding tested on production; two new concept pages
 - **Output:** `docs/wiki/concepts/onboarding-resume-and-routing.md` +
