@@ -42,7 +42,12 @@ import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'npm:@supabase/supabase-js@2';
 import { corsHeaders } from '../_shared/cors.ts';
 import { InstagramError } from '../_shared/instagram.ts';
-import { validateJobShape, type ContentType } from '../_shared/instagram-publish.ts';
+import { loadConnection } from '../_shared/instagram-connection.ts';
+import {
+  requirePublishPermission,
+  validateJobShape,
+  type ContentType,
+} from '../_shared/instagram-publish.ts';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SUPABASE_ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY')!;
@@ -165,6 +170,21 @@ serve(async (req: Request) => {
     // Validated against the DESTINATION names, because those are what the sweep
     // will read the format from. Throws before anything is copied.
     validateJobShape(contentType, destinations, caption);
+
+    // Refuse a connection that never granted publishing BEFORE copying
+    // anything. The RPC checks it again in SQL — that is the copy a future
+    // caller cannot route around — but a message here is the difference
+    // between an owner learning at approval time and a job dying silently in
+    // the queue. `.eq('user_id', …)` inside loadConnection IS the scoping.
+    const conn = await loadConnection(admin, user.id);
+    if (!conn) {
+      return json(
+        req,
+        { error: 'not_connected', message: 'No Instagram account connected' },
+        404,
+      );
+    }
+    requirePublishPermission(conn.permissions ?? []);
 
     for (const [i, item] of media.entries()) {
       // (1) The caller's own credential. A signed URL cannot be minted for an

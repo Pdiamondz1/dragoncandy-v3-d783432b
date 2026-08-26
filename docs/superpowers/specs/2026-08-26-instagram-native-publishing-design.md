@@ -248,6 +248,8 @@ Instagram and Facebook only.
 |---|---|
 | `20260826264500` | `publish_jobs` + `enqueue_publish_job` and the four service-role RPCs |
 | `20260826270000` | claim recovery, `publishing_at`, `needs_review`, the `publish-media` bucket |
+| `20260826290000` | Codex round 1: staged-path ownership, and an in-flight rate reservation |
+| `20260826300000` | Codex round 2: enqueue refuses a connection without the publish permission |
 
 **`20260826280000` (the pg_cron schedule) is written and NOT applied**, on purpose. It calls the
 sweep every minute, so applying it before the function is deployed and the Vault URL exists would
@@ -292,12 +294,35 @@ the acceptance signal section 6 names; wiring native posts into measurement is i
 
 ### Still to do before this can publish anything
 
-1. Re-add `instagram_business_content_publish` to the Meta app — and take `business_management`
-   off the Pages use case first (section 5).
-2. Deploy both functions; create the `instagram_publish_sweep_url` Vault secret; apply
+**The permission is a THREE-part step and every part is easy to leave out.** Codex round 2
+flagged that declaring `PUBLISH_PERMISSION` in code does not put it on the consent screen —
+`INSTAGRAM_SCOPES` still asks for basic + insights only. It is not added yet on purpose: Meta
+will not grant an advanced permission before App Review approves it, and asking early breaks
+consent for every user who is not a developer on the app, which would take the **working**
+insights connector down to ship a feature that still could not publish.
+
+So the order is:
+
+1. Take `business_management` off the Pages use case (section 5), then add
+   `instagram_business_content_publish` to the Meta app and pass **App Review** with a
+   publishing demo video.
+2. Add the permission to `INSTAGRAM_SCOPES` in `_shared/instagram.ts`.
+3. **Have every existing connection reconnect.** A token minted before step 2 does not gain the
+   permission by being refreshed — `ig_refresh_token` extends the grant that exists, it does not
+   widen it. This is the part that gets forgotten, and until it happens the account looks
+   Connected and cannot post.
+
+Until all three are done, `requirePublishPermission` refuses at enqueue — in the edge function
+for a readable message, and in `enqueue_publish_job` (migration `20260826300000`) as the copy a
+future caller cannot route around. Verified on prod in both directions inside a rolled-back
+transaction: the live connection is refused as it stands, and the same call succeeds once the
+permission is added to its `permissions` array.
+
+Then:
+
+4. Deploy both functions; create the `instagram_publish_sweep_url` Vault secret; apply
    `20260826280000`; check `cron.job_run_details` rather than assuming.
-3. The UI — nothing calls `instagram-publish-enqueue` yet.
-4. Meta App Review with a publishing demo video.
+5. The UI — nothing calls `instagram-publish-enqueue` yet.
 
 ---
 

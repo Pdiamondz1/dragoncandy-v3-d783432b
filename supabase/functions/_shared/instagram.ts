@@ -1,11 +1,14 @@
 /**
  * Shared Instagram OAuth + Insights helpers (Instagram API with Instagram Login).
  *
- * READ-ONLY BY DESIGN. This integration does not publish to Instagram — Outstand
- * keeps publishing, and the direct platform APIs exist to supply the analytics
- * Outstand never shipped (founder decision 2026-08-23). `instagram_business_
- * content_publish` is NOT requested and nothing here writes to Instagram. Adding
- * a publish permission means another Meta App Review, so it is a decision, not an
+ * READ-ONLY — this MODULE, no longer the integration. Publishing lives in
+ * `instagram-publish.ts` (founder decision 2026-08-26 to replace Outstand), and
+ * nothing here writes to Instagram: this file is OAuth, identity and token
+ * lifetime only.
+ *
+ * `INSTAGRAM_SCOPES` still does not carry `instagram_business_content_publish`,
+ * and that is a sequencing fact rather than a scope decision — see the comment
+ * on the constant. Adding it is a go-live step gated on Meta App Review, not an
  * edit.
  *
  * Tokens NEVER leave the backend. Callers receive data or a typed error.
@@ -85,7 +88,21 @@ const IG_VERSION = 'v23.0';
  * returns analytics.
  *
  * Deliberately absent, each for its own reason:
- *   - `instagram_business_content_publish` — Outstand publishes; see the header.
+ *   - `instagram_business_content_publish` — NOT because publishing is out of
+ *     scope any more (it is not: see `instagram-publish.ts`), but because Meta
+ *     will not grant an advanced permission the app has not had approved.
+ *     Adding it here before App Review passes does not buy a publishing token;
+ *     it breaks the consent screen for every user who is not a developer on the
+ *     app, which would take the WORKING insights connector down to ship a
+ *     feature that still could not publish.
+ *
+ *     So this list moves at go-live, not at merge, and it is a two-part step
+ *     that is easy to do halfway: add the permission here AND have every
+ *     existing connection reconnect. A token minted before this changes does
+ *     not gain the permission by being refreshed — `ig_refresh_token` extends
+ *     the grant that exists, it does not widen it. `requirePublishPermission`
+ *     is what makes that failure legible instead of a Meta error five attempts
+ *     deep.
  *   - `instagram_business_manage_comments` / `_manage_messages` — Meta labels
  *     these "required" for the app's use case, but there is no comment or DM
  *     feature to demonstrate, and an unjustifiable permission can bounce the

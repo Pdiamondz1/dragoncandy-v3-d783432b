@@ -43,8 +43,43 @@ const { IG_GRAPH, IG_VERSION } = INSTAGRAM_INTERNALS;
  *
  * Named here rather than added to the connector's scope list so that adding it
  * to the consent screen stays a decision with a review attached, not an import.
+ * See `instagram.ts` for why adding it early would break the working insights
+ * connector rather than enable publishing.
  */
 export const PUBLISH_PERMISSION = 'instagram_business_content_publish';
+
+/**
+ * Is publishing POSITIVELY known to be granted on this connection?
+ *
+ * Note this is the OPPOSITE asymmetry to `isInsightsPermissionMissing`, and the
+ * inversion is deliberate rather than an oversight of the sibling.
+ *
+ * That one answers "do we positively know it is MISSING", so an empty
+ * `permissions` array — meaning we never recorded what was granted — lets Meta
+ * judge. Failing closed there would break a working connection on the strength
+ * of a gap in our own bookkeeping, and the cost of being wrong the other way is
+ * one empty chart.
+ *
+ * Here the cost of being wrong is inverted. A publish attempt without the
+ * permission does not degrade, it FAILS at Meta — after the media was copied,
+ * a container was built, and an attempt was burned — and it fails with a Meta
+ * error rather than anything that names the real cause. And today the answer is
+ * knowable: every existing connection genuinely lacks this permission, and prod
+ * records `permissions` populated correctly (`instagram_business_basic`,
+ * `instagram_business_manage_insights`) rather than empty. So "we do not know"
+ * is treated as "not granted", and the owner is told at approval time.
+ */
+export function isPublishPermissionGranted(permissions: readonly string[]): boolean {
+  return permissions.includes(PUBLISH_PERMISSION);
+}
+
+export const MISSING_PUBLISH_PERMISSION_MESSAGE =
+  'This Instagram account has not granted publishing access — reconnect it and allow posting';
+
+export function requirePublishPermission(permissions: readonly string[]): void {
+  if (isPublishPermissionGranted(permissions)) return;
+  throw new InstagramError('missing_publish_permission', MISSING_PUBLISH_PERMISSION_MESSAGE, 403);
+}
 
 /** Meta's own cap: 100 API-published posts per rolling 24 hours, per account. */
 export const RATE_LIMIT_POSTS = 100;

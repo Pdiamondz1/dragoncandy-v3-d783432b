@@ -1,10 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import {
   containerParams,
+  isPublishPermissionGranted,
   mediaKind,
   metaErrorCode,
   RATE_LIMIT_CODES,
   REAUTH_CODES,
+  requirePublishPermission,
   validateJobShape,
 } from './instagram-publish.ts';
 
@@ -117,5 +119,39 @@ describe('metaErrorCode', () => {
     expect(REAUTH_CODES).not.toContain(code);
     // ...while the real rate-limit code still classifies.
     expect(RATE_LIMIT_CODES).toContain(metaErrorCode('{"error":{"code":4}}'));
+  });
+});
+
+describe('requirePublishPermission', () => {
+  it('CONTROL — accepts a connection that granted publishing', () => {
+    expect(() =>
+      requirePublishPermission([
+        'instagram_business_basic',
+        'instagram_business_content_publish',
+      ]),
+    ).not.toThrow();
+    expect(isPublishPermissionGranted(['instagram_business_content_publish'])).toBe(true);
+  });
+
+  // The state prod is actually in: insights granted, publishing not.
+  it('refuses the permission set every live connection currently holds', () => {
+    expect(() =>
+      requirePublishPermission([
+        'instagram_business_basic',
+        'instagram_business_manage_insights',
+      ]),
+    ).toThrow(/has not granted publishing access/);
+  });
+
+  // The OPPOSITE asymmetry to isInsightsPermissionMissing, and deliberately so:
+  // insights degrade to an empty chart if we guess wrong; a publish fails at
+  // Meta after the media was copied and an attempt was burned.
+  it('treats an unrecorded permission list as NOT granted', () => {
+    expect(isPublishPermissionGranted([])).toBe(false);
+    expect(() => requirePublishPermission([])).toThrow(/has not granted publishing access/);
+  });
+
+  it('does not accept a permission that merely contains the name', () => {
+    expect(isPublishPermissionGranted(['instagram_business_content_publish_x'])).toBe(false);
   });
 });

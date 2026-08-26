@@ -63,6 +63,7 @@ import {
   publishContainer,
   RATE_LIMIT_POSTS,
   RATE_WINDOW_SECONDS,
+  requirePublishPermission,
   validateJobShape,
   type ContentType,
 } from '../_shared/instagram-publish.ts';
@@ -217,6 +218,13 @@ async function advance(db: any, job: Claim): Promise<Outcome> {
     // future caller that skipped the enqueue function still meets them.
     validateJobShape(job.content_type, job.media_paths, job.caption);
 
+    // Refuse BEFORE spending a Meta call, using the same predicate the enqueue
+    // path used — so the two cannot disagree, and so a connection that never
+    // granted publishing fails with a sentence naming that instead of a Graph
+    // error five attempts deep. This is what `INSTAGRAM_SCOPES` not yet
+    // carrying the permission looks like from here.
+    requirePublishPermission(conn.permissions ?? []);
+
     const token = await ensureFreshToken(db, conn);
 
     if (!job.ig_container_id) {
@@ -235,6 +243,12 @@ async function advance(db: any, job: Claim): Promise<Outcome> {
         // rather than failed so it keeps its attempt.
         await release(db, job, 'Instagram is rate limiting the app — will retry');
         return 'skipped';
+      }
+      if (err.code === 'missing_publish_permission') {
+        // Terminal until the user reconnects, so it must not be retried into
+        // `stuck` over five ticks. Failed once, with the reason on the row.
+        await fail(db, job, err.message);
+        return 'failed';
       }
       if (err.code === 'published_unknown_id') {
         await review(db, job, err.message);
