@@ -2,8 +2,8 @@
 title: Site Access Lockdown (Private Preview)
 type: concept
 created: 2026-08-23
-updated: 2026-08-23
-sources: [2026-08-23-site-access-lockdown.md]
+updated: 2026-08-26
+sources: [2026-08-23-site-access-lockdown.md, 2026-08-26-static-privacy-page.md]
 tags: [security, vercel, middleware, authentication, supabase, lighthouse, private-preview, gotcha]
 ---
 # Site Access Lockdown (Private Preview)
@@ -78,9 +78,13 @@ to an anonymous browser.
 
 This is not theoretical. The first implementation allowlisted `/.well-known/` and
 `/apple-app-site-association` for Apple's association file. Neither exists under `public/`. Both
-served the app shell. Codex found it; the allowlist is now exactly `/robots.txt` and `/favicon.ico`,
-and the spec states the *rule* rather than a list, because a list invites additions and the rule
-does not.
+served the app shell. Codex found it; the spec states the *rule* rather than a list, because a list
+invites additions and the rule does not.
+
+The allowlist is now `/robots.txt`, `/favicon.ico` and **`/privacy.html`** (2026-08-26, #547 — this
+line read "exactly `/robots.txt` and `/favicon.ico`" until then). The third entry is the rule being
+obeyed, not bent: it is a real generated file, and the change that added it also made the rule
+**machine-checked** rather than merely stated — see below.
 
 The same reasoning is why **`/promo/:promotionId` is deliberately not allowlisted** even though both
 promotion surfaces still generate QR codes pointing at it, and those QR codes now lead to a password
@@ -90,6 +94,70 @@ before any promo QR is printed or shared**. The documented workaround is `/promo
 
 Sharing a link without handing out the password is what the signed `?k=` bypass exists for: it mints
 a 30-day HMAC-signed cookie and strips itself from the URL.
+
+## The rule was true, stated, and enforced by nothing — until #547
+
+`decide.ts` had carried the rule above in a doc comment since 2026-08-23, and every reader agreed
+with it. Nothing checked it. That is the same shape as this codebase's four recorded column-level
+`REVOKE` no-ops: a correct statement with no mechanism behind it, which holds exactly as long as
+everyone who touches the file happens to read the comment.
+
+`gate/decide.test.ts` now walks the **real** `ALLOWED_EXACT` set — exported for the purpose — and
+asserts every entry has a file under `public/`. Because it walks the set rather than a copy of it, a
+future entry is covered by the act of being added. Two controls, in opposite directions: the set must
+hold at least three entries, since an empty set would pass vacuously; and
+`apple-app-site-association` must NOT exist, proving `existsSync` can return `false` here at all.
+Forced red by hand: allowlisting `/apple-app-site-association` fails with `"has no file"`, and the
+pre-existing behavioural test fails alongside it.
+
+## The privacy policy: a deadlock that was never a decision
+
+§5's **first** founder-action item said switching `SITE_GATE_ENABLED` on "breaks every pending
+platform review", because Google, Meta, TikTok and X each require an **anonymously reachable**
+privacy policy and `/privacy` answers 401 with everything else. Read plainly: the lockdown and the
+connector approvals are mutually exclusive, so pick one.
+
+Nothing about the business forces that. It is an artifact of how the gate is built. **A "decision" in
+a planning doc is sometimes an unexamined engineering constraint wearing a decision's clothes** — and
+this one survived at the top of the list precisely because it reads as a genuine trade-off, right up
+until you ask why the two are coupled at all.
+
+The fix obeys the allowlist rule instead of bending it. `public/privacy.html` is a real file,
+**generated** from the app's own policy source (`src/pages/legal/PrivacyPolicyBody.tsx`, extracted
+hook-free so it renders with no React context) by `npm run legal:static`. `/privacy` itself stays
+gated; the pretty URL is still a SPA route and allowlisting it would serve the whole product.
+
+Four things the design encodes, each easy to get wrong by hand:
+
+- **Generated, not written.** A hand-written copy is a fork of a legal document that nothing keeps in
+  step, and the one field guaranteed to change — the "Last updated" date — is what a reader uses to
+  decide whether to trust the page.
+- **Fully self-contained.** With the gate on, everything not allowlisted answers 401, including the
+  CSS bundle and the fonts. All styling is inline and there are no image requests; `/favicon.ico` is
+  the single external reference, and only because it is itself allowlisted.
+- **Committed, not built on the fly.** Vite copies `public/` at the *start* of a build, so generating
+  into it mid-build is too late — and a `prebuild` hook would make every plain `npm run build` depend
+  on the script. The committed artifact keeps a fresh checkout correct; the test keeps it honest.
+- **`rel="canonical"` points at `/privacy`.** Ungated, the React route is where a human should land,
+  and two indexable URLs for one policy is duplicate content. While gated that target 401s — accepted,
+  since the whole site is de-listed then, which is also why `/sitemap.xml` stays off the allowlist.
+
+**The two halves cannot land apart.** The generator refuses to write unless `decide.ts` allowlists
+what it produces: a file nobody allowlists is 401'd like everything else, and an allowlisted path
+with no file serves the shell. That is precisely what this page already asked of a future
+`apple-app-site-association` — in prose.
+
+Verified on prod 2026-08-26: `/privacy.html` serves 7,782 bytes, all 11 numbered sections, and is
+**byte-identical** to `origin/main`'s copy, while `/privacy` still returns the React SPA and
+`/nope.html` returns the shell — demonstrating rather than arguing why the pathless allowlist entry
+would have been a disaster.
+
+**Register `/privacy.html`, not `/privacy`, in the four platform consoles.** It works gated *and*
+ungated; the pretty URL only ever works ungated.
+
+**Left open:** whether `/privacy` should collapse into the static page entirely — one URL, no drift
+risk at all — which would delete the React route and change what a logged-in user sees. A product
+decision, not a cleanup. → [[Static Privacy Page Session]] · #547
 
 ## Two ways to be admitted, and therefore two ways to revoke
 

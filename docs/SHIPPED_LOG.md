@@ -32,6 +32,113 @@
 >
 > **Adding an entry:** prepend it (newest first). See `knowledge-sync` step 4.
 
+## [2026-08-26] A static privacy policy the site gate can serve, generated from the app's own source
+
+**PR #547** (`f467b3ed`), live and verified on prod.
+→ [[Static Privacy Page Session]] · [[Site Access Lockdown (Private Preview)]]
+
+**The deadlock, and why it was never a decision.** `PROJECT_CONTEXT` §5's **first**
+founder-action item said the site gate is "a decision, not a task", because switching
+`SITE_GATE_ENABLED` on "breaks every pending platform review" — the allowlist was exactly
+`/robots.txt` and `/favicon.ico`, so `/` and `/privacy` answer 401, and Google, Meta, TikTok and X
+each require an anonymously reachable privacy policy. Read plainly, that says the lockdown and the
+connector approvals are mutually exclusive.
+
+Nothing about the business forces that. It is an artifact of how the gate is built, and it was
+fixable in an afternoon. **A "decision" in a planning doc is sometimes an unexamined engineering
+constraint wearing a decision's clothes** — and this one survived at the top of the launch-blocking
+list precisely because it reads as a genuine trade-off, right up until you ask why the two are
+coupled at all.
+
+**The obvious fix would have un-gated the site.** Adding `/privacy` to the allowlist looks like a
+one-line config change. `gate/decide.ts`'s own comment says why not: `vercel.json` rewrites every
+unmatched path to `/index.html`, so allowlisting a path with no backing file does not serve
+"nothing" — it serves the SPA shell. And because the app talks straight to `supabase.co`, which
+never traverses Vercel, that shell is a **working product**, not a screenshot. Not hypothetical
+either: the lockdown's first implementation allowlisted `/.well-known/` and
+`/apple-app-site-association`, neither of which existed, and both served the shell.
+
+**What shipped.** A real file at `public/privacy.html`, allowlisted, and **generated**, not typed.
+`src/pages/legal/PrivacyPolicyBody.tsx` holds the policy text, extracted hook-free so it renders
+with no React context; `PrivacyPolicy.tsx` is now only the in-app chrome around it;
+`scripts/build-legal-static.ts` (`npm run legal:static`) renders it to a self-contained page. The
+generator **refuses to run** unless `gate/decide.ts` allowlists what it produces — a file nobody
+allowlists is 401'd like everything else, an allowlisted path with no file serves the shell, and the
+two halves are useless apart. That is exactly what the gate's comment already asked of a future
+`apple-app-site-association`, in prose, hoping someone reads it.
+
+Four design points, each easy to get wrong by hand:
+
+- **Generated, because a hand-written copy is a fork of a legal document.** Nothing would keep it in
+  step, and the field guaranteed to change — the "Last updated" date — is what a reader uses to
+  decide whether to trust the page.
+- **Fully self-contained.** With the gate on, *everything* not allowlisted answers 401 — the CSS
+  bundle, the fonts, `/logo.webp`. A stylesheet link would leave a reviewer looking at unstyled text
+  on the one page we are asking them to judge us by. `/favicon.ico` is the single external
+  reference, and only because it is itself allowlisted.
+- **Committed, not built on the fly.** Vite copies `public/` at the *start* of a build, so
+  generating into it mid-build is too late, and a `prebuild` hook would make every plain
+  `npm run build` depend on the script.
+- **`rel="canonical"` points at `/privacy`.** Ungated, the React route is where a human should land,
+  and two indexable URLs for one policy is duplicate content. While gated that target 401s —
+  accepted, since the whole site is de-listed then, which is also why `/sitemap.xml` stays off.
+
+**A rule that was true, stated, and enforced by nothing.** `decide.ts` had carried "only allowlist a
+path with a real file under `public/`" in a doc comment since 2026-08-23, and nothing checked it —
+the same shape as this codebase's four recorded column-level `REVOKE` no-ops. `gate/decide.test.ts`
+now walks the **real** `ALLOWED_EXACT` set (exported for the purpose) and asserts every entry has a
+file, so a future entry is covered by the act of being added. Controls in both directions: the set
+must hold ≥3 entries, since an empty one passes vacuously, and `apple-app-site-association` must NOT
+exist, proving `existsSync` can return false here at all.
+
+**All four guards forced red by hand:**
+
+| guard | forced-red result |
+|---|---|
+| whole-file comparison against a fresh render | bumped the date without regenerating → 2 failures |
+| contiguous numbered sections | deleted §7 and regenerated → `expected [1,2,3,4,5,6,8,9,10,11] to deeply equal […]` |
+| every allowlisted path has a file | allowlisted `/apple-app-site-association` → `"has no file"` |
+| the generator's own refusal | removed the allowlist entry → refuses, exit 1 |
+
+The file comparison is **whole, not sampled**: sampling cannot see a *deleted* section, and a
+privacy policy missing a section is exactly the failure a sampled check waves through.
+
+**A toolchain trap.** `npx tsx` resolves the ROOT `tsconfig.json`, which is solution-style
+(`files: []` + `references`) and carries no `jsx` setting, so esbuild falls back to the classic
+transform — and the failure surfaces not in the script but in the *imported component*, at render
+time, as `ReferenceError: React is not defined` pointing at a file that looks perfectly fine.
+**Adding `jsx` to the root config does not fix it; naming `tsconfig.app.json` does.** The root edit
+was tried, measured as ineffective, and reverted rather than left in as cargo — a change that does
+nothing is worse than no change, because the next reader assumes it is load-bearing.
+
+**Verified on prod — and the first verification lied.** `/privacy.html` serves 7,782 bytes, all 11
+numbered sections, the correct entity and contact address, and is **byte-identical** to
+`origin/main`'s copy. Controls: `/privacy` still returns the React SPA, and `/nope.html` returns the
+SPA shell — demonstrating on prod, rather than arguing, why allowlisting a pathless URL would have
+been a disaster.
+
+The first run reported the SPA shell and looked like a broken change. **The probe was at fault:** it
+polled until `/privacy.html` returned `200`, but the catch-all answers 200 for *every* path, so the
+exit condition could not distinguish "deployed" from "not deployed" and it broke on the first
+request. A control settled it — `robots.txt` serves real text, so static files do beat the rewrite —
+and re-polling on **content** showed it had landed within 30 seconds. **Third instance this session
+of waiting on a signal whose success and failure states are identical**, after an RAG probe run
+before a background sync finished and a `mergeStateStatus: BLOCKED` where every visible check was
+green because the *missing* one was required.
+
+**What it does and does not change.** Nothing deployed: it is a Vercel artifact that ships on merge.
+The gate is still **off** in production, so nothing changed for any visitor. What changed is that
+switching it on no longer breaks four app reviews — and **`/privacy.html` is the URL to register in
+the Google, Meta, TikTok and X consoles**, because it works gated *and* ungated, which `/privacy`
+never will.
+
+**Left open deliberately:** whether `/privacy` should collapse into the static page entirely — one
+URL, no drift risk at its root — which would delete the React route and change what a logged-in user
+sees. A product decision, not a cleanup.
+
+**Codex** clean on the first round. 3,611 tests pass; typecheck clean; lint 0 errors; build emits
+`dist/privacy.html`.
+
 ## [2026-08-26] The package-order existence oracle: one answer for "no such order" and "not yours"
 
 **PR #545** (`54ca8b24`), both functions deployed and verified on prod the same day.

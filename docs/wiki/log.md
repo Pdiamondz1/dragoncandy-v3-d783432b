@@ -1,5 +1,23 @@
 # Wiki Log
 
+## [2026-08-26] ingest | A static privacy policy the site gate can serve
+
+**Created** `raw/sessions/2026-08-26-static-privacy-page.md` and
+[[Static Privacy Page Session]] (`sources/static-privacy-page-session.md`).
+**Updated** [[Site Access Lockdown (Private Preview)]] (two new sections; **and its stale
+"the allowlist is now exactly `/robots.txt` and `/favicon.ico`" claim**),
+`docs/runbooks/site-access-lockdown.md` (two post-deploy checks, one of them a warning
+against the status-code probe that mis-verified this), `index.md`, `docs/SHIPPED_LOG.md`,
+`docs/PROJECT_CONTEXT.md` §5 — where the **first founder-action item** is corrected: it
+said the gate was "a decision, not a task" because switching it on breaks every platform
+review, and that is no longer true.
+
+**The correction to §5 is the point of this ingest, not a side effect.** That item had sat
+at the top of the launch-blocking list reading as a genuine trade-off — lock the site *or*
+get approved — when it was an artifact of how the gate was built. **A "decision" in a
+planning doc is sometimes an unexamined engineering constraint wearing a decision's
+clothes**, and the tell is that nobody had asked why the two were coupled.
+
 ## [2026-08-26] ingest | The package-order existence oracle, found by verifying a different fix
 
 **Created** `raw/sessions/2026-08-26-package-order-existence-oracle.md` and

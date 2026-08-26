@@ -154,9 +154,12 @@ Engineering cannot close these. Ordered by what blocks launch.
 - **Site-gate go-live, in this order:** set the four Production-scope Vercel variables →
   deploy → run the runbook's checks → **only then** disable Supabase signup. `SITE_GATE_ENABLED`
   is the lever; deleting the variables is the wrong rollback, because it fails closed.
-  **Switching it on breaks every pending platform review** — the allowlist is exactly
-  `/robots.txt` and `/favicon.ico`, so `/` and `/privacy` answer 401, and Google, Meta, TikTok
-  and X each require an anonymously reachable privacy policy. A decision, not a task.
+  **This entry said switching it on "breaks every pending platform review" and called it a
+  decision, not a task. That is no longer true** — #547 added a generated, self-contained
+  `public/privacy.html` to the allowlist, verified live on prod, so the anonymously reachable
+  privacy policy Google, Meta, TikTok and X each require survives the gate. Register
+  `/privacy.html` in those consoles, never `/privacy`, which is a SPA route and stays gated.
+  It is now a task.
 - **No Facebook Page exists to connect** — creating one is public, outward-facing content. The
   connector is deployed and stops at Meta's Page-selection step until a Page exists.
 - **Demo videos for platform app review** — Google (YouTube) and Meta (Instagram, Facebook).
@@ -381,6 +384,11 @@ Engineering cannot close these. Ordered by what blocks launch.
   unauthenticated request, because every failure shared one hardcoded status. Authentication now
   401; authorization/not-found/validation unchanged. Its one open item is **closed** below.
   → `docs/wiki/raw/sessions/2026-08-26-auth-401-not-500.md` · #542
+- **The site gate and the platform approvals were mutually exclusive** — four app reviews need an
+  anonymously reachable privacy policy and `/privacy` is a SPA route. Closed by a generated,
+  self-contained `public/privacy.html` on the allowlist; the gate's "real file behind every entry"
+  rule is now machine-checked rather than a comment. Verified on prod.
+  → `docs/wiki/concepts/site-access-lockdown.md` · #547
 - **A service-role read answered a stranger** — the two functions that would not move to 401 read the
   order with the service role and authorized after, so "this order exists" was distinguishable from
   "it doesn't". The reorder that closes it breaks guest refunds, so a caller who presented *nothing*
