@@ -345,13 +345,22 @@ async function publishStep(db: any, job: Claim, token: string): Promise<Outcome>
 
   if (!confirmed) {
     // The post IS live — Meta named it. We simply could not record that under
-    // this claim, so the row must not be left looking unpublished.
+    // this claim, so the row must not be left looking unpublished. The staged
+    // bytes are deliberately KEPT here: a person is about to look at this, and
+    // what was published is the first thing they will want to see.
     console.error(
       `[instagram-publish-sweep] job ${job.job_id}: published as ${mediaId} but the claim was gone`,
     );
     await review(db, job, `Published to Instagram as ${mediaId}, but the job row could not record it`);
     return 'needs_review';
   }
+
+  // Only AFTER the confirm committed. Meta has fetched the media and the row
+  // records what it created, so the staged copy has no reader left — and a
+  // 300 MB Reel kept per post turns a storage bucket into a bill that grows
+  // with every success. Deleting before the confirm would destroy the bytes a
+  // retry needs, which is why this is the last line rather than a `finally`.
+  await discardStaged(db, job);
 
   return 'published';
 }
@@ -366,9 +375,32 @@ async function fail(db: any, job: Claim, reason: string): Promise<void> {
   });
   if (error) console.error('[instagram-publish-sweep] fail_publish_job:', error);
   // Reported exactly once, on the transition — the `bump_flush_attempt`
-  // contract, so an alert fires once rather than on every later sweep.
+  // contract, so an alert fires once rather than on every later sweep. `stuck`
+  // is also the point at which nothing will read the staged bytes again, so it
+  // is the only failure branch that discards them; a retryable failure keeps
+  // them, because the retry needs them.
   if (data === 'stuck') {
     console.error(`[instagram-publish-sweep] job ${job.job_id} is STUCK: ${reason}`);
+    await discardStaged(db, job);
+  }
+}
+
+/**
+ * Drop the frozen copy of the media once nothing can need it again.
+ *
+ * Best-effort on purpose. A failed delete must never turn a published post into
+ * a reported failure — the post is live either way, and the row saying so is
+ * worth more than the bytes. It leaves litter, which is visible in the bucket;
+ * the alternative leaves a wrong status, which is visible to a customer.
+ */
+// deno-lint-ignore no-explicit-any
+async function discardStaged(db: any, job: Claim): Promise<void> {
+  const { error } = await db.storage.from(PUBLISH_BUCKET).remove(job.media_paths);
+  if (error) {
+    console.error(
+      `[instagram-publish-sweep] job ${job.job_id}: staged media not removed:`,
+      error,
+    );
   }
 }
 
