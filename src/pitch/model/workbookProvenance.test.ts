@@ -176,6 +176,15 @@ describe('workbook provenance', () => {
       // one `rollup()`'s `midpoint = (band.revenueLow + band.revenueHigh) / 2` computes in
       // TypeScript. Structural (how you average two numbers), not a modeled input.
       '2': 'the midpoint divisor in (top-down low + top-down high) / 2',
+      // Months in a year, in `Exit ARR = year-end customers * ARPU per customer-MONTH * 12`.
+      // The calendar, not a modeled input: it is `MONTHS_PER_YEAR` in metroModel.ts, the same
+      // constant that decides which absolute months belong to which model year, and the
+      // workbook emits it from that constant rather than typing "12". Deliberately NOT
+      // registered as an assumption — an assumption is something a reader is invited to edit,
+      // and a year with a different number of months is not a scenario this model has.
+      // Every genuine per-month RATE it multiplies (ARPU, AI cost, infra cost) is a named
+      // cell; this is only the unit conversion between "per month" and "per year".
+      '12': 'MONTHS_PER_YEAR — the per-month to per-year conversion in the Exit ARR run rate',
     };
 
     // Matches only a STANDALONE numeral. A bare `\d+` also matches the row digits inside
