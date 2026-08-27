@@ -1,0 +1,598 @@
+// instagram-publish-sweep — releases approved posts to Instagram on time.
+//
+// Runs on pg_cron (see the cron migration) with `verify_jwt = false`, checking
+// the ingest bearer itself — the same shape as `auto-approve-content`,
+// `reconcile-pending-flushes` and `instagram-refresh-sweep`.
+//
+// ---------------------------------------------------------------------------
+// ONE STEP PER TICK, NOT ONE JOB PER TICK
+//
+// Publishing is three calls with an asynchronous transcode in the middle, so a
+// tick that saw a job through from start to finish would hold its claim across
+// a poll that can take a minute — and a lock only helps while it is held. Each
+// tick therefore advances a job by exactly one step and hands the claim back:
+//
+//   no container      -> create one, store the id, release
+//   container pending -> poll; still transcoding, release WITHOUT charging an
+//                        attempt (a 60-second video polled by a one-minute cron
+//                        would otherwise die of being watched)
+//   container ready   -> stamp `publishing_at`, publish, confirm
+//
+// ---------------------------------------------------------------------------
+// THE THREE PLACES THIS REFUSES TO GUESS
+//
+// A post is public and permanent, so every ambiguous outcome stops rather than
+// retries. `needs_review` is the `stuck` contract applied to a feed instead of
+// to money.
+//
+//   1. Meta reports the container as already PUBLISHED. That is the only
+//      evidence there is that an interrupted publish landed, since
+//      `media_publish` has no idempotency key. Republishing would duplicate the
+//      post; failing would claim it never happened.
+//   2. Meta accepts the publish and returns no media id. We cannot name what we
+//      just created.
+//   3. A claim expires with `publishing_at` set — handled in SQL, by
+//      `claim_publish_job`'s janitor pass.
+//
+// ---------------------------------------------------------------------------
+// KNOWN GAP, DELIBERATE
+//
+// A published job is NOT written to `social_post_log`. That table's key is
+// `(outstand_post_id, platform)` and a natively published post has no Outstand
+// id; putting an Instagram media id in that column would corrupt the
+// measurement spine's own vocabulary to save one migration. The job row carries
+// `ig_media_id` and `published_at`, which is the acceptance signal the design
+// names. Wiring native posts into measurement is its own slice.
+//
+// ENV: SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, AIOS_INGEST_SECRET,
+//      INSTAGRAM_APP_SECRET (the token refresh needs it)
+
+import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
+import { createClient } from 'npm:@supabase/supabase-js@2';
+import { isAuthorizedIngest } from '../_shared/ingest-auth.ts';
+import { PUBLISH_BUCKET } from '../_shared/publish-staging.ts';
+import { InstagramError } from '../_shared/instagram.ts';
+import {
+  ensureFreshToken,
+  loadConnection,
+  markNeedsReconnect,
+} from '../_shared/instagram-connection.ts';
+import {
+  containerParams,
+  containerStatus,
+  createContainer,
+  publishContainer,
+  provesNothingWasPublished,
+  RATE_LIMIT_POSTS,
+  RATE_WINDOW_SECONDS,
+  requirePublishPermission,
+  validateJobShape,
+  type ContentType,
+} from '../_shared/instagram-publish.ts';
+
+const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
+const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+
+/**
+ * How long a claim may be held before the janitor takes it back.
+ *
+ * Generously longer than the worst tick this function can have (three Meta
+ * calls plus a token refresh), because reclaiming early is the expensive
+ * mistake: a claim taken back while its owner is mid-publish is exactly the
+ * ambiguous state that costs a human a look at the account.
+ */
+const CLAIM_TTL_SECONDS = 15 * 60;
+
+/**
+ * A job that has FAILED this many times stops and waits for a person.
+ *
+ * Polling is not failing, and the distinction is load-bearing enough to have
+ * been measured rather than reasoned. `claim_publish_job` increments `attempts`
+ * on every claim, and `release_publish_job` does `greatest(attempts - 1, 0)` --
+ * so a tick that finds the media still processing hands its attempt straight
+ * back and the cycle is net zero.
+ *
+ * Verified on prod (rolled back): TEN full poll cycles leave `attempts` at 0
+ * and the job still claimable, while the control -- five real failures -- takes
+ * it to 5 and `stuck`. So a slow transcode cannot exhaust the budget; the bound
+ * on a job that is only ever polled is the 48-hour deadline (20260826370000),
+ * which is why that exists as a separate mechanism rather than as a smaller
+ * number here.
+ *
+ * Raised as a finding twice now. If it comes up again, re-run the probe rather
+ * than re-reading the code: the refund is one `greatest()` in a migration and
+ * is easy to miss from the call site.
+ */
+const MAX_ATTEMPTS = 5;
+
+/**
+ * How long a job may stay due-but-unpublished before we stop and ask a person.
+ *
+ * `MAX_ATTEMPTS` cannot end a job that is only ever POLLED, because a poll
+ * releases its attempt on purpose — so a media file the platform never reports
+ * as ready or failed would be claimed and released for ever. In practice Meta
+ * ends it (a container or upload session expires in about a day), but that is a
+ * third party's behaviour rather than a bound this function controls.
+ *
+ * Deliberately longer than Meta's own expiry, so Meta's terminal status stays
+ * the primary mechanism — it carries a reason a person can act on, where this
+ * only reports that nothing was ever heard. See 20260826370000.
+ */
+const MAX_AGE_SECONDS = 48 * 60 * 60;
+
+/** Jobs advanced per tick. Bounded so a backlog costs several runs, not a timeout. */
+const MAX_PER_RUN = 10;
+
+/**
+ * Fail a job ONCE rather than retrying it to exhaustion.
+ *
+ * `fail_publish_job` marks a job `stuck` when `attempts >= p_max_attempts`, so
+ * passing zero makes the very first failure terminal. That is the whole trick,
+ * and it is deliberate rather than clever-for-its-own-sake: it reuses the
+ * contract that already reports the `stuck` transition exactly once, instead of
+ * adding a second failure path that could report it differently.
+ *
+ * Used for conditions no retry can change — a revoked permission, a dead grant,
+ * a connection that now points at a different account, a file Instagram will
+ * never accept. Retrying those spends five ticks arriving at the same answer
+ * while the owner reads "queued" and waits.
+ */
+const TERMINAL = 0;
+
+/**
+ * How long Meta has to fetch the media, from the moment the container is
+ * created. Meta fetches once, during container creation, so this only has to
+ * outlast that single request — but a signed URL that expires mid-fetch fails
+ * as "media could not be downloaded", which reads like a bad file.
+ */
+const MEDIA_URL_TTL_SECONDS = 2 * 60 * 60;
+
+const json = (body: unknown, status = 200) =>
+  new Response(JSON.stringify(body), {
+    status,
+    headers: { 'Content-Type': 'application/json' },
+  });
+
+interface Claim {
+  job_id: string;
+  claim_id: string;
+  user_id: string;
+  platform: string;
+  /** The platform's own account id — here, the Instagram user id. */
+  account_key: string;
+  instagram_connection_id: string;
+  content_type: ContentType;
+  caption: string | null;
+  media_paths: string[];
+  /** Instagram's container id. Facebook stores a video id in the same column. */
+  provider_ref: string | null;
+}
+
+/**
+ * Errors about the JOB rather than about the moment — no retry can change them.
+ *
+ * Kept as an explicit list rather than derived from
+ * `PROVEN_NOT_PUBLISHED_CODES`, which overlaps but answers a different
+ * question. That one asks "is it safe to retry"; this asks "is it worth
+ * retrying". `publish_rejected` is on that list and deliberately not on this
+ * one: a Meta 4xx can be a transient media-download failure, so retrying is
+ * both safe AND worth doing.
+ */
+const TERMINAL_SHAPE_CODES = [
+  'unsupported_media',
+  'reels_need_video',
+  'caption_on_story',
+  'too_many_media',
+  'no_media',
+];
+
+type Outcome =
+  | 'container_created'
+  | 'transcoding'
+  | 'published'
+  | 'failed'
+  | 'needs_review'
+  | 'skipped';
+
+serve(async (req: Request) => {
+  if (!isAuthorizedIngest(req)) {
+    return json({ error: 'unauthorized' }, 401);
+  }
+
+  const db = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+
+  const counts: Record<Outcome, number> = {
+    container_created: 0,
+    transcoding: 0,
+    published: 0,
+    failed: 0,
+    needs_review: 0,
+    skipped: 0,
+  };
+  let reclaimed = 0;
+  let flagged = 0;
+  let expired = 0;
+
+  // Accounts that answered "out of allowance" this run. Without this, one
+  // account at its 100-per-24h cap is the globally oldest due job every time
+  // and stalls publishing for every other account on the platform.
+  const rateLimited: string[] = [];
+
+  // Jobs already advanced this run. `record_publish_container` and `release`
+  // both put a job straight back to `queued` with its original `scheduled_at`,
+  // so it is immediately the oldest due job again — and without this the loop
+  // would spend all ten iterations polling ONE container in the space of a few
+  // seconds, hammering the Graph API and starving every other due job. "One
+  // step per tick" is the whole scheduling model; this is what makes it true
+  // rather than merely intended.
+  const advanced: string[] = [];
+
+  try {
+    for (let i = 0; i < MAX_PER_RUN; i++) {
+      const { data: claim, error } = await db.rpc('claim_publish_job', {
+        p_claim_ttl_seconds: CLAIM_TTL_SECONDS,
+        p_rate_limit: RATE_LIMIT_POSTS,
+        p_rate_window_seconds: RATE_WINDOW_SECONDS,
+        p_max_attempts: MAX_ATTEMPTS,
+        p_max_age_seconds: MAX_AGE_SECONDS,
+        p_skip_account_keys: rateLimited,
+        p_skip_job_ids: advanced,
+        // Scoped to this platform, because the rate limit is not the same
+        // number on both: Instagram is a flat 100 per rolling 24 hours per
+        // account, Facebook's Page limit is a formula over engaged users. A
+        // sweep that claimed the globally-oldest job and then applied
+        // Instagram's 100 to a Facebook Page would enforce a number that means
+        // nothing there.
+        p_platform: 'instagram',
+      });
+
+      if (error) {
+        console.error('[instagram-publish-sweep] claim failed:', error);
+        break;
+      }
+
+      reclaimed += Number(claim?.reclaimed ?? 0);
+      flagged += Number(claim?.flagged ?? 0);
+      expired += Number(claim?.expired ?? 0);
+
+      if (!claim?.claimed) {
+        if (claim?.reason === 'rate_limited' && claim?.account_key) {
+          rateLimited.push(String(claim.account_key));
+          counts.skipped++;
+          continue;
+        }
+        // `nothing due` or `taken` — nothing more this run.
+        break;
+      }
+
+      advanced.push(String(claim.job_id));
+      counts[await advance(db, claim as Claim)]++;
+    }
+
+    if (flagged > 0) {
+      console.error(
+        `[instagram-publish-sweep] ${flagged} job(s) expired mid-publish and need review`,
+      );
+    }
+
+    if (expired > 0) {
+      console.error(
+        `[instagram-publish-sweep] ${expired} job(s) passed the deadline without the platform ever answering`,
+      );
+    }
+
+    return json({ ...counts, reclaimed, flagged, expired });
+  } catch (err) {
+    console.error('[instagram-publish-sweep] unexpected:', err);
+    return json({ error: 'internal_error', ...counts }, 500);
+  }
+});
+
+/** Move one claimed job forward by exactly one step. */
+// deno-lint-ignore no-explicit-any
+async function advance(db: any, job: Claim): Promise<Outcome> {
+  const label = `[instagram-publish-sweep] job ${job.job_id}`;
+
+  try {
+    // The connection is re-read rather than trusted from the job, and matched
+    // on `account_key`. Instagram's row is upserted per user, so reconnecting to
+    // a DIFFERENT account reuses it — a job queued for account A must never
+    // publish to account B. Same rule `cache_tiktok_insights` enforces with
+    // `account_changed`, and the same failure if it does not: a real post
+    // attributed to the wrong subject.
+    const conn = await loadConnection(db, job.user_id, job.account_key);
+    if (!conn || conn.id !== job.instagram_connection_id) {
+      // Terminal: reconnecting writes a new row, so no number of retries brings
+      // this connection back.
+      await fail(
+        db,
+        job,
+        'The Instagram account this post was queued for is no longer connected',
+        { terminal: true },
+      );
+      return 'failed';
+    }
+
+    // Re-validated here, not only at enqueue. The shape rules are Meta's and
+    // this is the last point before an irreversible call; a job written by some
+    // future caller that skipped the enqueue function still meets them.
+    validateJobShape(job.content_type, job.media_paths, job.caption);
+
+    // Refuse BEFORE spending a Meta call, using the same predicate the enqueue
+    // path used — so the two cannot disagree, and so a connection that never
+    // granted publishing fails with a sentence naming that instead of a Graph
+    // error five attempts deep. This is what `INSTAGRAM_SCOPES` not yet
+    // carrying the permission looks like from here.
+    requirePublishPermission(conn.permissions ?? []);
+
+    const token = await ensureFreshToken(db, conn);
+
+    if (!job.provider_ref) {
+      return await createStep(db, job, token);
+    }
+    return await publishStep(db, job, token);
+  } catch (err) {
+    if (err instanceof InstagramError) {
+      if (err.code === 'needs_reconnect') {
+        await markNeedsReconnect(db, job.instagram_connection_id, err.message);
+        // Terminal: only the user re-consenting fixes a dead grant.
+        await fail(db, job, err.message, { terminal: true });
+        return 'failed';
+      }
+      if (err.code === 'rate_limited') {
+        // Meta throttling the whole app is not this job's fault. Released
+        // rather than failed so it keeps its attempt.
+        await release(db, job, 'Instagram is rate limiting the app — will retry');
+        return 'skipped';
+      }
+      if (err.code === 'missing_publish_permission') {
+        // Terminal until the user reconnects. This comment used to claim the
+        // job was "failed once" while the call below requeued it four more
+        // times — the comment was right about the intent and the code was not.
+        await fail(db, job, err.message, { terminal: true });
+        return 'failed';
+      }
+      if (err.code === 'published_unknown_id') {
+        await review(db, job, err.message);
+        return 'needs_review';
+      }
+      // A job whose SHAPE Meta will never accept — the wrong file format, a
+      // caption on a story, a still image submitted as a Reel. Retrying cannot
+      // change the file. Everything else keeps its retries, including
+      // `publish_rejected`, because a 4xx can be a transient media fetch
+      // failure on Meta's side rather than a verdict on the job.
+      console.error(label, err.code, err.message);
+      await fail(db, job, err.message, { terminal: TERMINAL_SHAPE_CODES.includes(err.code) });
+      return 'failed';
+    }
+    console.error(label, 'unexpected:', err);
+    await fail(db, job, err instanceof Error ? err.message : 'Unknown error');
+    return 'failed';
+  }
+}
+
+/** Step 1 — hand Meta a URL it can fetch, and remember the container. */
+// deno-lint-ignore no-explicit-any
+async function createStep(db: any, job: Claim, token: string): Promise<Outcome> {
+  const path = job.media_paths[0];
+
+  // Signed, not public. The bucket is private so the approved bytes are not
+  // world-readable for the life of the post; Meta only needs to fetch them
+  // once, at this call.
+  const { data: signed, error } = await db.storage
+    .from(PUBLISH_BUCKET)
+    .createSignedUrl(path, MEDIA_URL_TTL_SECONDS);
+
+  if (error || !signed?.signedUrl) {
+    console.error('[instagram-publish-sweep] could not sign media:', error);
+    await fail(db, job, 'The staged media could not be read');
+    return 'failed';
+  }
+
+  const containerId = await createContainer(
+    job.account_key,
+    token,
+    containerParams(job.content_type, path, signed.signedUrl, job.caption),
+  );
+
+  const { data: recorded } = await db.rpc('record_publish_ref', {
+    p_job_id: job.job_id,
+    p_claim_id: job.claim_id,
+    p_ref: containerId,
+  });
+
+  if (!recorded) {
+    // The claim was taken from under us AFTER Meta built a container. The
+    // container is an orphan that expires in 24 hours and nothing was
+    // published, so this is safe — but it is worth seeing in the logs, because
+    // it means a claim expired while its owner was still working.
+    console.warn(
+      `[instagram-publish-sweep] job ${job.job_id}: container ${containerId} created but the claim was gone`,
+    );
+  }
+  return 'container_created';
+}
+
+/** Steps 2 and 3 — poll, then publish once Meta says the container is ready. */
+// deno-lint-ignore no-explicit-any
+async function publishStep(db: any, job: Claim, token: string): Promise<Outcome> {
+  const containerId = job.provider_ref!;
+  const { status, error } = await containerStatus(containerId, token);
+
+  if (status === 'IN_PROGRESS') {
+    await release(db, job, 'Instagram is still processing the media');
+    return 'transcoding';
+  }
+
+  if (status === 'PUBLISHED') {
+    // The one signal that an interrupted publish landed. Republishing would
+    // duplicate a live post; failing would say it never happened. Neither is
+    // something a cron should decide.
+    await review(
+      db,
+      job,
+      'Instagram reports this container as already published — the post is live but its media id was never recorded',
+    );
+    return 'needs_review';
+  }
+
+  if (status === 'ERROR' || status === 'EXPIRED') {
+    // The container is dead, so the retry must not resume from it — polling the
+    // same permanently errored container five times reaches `stuck` having done
+    // nothing but wait. Cleared so a retry builds a fresh one.
+    //
+    // Not terminal: EXPIRED is genuinely recoverable (a container aged out
+    // after 24 hours and a new one would work), and ERROR is often but not
+    // always permanent, since Meta reports a transient media-download failure
+    // the same way. Both keep their retries and reach `stuck` on their own if
+    // they really are permanent.
+    await fail(
+      db,
+      job,
+      `Instagram ${status.toLowerCase()} the media: ${error ?? 'no detail given'}`,
+      { clearContainer: true },
+    );
+    return 'failed';
+  }
+
+  // FINISHED. Everything after this line may already have happened by the time
+  // we learn it did not.
+  const { data: stamped } = await db.rpc('begin_publish_step', {
+    p_job_id: job.job_id,
+    p_claim_id: job.claim_id,
+  });
+
+  if (!stamped) {
+    // The claim is gone, so `publishing_at` could not be written — and without
+    // it a crash mid-publish would look safe to retry. Publishing anyway would
+    // trade a delay for a possible duplicate.
+    console.warn(`[instagram-publish-sweep] job ${job.job_id}: claim lost before publishing`);
+    return 'skipped';
+  }
+
+  let mediaId: string;
+  try {
+    mediaId = await publishContainer(job.account_key, token, containerId);
+  } catch (err) {
+    // THE POINT OF NO RETURN IS BEHIND US. A timeout, a dropped connection or a
+    // Meta 5xx here does not mean the post did not go out — the request may
+    // have been received and acted on, and we simply never saw the answer.
+    //
+    // The outer catch cannot make this call, because from there every error
+    // looks the same. It used to, and it routed all of them to
+    // `fail_publish_job`, which requeues — so an ambiguous `media_publish`
+    // became a duplicate public post on the next tick. That is precisely the
+    // failure `publishing_at` was added to prevent, left open on the one path
+    // that does not go through the janitor.
+    //
+    // So: only an error that PROVES Meta created nothing is allowed to requeue.
+    // Everything else stops for a person.
+    const code = err instanceof InstagramError ? err.code : '';
+    if (provesNothingWasPublished(code)) throw err;
+
+    const detail = err instanceof Error ? err.message : String(err);
+    console.error(`[instagram-publish-sweep] job ${job.job_id}: ambiguous publish:`, detail);
+    await review(
+      db,
+      job,
+      `The publish call did not return a usable answer (${detail}). A post may be live — check the account before retrying.`,
+    );
+    return 'needs_review';
+  }
+
+  const { data: confirmed } = await db.rpc('confirm_publish_job', {
+    p_job_id: job.job_id,
+    p_claim_id: job.claim_id,
+    p_media_id: mediaId,
+  });
+
+  if (!confirmed) {
+    // The post IS live — Meta named it. We simply could not record that under
+    // this claim, so the row must not be left looking unpublished. The staged
+    // bytes are deliberately KEPT here: a person is about to look at this, and
+    // what was published is the first thing they will want to see.
+    console.error(
+      `[instagram-publish-sweep] job ${job.job_id}: published as ${mediaId} but the claim was gone`,
+    );
+    await review(db, job, `Published to Instagram as ${mediaId}, but the job row could not record it`);
+    return 'needs_review';
+  }
+
+  // Only AFTER the confirm committed. Meta has fetched the media and the row
+  // records what it created, so the staged copy has no reader left — and a
+  // 300 MB Reel kept per post turns a storage bucket into a bill that grows
+  // with every success. Deleting before the confirm would destroy the bytes a
+  // retry needs, which is why this is the last line rather than a `finally`.
+  await discardStaged(db, job);
+
+  return 'published';
+}
+
+// deno-lint-ignore no-explicit-any
+async function fail(
+  db: any,
+  job: Claim,
+  reason: string,
+  opts: { terminal?: boolean; clearContainer?: boolean } = {},
+): Promise<void> {
+  const { data, error } = await db.rpc('fail_publish_job', {
+    p_job_id: job.job_id,
+    p_claim_id: job.claim_id,
+    p_error: reason,
+    p_max_attempts: opts.terminal ? TERMINAL : MAX_ATTEMPTS,
+    // Waives the resume-from-stored-ref protection, which is what stops a retry
+    // building a SECOND container and publishing twice. Only ever set for a
+    // container Meta has declared dead, where resuming is the thing that cannot
+    // work.
+    p_clear_ref: opts.clearContainer === true,
+  });
+  if (error) console.error('[instagram-publish-sweep] fail_publish_job:', error);
+  // Reported exactly once, on the transition — the `bump_flush_attempt`
+  // contract, so an alert fires once rather than on every later sweep. `stuck`
+  // is also the point at which nothing will read the staged bytes again, so it
+  // is the only failure branch that discards them; a retryable failure keeps
+  // them, because the retry needs them.
+  if (data === 'stuck') {
+    console.error(`[instagram-publish-sweep] job ${job.job_id} is STUCK: ${reason}`);
+    await discardStaged(db, job);
+  }
+}
+
+/**
+ * Drop the frozen copy of the media once nothing can need it again.
+ *
+ * Best-effort on purpose. A failed delete must never turn a published post into
+ * a reported failure — the post is live either way, and the row saying so is
+ * worth more than the bytes. It leaves litter, which is visible in the bucket;
+ * the alternative leaves a wrong status, which is visible to a customer.
+ */
+// deno-lint-ignore no-explicit-any
+async function discardStaged(db: any, job: Claim): Promise<void> {
+  const { error } = await db.storage.from(PUBLISH_BUCKET).remove(job.media_paths);
+  if (error) {
+    console.error(
+      `[instagram-publish-sweep] job ${job.job_id}: staged media not removed:`,
+      error,
+    );
+  }
+}
+
+// deno-lint-ignore no-explicit-any
+async function release(db: any, job: Claim, note: string): Promise<void> {
+  const { error } = await db.rpc('release_publish_job', {
+    p_job_id: job.job_id,
+    p_claim_id: job.claim_id,
+    p_note: note,
+  });
+  if (error) console.error('[instagram-publish-sweep] release_publish_job:', error);
+}
+
+// deno-lint-ignore no-explicit-any
+async function review(db: any, job: Claim, reason: string): Promise<void> {
+  const { error } = await db.rpc('review_publish_job', {
+    p_job_id: job.job_id,
+    p_claim_id: job.claim_id,
+    p_reason: reason,
+  });
+  if (error) console.error('[instagram-publish-sweep] review_publish_job:', error);
+}

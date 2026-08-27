@@ -1,5 +1,38 @@
 # Wiki Log
 
+## [2026-08-26] ingest | Native publishing: the Facebook step machine, and one queue for every platform
+
+**Created** [[Native Publishing Queue]] (`concepts/native-publishing-queue.md`),
+[[Facebook Page Publishing]] (`concepts/facebook-page-publishing.md`) and
+`raw/sessions/2026-08-26-native-publishing-queue.md`. **Updated** `index.md`.
+
+The first direct-API WRITE in the project (PR #544, 21 commits). The 2026-08-23
+*Outstand publishes, direct APIs measure* scope decision no longer describes
+Instagram and Facebook; it still holds for X, TikTok and YouTube, and the two
+pages say so rather than leaving five connector pages asserting something that
+is now half false.
+
+Two pages rather than one because the subjects genuinely separate: the QUEUE is
+our exactly-once guarantee and is platform-agnostic, and the PROTOCOL is Meta's
+and differs per product. Copying the queue per platform would give five copies
+that drift — the #540 shared-helper lesson — while sharing the protocols would
+paper over four Facebook publishing flows against Instagram's one.
+
+Facts worth carrying beyond this feature, all recorded on the pages:
+
+  * `array_length('{}', 1)` is NULL and **a CHECK constraint PASSES on NULL**, so
+    the original media constraint had never rejected anything.
+  * **The text form of a `timestamptz` depends on the session `TimeZone`**, so a
+    digest over one is unstable between sessions. Use `extract(epoch ...)`.
+  * A timestamp with **no offset does not name an instant** — normalising it
+    settles the ambiguity by guessing the server's offset, which is a four-hour
+    error in Hoboken on an irreversible action.
+  * **A probe that exercises a function directly can prove the function right
+    and the feature wrong.** No control inside such a probe catches it; the
+    fixture has to come from where the caller stands.
+  * **A rejection test written as `insert ... select` fails open** when its
+    fixture is gone — no rows looks exactly like no error.
+
 ## [2026-08-26] ingest | The bottom-up financial model, and the band it restated
 
 **Created** [[Bottom-Up Financial Model]] (`concepts/bottom-up-financial-model.md`).

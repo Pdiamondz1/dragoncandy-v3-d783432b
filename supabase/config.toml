@@ -351,6 +351,43 @@ verify_jwt = false
 verify_jwt = false
 
 # ---------------------------------------------------------------------------
+# Instagram native publishing (the first direct-API WRITE in this project)
+#
+# instagram-publish-enqueue REQUIRES a JWT and there is no version of it that
+# does not. It is the only way a row reaches `publish_jobs`, and the enqueue RPC
+# identifies the caller from `auth.uid()` — so the JWT is not a gate in front of
+# the authorization, it IS the authorization. Turning this off would not open a
+# hole so much as remove the identity the whole feature is built on.
+[functions.instagram-publish-enqueue]
+verify_jwt = true
+
+# Anonymous for the same reason as instagram-refresh-sweep: pg_cron calls it
+# with the Vault-held ingest bearer, not a user JWT, and it authorizes via
+# _shared/ingest-auth.ts (isAuthorizedIngest).
+[functions.instagram-publish-sweep]
+verify_jwt = false
+
+# ---------------------------------------------------------------------------
+# Facebook Page native publishing
+#
+# Same posture as the Instagram pair above and for the same reasons: the
+# enqueue function's JWT IS the authorization (the RPC reads `auth.uid()`), and
+# the sweep is called by pg_cron with the Vault-held ingest bearer rather than
+# a user session.
+#
+# Worth stating because the file is read top to bottom: these two are NOT the
+# Meta-callback shape. `facebook-deauthorize` and `facebook-data-deletion` are
+# anonymous because Meta POSTs to them with a signed_request and no session;
+# `facebook-publish-sweep` is anonymous because OUR cron calls it. Same flag,
+# unrelated reasons, and conflating them is how a callback ends up trusting an
+# ingest bearer nobody sends.
+[functions.facebook-publish-enqueue]
+verify_jwt = true
+
+[functions.facebook-publish-sweep]
+verify_jwt = false
+
+# ---------------------------------------------------------------------------
 # Facebook Page Insights connector (read-only)
 #
 # All four require a JWT, and none is a Meta callback. That differs from the
