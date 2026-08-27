@@ -31,6 +31,7 @@
     "pitch:pdf": "vite build && npx tsx scripts/emit-pitch-notes.ts && node scripts/export-pitch-pdf.mjs",
     "pitch:preview": "vite build && vite preview --open /pitch",
     "pitch:verify-public": "npx tsx scripts/verify-public-bundle.ts",
+    "pitch:verify-public-workbook": "npx tsx scripts/verify-public-workbook.ts",
     "pitch:measure": "node scripts/measure-pitch-slides.mjs",
     "pitch:upload": "npx tsx scripts/upload-pitch-to-drive.ts",
     "pitch:qa": "npx tsx scripts/generate-investor-qa.ts",

@@ -6,10 +6,15 @@
  * that silently drops the Financing sheet would ship a redacted model under a full name.
  */
 import ExcelJS from 'exceljs';
-import { buildWorkbookSpec, FINANCING_SHEET } from '../src/pitch/model/workbook';
+import { buildWorkbookSpec } from '../src/pitch/model/workbook';
 import { findStale, MAX_MEASURED_AGE_DAYS } from '../src/pitch/model/types';
 import { REGISTER } from '../src/pitch/model/assumptions';
 import { METRO_ASSUMPTIONS } from '../src/pitch/model/metros';
+import {
+  CONFIDENTIAL_SHEETS,
+  PUBLIC_FORBIDDEN_ROW_LABELS,
+  checkableForbiddenValues,
+} from './lib/public-workbook-guard';
 import { writeFileSync } from 'node:fs';
 
 const isPublic = process.argv.includes('--public');
@@ -26,11 +31,62 @@ if (stale.length > 0) {
 
 const spec = buildWorkbookSpec({ confidential: !isPublic });
 
-// The guard is on CONTENT, not on the filename — a filename guard is defeated by a rename,
-// which is the lesson scripts/upload-pitch-to-drive.ts already records.
-if (isPublic && spec.some((s) => s.name === FINANCING_SHEET)) {
-  console.error('Refusing to write a public workbook that contains the Financing sheet.');
-  process.exit(1);
+/**
+ * The guard is on CONTENT, not on the filename — a filename guard is defeated by a rename,
+ * which is the lesson scripts/upload-pitch-to-drive.ts already records.
+ *
+ * It checks three things, because the leak it was widened for defeated the first one alone:
+ * the public workbook shipped no Financing sheet and still published the budget total, its
+ * per-metro allocation and consolidated EBITDA, under different labels on Shared_Costs and
+ * Totals. A guard that names ONE sheet only ever guards that sheet.
+ *
+ * This refuses to WRITE. `npm run pitch:verify-public-workbook` reads the written file back
+ * and checks the same list from the other side — a guard over the spec proves what we think
+ * we built, not what landed on disk.
+ */
+if (isPublic) {
+  const refusals: string[] = [];
+
+  for (const name of CONFIDENTIAL_SHEETS) {
+    if (spec.some((s) => s.name === name)) refusals.push(`the ${name} sheet is present`);
+  }
+
+  // Exact cell equality, never `includes`: `Metro EBITDA` contains the forbidden label
+  // `EBITDA` and is deliberately allowed — it is the metros' own contribution and carries
+  // nothing from the budget. A substring test would refuse every build.
+  for (const sheet of spec) {
+    sheet.rows.forEach((row, r) => {
+      const label = row[0]?.v;
+      if (typeof label === 'string' && (PUBLIC_FORBIDDEN_ROW_LABELS as readonly string[]).includes(label)) {
+        refusals.push(`row label "${label}" on ${sheet.name} row ${r + 1}`);
+      }
+    });
+  }
+
+  const forbidden = checkableForbiddenValues();
+  if (forbidden.length === 0) {
+    console.error('Refusing to write: the forbidden-value list is empty, so this guard checks nothing.');
+    process.exit(1);
+  }
+  for (const sheet of spec) {
+    sheet.rows.forEach((row, r) => {
+      row.forEach((cell, c) => {
+        if (typeof cell.v !== 'number') return;
+        const hit = forbidden.find(
+          (f) => Math.abs(f.value - (cell.v as number)) <= Math.abs(f.value) * 1e-9,
+        );
+        if (hit) refusals.push(`${hit.what} (${cell.v}) at ${sheet.name}!R${r + 1}C${c + 1}`);
+      });
+    });
+  }
+
+  if (refusals.length > 0) {
+    console.error(
+      `Refusing to write a public workbook carrying ${refusals.length} confidential item(s):`,
+    );
+    for (const r of refusals) console.error(`  · ${r}`);
+    process.exit(1);
+  }
 }
 
 const wb = new ExcelJS.Workbook();

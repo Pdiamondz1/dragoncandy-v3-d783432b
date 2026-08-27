@@ -66,6 +66,18 @@ export interface SheetSpec {
 
 export const FINANCING_SHEET = 'Financing';
 
+/**
+ * The shared-cost allocation sheet — CONFIDENTIAL, and gated out of the public workbook the
+ * same way `FINANCING_SHEET` is.
+ *
+ * `Total shared cost` IS the pre-seed budget, annualised (`sharedCostForYear` sums the same
+ * `PRE_SEED_BUDGET` the Financing sheet itemises), and the allocation block below it is that
+ * total split per metro. So publishing this sheet publishes the budget total and its shape
+ * while the Financing sheet that states it outright is withheld — the gate protecting one
+ * number by name, and the same number arriving under a different label.
+ */
+export const SHARED_COSTS_SHEET = 'Shared_Costs';
+
 export const SHEET_ORDER = [
   'README',
   'Assumptions',
@@ -75,10 +87,33 @@ export const SHEET_ORDER = [
   'PalmBeach_Model',
   'MontaukHamptons_Model',
   'Metros_4toN',
-  'Shared_Costs',
+  SHARED_COSTS_SHEET,
   'Totals',
   'Unit_Economics',
   FINANCING_SHEET,
+] as const;
+
+/** Sheets that exist only in the confidential workbook. */
+export const CONFIDENTIAL_SHEETS = [SHARED_COSTS_SHEET, FINANCING_SHEET] as const;
+
+/**
+ * Row labels that must never reach a public workbook.
+ *
+ * These are LABELS, not values, and that is what makes them checkable: a label is
+ * distinctive where `775884` could plausibly be an unrelated constant. Every one of them
+ * introduces a company-level cost figure derived from the confidential budget —
+ * `Total shared cost` and `Allocation` on the Shared_Costs sheet, `Shared cost` and the
+ * consolidated `EBITDA` row on Totals.
+ *
+ * `Metro EBITDA` is deliberately NOT here and must not be added: it is the metros' own
+ * contribution, computed entirely from the metro sheets, and it is the figure the public
+ * deck already shows. The two labels differ by one word and by the whole shared-cost line.
+ */
+export const PUBLIC_FORBIDDEN_ROW_LABELS = [
+  'Shared cost',
+  'Total shared cost',
+  'Allocation',
+  'EBITDA',
 ] as const;
 
 const t = (v: string): Cell => ({ v });
@@ -144,7 +179,14 @@ function assumptionRows(confidential: boolean): CellRow[] {
   ]);
 }
 
-function readmeSheet(): SheetSpec {
+/**
+ * `confidential` reaches this sheet for one reason: the list of deliberately-plain values
+ * below names `Shared cost`, and that row exists only in the confidential workbook. A README
+ * that explains a row the reader cannot find is worse than one line shorter — and the label
+ * itself is on `PUBLIC_FORBIDDEN_ROW_LABELS`, so leaving it here would make the README the
+ * one place the public workbook still says it.
+ */
+function readmeSheet(confidential: boolean): SheetSpec {
   return {
     name: 'README',
     rows: [
@@ -165,12 +207,17 @@ function readmeSheet(): SheetSpec {
       [t('the blends derived from those cells (ARPU, blended take rate, average campaign value,')],
       [t('CAC) — also formulas, so they move too.')],
       [blank],
-      [t('FOUR THINGS ARE DELIBERATELY PLAIN VALUES, and each says so where it appears:')],
+      [t(
+        `${confidential ? 'FOUR' : 'THREE'} THINGS ARE DELIBERATELY PLAIN VALUES, ` +
+          'and each says so where it appears:',
+      )],
       [t('  Customer-months — the sum of customers across a year’s twelve months. The monthly')],
       [t('    ramp is not on the sheet, so this cannot be recomputed from a year-end figure.')],
       [t('  Gross adds — the same, for churn replaced month by month.')],
       [t('  Addressable venues — a Census count (see Sources), not an assumption to edit.')],
-      [t('  Shared cost — company-level, from outside the metro sheets entirely.')],
+      ...(confidential
+        ? [[t('  Shared cost — company-level, from outside the metro sheets entirely.')]]
+        : []),
       [t('Because customer-months is fixed, editing a PENETRATION moves customers at year end')],
       [t('and Exit ARR but not booked revenue. Re-run `npm run model:xlsx` after such an edit.')],
       [blank],
@@ -624,6 +671,10 @@ function cohortSheet(sourceSheets: readonly SheetSpec[]): SheetSpec {
   return { name: 'Metros_4toN', rows };
 }
 
+/**
+ * CONFIDENTIAL. Only ever reached from the confidential branch of `buildWorkbookSpec` — see
+ * `SHARED_COSTS_SHEET`.
+ */
 function sharedCostsSheet(): SheetSpec {
   const years = consolidated();
   const rows: CellRow[] = [
@@ -679,7 +730,18 @@ function rowOf(sheet: SheetSpec, label: string): number {
   return hits[0];
 }
 
-function totalsSheet(sourceSheets: readonly SheetSpec[]): SheetSpec {
+/**
+ * `confidential` gates TWO rows here, `Shared cost` and the consolidated `EBITDA` beneath it.
+ *
+ * They are omitted, never zeroed. A zero is a claim — "$0 of company-level cost" is a
+ * statement about the business, and a false one — where an absent row says only that this
+ * workbook does not carry the figure. The same reasoning as `TrajectoryConsolidatedEbitda`:
+ * the confidential half is absent, not hidden.
+ *
+ * `Metro EBITDA` stays in both builds. It is the metros' own contribution, summed from the
+ * metro sheets, and nothing about it depends on the budget.
+ */
+function totalsSheet(sourceSheets: readonly SheetSpec[], confidential: boolean): SheetSpec {
   const years = consolidated();
   const metroIds = years[0].metros.map((m) => m.metroId);
   const sheetFor = (id: string) => SHEET_BY_METRO[id] ?? 'Metros_4toN';
@@ -763,20 +825,35 @@ function totalsSheet(sourceSheets: readonly SheetSpec[]): SheetSpec {
     }),
   ]);
 
-  // Stays a plain value, deliberately: not a per-metro figure — it comes from the
-  // confidential budget at the rollup layer, not from any metro sheet.
-  rows.push([t('Shared cost'), blank, ...years.map((y) => n(-y.sharedCost))]);
-  const sharedCostRow = rows.length;
+  if (confidential) {
+    // Stays a plain value, deliberately: not a per-metro figure — it comes from the
+    // confidential budget at the rollup layer, not from any metro sheet.
+    rows.push([t('Shared cost'), blank, ...years.map((y) => n(-y.sharedCost))]);
+    const sharedCostRow = rows.length;
 
-  rows.push([
-    t('EBITDA'),
-    blank,
-    ...MODEL_YEARS.map((_, i) => ({
-      v: years[i].ebitda,
-      f: `${tref(metroEbitdaRow, TOTALS_COLS[i])}+${tref(sharedCostRow, TOTALS_COLS[i])}`,
-      fmt: '$#,##0',
-    })),
-  ]);
+    rows.push([
+      t('EBITDA'),
+      blank,
+      ...MODEL_YEARS.map((_, i) => ({
+        v: years[i].ebitda,
+        f: `${tref(metroEbitdaRow, TOTALS_COLS[i])}+${tref(sharedCostRow, TOTALS_COLS[i])}`,
+        fmt: '$#,##0',
+      })),
+    ]);
+  } else {
+    // The confidential build says this with the two rows above: `Metro EBITDA`, then the
+    // shared-cost line, then the sum. With those gone, `Metro EBITDA` is the last profit
+    // figure on the sheet and nothing on it says what is still missing — so a reader could
+    // reasonably take it for the company's. One line of prose, carrying no figure, closes
+    // that. It is not a redaction notice: the deck says the same thing in public already.
+    rows.push([
+      t('Metro EBITDA is what the metros themselves earn — after delivery cost and each'),
+    ]);
+    rows.push([
+      t('metro’s own marketing, and BEFORE company-level payroll, AI and infrastructure.'),
+    ]);
+    rows.push([t('It is not the company’s EBITDA and must not be read as one.')]);
+  }
 
   // Stays a plain value, deliberately: the cohort's metro count is not expressible as a
   // cell reference.
@@ -958,15 +1035,17 @@ export function buildWorkbookSpec({ confidential }: { confidential: boolean }): 
   const metroSheets = enabledMetros().map((m) => metroSheet(m.id));
   const sourceSheets: SheetSpec[] = [...metroSheets, cohortSheet(metroSheets)];
   const sheets: SheetSpec[] = [
-    readmeSheet(),
+    readmeSheet(confidential),
     { name: 'Assumptions', rows: [
       [t('key'), t('label'), t('value'), t('provenance'), t('source'), t('as of'), t('unit'), t('note')],
       ...assumptionRows(confidential),
     ] },
     sourcesSheet(),
     ...sourceSheets,
-    sharedCostsSheet(),
-    totalsSheet(sourceSheets),
+    // Never built and then filtered out by name downstream: a filter is one forgotten call
+    // site away from being bypassed, and this is the sheet whose every row is the budget.
+    ...(confidential ? [sharedCostsSheet()] : []),
+    totalsSheet(sourceSheets, confidential),
     unitEconomicsSheet(),
   ];
   if (confidential) sheets.push(financingSheet());
