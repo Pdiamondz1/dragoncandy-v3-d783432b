@@ -203,7 +203,9 @@ export const ContentReviewSection: React.FC<ContentReviewSectionProps> = ({
         .from('campaign_collaborations')
         .update({
           content_status: 'revision_requested',
-          revision_count: safeRevisionCount + 1,
+          // revision_count is NOT sent: enforce_revision_limit derives it inside the
+          // row lock (20260827000000). Sending it was how the cap could be bypassed —
+          // the trigger checked OLD against a number the client chose.
           revision_feedback: payload.items,
           updated_at: new Date().toISOString(),
         })
