@@ -176,6 +176,14 @@ describe('workbook provenance', () => {
       // one `rollup()`'s `midpoint = (band.revenueLow + band.revenueHigh) / 2` computes in
       // TypeScript. Structural (how you average two numbers), not a modeled input.
       '2': 'the midpoint divisor in (top-down low + top-down high) / 2',
+      // The `Metros live` row: `IF(customers>0,1,0)` per NAMED metro. One metro counts one.
+      // A CARDINALITY, not a magnitude — there is no scenario in which a named metro that is
+      // live counts as some other number, and nothing about the business would change if it
+      // did, because it is not a driver of anything. Contrast the COHORT term in the same
+      // formula, which counts N metros and therefore does NOT use a literal: it references
+      // `asm_cohortMetros_<year>` on the Assumptions sheet, because N is a modeled input a
+      // reader is invited to edit. That is the line between the two categories.
+      '1': 'one metro counts as one, in the Metros live row’s per-metro IF',
       // Months in a year, in `Exit ARR = year-end customers * ARPU per customer-MONTH * 12`.
       // The calendar, not a modeled input: it is `MONTHS_PER_YEAR` in metroModel.ts, the same
       // constant that decides which absolute months belong to which model year, and the

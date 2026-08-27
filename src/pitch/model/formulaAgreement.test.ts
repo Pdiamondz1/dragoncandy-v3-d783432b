@@ -32,6 +32,51 @@ describe('the formula evaluator', () => {
   it('throws on a function it does not implement rather than guessing', () => {
     expect(() => evaluateFormula('VLOOKUP(1,2,3)', ctx)).toThrow(/VLOOKUP/);
   });
+
+  /**
+   * `>` and nested `IF` arrived together with the `Metros live` row, which asks per metro
+   * "is the toggle on, AND does this metro have customers in this year".
+   */
+  describe('the > comparison', () => {
+    it('compares numbers, yielding the 1/0 that IF reads as a boolean', () => {
+      expect(evaluateFormula('IF(asm_a>asm_b,100,200)', ctx)).toBe(100);
+      expect(evaluateFormula('IF(asm_b>asm_a,100,200)', ctx)).toBe(200);
+    });
+
+    it('is strict, not >=, at the boundary the liveness test sits on', () => {
+      const zero = { names: { c: 0 }, cells: {} };
+      expect(evaluateFormula('IF(c>0,1,0)', zero)).toBe(0);
+      expect(evaluateFormula('IF(c>0,1,0)', { names: { c: 1 }, cells: {} })).toBe(1);
+    });
+
+    it('binds looser than arithmetic, so the operands are whole expressions', () => {
+      // `2*3>asm_b` must read as `(2*3)>asm_b`, not `2*(3>asm_b)`.
+      expect(evaluateFormula('IF(2*3>asm_b,1,0)', ctx)).toBe(1);
+    });
+
+    it('nests, which is the shape the Metros live row actually emits', () => {
+      const on = { names: {}, cells: { 'Totals!B4': 'YES' as unknown as number, 'M!B8': 43 } };
+      const off = { names: {}, cells: { 'Totals!B4': 'NO' as unknown as number, 'M!B8': 43 } };
+      const empty = { names: {}, cells: { 'Totals!B4': 'YES' as unknown as number, 'M!B8': 0 } };
+      const f = 'IF(Totals!B4="NO",0,IF(M!B8>0,1,0))';
+      expect(evaluateFormula(f, on)).toBe(1);
+      expect(evaluateFormula(f, off)).toBe(0);
+      // The case that makes 2026 read 2 rather than 4: toggle on, metro not entered yet.
+      expect(evaluateFormula(f, empty)).toBe(0);
+    });
+
+    it('does not silently treat text as orderable', () => {
+      // `Number("NO")` is NaN and every comparison against NaN is false. A toggle cell can
+      // hold text, so a `>` that quietly collated strings would answer a question nobody
+      // asked. False is the honest answer here; guessing is not.
+      const text = { names: {}, cells: { 'Totals!B4': 'NO' as unknown as number } };
+      expect(evaluateFormula('IF(Totals!B4>0,1,0)', text)).toBe(0);
+    });
+
+    it('still refuses < , which nothing emits', () => {
+      expect(() => evaluateFormula('IF(asm_a<asm_b,1,0)', ctx)).toThrow(/</);
+    });
+  });
 });
 
 /**
@@ -40,8 +85,18 @@ describe('the formula evaluator', () => {
  * becomes another when someone touches it. That is worse than a values-only workbook,
  * because it looks trustworthy.
  */
-describe('every formula agrees with its cached result', () => {
-  const spec = buildWorkbookSpec({ confidential: true });
+/**
+ * Run over BOTH builds. The public workbook is not a subset of the confidential one at the
+ * row level: gating `Shared cost` and `EBITDA` out of Totals shifts every row beneath them,
+ * and every cross-sheet formula on that sheet addresses rows by number. So a formula can be
+ * right in one build and point at the wrong row in the other, and only checking the
+ * confidential spec would never see it.
+ */
+describe.each([
+  ['confidential', true],
+  ['public', false],
+] as const)('every formula agrees with its cached result (%s build)', (_name, confidential) => {
+  const spec = buildWorkbookSpec({ confidential });
   const ctx = collectFormulaContext(spec);
 
   it('finds formulas to check', () => {
@@ -90,8 +145,13 @@ describe('every formula agrees with its cached result', () => {
  * the agreement test above had nothing to check, and a static cell agrees with its own cache
  * trivially. **A test that only checks formulas cannot see a row that stopped being one.**
  */
-describe('the consolidated rows respond to the Include? toggles', () => {
-  const spec = buildWorkbookSpec({ confidential: true });
+describe.each([
+  ['confidential', true],
+  ['public', false],
+] as const)('the consolidated rows respond to the Include? toggles (%s build)', (_name, conf) => {
+  // Both builds, because the public workbook is the one that gets distributed widely and its
+  // Totals sheet has a different row layout — every label below must be live in each.
+  const spec = buildWorkbookSpec({ confidential: conf });
   const totals = spec.find((s) => s.name === 'Totals')!;
   const ctx = collectFormulaContext(spec);
 
@@ -105,7 +165,11 @@ describe('the consolidated rows respond to the Include? toggles', () => {
     expect(toggleCells.length, 'no YES toggles on Totals — this suite would prove nothing').toBeGreaterThan(1);
   });
 
-  for (const label of ['Total revenue (booked in year)', 'Exit ARR', 'Metro EBITDA']) {
+  // `Metros live` was the fourth. It shipped as a plain value on a justification that was
+  // already false — the cohort's metro count IS on the Assumptions sheet as a named cell —
+  // so switching a metro off dropped revenue, Exit ARR and Metro EBITDA while the summary
+  // underneath went on claiming the metro was live.
+  for (const label of ['Total revenue (booked in year)', 'Exit ARR', 'Metro EBITDA', 'Metros live']) {
     it(`"${label}" moves when a metro is switched off`, () => {
       const rowIndex = totals.rows.findIndex((r) => r[0]?.v === label);
       expect(rowIndex, `no row labelled "${label}" on Totals`).toBeGreaterThanOrEqual(0);

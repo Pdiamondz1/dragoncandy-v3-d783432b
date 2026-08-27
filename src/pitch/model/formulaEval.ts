@@ -3,10 +3,14 @@
  *
  * It exists to answer one question in a test: does this formula compute the number the
  * workbook displays? A general Excel engine would be a dependency and a liability; this
- * handles `SUM`, `IF`, `ROUND`, arithmetic, parentheses, defined names and `Sheet!A1`
- * references, and throws on anything else rather than guessing. If the generator ever needs
- * another function, add it here in the same change — a formula the evaluator cannot read is
- * a formula nothing checks.
+ * handles `SUM`, `IF` (including nested), `ROUND`, arithmetic, parentheses, the `=` and `>`
+ * comparisons, defined names and `Sheet!A1` references, and throws on anything else rather
+ * than guessing. If the generator ever needs another function or operator, add it here in
+ * the same change — a formula the evaluator cannot read is a formula nothing checks.
+ *
+ * `>` was added with the `Metros live` row, which counts a metro only in the years it has
+ * customers: `IF(toggle="NO",0,IF(Hoboken_Model!B8>0,1,0))`. `<` is still unimplemented and
+ * throws, because nothing emits it.
  *
  * `ROUND` was added to the brief's original subset (SUM/IF/MAX/MIN) for one reason: "Customers
  * at year end" is `Math.round(addressableVenues * penetration)` in the model
@@ -69,8 +73,16 @@ function tokenize(src: string): Token[] {
       i = j;
       continue;
     }
-    if ('+-*/(),='.includes(ch)) {
-      if (ch === '<' || ch === '>') throw new Error(`Unsupported operator in "${src}"`);
+    // `>` is here and `<` deliberately is not: the generator emits `>` (the `Metros live`
+    // row's `IF(customers>0,...)` liveness test) and nothing emits `<`. An unimplemented
+    // operator falls through to the `Unexpected character` throw below, which is the
+    // intended behaviour — this evaluator refuses rather than guessing, so a formula it
+    // cannot read fails loudly instead of going unchecked.
+    //
+    // The line this replaces read `if (ch === '<' || ch === '>') throw ...` INSIDE this
+    // block, guarded by a set containing neither character. It could never fire; both
+    // already threw one branch further down.
+    if ('+-*/(),=>'.includes(ch)) {
       tokens.push({ kind: 'op', v: ch });
       i += 1;
       continue;
@@ -155,13 +167,23 @@ export function evaluateFormula(formula: string, ctx: FormulaContext): number {
     return left;
   }
 
-  /** `=` compares; the result is 1 or 0 so IF's first argument reads as a boolean. */
+  /**
+   * `=` and `>` compare; the result is 1 or 0 so IF's first argument reads as a boolean.
+   *
+   * `=` compares as STRINGS (that is how the `IF(B4="NO",...)` toggles work, where one side
+   * is text) and `>` compares as NUMBERS, which is the only way it is ever emitted — the
+   * `Metros live` row asks whether a metro's year-end customer count is above zero. Excel
+   * would order text by collation; this refuses to pretend it does, and `Number("NO")` is
+   * `NaN`, so every comparison against text is false rather than accidentally true.
+   */
   function comparison(): number | string {
     const left = sum();
-    if (peek()?.kind === 'op' && peek()!.v === '=') {
+    const op = peek();
+    if (op?.kind === 'op' && (op.v === '=' || op.v === '>')) {
       pos += 1;
       const right = sum();
-      return String(left) === String(right) ? 1 : 0;
+      if (op.v === '=') return String(left) === String(right) ? 1 : 0;
+      return Number(left) > Number(right) ? 1 : 0;
     }
     return left;
   }

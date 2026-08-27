@@ -768,6 +768,12 @@ function totalsSheet(sourceSheets: readonly SheetSpec[], confidential: boolean):
   const EXIT_ARR_ROW: Readonly<Record<string, number>> = Object.fromEntries(
     metroIds.map((id) => [id, rowOf(specFor(id), 'Exit ARR (year-end run rate)')]),
   );
+  // Also identical across both layouts. Used only by `Metros live`, which asks whether a
+  // metro has a customer relationship at year end — see the note there for why that, and
+  // not revenue, is the question.
+  const CUSTOMERS_ROW: Readonly<Record<string, number>> = Object.fromEntries(
+    metroIds.map((id) => [id, rowOf(specFor(id), 'Customers at year end')]),
+  );
   // Every reference is sheet-qualified, even ones addressing this same Totals sheet — see
   // formulaEval.ts's header comment for why.
   const tref = (row: number, col: string) => `Totals!${col}${row}`;
@@ -855,9 +861,47 @@ function totalsSheet(sourceSheets: readonly SheetSpec[], confidential: boolean):
     rows.push([t('It is not the company’s EBITDA and must not be read as one.')]);
   }
 
-  // Stays a plain value, deliberately: the cohort's metro count is not expressible as a
-  // cell reference.
-  rows.push([t('Metros live'), blank, ...years.map((y) => n(y.metrosLive, '#,##0'))]);
+  /**
+   * Live and toggled, like every consolidated row above it.
+   *
+   * It shipped as a plain value on the argument that "the cohort's metro count is not
+   * expressible as a cell reference". That was already false when it was written: the count
+   * is on the Assumptions sheet as `asm_cohortMetros_<year>`, put there by `assumptionRows`.
+   * The cost was a summary that contradicted the sheet — switch Manhattan off, watch revenue,
+   * Exit ARR and Metro EBITDA all drop, and read "4 metros live" underneath.
+   *
+   * **Read `RollupYear.metrosLive` before touching this formula.** It is not a count of rows
+   * and not a count of toggles that are on:
+   *
+   *   - a NAMED metro counts 1 only in years where it actually has a customer relationship
+   *     at year end, which is why 2026 is 2 and not 4 — Palm Beach and the Hamptons are not
+   *     entered yet. The test is `customersAtYearEnd > 0`, taken from that sheet's own
+   *     "Customers at year end" row, not `revenue > 0`. The two agree on today's numbers,
+   *     but they are different questions and the model asks this one.
+   *   - the COHORT row counts `COHORT_METRO_COUNTS[year]` — 6 in 2027, 17 in 2028 — never 1.
+   *     It stands in for N metros, and counting it as one row would report "5" for 2028
+   *     while the model books revenue for 21 metros. Its own condition is `revenue > 0`,
+   *     again matching the model rather than being made symmetric for tidiness.
+   *
+   * The literal `1` is a cardinality — one metro is one metro — not a modeled magnitude, and
+   * it is registered as such in `workbookProvenance.test.ts`'s ALLOWED_LITERALS.
+   */
+  rows.push([
+    t('Metros live'),
+    blank,
+    ...MODEL_YEARS.map((_, i) => {
+      const terms = metroIds.map((id) => {
+        const off = `${tref(toggleRowByMetro[id], 'B')}="NO"`;
+        if (id === COHORT_METRO_ID) {
+          const revenue = `${sheetFor(id)}!${SOURCE_COLS[i]}${REVENUE_ROW[id]}`;
+          return `IF(${off},0,IF(${revenue}>0,${asmName(`cohortMetros_${MODEL_YEARS[i]}`)},0))`;
+        }
+        const customers = `${sheetFor(id)}!${SOURCE_COLS[i]}${CUSTOMERS_ROW[id]}`;
+        return `IF(${off},0,IF(${customers}>0,1,0))`;
+      });
+      return { v: years[i].metrosLive, f: `SUM(${terms.join(',')})`, fmt: '#,##0' };
+    }),
+  ]);
 
   rows.push(
     [blank],
