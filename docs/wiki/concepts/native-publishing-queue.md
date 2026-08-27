@@ -2,7 +2,7 @@
 title: Native Publishing Queue
 type: concept
 created: 2026-08-26
-updated: 2026-08-27
+updated: 2026-08-26
 sources: [2026-08-26-native-publishing-queue.md]
 tags: [publishing, exactly-once, idempotency, queue, instagram, facebook, storage, connectors]
 ---
@@ -251,7 +251,7 @@ named for it passed.
 ## Known Issues
 
 - ~~**Nothing is deployed and no cron is scheduled** (2026-08-26).~~ **Corrected
-  2026-08-27, hours after it was written.** **Deployed and running, 2026-08-27.** All four functions answer **401** to an
+  2026-08-26, hours after it was written.** **Deployed and running, 2026-08-26.** All four functions answer **401** to an
   anonymous POST where an invented function name answers **404**, so the probe distinguishes
   *absent* from *present and refusing*. Both crons are applied and active on `* * * * *`, and
   both have **succeeded** with a real **200** — Facebook returning `{"staged":0,...}` and
@@ -259,6 +259,7 @@ named for it passed.
   Vault URLs are not swapped; identical responses would have left that unknowable. Note
   `cron.job_run_details` saying `succeeded` is a *weaker* claim than it looks — `pg_net` is
   async, so it only means the request was queued. The verdict came from `net._http_response`.
+  **Dates here are LOCAL (America/New_York), matching the rest of the repo.** Postgres runs in **UTC**, so the same runs are stamped `2026-08-27 01:4x` in `cron.job_run_details` — four hours ahead and on the next calendar day. Both are right; a reader cross-checking prod against this page would otherwise find a mismatch and have nothing to explain it. Third time this branch has been bitten by a timestamp whose meaning depends on where it is read.
   The queue is empty, which is exactly why this was the cheap moment to prove the plumbing: the
   documented failure mode of a missing Vault secret is a NULL url that fails *quietly*, and
   finding that with zero jobs costs nothing.

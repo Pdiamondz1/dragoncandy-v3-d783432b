@@ -237,7 +237,7 @@ Engineering cannot close these. Ordered by what blocks launch.
   X, TikTok and YouTube. One shared `publish_jobs` queue with an exactly-once guarantee modelled
   on `pending_balance_flushes`, and two protocol modules that are deliberately not shared.
   Eighteen migrations applied and verified by object; sixteen Codex rounds. **Merged, deployed
-  and running 2026-08-27** — this line said "not deployed" for about an hour: all four functions
+  and running 2026-08-26** — this line said "not deployed" for about an hour: all four functions
   answer 401 (404 for an invented name), both crons are active on `* * * * *`, and both returned a
   real 200, told apart by their distinct response shapes. **Pending:** the two App Reviews
   (founder, above); a storage reaper for three orphan paths; no carousel; no `social_post_log` row

@@ -1,6 +1,6 @@
 # Wiki Log
 
-## [2026-08-27] update | Native publishing is deployed and running — correcting a status written hours earlier
+## [2026-08-26] update | Native publishing is deployed and running — correcting a status written hours earlier
 
 **Updated** [[Native Publishing Queue]], [[Facebook Page Publishing]] and
 `PROJECT_CONTEXT.md` §5. Both pages shipped saying "nothing is deployed, no cron",

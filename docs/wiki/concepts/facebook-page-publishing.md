@@ -2,7 +2,7 @@
 title: Facebook Page Publishing
 type: concept
 created: 2026-08-26
-updated: 2026-08-27
+updated: 2026-08-26
 sources: [2026-08-26-native-publishing-queue.md]
 tags: [facebook, publishing, meta, app-review, connectors, exactly-once]
 ---
@@ -218,7 +218,7 @@ Video stays `mp4`/`mov`, because every video path goes through `video_reels` or
 
 - **`pages_manage_posts` is not on the Meta app and needs its own App Review.**
   The `CREATE_CONTENT` task is already held on the live Page.
-- ~~**Not deployed, no cron.**~~ **Corrected 2026-08-27.** `facebook-publish-sweep`
+- ~~**Not deployed, no cron.**~~ **Corrected 2026-08-26.** `facebook-publish-sweep`
   is deployed (401 to an anonymous POST, against 404 for an invented name) and
   `20260826360000` is applied, with `facebook_publish_sweep_url` in Vault. Its first
   cron run returned **200** with `{"staged":0,...}` — a response shape only this
