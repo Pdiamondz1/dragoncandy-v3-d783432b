@@ -256,18 +256,23 @@ describe('workbook provenance', () => {
    */
   it('never lets a confidential salary appear anywhere in the public build', () => {
     const publicSpec = buildWorkbookSpec({ confidential: false });
-    // The AI engineer's monthly cost -- $17,900 -- appears nowhere else in this model, so its
-    // presence in the public spec could only mean the confidential register leaked.
-    const distinctiveSalary = PRE_SEED_LINE_ASSUMPTIONS.ai_dev.value;
+    // The mid-level developer's monthly cost -- $5,833 -- appears nowhere else in this model,
+    // so its presence in the public spec could only mean the confidential register leaked.
+    // (It replaces the AI engineer's $17,900, which was this probe's needle until the budget
+    // was re-cut onto the four roles actually being hired. A needle has to name a value the
+    // model still emits: one pointed at a deleted line can never fire, and would report clean
+    // forever -- the failure mode `verify-public-bundle.ts` records in its own header. $5,833
+    // is chosen over the designer's round $5,000 for the same reason that file avoids round
+    // needles.)
+    const distinctiveSalary = PRE_SEED_LINE_ASSUMPTIONS.mid_dev.value;
 
-    let found = false;
-    for (const sheet of publicSpec) {
-      for (const row of sheet.rows) {
-        for (const cell of row) {
-          if (cell.v === distinctiveSalary) found = true;
-        }
-      }
-    }
-    expect(found).toBe(false);
+    const holds = (spec: readonly { rows: readonly (readonly { v?: unknown }[])[] }[]) =>
+      spec.some((sheet) => sheet.rows.some((row) => row.some((cell) => cell.v === distinctiveSalary)));
+
+    // The control, and the reason this assertion means anything: the SAME needle must be
+    // found in the confidential spec. Without it, "absent from the public build" is also
+    // what you get from a needle nothing emits.
+    expect(holds(buildWorkbookSpec({ confidential: true }))).toBe(true);
+    expect(holds(publicSpec)).toBe(false);
   });
 });

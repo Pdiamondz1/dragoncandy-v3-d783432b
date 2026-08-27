@@ -10,6 +10,20 @@
  * document's: it costs a full team across three metros for a $3M priced round, this funds one
  * metro on a pre-seed. The reduction is the modeling decision; the rates are not ours.
  *
+ * The four hires are the four in docs/DragonCandy_Tech_Department_Scope.md — product manager,
+ * UX designer, senior developer, mid-level developer — on that document's recommended US/Europe
+ * mix, because those are the roles actually being recruited (plan written 2026-08-20, outreach
+ * sent 2026-08-21). This budget previously funded a back-end engineer and an AI engineer, and
+ * neither role appears in that plan or that outreach; funding a team nobody is hiring is not a
+ * conservative assumption, it is a wrong one.
+ *
+ * **Consequence, stated rather than buried: the pre-seed no longer funds a dedicated AI
+ * engineer.** Donny work sits with the CTO and the senior developer for the whole 18-month
+ * horizon. A reader comparing this file with the cost model's section 5 roster will notice the
+ * omission, and finding it explained is very different from finding it missing. The cost
+ * model's other roles (AI developer, DevOps, part-time security engineer, salesperson) are not
+ * cancelled — they are later, and later than this horizon.
+ *
  * This computes a NEED. SAFE terms - cap, discount, MFN - are a founder decision, not a
  * derivation, and are deliberately absent.
  */
@@ -29,6 +43,7 @@ export { budgetTotal };
 const HORIZON_MONTHS = 18;
 
 const STAFFING_ROSTER = 'docs/DragonCandy_Capital_Raise_Cost_Model.md (section 5, staffing roster rates)';
+const TECH_TEAM_ROSTER = 'docs/DragonCandy_Tech_Department_Scope.md (section 7, compensation — "What I recommend: a mix"; its US figures are themselves taken from DragonCandy_Capital_Raise_Cost_Model.md section 5, so the two cannot drift)';
 const USE_OF_FUNDS_SOURCE = 'docs/DragonCandy_Capital_Raise_Cost_Model.md (section 8.1, Use of Funds)';
 const MARKETING_LAUNCH_BUDGET = 'docs/DragonCandy_Capital_Raise_Cost_Model.md (section 7, Marketing — Sequenced 3-Metro Launch; section 8 consolidated-budget table, "Marketing + brand acquisition" line, sourced there to §7, §6.1)';
 const LEGAL_AND_GA_BUDGET = 'docs/DragonCandy_Capital_Raise_Cost_Model.md (section 8 consolidated-budget table — "Legal / IP / fundraising" line, sourced there to the Moat Playbook 90-day legal plan, and the separate "G&A / ops / insurance / accounting" line, which this assumption\'s label also covers)';
@@ -65,19 +80,48 @@ export const PRE_SEED_LINE_ASSUMPTIONS = {
     source: STAFFING_ROSTER,
     note: 'Cost model section 5, "Founders x2" — modest during runway, loaded.',
   }),
-  backend: modeled({
+  /**
+   * The four hires, on the Tech Department Scope's recommended mix: senior developer at the
+   * going US rate, product manager in the US, designer and mid-level developer in Europe or
+   * on contract. US FTE figures are LOADED (~30% employer cost); Europe/contract figures are
+   * not, which is correct rather than an oversight — a European contractor carries no
+   * employer load for us.
+   *
+   * The four annuals reproduce that document's own stated band exactly. It says the mix is
+   * "about $415–445K in salary": low = 195 + 90 + 60 + 70 = 415, high = 195 + 120 + 60 + 70
+   * = 445, the spread being the product manager's $90–120K range, of which the midpoint
+   * $105K is taken here. Software and AI costs are deliberately NOT folded in — the document
+   * calls the loaded figure "$450–500K a year with software and AI", and that difference is
+   * already carried by the separate `infra` and `agents` lines below. Adding it here would
+   * double-count it.
+   */
+  senior_dev: modeled({
     value: 16_250,
     unit: 'USD/month',
-    label: 'Back-end engineer',
-    source: STAFFING_ROSTER,
-    note: 'Cost model section 5 loaded annual ~$195K.',
+    label: 'Senior developer',
+    source: TECH_TEAM_ROSTER,
+    note: 'Tech scope section 7, US loaded annual $195,000 — the hire it says is worth paying full price for.',
   }),
-  ai_dev: modeled({
-    value: 17_900,
+  product_manager: modeled({
+    value: 8_750,
     unit: 'USD/month',
-    label: 'AI engineer (Donny)',
-    source: STAFFING_ROSTER,
-    note: 'Cost model section 5 loaded annual ~$215K.',
+    label: 'Product manager',
+    source: TECH_TEAM_ROSTER,
+    note: 'Tech scope section 7, US unloaded annual $105,000 — the midpoint of its stated $90–120K.',
+  }),
+  ux_designer: modeled({
+    value: 5_000,
+    unit: 'USD/month',
+    label: 'UX / product designer',
+    source: TECH_TEAM_ROSTER,
+    note: 'Tech scope section 7, Europe/contract annual $60,000 — unloaded, as a contractor is.',
+  }),
+  mid_dev: modeled({
+    value: 5_833,
+    unit: 'USD/month',
+    label: 'Mid-level developer',
+    source: TECH_TEAM_ROSTER,
+    note: 'Tech scope section 7, Europe/contract annual $70,000 — unloaded; $5,833/month is that figure divided by twelve and rounded down, so the modeled annual is $69,996.',
   }),
   agents: modeled({
     value: 2_000,
@@ -157,9 +201,19 @@ export const PRE_SEED_BUDGET: readonly BudgetLine[] = [
   // Founders, modest during runway (cost model section 5, "Founders x2", loaded).
   { key: 'founder_ceo', label: 'Founder salary — CEO (Joe)', monthlyCost: PRE_SEED_LINE_ASSUMPTIONS.founder_ceo.value, startMonth: 1, endMonth: 18 },
   { key: 'founder_cto', label: 'Founder salary — CTO (Damon)', monthlyCost: PRE_SEED_LINE_ASSUMPTIONS.founder_cto.value, startMonth: 1, endMonth: 18 },
-  // Engineering. Cost model section 5 loaded annuals: back-end ~$195K, AI dev ~$215K.
-  { key: 'backend', label: 'Back-end engineer', monthlyCost: PRE_SEED_LINE_ASSUMPTIONS.backend.value, startMonth: 3, endMonth: 18 },
-  { key: 'ai_dev', label: 'AI engineer (Donny)', monthlyCost: PRE_SEED_LINE_ASSUMPTIONS.ai_dev.value, startMonth: 4, endMonth: 18 },
+  // The four hires (tech scope section 7 mix). START MONTHS ARE INHERITED OR SOURCED, NEVER
+  // CHOSEN HERE: month 3 is carried over unchanged from the `backend` line these replace — a
+  // number this edit did not invent — and applies to the senior developer, the mid-level
+  // developer and the designer. The product manager is month 6 because the cost model's
+  // section 5 states the PM as a month-6 hire, "Dame covers product early"; honouring a
+  // documented statement is sourcing, not judgement. (The tech scope argues the PM should
+  // instead start first, since the audit is their job — that is a real disagreement between
+  // two live documents, and it is recorded in the tech scope's own "Two places this differs
+  // from our existing cost model" note rather than silently resolved by this file.)
+  { key: 'senior_dev', label: 'Senior developer', monthlyCost: PRE_SEED_LINE_ASSUMPTIONS.senior_dev.value, startMonth: 3, endMonth: 18 },
+  { key: 'mid_dev', label: 'Mid-level developer', monthlyCost: PRE_SEED_LINE_ASSUMPTIONS.mid_dev.value, startMonth: 3, endMonth: 18 },
+  { key: 'ux_designer', label: 'UX / product designer', monthlyCost: PRE_SEED_LINE_ASSUMPTIONS.ux_designer.value, startMonth: 3, endMonth: 18 },
+  { key: 'product_manager', label: 'Product manager', monthlyCost: PRE_SEED_LINE_ASSUMPTIONS.product_manager.value, startMonth: 6, endMonth: 18 },
   // Auto-improvement agents are compute, not headcount (cost model section 5).
   { key: 'agents', label: 'Auto-improvement agent compute', monthlyCost: PRE_SEED_LINE_ASSUMPTIONS.agents.value, startMonth: 1, endMonth: 18 },
   { key: 'bookkeeper', label: 'Bookkeeper (part-time contract)', monthlyCost: PRE_SEED_LINE_ASSUMPTIONS.bookkeeper.value, startMonth: 1, endMonth: 18 },
@@ -248,13 +302,15 @@ export interface PreSeedRaise {
  * `budgetTotal(PRE_SEED_BUDGET, 1)` and applied three. Two things were wrong with that,
  * and the first is the one worth remembering:
  *
- * **`budgetTotal(lines, 1)` is the FIRST month's burn, not the last.** In month 1 the
- * engineers have not started — the back-end hire begins in month 3 and the AI hire in
- * month 4 — so it returns roughly 43% of what the company actually costs to run by the
- * time the money runs out. Sizing a runway buffer on it understates the raise, and every
- * use-of-funds bucket downstream of it, by about $110K. The name of the parameter
+ * **`budgetTotal(lines, 1)` is the FIRST month's burn, not the last.** In month 1 none of
+ * the four hires has started — three begin in month 3 and the product manager in month 6 —
+ * so it returns roughly two-fifths of what the company actually costs to run by the time
+ * the money runs out. Sizing a runway buffer on it understates the raise, and every
+ * use-of-funds bucket downstream of it, by about $116K at the three months that call site
+ * applied (it was ~$110K under the roster this budget funded before). The name of the parameter
  * (`endingMonthlyBurn`) said exactly what it wanted; the call site quietly handed it
- * something else, and nothing checked because both are numbers.
+ * something else, and nothing checked because both are numbers. `preSeedRaise.test.ts`
+ * pins the gap rather than this comment restating a percentage that moves with the roster.
  *
  * The second: a buffer is a judgement, and having two of them in one repo means the deck
  * and the diligence document answer "how much are you raising" differently in the same

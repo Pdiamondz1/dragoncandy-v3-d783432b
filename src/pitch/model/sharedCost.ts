@@ -67,11 +67,11 @@ export function allocateSharedCost(
  * inventing headcount.
  *
  * Consequence, not just cause: with cost frozen, every dollar of 2027-2028 revenue growth
- * drops straight to EBITDA. Revenue grows 4.2x from 2027 to 2028 ($661,124 to $2,772,169)
- * while shared cost stays flat at $775,884, so the swing from EBITDA of -$466,406 in 2027 to
- * +$897,937 in 2028 is partly an artifact of the frozen-cost assumption, not pure revenue
- * growth. A model that grew shared cost with the business (more metros, more support load)
- * would show a smaller swing. See the Palm Beach penetration note in `metros.ts` for the
+ * drops straight to EBITDA. Revenue grows 6.5x from 2027 to 2028 ($517,631 to $3,341,424)
+ * while shared cost stays flat at $796,080, so the swing from consolidated EBITDA of
+ * -$627,333 in 2027 to +$863,001 in 2028 is partly an artifact of the frozen-cost
+ * assumption, not pure revenue growth. A model that grew shared cost with the business
+ * (more metros, more support load) would show a smaller swing. See the Palm Beach penetration note in `metros.ts` for the
  * same house style of naming a modeling choice's consequence, not just its cause.
  *
  * Takes the lines as an argument rather than reading `PRE_SEED_BUDGET` itself, which is

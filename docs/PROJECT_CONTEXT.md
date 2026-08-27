@@ -68,9 +68,15 @@ this table, and every ratio computed from it below, is a floor.
 
 | Year | Exit ARR | Booked | Headcount | Metros | Notes |
 |------|----------|--------|-----------|--------|-------|
-| Y1 (2026) | $100K | $36K   | 5–6   | 2  | 2026 = Y1 is founder-confirmed, not assumed |
+| Y1 (2026) | $100K | $36K   | 7     | 2  | 2026 = Y1 is founder-confirmed, not assumed |
 | Y2 (2027) | $879K | $518K  | 7–8   | 10 | NRR > 110% |
 | Y3 (2028) | $4.7M | $3.3M  | 10–11 | 21 | 4 named metros + a 17-metro cohort |
+
+**Y1 headcount is 7 (was 5–6), counted 2026-08-26:** 2 founders + the four hires
+`DragonCandy_Tech_Department_Scope.md` §4 is recruiting + the bookkeeper, which is what
+`src/pitch/model/confidential.ts` now funds. Y2/Y3 totals are unchanged but their role lists no
+longer add up to them — flagged, not resolved, in
+`docs/wiki/analyses/part-1-engineering-aios-operations.md` Part 3.
 
 **The superseded plan was $300–600K / $2–4.5M / $7–12M ARR**
 (`docs/archive/DragonCandy_Path_to_Multi-million_annual_profit.md`). It stays registered

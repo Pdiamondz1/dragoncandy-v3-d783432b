@@ -204,6 +204,24 @@ We **model below median** (seed-stage; equity closes the gap, per the staffing p
 | Founders ×2 (Dame, Joe) | ~$90–110K ea | FTE | ~$120–140K ea | Month 0 | Modest during runway (staffing plan Stage 2) |
 | Bookkeeper | — | part-time contract | ~$20–30K | Month 0 | per staffing plan Hire #3 |
 
+> **Superseded on the DevOps line, 2026-08-20 — the row stays, and here is why.**
+> `docs/DragonCandy_Tech_Department_Scope.md` §4 states plainly that we are **not** hiring a
+> DevOps or cloud-infrastructure engineer, and its §7 mix funds four people instead: a product
+> manager, a UX designer, a senior developer and a mid-level developer. That is the later
+> decision and it wins for the people we are recruiting **now** — the pre-seed budget in
+> `src/pitch/model/confidential.ts` funds those four and no App Administrator.
+>
+> The **App Administrator / DevOps** row is deliberately not deleted, because this table
+> describes a different question: the fully-ramped seed-stage team behind a **$3M priced
+> round**, not the four hires a pre-seed pays for. The same goes for the AI developer, the
+> fractional security engineer and the sales AE — the tech-scope document says those roles
+> *"aren't cancelled. They're just later."* Read this roster as the seed-stage shape and the
+> tech scope as the next four hires; where they disagree on a role, the tech scope is current.
+>
+> One consequence worth naming, since nothing else in this file does: with no App Administrator
+> funded, the "auto-improvement agents" compute line below is owned by the CTO and the senior
+> developer, not by the AI developer and App Administrator this paragraph names.
+
 **Why "auto-improvement agents" is a compute line, not a salary:** the staffing plan already
 specifies AI agents that *"write routine code, run tests, scan for security problems 24/7, fix
 simple bugs, handle updates and patches, monitor the app and alert if something breaks"* — the

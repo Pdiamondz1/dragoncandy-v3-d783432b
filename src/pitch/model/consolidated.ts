@@ -53,8 +53,8 @@ export interface ConsolidatedYear extends RollupYear {
   readonly allocations: readonly SharedCostAllocation[];
   /**
    * Metro EBITDA less shared cost — the company's EBITDA, not a metro's. The two differ by
-   * the whole shared-cost line and can differ in SIGN: 2027 is metro EBITDA +$309,478
-   * against consolidated EBITDA -$466,406. Anything that renders one must say which.
+   * the whole shared-cost line and can differ in SIGN: 2027 is metro EBITDA +$168,747
+   * against consolidated EBITDA -$627,333. Anything that renders one must say which.
    */
   readonly ebitda: number;
 }

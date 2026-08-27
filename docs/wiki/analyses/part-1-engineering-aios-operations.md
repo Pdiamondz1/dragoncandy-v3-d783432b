@@ -71,19 +71,50 @@ Per the strategy docs, marketing is **founder-led first, then systematically han
 > **Revenue targets restated 2026-08-26** from the bottom-up model (`src/pitch/model/`,
 > `PROJECT_CONTEXT.md` §3). Figures below are **exit ARR** — the year-end run rate. The superseded
 > top-down band was $300–600K / $2–4.5M / $7–12M; it stays registered as the model's cross-check at
-> its original values. The **staffing plan itself is unchanged** — what moved is the revenue it is
-> being measured against.
+> its original values.
+>
+> **The Year 1 roster changed too, on 2026-08-26 — this note used to say the staffing plan itself
+> was unchanged and only the revenue had moved.** That was true when it was written and stopped
+> being true when the pre-seed budget was re-cut onto the four hires
+> `DragonCandy_Tech_Department_Scope.md` §4 is actually recruiting. The Year 2 and Year 3 **totals**
+> are unchanged — but they no longer follow from Year 1, and that contradiction is flagged below
+> rather than resolved here.
 
-**Year 1 — 5–6 people total | ~$100K exit ARR ($36K booked)**
+**Year 1 — 7 people total | ~$100K exit ARR ($36K booked)**
 - Dame + Joe (founders)
-- AI Developer + Back-End Engineer
+- Product Manager + UX/Product Designer + Senior Developer + Mid-level Developer — the four in
+  `DragonCandy_Tech_Department_Scope.md` §4, and the four the pre-seed budget
+  (`src/pitch/model/confidential.ts`) funds
 - Bookkeeper (part-time contract)
 - Auto-improvement agents (compute, not headcount)
+
+> **7 is a count, not an estimate**, which is why it replaced the range 5–6. This block read
+> "AI Developer + Back-End Engineer" until 2026-08-26 — two roles that appear in neither the
+> hiring plan nor the outreach sent 2026-08-21. **The consequence worth naming: no dedicated AI
+> developer is funded in Year 1.** Donny work sits with the CTO and the senior developer. The AI
+> developer, App Admin/DevOps and Sales AE below are not cancelled — the tech scope's words are
+> that they are "just later" — but "later" now means Year 2 at the earliest.
 
 **Year 2 — 7–8 people total | ~$879K exit ARR ($518K booked)**
 - Add: Front-End Engineer, App Admin/DevOps, Sales AE
 - Add: Part-time social/marketing contractor
 - Fractional Security Engineer active
+
+> **OPEN CONTRADICTION, raised 2026-08-26 and deliberately not resolved — the year totals and the
+> role lists stopped agreeing when Year 1 became 7.** Two ways they disagree:
+>
+> 1. **Year 2 adds at most one person and lists four.** 7 → 7–8 is a net gain of zero or one, while
+>    the list names three FTE roles plus a contractor. Under the old 5–6 Year 1 the same list was
+>    roughly coherent; it is not now.
+> 2. **The Product Manager is hired twice.** Year 3 says "Add: Product Manager (FTE)", and the PM is
+>    now one of the four Year 1 hires.
+>
+> The Year 2 and Year 3 totals were written against a 5–6 Year 1 and were **not** re-derived when
+> Year 1 was counted, because re-deriving them means deciding who is actually hired in 2027 and
+> 2028 — a founder call, not an arithmetic one. `PROJECT_CONTEXT.md` §3 states that nothing in its
+> own three-year table derives from the Year 1 cell (revenue per employee is computed against Year 3
+> alone), and that remains true: this contradiction is in the **composition** of the years, not in
+> any revenue figure. Flagged here so the next reader finds it named rather than discovering it.
 
 **Year 3 — 10–11 people total | ~$4.7M exit ARR ($3.34M booked)**
 - Add: Product Manager (FTE), Brand Partnerships Manager

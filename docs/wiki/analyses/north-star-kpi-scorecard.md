@@ -44,7 +44,7 @@ top-down band look like it disagreed with the model.
 |--------|----|----|----|
 | Exit ARR | ~$100K | ~$879K | ~$4.7M |
 | Booked revenue | $36K | $518K | $3.34M |
-| Headcount | 5–6 | 7–8 | 10–11 |
+| Headcount | 7 | 7–8 | 10–11 |
 | Metros | 2–3 (model: 2) | 8–12 (model: 10) | 20+ (model: 21) |
 | Customers | — | ~264 | ~1,423 |
 | NRR | — | >110% | (sustain) |
@@ -57,6 +57,13 @@ the model do not disagree about reach, they disagree about price ($277.55 modele
 plan's $400–500), and the model books only two of the four revenue streams. The **Profit** row's
 old "$2–5M" was computed against the old revenue and does not follow; against the registered
 $2.2–3.8M Y3 cost band and booked revenue it is −$0.5M to +$1.1M, which straddles zero.
+
+**Y1 headcount became 7 on 2026-08-26** (was 5–6), following §3 of `PROJECT_CONTEXT.md`: two
+founders + the four hires in `DragonCandy_Tech_Department_Scope.md` §4 + the part-time bookkeeper,
+which is now a count rather than an estimate. Y2 and Y3 totals are untouched — the
+revenue-per-employee readings below are computed against Y3 only — but their **role lists** no
+longer add up to them, an open contradiction flagged in
+[[PART 1 — Engineering & AIOS Operations]] rather than resolved.
 
 ## Kill-switch validation (internal threshold vs. external benchmark)
 
