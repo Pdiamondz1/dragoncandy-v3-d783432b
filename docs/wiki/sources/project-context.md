@@ -25,7 +25,10 @@ instructions. Auto-loaded by Claude Code via CLAUDE.md import.
 - Codebase: 59 pages, 162 hooks, 67 edge functions (as of 2026-05-20)
 - [[Donny AI]] is the intelligence layer; [[DragonDash]] is the profit engine
 - Data flywheel is the primary moat — log every brief, match, campaign
-- Three-year ARR targets: Y1 $300-600K → Y2 $2-4.5M → Y3 $7-12M
+- Three-year targets, **restated 2026-08-26 from the bottom-up model** — exit ARR (year-end run
+  rate): Y1 ~$100K → Y2 ~$879K → Y3 ~$4.7M; booked revenue $36K → $518K → $3.34M. The superseded
+  top-down band was $300-600K / $2-4.5M / $7-12M and stays registered as the model's cross-check,
+  **at its original values** — updating it would make the ratio 1.00 by construction
 - Kill-switches: churn >6%, CAC payback >12mo, LTV:CAC <2:1, rev/employee <$400K
 
 ## Notable Principles

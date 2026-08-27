@@ -11,7 +11,13 @@ import { PRICING, TIER_TAKE_RATES, MARKET, UNIT_ECONOMICS, type TierName } from 
 
 export type TierMix = Record<TierName, number>;
 
-const TIERS: TierName[] = ['free', 'starter', 'growth', 'pro'];
+/**
+ * The tier order the blends are summed in. Exported because `workbook.ts` emits the same
+ * blend as an Excel formula (`ue_blendedSubscription`) and must iterate the same tiers in the
+ * same order — a second hand-written list is how the sheet and the model would start
+ * disagreeing about what "the mix" contains.
+ */
+export const TIERS: readonly TierName[] = ['free', 'starter', 'growth', 'pro'];
 
 /**
  * The tier mix as registered, assembled in one place.
@@ -115,4 +121,16 @@ export function projectMonth({ month, restaurants, mix, operatingExpense = 0 }: 
     operatingExpense,
     ebitda: grossProfit - operatingExpense,
   };
+}
+
+/**
+ * Revenue ONE customer produces in ONE month, at the registered mix.
+ *
+ * Derived by running `projectMonth` over a single restaurant rather than by re-deriving
+ * subscription + take rate here, so the two cannot drift apart. This is the ARPU the model
+ * actually implies — quote it, rather than a figure from a narrative document, whenever
+ * someone asks what a customer is worth.
+ */
+export function revenuePerCustomerMonth(mix: TierMix = REGISTERED_MIX): number {
+  return projectMonth({ month: 1, restaurants: 1, mix }).totalRevenue;
 }

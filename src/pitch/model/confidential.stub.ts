@@ -22,16 +22,34 @@ import type {
   RaiseInput,
   UseOfFundsSplit,
 } from './confidential';
+import type { Assumption } from './types';
 
 export type { BudgetLine, FundsBucket, PreSeedRaise, RaiseInput, UseOfFundsSplit };
 
 export const PRE_SEED_BUDGET: readonly BudgetLine[] = [];
+
+/**
+ * Empty, for the same reason every figure above is: the real one is a sentence stating that
+ * the company's own line is negative through 2027, which is the CONCLUSION drawn from the
+ * budget. See the real module's note on why a confidential sentence cannot live in
+ * `trajectory.confidential.tsx` — that file's source ships inside the public sourcemap.
+ *
+ * Nothing renders it: its only consumer is behind `__PITCH_CONFIDENTIAL__`, folded to
+ * `false` in exactly the builds that get this file.
+ */
+export const CONSOLIDATED_LINE_CONCLUSION = '';
 
 export const PRE_SEED_HORIZON_MONTHS = 0;
 
 export const PRE_SEED_BUFFER_MONTHS = 0;
 
 export const USE_OF_FUNDS_SPLIT: UseOfFundsSplit = { engineering: 0, gtm: 0, gna: 0 };
+
+// Empty registers, matching kind (object) rather than content — the real module's founder
+// salaries and use-of-funds shares must never enter this module's graph at all.
+export const PRE_SEED_LINE_ASSUMPTIONS: Readonly<Record<string, Assumption<number>>> = {};
+export const USE_OF_FUNDS_SHARE_ASSUMPTIONS: Readonly<Record<string, Assumption<number>>> = {};
+export const CONFIDENTIAL_ASSUMPTIONS: Readonly<Record<string, Assumption<number>>> = {};
 
 // Signatures mirror the real module exactly — arguments accepted and ignored — so a
 // caller type-checks identically against either. `confidential.stub.test.ts` asserts

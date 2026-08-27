@@ -2,8 +2,8 @@
 title: Investor Pitch Deck & Capital Raise
 type: concept
 created: 2026-06-17
-updated: 2026-08-24
-sources: [2026-06-17-investor-pitch-deck-cost-model.md, 2026-08-24-investor-deck-plan-b.md, 2026-08-24-launch-events-and-drive-delivery.md]
+updated: 2026-08-26
+sources: [2026-06-17-investor-pitch-deck-cost-model.md, 2026-08-24-investor-deck-plan-b.md, 2026-08-24-launch-events-and-drive-delivery.md, 2026-08-26-investor-financial-model-workbook.md]
 tags: [fundraising, pitch-deck, cost-model, raise, donny, brands, provenance]
 ---
 # Investor Pitch Deck & Capital Raise
@@ -137,6 +137,25 @@ And the *first* upload put the **redacted** deck there under a name promising th
 because both builds have the same page count and every page is a JPEG. Full mechanics:
 [[Drive Artifact Delivery]].
 
+### The numbers moved under the deck (2026-08-26)
+
+The model grew a **bottom-up, multi-metro forecast** — Census venue counts × penetration × live
+pricing — and the three-year band in `PROJECT_CONTEXT.md` §3 was **restated from it**. The deck's
+financials slide reads from that, and an editable `.xlsx` with live formulas now ships alongside
+the PDF. Two things a deck reader will ask about:
+
+- **The plan and the model agree on reach and disagree on price.** Every metro count lands inside
+  the plan's own band; the gap is ARPU, and the model is low *by construction* because it books two
+  of the four revenue streams. The superseded band is **not refuted; it is unproven.**
+- **"Revenue" was three quantities** — booked, exit ARR, and steady-state at N — and separating them
+  is what surfaced the $400K/employee kill-switch's unstated ambiguity.
+
+The **eleven** live documents carrying the old band were restated, and `docConsistency.test.ts` now
+fails any live doc that quotes it unmarked. **Two of those documents are generated**
+(`DragonCandy_Investor_Model.md`, `DragonCandy_Investor_QA.md`) and say so in their first three
+lines — hand-editing either survives until the next generator run. Full mechanics, controls and the
+three open founder decisions: [[Bottom-Up Financial Model]].
+
 ### Still outstanding
 
 Four founder inputs, each a marked hole on its slide and printed by the exporter before it writes a
@@ -193,7 +212,7 @@ Flywheel]] and [[Self-Improving App]] told as a fundraising narrative.
 
 ## See Also
 
-- [[Investor Pitch Deck & Cost Model Session]] · [[Build-Time Confidentiality]] · [[Drive Artifact Delivery]]
+- [[Investor Pitch Deck & Cost Model Session]] · [[Bottom-Up Financial Model]] · [[Build-Time Confidentiality]] · [[Drive Artifact Delivery]]
 - [[Pricing Architecture]] · [[Take-Rate Ladder]] · [[Data Flywheel]]
 - [[Donny AI]] · [[DragonDash]] · [[DragonShare]]
 - [[North Star & KPI Scorecard]] · [[Self-Improving App]] · [[Musk's Algorithm]]

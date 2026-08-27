@@ -37,6 +37,21 @@ describe('confidential stub', () => {
   });
 
   /**
+   * The one export that is prose rather than a figure, and it needs its own assertion: the
+   * `typeof` check above passes for two non-empty strings, so it cannot tell an emptied stub
+   * from one that copied the sentence across.
+   *
+   * The sentence states that the company's own line is negative through 2027 — the CONCLUSION
+   * drawn from the pre-seed budget. It is confidential for the same reason the number is, and
+   * it lives in this module rather than in `trajectory.confidential.tsx` because that file's
+   * full source ships inside the public bundle's sourcemap.
+   */
+  it('replaces the confidential prose conclusion with an empty string', () => {
+    expect(stub.CONSOLIDATED_LINE_CONCLUSION).toBe('');
+    expect(real.CONSOLIDATED_LINE_CONCLUSION.length).toBeGreaterThan(20);
+  });
+
+  /**
    * The control: the real module must NOT look like the stub, or every assertion above
    * would pass against two empty modules.
    */

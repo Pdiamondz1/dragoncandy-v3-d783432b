@@ -250,8 +250,9 @@ enabling and hardening it is dev time already inside §5 (no incremental build l
 
 **Motion (confirmed lean):** sales-led with a 2–3 month cycle, carried by **Joe (CEO) + the sales
 AE** — *no new hire* in the runway; the Brand Partnerships Manager stays a Year-3 hire (staffing
-plan Hire #6). Brand revenue is therefore **upside that accelerates the path to the Y2 $2–4.5M
-plan, not a runway dependency.**
+plan Hire #6). Brand revenue is therefore **upside that accelerates the path to the Y2 plan, not a
+runway dependency** — that plan restated 2026-08-26 to **~$879K exit ARR** ($518K booked); it read
+$2–4.5M here until then (`PROJECT_CONTEXT.md` §3).
 
 **Incremental 18-month cost — ~$30–50K, all GTM** (the headcount is already counted in §5/§6):
 - Brand-targeted outreach + collateral (sponsor decks, case studies, ROI one-pagers): ~$8–15K
@@ -314,8 +315,17 @@ and **kill-switches** (CAC payback >12 mo, LTV:CAC <2:1) govern every escalation
 **Sanity checks:** (a) category lines sum to the operating subtotal; (b) the raise = operating
 need + buffer; (c) AI spend stays **≤15% of revenue at every modeled user tier** (§2.3 — it sits
 at 0.2–0.6% in the grounded tiers); (d) a ~$3M seed funding an 18-month, multi-metro, full-team
-push against a Y1 $300–600K / Y2 $2–4.5M plan is standard and consistent with the staffing plan's
-all-in cost ramp ($480–600K Y1 → $1.5–2M Y2).
+push against a **restated** Y1 ~$100K / Y2 ~$879K exit-ARR plan (2026-08-26; `PROJECT_CONTEXT.md`
+§3 — the $300–600K / $2–4.5M this line quoted until then was the superseded top-down band) remains
+consistent with the staffing plan's all-in cost ramp ($480–600K Y1 → $1.5–2M Y2).
+
+**The proportionality argument survives the restatement, but it is no longer generous, and that is
+worth saying plainly here rather than letting a reader discover it.** ~$3M to reach ~$879K exit ARR
+in 18 months is an ordinary seed shape; ~$3M against the superseded $2–4.5M Y2 would have been
+conservative. The
+raise is not re-derived by this restatement — it is built bottom-up from the cost model in §5–§8,
+not sized as a multiple of forward revenue — but anyone testing the ask against the plan is now
+testing it against a smaller plan, and should be told so before they do the arithmetic themselves.
 
 ### 8.1 Use of Funds (for the deck)
 
@@ -337,6 +347,12 @@ decision; this model supplies the **defensible operating need**, not the term sh
 
 - **Deletes:** ~15–25 roles a normal $7–12M-revenue org would carry — the auto-improvement agents
   and Donny do that work (staffing plan), so the raise funds a 9–11-person team, not 30.
+  > **The $7–12M here is an ANALOGY, not our target. Do not update it to match §3.** It names the
+  > size of organisation this team is being compared against. DragonCandy's own Year 3 figure was
+  > restated to ~$4.7M exit ARR on 2026-08-26, and substituting that number destroys the comparison
+  > rather than correcting it: a $4.7M org would not carry 15–25 roles in the first place, so the
+  > deletion claim would shrink to nothing. Registered in the allowlist in
+  > `src/pitch/model/docConsistency.test.ts`, which is what stops a future sweep "fixing" it.
 - **Simplifies:** one capital plan reconciles infra, staffing, Donny R&D, mobile, sales, and a
   3-metro launch into a single 18-month number and a 50/30/20 split.
 - **Automates:** the auto-improvement agents (bug-find/fix, maintenance, auto-scaling,
