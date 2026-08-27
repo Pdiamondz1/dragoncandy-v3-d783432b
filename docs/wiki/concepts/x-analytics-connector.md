@@ -223,8 +223,10 @@ job is to survive a refactor.**
   and someone wants partial value without full funding.
 - **Only the apex callback is registered.** Seven other origins in
   `_shared/origins.ts` can start a connect and would fail X's exact-match check.
-- **App review** needs an anonymously reachable privacy policy, so the site gate
-  breaks it the same way it breaks Google's and Meta's.
+- **App review** needs an anonymously reachable privacy policy. This read "so the
+  site gate breaks it the same way it breaks Google's and Meta's" until 2026-08-26,
+  when #547 put a generated `public/privacy.html` on the gate's allowlist. **Register
+  `/privacy.html`, never `/privacy`.** See [[Site Access Lockdown (Private Preview)]].
 
 ## Two findings about the knowledge layer itself
 

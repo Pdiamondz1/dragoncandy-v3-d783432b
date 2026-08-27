@@ -52,7 +52,7 @@ describe('decide — when the gate is off', () => {
 
 describe('decide — the static allowlist', () => {
   it('passes only paths with a real file behind them', async () => {
-    for (const p of ['/robots.txt', '/favicon.ico', '/privacy.html']) {
+    for (const p of ['/robots.txt', '/favicon.ico', '/privacy.html', '/terms.html']) {
       expect((await decide(req(p), ON)).kind, p).toBe('pass');
     }
   });
@@ -75,7 +75,7 @@ describe('decide — the static allowlist', () => {
 
     // The control. A pathless assertion over an empty set passes vacuously, and
     // an allowlist that shrank to nothing would look identical to one that is fine.
-    expect(ALLOWED_EXACT.size).toBeGreaterThanOrEqual(3);
+    expect(ALLOWED_EXACT.size).toBeGreaterThanOrEqual(4);
 
     for (const path of ALLOWED_EXACT) {
       expect(existsSync(join(publicDir, path.slice(1))), `${path} has no file`).toBe(true);
@@ -86,10 +86,11 @@ describe('decide — the static allowlist', () => {
     expect(existsSync(join(publicDir, 'apple-app-site-association'))).toBe(false);
   });
 
-  it('does NOT pass /privacy — that is the SPA route, and passing it un-gates the app', async () => {
-    // The whole reason public/privacy.html exists as a separate file. Allowlisting
-    // the pretty URL would have been the obvious move and the wrong one.
+  it('does NOT pass /privacy or /terms — those are SPA routes, and passing one un-gates the app', async () => {
+    // The whole reason the .html files exist separately. Allowlisting the pretty URLs
+    // would have been the obvious move and the wrong one.
     expect((await decide(req('/privacy'), ON)).kind).toBe('challenge');
+    expect((await decide(req('/terms'), ON)).kind).toBe('challenge');
   });
 
   it('does NOT pass the sitemap, which would leak the route map', async () => {

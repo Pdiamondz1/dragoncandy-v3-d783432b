@@ -104,25 +104,43 @@ you own" and must "describe your app's functionality to its users", and the priv
 must be "hosted within the domain that hosts your homepage" (13464321). **Both must be
 reachable by a reviewer who is signed in to nothing.**
 
-`gate/decide.ts` allowlists exactly two paths — `/robots.txt` and `/favicon.ico`. Everything
-else answers **401** when `SITE_GATE_ENABLED` is on. So on the day the private preview is
-switched on, `https://dragoncandy.com/` and `https://dragoncandy.com/privacy` both become
-unreachable to Google and this verification fails — as would TikTok's, Meta's and X's, each of
-which requires a publicly reachable privacy-policy URL.
+**Half of this is now fixed, and half is not. Read both halves before sequencing anything.**
 
-Prod is **not** gated as of 2026-08-23 (the apex returns 200), so this is a sequencing
-constraint rather than a live defect. Two ways out, neither free:
+**FIXED (2026-08-26, #547) — the legal pages, BOTH of them.** The second option below shipped:
+real static `public/privacy.html` **and `public/terms.html`**, generated from the app's own
+legal sources and on the gate's allowlist. So **use `https://dragoncandy.com/privacy.html` and
+`https://dragoncandy.com/terms.html`** wherever a console asks — they work gated *and* ungated,
+which the pretty routes never will. (The shipped paths are `public/*.html`, not the
+`public/legal/…` this section originally proposed.)
+
+Privacy shipped first and terms followed at the Codex second review, which is worth recording:
+every console asks for **both** URLs on the same form, so shipping only privacy left an
+anonymously inaccessible legal URL in a live submission. That closes the legal-URL requirement
+for Google, Meta, TikTok and X alike.
+
+**STILL OPEN — the HOMEPAGE.** Google's verification requires the homepage to be "hosted on a
+verified domain you own" and to "describe your app's functionality to its users", **also
+reachable by a reviewer signed in to nothing**. `https://dragoncandy.com/` is the SPA and still
+answers **401** under the gate. Nothing in #547 touched that, and it is easy to read the
+privacy-policy fix as having closed the whole problem — it did not. This half is the one that
+remains a sequencing decision:
 
 - **Submit before the gate goes on** — but the review window is measured in weeks and will
   overlap whatever the gate was switched on for.
-- **Serve the legal pages as real static files** (`public/legal/privacy.html`,
-  `public/legal/terms.html`) and allowlist those paths. This is the only shape the gate
-  permits. Its own header records that allowlisting a path with **no backing file** does not
-  serve "nothing": `vercel.json` rewrites unmatched paths to `/index.html`, so it hands an
-  anonymous browser the entire SPA. `/privacy` is an SPA route, so allowlisting it directly is
-  the documented leak, not a fix.
+- **Serve a static homepage too**, the same shape as `privacy.html`. Nobody has built one, and
+  it is a harder call than the policy was: a static marketing page has to *describe the app's
+  functionality* convincingly, and it would have to be kept in step with a landing page that
+  changes far more often than a privacy policy does.
 
-That is a decision rather than a task, and it belongs to whoever owns the lockdown.
+The rule the fix had to obey, and which any future entry must too: the gate's own header records
+that allowlisting a path with **no backing file** does not serve "nothing" — `vercel.json`
+rewrites unmatched paths to `/index.html`, so it hands an anonymous browser the entire SPA, and
+because the app talks straight to `supabase.co` that shell is a working product. `/privacy` is
+an SPA route, so allowlisting it directly is the documented leak, not a fix. That rule is now
+machine-checked in `gate/decide.test.ts` rather than merely written down.
+
+Prod is **not** gated as of 2026-08-26 (the apex returns 200), so this remains a sequencing
+constraint rather than a live defect. See `docs/wiki/concepts/site-access-lockdown.md`.
 
 ## After the video
 

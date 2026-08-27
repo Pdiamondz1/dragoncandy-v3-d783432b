@@ -1,5 +1,73 @@
 # Wiki Log
 
+## [2026-08-26] ingest | A static privacy policy the site gate can serve
+
+**Created** `raw/sessions/2026-08-26-static-privacy-page.md` and
+[[Static Privacy Page Session]] (`sources/static-privacy-page-session.md`).
+**Updated** [[Site Access Lockdown (Private Preview)]] (two new sections; **and its stale
+"the allowlist is now exactly `/robots.txt` and `/favicon.ico`" claim**),
+`docs/runbooks/site-access-lockdown.md` (two post-deploy checks, one of them a warning
+against the status-code probe that mis-verified this), `index.md`, `docs/SHIPPED_LOG.md`,
+`docs/PROJECT_CONTEXT.md` §5 — where the **first founder-action item** is corrected: it
+said the gate was "a decision, not a task" because switching it on breaks every platform
+review, and that is no longer true.
+
+**The correction to §5 is the point of this ingest, not a side effect.** That item had sat
+at the top of the launch-blocking list reading as a genuine trade-off — lock the site *or*
+get approved — when it was an artifact of how the gate was built. **A "decision" in a
+planning doc is sometimes an unexamined engineering constraint wearing a decision's
+clothes**, and the tell is that nobody had asked why the two were coupled.
+
+**Codex named ONE stale copy; the sweep found FIVE.** The [P2] was that `PROJECT_CONTEXT`'s TikTok
+entry still listed the privacy policy as blocked by the gate, contradicting the correction three
+sections above it. Grepping `anonymously reachable privacy` across `docs/` turned up the same claim
+in the **Instagram** §5 entry, in `concepts/tiktok-analytics-connector.md`, in
+`concepts/x-analytics-connector.md`, and in `runbooks/tiktok-analytics-connector-setup.md` — the last
+of which tells a human which URL to paste into the console, so it was the copy most likely to be
+acted on.
+
+**This is the `[propagate-the-correction]` lesson repeating in the same session it was written
+down.** Correcting the claim where you found it is not correcting the claim. The mechanical fix is
+to grep the distinctive phrase across `docs/` **before** committing a correction, not after a
+reviewer notices one survivor — a reviewer sees the diff, so it can only ever catch the copies that
+happen to sit near it.
+
+**Codex round 2 found what round 1's sweep structurally could not: the URL, not the claim.** The
+first sweep grepped the *prose* (`anonymously reachable privacy`) and fixed five copies. What an
+operator actually acts on is a **pasteable string** — `https://dragoncandy.com/privacy` in TikTok's
+console field table — which shares no words with the sentence. Grepping `dragoncandy.com/privacy`
+found it, plus the same URL in the Google runbook. **Sweep for the artifact a reader will USE, not
+only for the sentence you happen to have written.**
+
+**And that second runbook corrected a claim of mine.** `google-oauth-demo-video.md` had already
+proposed this exact fix — "serve the legal pages as real static files and allowlist those paths" —
+so #547 shipped a solution the repo had written down and nobody had built. But the same section
+records that Google's verification needs the **homepage** reachable signed out too, and `/` is the
+SPA and still 401s. So "switching the gate on no longer breaks four app reviews" was **too strong**:
+it is true for Meta, TikTok and X, and only half-true for Google. Corrected in §5's Open items rather
+than left to be discovered by a failed verification.
+
+**Codex rounds 4 and 5 — the review kept finding the same failure one layer out.** Round 4: the raw
+session still carried the over-claim. Round 5, two findings, and the more important one is not a
+documentation problem at all.
+
+**`terms.html` had to ship.** Every console asks for a privacy URL **and a terms URL on the same
+form**, so shipping only `privacy.html` left an anonymously inaccessible legal URL in a live
+submission. The runbook had hedged that as *"TikTok does not appear to fetch it"* — **an assumption
+about a reviewer's behaviour is not evidence, and it is certainly not a basis for calling a
+submission complete.** The generator now walks a page table and emits both; the guard walks that
+same table, so a third legal page is covered by the act of being registered. Note the repo's own
+`google-oauth-demo-video.md` had proposed **both** files from the start, and only one got built —
+so the gap was written down before it was shipped.
+
+**And a rule question the review got wrong in one direction, then right in the other.** Round 4 said
+to correct the raw session; round 5 said correcting it violates `Never modify raw/`. Both cannot
+hold, so it needed a judgment rather than compliance. `git log origin/main` settles it: the TikTok
+raw session **is** merged (#537), so it is a genuine immutable record and its errata was reverted —
+the correction lives in the synthesized pages, which is the prescribed workflow. This session's own
+raw source is **new in this PR**, never merged, so its first merged state can simply be correct.
+The distinction is "already ingested", not "is in `raw/`".
+
 ## [2026-08-26] ingest | The package-order existence oracle, found by verifying a different fix
 
 **Created** `raw/sessions/2026-08-26-package-order-existence-oracle.md` and

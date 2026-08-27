@@ -237,8 +237,17 @@ one place the secret is actually used.
 - **Both TikTok buttons on the settings page read "Connect TikTok"** — the
   Outstand one publishes, this one measures, and nothing on the buttons says
   which is which. The same misrouting [[Instagram Insights Connector]] hit.
-- App Review needs an **anonymously reachable privacy policy**, so switching on
-  the site gate breaks it exactly as it breaks Google's and Meta's.
+- App Review needs an **anonymously reachable privacy policy**. This read "so
+  switching on the site gate breaks it exactly as it breaks Google's and Meta's"
+  until 2026-08-26, when #547 put a generated, self-contained `public/privacy.html`
+  on the gate's allowlist — it survives the lockdown, and so does TikTok's review. (Said "and
+  so do all four reviews" for a few hours; that is right for Meta and X too, and **wrong for
+  Google**, whose verification additionally needs the HOMEPAGE reachable signed out.)
+  **Register `/privacy.html` AND `/terms.html`**, never the pretty routes, which are SPA
+  routes and stay gated. The console asks for both on one form, so shipping only privacy
+  left an anonymously inaccessible legal URL in a live submission — briefly hedged as
+  "TikTok does not appear to fetch it", which is an assumption about a reviewer, not
+  evidence. See [[Site Access Lockdown (Private Preview)]].
 
 ## See Also
 
