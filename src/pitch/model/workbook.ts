@@ -47,6 +47,40 @@ import {
 } from './confidential';
 import type { Assumption } from './types';
 
+/**
+ * What a cell IS, not what it looks like. The writer turns these into fonts and fills
+ * (`scripts/lib/workbook-theme.ts`); nothing here knows a colour.
+ *
+ * Keeping the tag semantic is what lets the spec stay walkable data. A cell carrying
+ * `fill: 'FF0F766E'` would be a presentation decision frozen into the model, and the next
+ * person wanting a different look would have to edit the model to get it. A cell carrying
+ * `role: 'section'` is a statement about the document's structure that stays true in any
+ * theme, in a PDF, or in a renderer that has no colours at all.
+ *
+ * A role on the FIRST cell of a row governs the whole row — that is why tagging the metro
+ * sheets costs a dozen edits rather than a hundred. A role on any other cell governs just
+ * that cell and wins over the row's.
+ */
+export type CellRole =
+  /** The sheet's own name, row 1 column A. */
+  | 'title'
+  /** The line under a title — provenance, vintage, scope. */
+  | 'subtitle'
+  /** A column heading: the year row, the Assumptions header. */
+  | 'header'
+  /** A band opening a group of rows: `Market`, `Revenue`, `Cost of revenue`. */
+  | 'section'
+  /** Prose. Rendered muted and merged across the sheet so it reads as a sentence. */
+  | 'note'
+  /** A cell the reader is INVITED to change. The only ones in the workbook. */
+  | 'input'
+  /** A subtotal — `Total revenue`, `Total cost of revenue`. */
+  | 'total'
+  /** The number the row exists to produce: `Metro EBITDA`, `Exit ARR`, `Raise`. */
+  | 'headline'
+  /** A provenance tag (`MEASURED` / `MODELED` / `BENCHMARKED`), coloured by its value. */
+  | 'provenance';
+
 export interface Cell {
   readonly v: string | number | null;
   /** Excel formula, without the leading `=`. Task 7 fills these in. */
@@ -55,6 +89,8 @@ export interface Cell {
   readonly name?: string;
   /** Excel number format, e.g. `'$#,##0'` or `'0.0%'`. */
   readonly fmt?: string;
+  /** What this cell is. Presentation only — never read by a formula or a total. */
+  readonly role?: CellRole;
 }
 
 export type CellRow = readonly Cell[];
@@ -122,6 +158,22 @@ const pct = (v: number): Cell => ({ v, fmt: '0.0%' });
 const blank: Cell = { v: null };
 
 /**
+ * Role-carrying builders. Each is `t` plus a tag, so a row reads as what it is:
+ * `sec('Revenue')` rather than `t('Revenue')` and a note in the writer about which strings
+ * happen to be headings. The alternative — inferring structure in the writer from the shape
+ * of a row — was rejected because a prose row and a section heading are the same shape (one
+ * string in column A, nothing beside it), and a rule that cannot tell them apart formats
+ * every explanatory paragraph as a heading.
+ */
+const title = (v: string): Cell => ({ v, role: 'title' });
+const sub = (v: string): Cell => ({ v, role: 'subtitle' });
+const hdr = (v: string): Cell => ({ v, role: 'header' });
+const sec = (v: string): Cell => ({ v, role: 'section' });
+const note = (v: string): Cell => ({ v, role: 'note' });
+const tot = (v: string): Cell => ({ v, role: 'total' });
+const key = (v: string): Cell => ({ v, role: 'headline' });
+
+/**
  * The defined name a registered assumption is published under, and the ONLY way a formula
  * should ever spell one. Definition and reference both call this, so they cannot drift.
  *
@@ -170,13 +222,33 @@ function assumptionRows(confidential: boolean): CellRow[] {
   return all.map(([key, a]) => [
     t(key),
     t(a.label),
-    { v: a.value, name: asmName(key) },
-    t(a.provenance),
+    { v: a.value, name: asmName(key), fmt: assumptionFormat(a.unit), role: 'input' as const },
+    { v: a.provenance, role: 'provenance' as const },
     t(a.source),
     t(a.provenance === 'MEASURED' ? a.asOf : ''),
     t(a.unit),
     t(a.note ?? ''),
   ]);
+}
+
+/**
+ * How an assumption's value should READ, decided from its registered unit.
+ *
+ * These cells shipped with no number format at all, so the sheet a reader is told to edit
+ * showed `0.029` for a 2.9% fee and `0.005` for a half-percent penetration — the two figures
+ * most likely to be mistyped by an order of magnitude, displayed in the form that makes the
+ * mistake invisible. A percent format also makes the edit natural: typing `8%` into a
+ * percent-formatted cell stores 0.08, where typing it into a General cell stores text.
+ *
+ * `calendar` is special-cased ahead of the numeric fallback, because 2026 is a year and
+ * `#,##0` renders it `2,026`. Everything else falls through to a format that shows a decimal
+ * only when there is one, so `2.5` stays 2.5 and `3228` reads 3,228.
+ */
+function assumptionFormat(unit: string): string {
+  if (unit.includes('fraction')) return '0.00%';
+  if (unit.startsWith('USD')) return '$#,##0.00';
+  if (unit.includes('calendar')) return '0';
+  return '#,##0.###';
 }
 
 /**
@@ -190,8 +262,8 @@ function readmeSheet(confidential: boolean): SheetSpec {
   return {
     name: 'README',
     rows: [
-      [t('DragonCandy — three-year financial model')],
-      [t('Generated by `npm run model:xlsx`. Do not edit by hand; the next run overwrites it.')],
+      [title('DragonCandy — three-year financial model')],
+      [sub('Generated by `npm run model:xlsx`. Do not edit by hand; the next run overwrites it.')],
       [blank],
       // This paragraph has been wrong in both directions and the history is worth keeping.
       // It first said "Every input lives on the Assumptions sheet as a named cell ... Nothing
@@ -200,32 +272,32 @@ function readmeSheet(confidential: boolean): SheetSpec {
       // all: the whole Assumptions sheet was inert, and "change one and the model reflows" was
       // advice that did nothing. So state the mechanism and then name every exception, because
       // a reader who checks one claim and finds it false stops trusting the sheets that work.
-      [t('Pricing, the tier mix, campaign volume and value, Stripe and serving costs, CAC, the')],
-      [t('per-metro penetrations and the cohort metro count are named cells on the Assumptions')],
-      [t('sheet, and the metro sheets, the cohort sheet and the Totals rollup are formulas over')],
-      [t('them. Change one and the numbers that depend on it recalculate. Unit_Economics holds')],
-      [t('the blends derived from those cells (ARPU, blended take rate, average campaign value,')],
-      [t('CAC) — also formulas, so they move too.')],
+      [note('Pricing, the tier mix, campaign volume and value, Stripe and serving costs, CAC, the')],
+      [note('per-metro penetrations and the cohort metro count are named cells on the Assumptions')],
+      [note('sheet, and the metro sheets, the cohort sheet and the Totals rollup are formulas over')],
+      [note('them. Change one and the numbers that depend on it recalculate. Unit_Economics holds')],
+      [note('the blends derived from those cells (ARPU, blended take rate, average campaign value,')],
+      [note('CAC) — also formulas, so they move too.')],
       [blank],
-      [t(
+      [sec(
         `${confidential ? 'FOUR' : 'THREE'} THINGS ARE DELIBERATELY PLAIN VALUES, ` +
           'and each says so where it appears:',
       )],
-      [t('  Customer-months — the sum of customers across a year’s twelve months. The monthly')],
-      [t('    ramp is not on the sheet, so this cannot be recomputed from a year-end figure.')],
-      [t('  Gross adds — the same, for churn replaced month by month.')],
-      [t('  Addressable venues — a Census count (see Sources), not an assumption to edit.')],
+      [note('  Customer-months — the sum of customers across a year’s twelve months. The monthly')],
+      [note('    ramp is not on the sheet, so this cannot be recomputed from a year-end figure.')],
+      [note('  Gross adds — the same, for churn replaced month by month.')],
+      [note('  Addressable venues — a Census count (see Sources), not an assumption to edit.')],
       ...(confidential
-        ? [[t('  Shared cost — company-level, from outside the metro sheets entirely.')]]
+        ? [[note('  Shared cost — company-level, from outside the metro sheets entirely.')]]
         : []),
-      [t('Because customer-months is fixed, editing a PENETRATION moves customers at year end')],
-      [t('and Exit ARR but not booked revenue. Re-run `npm run model:xlsx` after such an edit.')],
+      [note('Because customer-months is fixed, editing a PENETRATION moves customers at year end')],
+      [note('and Exit ARR but not booked revenue. Re-run `npm run model:xlsx` after such an edit.')],
       [blank],
-      [t('Provenance: MEASURED = read off production, an invoice or the codebase on the stated')],
-      [t('date, with the command that re-reads it. BENCHMARKED = an external comparable, with a')],
-      [t('URL. MODELED = ours, with the driver named. See the Assumptions and Sources sheets.')],
+      [note('Provenance: MEASURED = read off production, an invoice or the codebase on the stated')],
+      [note('date, with the command that re-reads it. BENCHMARKED = an external comparable, with a')],
+      [note('URL. MODELED = ours, with the driver named. See the Assumptions and Sources sheets.')],
       [blank],
-      [t('Toggle a metro in or out with the YES/NO cells on Totals.')],
+      [note('Toggle a metro in or out with the YES/NO cells on Totals.')],
     ],
   };
 }
@@ -233,9 +305,9 @@ function readmeSheet(confidential: boolean): SheetSpec {
 function sourcesSheet(): SheetSpec {
   const snap = loadCensusSnapshot();
   const rows: CellRow[] = [
-    [t('Sources')],
+    [title('Sources')],
     [blank],
-    [t('Market size — US Census Business Patterns')],
+    [sec('Market size — US Census Business Patterns')],
     [t('NAICS in the addressable band'), t(ADDRESSABLE_NAICS.join(', '))],
     [t('Employment-size buckets'), t(ADDRESSABLE_BUCKETS.join(', '))],
     [t('Excluded: 722513 limited-service'), t('franchised fast food — social is set at corporate, not by the location')],
@@ -270,31 +342,31 @@ function sourcesSheet(): SheetSpec {
   }
   rows.push(
     [blank],
-    [t('Census suppression')],
-    [t('Cells marked "N" are suppressed to protect respondent confidentiality. They are treated')],
-    [t('as unknown, never as zero. A bucket forced by the establishment total is recovered as')],
-    [t('the residual; where more than one is suppressed the model states a range.')],
-    [t('ON THIS 2023 VINTAGE NOTHING IS RECOVERABLE, and we would rather you read that here than')],
-    [t('find it yourself. A bucket is forced only when exactly one of a row’s nine is unknown.')],
-    [t('Across all 67 rows in our snapshot the fewest any row has is TWO — the distribution runs')],
-    [t('2 to 9 — so ZERO rows qualify and the recovery step changes no number in this workbook.')],
-    [t('Every addressable count here is therefore a floor, and "suppressed cells" is the whole')],
-    [t('story. The recovery step is kept because a later vintage or a narrower geography can')],
-    [t('produce a one-unknown row; it runs PER GEOGRAPHY and BEFORE any summing, since summing')],
-    [t('first would pool several rows’ unknowns and lose a recoverable bucket for nothing.')],
-    [t('Across a SET of ZIPs the addressable count is then a FLOOR — the sum of what is known —')],
-    [t('rather than a refusal. Refusing is right for one geography (a hidden cell means the metro')],
-    [t('is not modelable, which is why Palm Beach moved from the town ZIP to the county); across')],
-    [t('fourteen ZIPs it would make a real market unmodelable over one hidden count in one hamlet.')],
-    [t('The bias is bounded, one-directional and stated: it can only UNDERSTATE, never overstate.')],
+    [sec('Census suppression')],
+    [note('Cells marked "N" are suppressed to protect respondent confidentiality. They are treated')],
+    [note('as unknown, never as zero. A bucket forced by the establishment total is recovered as')],
+    [note('the residual; where more than one is suppressed the model states a range.')],
+    [note('ON THIS 2023 VINTAGE NOTHING IS RECOVERABLE, and we would rather you read that here than')],
+    [note('find it yourself. A bucket is forced only when exactly one of a row’s nine is unknown.')],
+    [note('Across all 67 rows in our snapshot the fewest any row has is TWO — the distribution runs')],
+    [note('2 to 9 — so ZERO rows qualify and the recovery step changes no number in this workbook.')],
+    [note('Every addressable count here is therefore a floor, and "suppressed cells" is the whole')],
+    [note('story. The recovery step is kept because a later vintage or a narrower geography can')],
+    [note('produce a one-unknown row; it runs PER GEOGRAPHY and BEFORE any summing, since summing')],
+    [note('first would pool several rows’ unknowns and lose a recoverable bucket for nothing.')],
+    [note('Across a SET of ZIPs the addressable count is then a FLOOR — the sum of what is known —')],
+    [note('rather than a refusal. Refusing is right for one geography (a hidden cell means the metro')],
+    [note('is not modelable, which is why Palm Beach moved from the town ZIP to the county); across')],
+    [note('fourteen ZIPs it would make a real market unmodelable over one hidden count in one hamlet.')],
+    [note('The bias is bounded, one-directional and stated: it can only UNDERSTATE, never overstate.')],
     [blank],
-    [t('Rows in Adrian’s model that are OMITTED here, deliberately')],
+    [sec('Rows in Adrian’s model that are OMITTED here, deliberately')],
     [t('Bonus costs'), t('no analogue — DragonCandy discounts nothing')],
     [t('Statutory gaming tax'), t('no analogue — not a gaming business')],
     [t('Market access fees'), t('no analogue — no licence holder takes a share')],
-    [t('A row shaped like his but filled with an invented number would be worse than its absence.')],
+    [note('A row shaped like his but filled with an invented number would be worse than its absence.')],
     [blank],
-    [t('Every other number traces to the Assumptions sheet, which carries its provenance and source.')],
+    [note('Every other number traces to the Assumptions sheet, which carries its provenance and source.')],
   );
   return { name: 'Sources', rows };
 }
@@ -311,8 +383,13 @@ function metroSheet(metroId: string): SheetSpec {
   // header comment for why the evaluator requires that.
   const ref = (row: number, col: string) => `${sheetName}!${col}${row}`;
 
-  const line = (name: string, pick: (y: (typeof years)[number]) => number, fmt?: string): CellRow => [
-    t(name),
+  const line = (
+    name: string,
+    pick: (y: (typeof years)[number]) => number,
+    fmt?: string,
+    role?: CellRole,
+  ): CellRow => [
+    { v: name, ...(role ? { role } : {}) },
     ...years.map((y) => (fmt === '0.0%' ? pct(pick(y)) : n(pick(y), fmt))),
   ];
 
@@ -327,8 +404,9 @@ function metroSheet(metroId: string): SheetSpec {
     pick: (y: (typeof years)[number]) => number,
     formula: (i: number) => string,
     fmt = '$#,##0',
+    role?: CellRole,
   ): CellRow => [
-    t(name),
+    { v: name, ...(role ? { role } : {}) },
     ...MODEL_YEARS.map((_, i) => ({ v: pick(years[i]), f: formula(i), fmt })),
   ];
 
@@ -338,10 +416,10 @@ function metroSheet(metroId: string): SheetSpec {
   // captured as we go, so a formula can reference an earlier row without hardcoding its
   // index — the same discipline totalsSheet() below uses.
   const rows: CellRow[] = [
-    [t(label), ...MODEL_YEARS.map((y) => t(String(y)))],
-    [t(`${snap.geography.label} — Census ${snap.vintage}`)],
+    [title(label), ...MODEL_YEARS.map((y) => hdr(String(y)))],
+    [sub(`${snap.geography.label} — Census ${snap.vintage}`)],
     [blank],
-    [t('Market')],
+    [sec('Market')],
     [t('Total food service venues'), ...years.map(() => n(totalFoodServiceVenues(metroId), '#,##0'))],
     // The disclosure rides in a trailing cell on the SAME row as the number, never on a row
     // of its own: a new row here would shift every row index below it, and totalsSheet()'s
@@ -357,7 +435,7 @@ function metroSheet(metroId: string): SheetSpec {
       // snapshot in censusTam.json by the NAICS/employment-size filter the Sources sheet
       // spells out — it is evidence, not a dial, and it is the one input a reader is not
       // invited to edit.
-      t(
+      note(
         (addressableBand(metroId).suppressedCells === 0 ? '' : `${describeAddressable(metroId)} `) +
           'Plain value, not a formula: this count comes from the Census snapshot (see Sources), ' +
           'not from an assumption cell, so there is nothing on the Assumptions sheet to reference.',
@@ -402,28 +480,28 @@ function metroSheet(metroId: string): SheetSpec {
   rows.push(line('Gross adds (incl. churn replacement)', (y) => y.grossAdds, '#,##0'));
   const grossAddsRow = rows.length;
   rows.push([
-    t('Customer-months sums customers across the year’s twelve months and gross adds sums the'),
+    note('Customer-months sums customers across the year’s twelve months and gross adds sums the'),
   ]);
   rows.push([
-    t('churn replaced in each of them. Neither is recoverable from a year-end figure, so both'),
+    note('churn replaced in each of them. Neither is recoverable from a year-end figure, so both'),
   ]);
-  rows.push([t('are carried from the model. Every row below is computed from one of them.')]);
+  rows.push([note('are carried from the model. Every row below is computed from one of them.')]);
   // The one partial answer in this workbook, disclosed where a reader meets it rather than
   // left to be discovered by editing a cell and watching half the sheet move. Pinned by
   // workbookLiveness.test.ts, which asserts both halves of the behaviour AND this wording.
   rows.push([
-    t('EDITING PENETRATION IS THE ONE PARTIAL CASE. It re-drives customers at year end and'),
+    note('EDITING PENETRATION IS THE ONE PARTIAL CASE. It re-drives customers at year end and'),
   ]);
   rows.push([
-    t('therefore Exit ARR, but NOT customer-months — a year-end share cannot reconstruct a'),
+    note('therefore Exit ARR, but NOT customer-months — a year-end share cannot reconstruct a'),
   ]);
   rows.push([
-    t('twelve-month ramp — so booked revenue and the cost rows below will not move. Re-run'),
+    note('twelve-month ramp — so booked revenue and the cost rows below will not move. Re-run'),
   ]);
-  rows.push([t('`npm run model:xlsx` after changing a penetration. Every other input is fully live.')]);
+  rows.push([note('`npm run model:xlsx` after changing a penetration. Every other input is fully live.')]);
 
   rows.push([blank]);
-  rows.push([t('Revenue')]);
+  rows.push([sec('Revenue')]);
   rows.push(
     liveLine(
       'Campaigns',
@@ -455,7 +533,7 @@ function metroSheet(metroId: string): SheetSpec {
   const takeRateRow = rows.length;
 
   rows.push([
-    t('Total revenue'),
+    tot('Total revenue'),
     ...MODEL_YEARS.map((_, i) => ({
       v: years[i].revenue,
       f: `${ref(subscriptionRow, METRO_YEAR_COLS[i])}+${ref(takeRateRow, METRO_YEAR_COLS[i])}`,
@@ -478,15 +556,17 @@ function metroSheet(metroId: string): SheetSpec {
       'Exit ARR (year-end run rate)',
       (y) => y.exitArr,
       (i) => `${ref(customersRow, col(i))}*${UE.arpuPerCustomerMonth}*${MONTHS_PER_YEAR}`,
+      '$#,##0',
+      'headline',
     ),
   );
   rows.push([
-    t('Booked revenue is summed month by month while customers ramp; exit ARR is year-end'),
+    note('Booked revenue is summed month by month while customers ramp; exit ARR is year-end'),
   ]);
-  rows.push([t('customers at a full year of the registered mix. They are not comparable.')]);
+  rows.push([note('customers at a full year of the registered mix. They are not comparable.')]);
 
   rows.push([blank]);
-  rows.push([t('Cost of revenue')]);
+  rows.push([sec('Cost of revenue')]);
   // Negative, like every cost row here — "Total cost of revenue" and "Gross profit" below ADD
   // them. The leading minus is on the whole bracket rather than distributed, so the formula
   // reads as "the cost, made negative" rather than as a subtraction of two positives.
@@ -512,7 +592,7 @@ function metroSheet(metroId: string): SheetSpec {
   const aiRow = rows.length;
 
   rows.push([
-    t('Total cost of revenue'),
+    tot('Total cost of revenue'),
     ...MODEL_YEARS.map((_, i) => ({
       v: -years[i].costOfRevenue,
       f: `${ref(stripeRow, METRO_YEAR_COLS[i])}+${ref(aiRow, METRO_YEAR_COLS[i])}`,
@@ -522,7 +602,7 @@ function metroSheet(metroId: string): SheetSpec {
   const totalCostRow = rows.length;
 
   rows.push([
-    t('Gross profit'),
+    tot('Gross profit'),
     ...MODEL_YEARS.map((_, i) => ({
       v: years[i].grossProfit,
       // Cost rows are already negative, so this is addition, not subtraction.
@@ -533,7 +613,7 @@ function metroSheet(metroId: string): SheetSpec {
   const grossProfitRow = rows.length;
 
   rows.push([blank]);
-  rows.push([t('Marketing')]);
+  rows.push([sec('Marketing')]);
   // Charged on GROSS adds, not net growth — see `projectMetroYear`. `ue_cac` is the midpoint
   // of the registered low/high band, so editing either end of the band moves this row.
   rows.push(
@@ -547,7 +627,7 @@ function metroSheet(metroId: string): SheetSpec {
 
   rows.push([blank]);
   rows.push([
-    t('Metro EBITDA'),
+    key('Metro EBITDA'),
     ...MODEL_YEARS.map((_, i) => ({
       v: years[i].metroEbitda,
       f: `${ref(grossProfitRow, METRO_YEAR_COLS[i])}+${ref(marketingRow, METRO_YEAR_COLS[i])}`,
@@ -556,7 +636,7 @@ function metroSheet(metroId: string): SheetSpec {
   ]);
 
   rows.push([blank]);
-  rows.push([t('KPIs')]);
+  rows.push([sec('KPIs')]);
 
   // The three ratios divide by "Total revenue", which is 0 in a metro's pre-launch year
   // (Palm Beach, 2026). `metroKpis()` guards that with its own `revenue === 0 ? 0 : …`, so
@@ -620,16 +700,16 @@ function cohortSheet(sourceSheets: readonly SheetSpec[]): SheetSpec {
     `${templateSheetName}!${METRO_YEAR_COLS[i]}${rowOf(template, label)}`;
 
   const rows: CellRow[] = [
-    [t('Metros beyond the four named'), ...MODEL_YEARS.map((y) => t(String(y)))],
-    [t('These metros have not been chosen. Modeled as N copies of a TEMPLATE metro rather')],
-    [t('than as invented named cities. Change the count on the Assumptions sheet.')],
-    [t(`Template: ${COHORT_TEMPLATE_METRO_ID} — a real registered metro with real Census`)],
-    [t('counts and a ramp appropriate to a market entered in month 12 with no local presence,')],
-    [t('which is the situation every metro in this cohort is in. It was Hoboken until')],
-    [t('2026-08-26: a one-square-mile town of 123 venues carrying the founders’ home-town 35%')],
-    [t('penetration, applied to 17 cities nobody has entered.')],
-    [t(`Every row below is the matching ${templateSheetName} row times the count, which is what`)],
-    [t('the rollup does in code. Nothing on this sheet is a second derivation of the ramp.')],
+    [title('Metros beyond the four named'), ...MODEL_YEARS.map((y) => hdr(String(y)))],
+    [note('These metros have not been chosen. Modeled as N copies of a TEMPLATE metro rather')],
+    [note('than as invented named cities. Change the count on the Assumptions sheet.')],
+    [note(`Template: ${COHORT_TEMPLATE_METRO_ID} — a real registered metro with real Census`)],
+    [note('counts and a ramp appropriate to a market entered in month 12 with no local presence,')],
+    [note('which is the situation every metro in this cohort is in. It was Hoboken until')],
+    [note('2026-08-26: a one-square-mile town of 123 venues carrying the founders’ home-town 35%')],
+    [note('penetration, applied to 17 cities nobody has entered.')],
+    [note(`Every row below is the matching ${templateSheetName} row times the count, which is what`)],
+    [note('the rollup does in code. Nothing on this sheet is a second derivation of the ramp.')],
     [blank],
     [
       t('Metros in cohort'),
@@ -647,8 +727,9 @@ function cohortSheet(sourceSheets: readonly SheetSpec[]): SheetSpec {
     templateLabel: string,
     pick: (y: (typeof years)[number]) => number,
     fmt = '$#,##0',
+    role?: CellRole,
   ): CellRow => [
-    t(label),
+    { v: label, ...(role ? { role } : {}) },
     ...MODEL_YEARS.map((_, i) => ({
       v: pick(years[i]),
       f: `${tmplRef(templateLabel, i)}*${cref(countRow, i)}`,
@@ -665,7 +746,7 @@ function cohortSheet(sourceSheets: readonly SheetSpec[]): SheetSpec {
     // negative, and this sheet prints `-marketingCost`. Multiplying by a positive count keeps
     // the sign, so this is not a second negation.
     scaled('Marketing', 'Acquisition marketing', (y) => -y.marketingCost),
-    scaled('Metro EBITDA', 'Metro EBITDA', (y) => y.metroEbitda),
+    scaled('Metro EBITDA', 'Metro EBITDA', (y) => y.metroEbitda, '$#,##0', 'headline'),
   );
 
   return { name: 'Metros_4toN', rows };
@@ -678,14 +759,14 @@ function cohortSheet(sourceSheets: readonly SheetSpec[]): SheetSpec {
 function sharedCostsSheet(): SheetSpec {
   const years = consolidated();
   const rows: CellRow[] = [
-    [t('Shared costs'), ...MODEL_YEARS.map((y) => t(String(y)))],
-    [t('Payroll, AI and shared infrastructure, allocated across metros by revenue share.')],
-    [t('Before any metro has revenue the split is even — a revenue-weighted split of zero')],
-    [t('is a division by zero, not an allocation.')],
+    [title('Shared costs'), ...MODEL_YEARS.map((y) => hdr(String(y)))],
+    [note('Payroll, AI and shared infrastructure, allocated across metros by revenue share.')],
+    [note('Before any metro has revenue the split is even — a revenue-weighted split of zero')],
+    [note('is a division by zero, not an allocation.')],
     [blank],
-    [t('Total shared cost'), ...MODEL_YEARS.map((y) => n(sharedCostForYear(y)))],
+    [key('Total shared cost'), ...MODEL_YEARS.map((y) => n(sharedCostForYear(y)))],
     [blank],
-    [t('Allocation')],
+    [sec('Allocation')],
   ];
   const metroIds = years[0].allocations.map((a) => a.metroId);
   for (const id of metroIds) {
@@ -779,9 +860,9 @@ function totalsSheet(sourceSheets: readonly SheetSpec[], confidential: boolean):
   const tref = (row: number, col: string) => `Totals!${col}${row}`;
 
   const rows: CellRow[] = [
-    [t('Consolidated'), t('Include?'), ...MODEL_YEARS.map((y) => t(String(y)))],
+    [title('Consolidated'), hdr('Include?'), ...MODEL_YEARS.map((y) => hdr(String(y)))],
     [blank],
-    [t('Revenue by metro')],
+    [sec('Revenue by metro')],
   ];
 
   const firstMetroRow = rows.length + 1;
@@ -791,7 +872,7 @@ function totalsSheet(sourceSheets: readonly SheetSpec[], confidential: boolean):
     toggleRowByMetro[id] = toggleRow;
     rows.push([
       t(id),
-      t('YES'),
+      { v: 'YES', role: 'input' },
       ...MODEL_YEARS.map((_, i) => {
         const value = years[i].metros.find((m) => m.metroId === id)?.revenue ?? 0;
         const source = `${sheetFor(id)}!${SOURCE_COLS[i]}${REVENUE_ROW[id]}`;
@@ -802,7 +883,7 @@ function totalsSheet(sourceSheets: readonly SheetSpec[], confidential: boolean):
 
   rows.push([blank]);
   rows.push([
-    t('Total revenue (booked in year)'),
+    tot('Total revenue (booked in year)'),
     blank,
     ...MODEL_YEARS.map((_, i) => {
       // SUM over an explicit comma-separated list of refs, not a `C4:C6` colon range — the
@@ -816,7 +897,7 @@ function totalsSheet(sourceSheets: readonly SheetSpec[], confidential: boolean):
 
   const metroEbitdaRow = rows.length + 1;
   rows.push([
-    t('Metro EBITDA'),
+    key('Metro EBITDA'),
     blank,
     ...MODEL_YEARS.map((_, i) => {
       // Correction 2: this must be a live formula too — otherwise changing a metro
@@ -834,11 +915,11 @@ function totalsSheet(sourceSheets: readonly SheetSpec[], confidential: boolean):
   if (confidential) {
     // Stays a plain value, deliberately: not a per-metro figure — it comes from the
     // confidential budget at the rollup layer, not from any metro sheet.
-    rows.push([t('Shared cost'), blank, ...years.map((y) => n(-y.sharedCost))]);
+    rows.push([tot('Shared cost'), blank, ...years.map((y) => n(-y.sharedCost))]);
     const sharedCostRow = rows.length;
 
     rows.push([
-      t('EBITDA'),
+      key('EBITDA'),
       blank,
       ...MODEL_YEARS.map((_, i) => ({
         v: years[i].ebitda,
@@ -853,12 +934,12 @@ function totalsSheet(sourceSheets: readonly SheetSpec[], confidential: boolean):
     // reasonably take it for the company's. One line of prose, carrying no figure, closes
     // that. It is not a redaction notice: the deck says the same thing in public already.
     rows.push([
-      t('Metro EBITDA is what the metros themselves earn — after delivery cost and each'),
+      note('Metro EBITDA is what the metros themselves earn — after delivery cost and each'),
     ]);
     rows.push([
-      t('metro’s own marketing, and BEFORE company-level payroll, AI and infrastructure.'),
+      note('metro’s own marketing, and BEFORE company-level payroll, AI and infrastructure.'),
     ]);
-    rows.push([t('It is not the company’s EBITDA and must not be read as one.')]);
+    rows.push([note('It is not the company’s EBITDA and must not be read as one.')]);
   }
 
   /**
@@ -905,7 +986,7 @@ function totalsSheet(sourceSheets: readonly SheetSpec[], confidential: boolean):
 
   rows.push(
     [blank],
-    [t('Exit ARR — the year-end RUN RATE, not what was booked during the year')],
+    [sec('Exit ARR — the year-end RUN RATE, not what was booked during the year')],
     // Live and toggled, for the same reason the revenue and EBITDA rows above are. This
     // shipped as a plain value on the argument that a live formula would need ARPU as a cell
     // and ARPU is derived from the tier mix -- true of the METRO sheets, false here, because
@@ -915,7 +996,7 @@ function totalsSheet(sourceSheets: readonly SheetSpec[], confidential: boolean):
     // Exit ARR and the cross-check multiple below it refuse to move. A cross-check that
     // silently ignores the control the sheet tells you to use is worse than no cross-check.
     [
-      t('Exit ARR'),
+      key('Exit ARR'),
       blank,
       ...MODEL_YEARS.map((_, i) => {
         const terms = metroIds.map((id) => {
@@ -928,18 +1009,18 @@ function totalsSheet(sourceSheets: readonly SheetSpec[], confidential: boolean):
   );
   const exitArrRow = rows.length;
   rows.push(
-    [t('Booked revenue above is summed month by month while customers are still ramping, so')],
-    [t('it sits below the year-end run rate in every growth year. The comparison below needs')],
-    [t('the run rate, because the plan it compares against is stated as ARR.')],
+    [note('Booked revenue above is summed month by month while customers are still ramping, so')],
+    [note('it sits below the year-end run rate in every growth year. The comparison below needs')],
+    [note('the run rate, because the plan it compares against is stated as ARR.')],
     [blank],
-    [t('Cross-check — the SUPERSEDED top-down plan (PROJECT_CONTEXT section 3, before 2026-08-26)')],
+    [sec('Cross-check — the SUPERSEDED top-down plan (PROJECT_CONTEXT section 3, before 2026-08-26)')],
     [t('Prior plan ARR, low'), blank, ...years.map((y) => n(y.priorPlanArrLow))],
     [t('Prior plan ARR, high'), blank, ...years.map((y) => n(y.priorPlanArrHigh))],
   );
   const lowRow = rows.length - 1;
   const highRow = rows.length;
   rows.push([
-    t('Exit ARR as a multiple of the prior plan’s band midpoint'),
+    tot('Exit ARR as a multiple of the prior plan’s band midpoint'),
     blank,
     ...MODEL_YEARS.map((_, i) => ({
       v: years[i].bottomUpVsPriorPlan,
@@ -950,11 +1031,11 @@ function totalsSheet(sourceSheets: readonly SheetSpec[], confidential: boolean):
     })),
   ]);
   rows.push(
-    [t('These are expected to disagree, and the gap is reported rather than closed. Section 3')],
-    [t('now states this model’s figures; the band above is kept as the plan it replaced, so an')],
-    [t('investor who saw the earlier number can be answered. Neither side has been tuned to')],
-    [t('meet the other — the band’s six values are unchanged, deliberately, because updating')],
-    [t('them to match would make the ratio 1.00x by construction and the cross-check worthless.')],
+    [note('These are expected to disagree, and the gap is reported rather than closed. Section 3')],
+    [note('now states this model’s figures; the band above is kept as the plan it replaced, so an')],
+    [note('investor who saw the earlier number can be answered. Neither side has been tuned to')],
+    [note('meet the other — the band’s six values are unchanged, deliberately, because updating')],
+    [note('them to match would make the ratio 1.00x by construction and the cross-check worthless.')],
   );
   return { name: 'Totals', rows };
 }
@@ -1009,23 +1090,23 @@ function unitEconomicsSheet(): SheetSpec {
   return {
     name: 'Unit_Economics',
     rows: [
-      [t('Unit economics'), t('Value')],
+      [title('Unit economics'), hdr('Value')],
       [t('Gross profit per business per month'), n(u.grossProfitPerBusinessPerMonth, '$#,##0.00')],
       [t('Customer lifetime (months)'), n(u.customerLifetimeMonths, '#,##0.0')],
-      [t('LTV'), n(u.ltv)],
+      [key('LTV'), n(u.ltv)],
       [t('LTV:CAC at low CAC'), { v: u.ltvToCacAtCacLow, fmt: '0.00x' }],
       [t('LTV:CAC at high CAC'), { v: u.ltvToCacAtCacHigh, fmt: '0.00x' }],
       [t('CAC payback at low CAC (months)'), n(u.cacPaybackMonthsAtCacLow, '#,##0.0')],
       [t('CAC payback at high CAC (months)'), n(u.cacPaybackMonthsAtCacHigh, '#,##0.0')],
       [blank],
-      [t('CAC is MODELED, not measured — the source states it as a target and DragonCandy has')],
-      [t('never acquired a paying customer. This is a projection measured against a projection.')],
+      [note('CAC is MODELED, not measured — the source states it as a target and DragonCandy has')],
+      [note('never acquired a paying customer. This is a projection measured against a projection.')],
       [blank],
-      [t('Derived drivers — what the tier mix is worth')],
-      [t('These are NOT assumptions and are not on the Assumptions sheet. Each is computed from')],
-      [t('the tier-mix, pricing and cost cells that ARE, and every metro sheet references these')],
-      [t('by name — so changing a tier price or the mix moves campaigns, GMV, revenue and cost')],
-      [t('on all four metro sheets, the cohort sheet and the Totals rollup.')],
+      [sec('Derived drivers — what the tier mix is worth')],
+      [note('These are NOT assumptions and are not on the Assumptions sheet. Each is computed from')],
+      [note('the tier-mix, pricing and cost cells that ARE, and every metro sheet references these')],
+      [note('by name — so changing a tier price or the mix moves campaigns, GMV, revenue and cost')],
+      [note('on all four metro sheets, the cohort sheet and the Totals rollup.')],
       [t('Blended subscription per customer per month'),
        driver('blendedSubscription', blendedSubscription(REGISTERED_MIX), '$#,##0.00')],
       [t('Blended take rate'), driver('blendedTakeRate', blendedTakeRate(REGISTERED_MIX), '0.00%')],
@@ -1043,9 +1124,9 @@ function financingSheet(): SheetSpec {
   const raise = preSeedRaise();
   const allocation = buildFundsAllocation(raise.raise, USE_OF_FUNDS_SPLIT);
   const rows: CellRow[] = [
-    [t('Financing — CONFIDENTIAL'), t('Amount')],
+    [title('Financing — CONFIDENTIAL'), hdr('Amount')],
     [blank],
-    [t('Pre-seed budget')],
+    [sec('Pre-seed budget')],
   ];
   for (const line of PRE_SEED_BUDGET) {
     rows.push([
@@ -1056,18 +1137,18 @@ function financingSheet(): SheetSpec {
   }
   rows.push(
     [blank],
-    [t(`Total over ${PRE_SEED_HORIZON_MONTHS} months`), n(total)],
-    [t('Raise'), n(raise.raise)],
+    [tot(`Total over ${PRE_SEED_HORIZON_MONTHS} months`), n(total)],
+    [key('Raise'), n(raise.raise)],
     [blank],
-    [t('Use of funds')],
+    [sec('Use of funds')],
   );
   for (const bucket of allocation) {
     rows.push([t(bucket.label), { v: bucket.share, fmt: '0%' }, n(bucket.amount)]);
   }
   rows.push(
     [blank],
-    [t('SAFE terms — cap, discount, MFN — are a founder decision, not a derivation, and are')],
-    [t('deliberately absent. Launch event budget is blocked on launchEventPlan in deck/pending.ts.')],
+    [note('SAFE terms — cap, discount, MFN — are a founder decision, not a derivation, and are')],
+    [note('deliberately absent. Launch event budget is blocked on launchEventPlan in deck/pending.ts.')],
   );
   return { name: FINANCING_SHEET, rows };
 }
@@ -1081,7 +1162,7 @@ export function buildWorkbookSpec({ confidential }: { confidential: boolean }): 
   const sheets: SheetSpec[] = [
     readmeSheet(confidential),
     { name: 'Assumptions', rows: [
-      [t('key'), t('label'), t('value'), t('provenance'), t('source'), t('as of'), t('unit'), t('note')],
+      [hdr('key'), hdr('label'), hdr('value'), hdr('provenance'), hdr('source'), hdr('as of'), hdr('unit'), hdr('note')],
       ...assumptionRows(confidential),
     ] },
     sourcesSheet(),
