@@ -223,6 +223,103 @@ it. Then, once moved, its error message revealed the **trigger** firing rather
 than the CHECK it was named for — so the constraint was untested while a check
 named for it passed.
 
+## The reaper: delete an object when nothing can need it again
+
+The queue leaks staged bytes **four** ways, not the three the design spec enumerated
+(`docs/superpowers/specs/2026-08-26-instagram-native-publishing-design.md`). The fourth is
+the one no enumeration would have caught, because it is a deliberate choice rather than a
+gap: **a best-effort `discardStaged` delete that failed**. It logs and continues by design —
+"a failed delete must never turn a published post into a reported failure" — so it is
+deliberate litter, and nothing else collected it. The other three are the deadline branch
+(SQL, which cannot reach Storage), `needs_review` (kept on purpose), and an enqueue whose
+RPC never committed.
+
+One rule covers all four, which is the argument for a sweep rather than four cleanups:
+**delete an object when nothing can need it again.**
+
+**The decision is ONE SQL query, and that is not a style preference.** "Is this referenced"
+and "is this old" must be answered of the same instant. Read the bucket, then read the jobs,
+and a job inserted between the two reads makes a live object look like an orphan — the
+consequence is not a stale count, it is deleting the media out from under a scheduled post.
+The residual gap between the query and the DELETE is closed by construction rather than by a
+lock: `plannedDestinations` mints a fresh random batch directory per invocation, so an object
+unreferenced in this snapshot can never *become* referenced.
+
+**The row is not deleted in SQL.** Deleting from `storage.objects` removes the bookkeeping and
+leaves the file — an invisible leak replacing a visible one. SQL decides; the edge function
+deletes through the Storage API.
+
+**Three retention windows and one age-independent absolute.** orphan 6h / terminal 72h (longer
+than the 48h job deadline) / `needs_review` 30d — and a `queued` or `claimed` job's bytes are
+never touched **regardless of age**. A post scheduled a month out sits `queued` for a month;
+any "old enough" rule would delete exactly the posts a customer cared about most.
+
+**The clock is `greatest(object.created_at, job.updated_at)`.** `publish_jobs` has no
+`handle_updated_at` trigger — its `updated_at` moves only because every transition RPC assigns
+`now()` explicitly. If a future transition forgets, the stamp falls back to row creation, far
+in the past for a job scheduled weeks out, and would reap on the first tick after it failed.
+`greatest` makes that mistake cost retention rather than data. See [[Updated-At Trigger Drift]].
+
+**Count what Storage says it removed, never the request size.** `remove()` succeeds for a path
+that no longer exists and omits it from the result. On a bucket whose healthy state is zero
+deletions, that number is the only evidence anyone will read.
+
+### Two gates that each looked like one
+
+**`config.toml` had no entry for this function at all.** All three sibling cron sweeps carry
+`verify_jwt = false`; the platform default is `true`, so the gateway would have 401'd the cron
+before `isAuthorizedIngest` ran. The durable point is not "add the line" — it is that **a
+missing config entry is a silently inverted default**, and here it would have been
+undetectable: the healthy state of this reaper is zero deletions, so a permanently-401ing
+daily job is indistinguishable from a working one.
+
+**The RPC carried half the lockdown its own comment claimed.** The header said "same lockdown
+as every other function on this queue" — true of the GRANT half, false of the in-body
+`request.jwt.claims ->> 'role'` guard the four sibling RPCs carry. Nothing leaked; the EXECUTE
+lockdown is the real gate and was correct. But the two gates fail independently, and one
+re-granting migration would hand every staged object's name to any authenticated caller —
+names of the shape `<user-id>/<batch>/<n>.<ext>`, which enumerate user ids and pending-post
+counts. **A comment asserting a property is exactly what makes the property checkable**, the
+same way the Facebook-disconnect race was found by a reviewer reading prose that claimed
+safety.
+
+Adding the guard moved the function to `plpgsql`, which needed an explicit `::text` on the
+CASE: under `return query` the row type must match the declared `RETURNS TABLE`, and a bare
+literal resolves as `unknown`. As `language sql` this coerced silently.
+
+**The guard was checked against a live sibling before being added**, since if the service-role
+bearer did not populate `request.jwt.claims` it would have broken a working function.
+`instagram-publish-sweep` returns `"expired":0`, a counter read straight off
+`claim_publish_job`'s result — which carries the identical guard.
+
+### Proving it on an empty bucket
+
+The bucket holds **0 objects** and the queue **0 jobs**, so an empty bucket and a broken query
+produce the same zero. The response therefore reports `scanned` (what the query selected) and
+`deleted` (what Storage confirmed) **separately**, and the real proof is a planted population
+inside a rolled-back transaction: five objects, of which `orphan`, `review_expired` and
+`terminal` were returned while a `queued` job's 40-day-old media and a too-fresh orphan were
+**withheld**. Two of five withheld is what makes it a control rather than a query that returns
+everything. The guard was then proven both directions — correct rows under a `service_role`
+claim, `P0001` under `authenticated`.
+
+**Codex filed a P1 here that was wrong, TWICE — and the second time it escalated into a claim
+that refutes itself.** Round 1: `storage.objects` has no `is_delete_marker` column, so every cron
+invocation fails. Round 2, over the same diff: the *migration* therefore "fails with
+`column o.is_delete_marker does not exist`, preventing both the RPC and subsequent cron migration
+from deploying". Both migrations are applied, `pg_proc` holds the function, and `cron.job` holds
+the schedule — so the second claim is falsified by the very artefacts the branch produced, and the
+first by prod returning **287** non-marker objects from that predicate (PG 17.6) plus a live 200
+that had already executed the query.
+
+Codex's sandbox has no prod access and inferred the Storage schema from the repo — the
+stale-context failure mode `CLAUDE.md` warns about under the Codex section. **The rule that
+survives is the one already written there: check a finding against the thing itself before acting
+on it.** Deleting a correct predicate to satisfy a confident reviewer would have been the only way
+to actually break this. Worth carrying because the shape recurs and gets *more* persuasive on
+repetition: a reviewer that cannot see the environment, asserting facts about the environment, in
+increasingly specific terms.
+
 ## Key Decisions
 
 - **One queue, two protocols.** Claiming, releasing, the marker, the janitor, the
@@ -267,12 +364,13 @@ named for it passed.
   gate. For Instagram the order is load-bearing: App Review **first**, then add
   `instagram_business_content_publish` to the scope list, then **every existing
   connection must reconnect** — a token refresh does not widen a grant.
-- **No storage reaper.** Three paths orphan files in `publish-media`: the deadline
-  branch (SQL cannot reach Storage), a `needs_review` job whose bytes are kept
-  *on purpose* so a person can see what was about to go out, and an enqueue whose
-  RPC genuinely did not commit. Cleaning up at each site was the proposed remedy
-  and is the wrong shape — it asks every future path to remember, the enumeration
-  failure this repo has watched three times on `profiles` write grants.
+- ~~**No storage reaper.** Three paths orphan files in `publish-media`.~~ **Built,
+  applied and deployed 2026-08-27 — and there were FOUR paths, not three.** See
+  the section above. Cleaning up at each site was the proposed remedy and is the
+  wrong shape — it asks every future path to remember, the enumeration failure this
+  repo has watched three times on `profiles` write grants; **and the count itself is
+  the evidence**, since the enumeration written down days earlier was already one
+  short. **Nothing has ever been reaped**, because nothing has ever been staged.
 - **No carousel**, on either platform. Facebook's is easier (`attached_media` on
   one call) but N in-flight ids do not fit one `provider_ref` column.
 - **No `social_post_log` row** for a natively published post. That key is

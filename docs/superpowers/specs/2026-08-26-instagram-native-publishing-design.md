@@ -477,6 +477,11 @@ the same split the `guard_*_verification_columns` triggers make.
 
 ### Open — a storage reaper, which is its own slice
 
+**Superseded 2026-08-27 — there were FOUR, and the reaper is built.** The fourth is a
+best-effort `discardStaged` delete that failed, which is deliberate (a failed delete must never
+turn a published post into a reported failure) and so was never going to appear in a list of
+gaps. See [[Native Publishing Queue]]. The three below stand as written:
+
 Three orphan paths remain, down from four:
 
 1. a job given up on by the deadline branch, which is SQL and cannot reach Storage;

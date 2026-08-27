@@ -321,6 +321,16 @@
   local branch's file-set is disjoint from what changed since the merge-base (so nothing is lost), then
   build the knowledge-sync commit on a fresh local branch off the FETCHED PR head, not the stale one.
 
+- **[concurrent-session-same-core-doc] Another local session can be editing `PROJECT_CONTEXT.md`
+  while you are.** On 2026-08-27 `ListAgents` showed a sibling interactive session `busy`, and the
+  harness reported the MAIN checkout's `PROJECT_CONTEXT.md` changing mid-run — §5 entries I was
+  about to touch. Worktrees do not protect a shared doc: they isolate the *file*, not the *merge*.
+  Two mitigations, both cheap: **keep the §5 edit to the smallest possible span** (one clause inside
+  one existing bullet merges; a rewritten section does not), and **run `ListAgents` before editing a
+  core doc** — a `busy` peer is the signal. This is the local-session twin of
+  `[squash-drift]` and of the Lovable collision the `careful` skill guards; the difference is that
+  nothing warns you, because both edits are legitimate.
+
 - **[doc-documents-the-bug] When the page you're compounding onto describes the defect as a
   FEATURE, the edit is a retraction, not an append — and it must read as one.** On 2026-08-08
   [[Notification Delivery]] said `create-notification` "resolves the email type as
@@ -431,6 +441,26 @@
   `[orphans]`, which matches on the `(path/to/file.md)` link target and does not have this problem.
 
 ## Run log (newest first — add each new entry at the TOP; never edit/delete past entries)
+
+### 2026-08-27 — publish-media-reaper (`feat/publish-media-reaper`)
+
+- **Output:** `docs/wiki/concepts/native-publishing-queue.md` (new "The reaper" section +
+  the "No storage reaper" known issue struck through) · `docs/wiki/log.md` 2026-08-27 entry ·
+  `docs/SHIPPED_LOG.md` 2026-08-27 entry · source
+  `docs/wiki/raw/sessions/2026-08-27-publish-media-reaper.md`.
+- **Happened:** picked up an abandoned worktree holding an uncommitted reaper (edge fn + 2
+  migrations), reviewed it, fixed two findings, applied/deployed/verified on prod, then synced
+  knowledge.
+- **Worked:** `[propagate-the-correction]` earned its place immediately. The branch established
+  there were **four** orphan paths; grepping the OLD value ("three orphan paths") found it in
+  **three** other files — `PROJECT_CONTEXT` §5, the `SHIPPED_LOG` native-publishing entry, and the
+  design spec — none of which I would have opened otherwise. All three corrected in one pass.
+  `[scope-paths]` also paid: `git grep origin/main` confirmed no parallel reaper had landed.
+- **Failed:** nothing lost, but a near-miss worth naming — a *concurrent local session* was editing
+  `docs/PROJECT_CONTEXT.md` in the MAIN checkout while I edited the worktree's copy of the same
+  file. I only noticed because the harness surfaced the external modification. See the new Lesson.
+- **Remember:** the reaper cannot be proven by running it (empty bucket); the proof is a planted,
+  rolled-back population where two of five objects are **withheld**.
 
 ### 2026-08-26 — `feat/preseed-four-hires` (pre-seed roster re-cut + workbook design pass)
 **Output:** `docs/wiki/raw/sessions/2026-08-26-preseed-roster-and-workbook-design.md`; two new
