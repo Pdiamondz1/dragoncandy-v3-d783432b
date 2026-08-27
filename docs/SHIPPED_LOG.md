@@ -32,6 +32,144 @@
 >
 > **Adding an entry:** prepend it (newest first). See `knowledge-sync` step 4.
 
+## [2026-08-26] Native publishing — the Facebook step machine, and one queue for every platform
+
+**PR #544, open at time of writing.** 21 commits. The first direct-API **WRITE** in this
+project: until now every direct connector was read-only under the 2026-08-23 scope decision
+(*Outstand publishes, direct APIs measure*). **That decision no longer describes Instagram and
+Facebook.** It still holds for X, TikTok and YouTube, and the split is deliberate — publishing
+was built where an account and a Page already existed to publish to.
+
+Three layers: `publish_jobs`, a shared platform-agnostic queue; two protocol modules
+(`_shared/instagram-publish.ts`, `_shared/facebook-publish.ts`) that are deliberately NOT shared,
+because Meta's two products do not agree about what a post is; and four edge functions
+(`instagram-publish-enqueue`/`-sweep`, `facebook-publish-enqueue`/`-sweep`).
+
+**PUBLISHING IS LIKE PAYING.** Modelled on `pending_balance_flushes`, not on any read-only
+connector: the durable marker is written AFTER the side effect, so *"marker set ⇒ it published"*
+holds by construction. Meta's `media_publish` has **no idempotency key** — Stripe gives one away
+and Meta does not — so a second marker, `publishing_at`, is stamped immediately before the point
+of no return, and every ambiguous outcome after it stops at `needs_review` rather than retrying.
+That is the `stuck` contract applied to a feed instead of to money.
+`PROVEN_NOT_PUBLISHED_CODES` is an **allowlist**, so a new error code defaults to *ambiguous*
+(over-escalate to a human) rather than *safe to retry* (duplicate post); `rate_limited` is
+deliberately absent, because a 429 can be issued by an edge in front of Meta after the request
+was accepted upstream.
+
+**A LOCK ONLY HELPS WHILE IT IS HELD.** `pg_advisory_xact_lock` ends with its transaction, long
+before Meta is called, so one tick advances one job by exactly one step and hands the claim back.
+Two consequences: the rate-limit count includes **in-flight** work, not only `published` (counting
+only the latter lets two overlapping sweeps each see the limit minus one and both publish); and
+`release_publish_job` **refuses** a job past the point of no return rather than clearing the
+marker, because clearing makes a misuse pass quietly — the caller gets `true`, the job requeues,
+and if the publish really went out it is eligible to go out again.
+
+**FACEBOOK IS NOT INSTAGRAM, IN FIVE PLACES**, read from Meta's Pages / Video / Page Stories docs
+rather than inferred from the sibling that shipped the week before. A photo is ONE call, not
+container-poll-publish. A text post with no media at all is possible, which Instagram cannot do. A
+Reel is an upload session on a second host. The status vocabulary is seven lower-case values with
+`ready` where Instagram says `FINISHED`. The Page token never expires, so none of the
+proactive-refresh machinery belongs here.
+
+Two of those are load-bearing. **There is no `PUBLISHED` equivalent** — the single signal that
+resolves whether an interrupted publish landed does not exist on Facebook, so nothing can ask "did
+that go out?" after the fact, and the allowlist is the only thing between an ambiguous answer and
+a person. A recovery check was **considered and deliberately not built**: the fields that might
+distinguish a published Reel were not verified against Meta's docs, and a recovery path that is
+wrong resolves an ambiguity confidently in the wrong direction. And **publishing needs TWO
+independent gates** — the `pages_manage_posts` permission AND the `CREATE_CONTENT` task on the
+Page — granted by different people and fixed different ways, so the refusal names which is shut.
+Measured on the live DragonCandy Page: the task is already held, only the permission is
+outstanding.
+
+**FOUR PROTOCOLS, SO "ONE STEP" MEANS FOUR THINGS.** `feed_text` and `photo_single` are one call,
+`photo_story` two, `video_session` three. The protocol is **derived, never stored** —
+`validateJobShape` returns it and both the enqueue path and the sweep call that same function, so
+`provider_ref` needs no discriminator and the two callers cannot disagree about one job.
+**The point of no return moves with the protocol:** Instagram's first call always builds a
+container and publishes nothing, while two of Facebook's four publish on their FIRST call, so the
+marker is stamped in step one for those and step two for the rest. `video_session` opens the
+session **and** uploads in one tick — recording the id after `start` and uploading next tick
+leaves a video that never receives bytes sitting at `uploading` for ever, polled and released
+without ever charging an attempt.
+
+**THE STAGING PATH BECAME SHARED, BECAUSE IT IS THE OWNERSHIP CHECK.** The caller's own credential
+signs the source object (signing requires read permission, so Storage RLS makes the decision) and
+the service role performs the copy. Step 2 alone would let any authenticated user name any path in
+any bucket and have our credentials publish a stranger's file — the `outstand_post_ownership`
+defect one layer up, with a public post instead of a mis-filed metric as the consequence. It
+existed twice for about an hour; two copies of an authorization check is the #540 shape, and a
+drift there is one platform checking ownership and the other not. The test pins **which credential
+does which operation**, and was proven to fail by swapping the two clients in the module.
+
+**SIXTEEN CODEX ROUNDS, NINE ON THIS STRETCH — EIGHT REAL, ONE REFUTED.**
+
+*A disconnect deleted the posts queued for it, mid-publish included.* Filed first as a storage
+leak; that reading was too narrow. The sweep loads the connection, stamps the marker, calls Meta;
+the user disconnects in another tab; the cascade removes the row; Meta publishes; and
+`confirm_publish_job` updates zero rows because there is nothing left to update. So does
+`review_publish_job`, the branch written for exactly that failure. A live post whose only trace is
+a console line — the one outcome the whole design exists to prevent. Fixed with `ON DELETE SET
+NULL`; the sweep already fails a job whose connection has gone, and that path was simply
+unreachable. The CHECK relaxed to allow both-null and a `BEFORE INSERT` trigger took over what
+only holds at creation, because a CHECK cannot tell an insert from an update.
+
+*Enqueue was not idempotent, and fixing it took four rounds.* A lost HTTP response meant a retry
+made a second post. The obvious fix — stop deleting the staged media — was **worse** on its own:
+the discard was accidentally buying safety, since an orphan job with no media cannot publish, and
+that accident does not cover a Facebook text post, which has no media at all. So a required
+client-generated key landed with a `(user_id, idempotency_key)` unique index as the referee for
+concurrent replays. Then a reused key had to become a **conflict** rather than a replay, because
+returning the other job reports success for work it discarded. Then **the two fixes cancelled each
+other out**: the random staging directory was inside the digest, so every retry of a post with
+media read as a different post and was answered with `idempotency_key_conflict` — only a Facebook
+text post still worked. The digest now keys on the media **sources** the caller named. Finally the
+replay moved **before** staging, because a retry that re-copies the media first answers
+`media_not_found` for a post that is queued and about to publish.
+
+*Two pre-existing defects found while building.* A job that is only ever **polled** could never run
+out of attempts — `MAX_ATTEMPTS` bounds failures and a poll is not one, so the loop was bounded
+only by Meta expiring its own handles, which neither sweep can verify or control. Closed with a
+48-hour wall-clock deadline, deliberately longer than Meta's expiry so Meta's terminal status stays
+the primary mechanism. And `publish_jobs_media_paths_check` had **never rejected anything**:
+`array_length('{}', 1)` is NULL and a CHECK **passes** on NULL, so the table constraint was
+decorative while the RPC did the work.
+
+*Losing a race for one job abandoned the whole backlog.* Two overlapping sweeps pick the same
+oldest job; the loser returns `taken`, and both sweeps end their run on any reason but
+`rate_limited`. With a one-minute cron and a fifteen-minute claim TTL, a tick longer than sixty
+seconds overlaps the next by construction — so this is the normal case, and the queue would drain
+at a fraction of its intended rate with nothing in any log to explain it.
+
+*The one that was refuted.* Round 15 held that polling consumes the retry budget. It does not —
+`release_publish_job` has always done `attempts = greatest(attempts - 1, 0)`. Measured rather than
+argued: ten full poll cycles leave `attempts` at 0 and the job still claimable, with the control
+that five real failures take it to 5 and `stuck`. The refund is one `greatest()` inside a
+migration and is invisible from the call site, which is why the finding was entirely plausible, so
+the measurement is now written at `MAX_ATTEMPTS` in both sweeps.
+
+**TWO LESSONS ABOUT VERIFICATION, NOT ABOUT PUBLISHING.** A probe that exercises a function
+directly can prove the function right and the FEATURE wrong — the idempotency check passed the
+same staged paths on both calls, which is a real contract that held, and is not the contract the
+client sees. No control inside such a probe catches it; the fixture has to come from where the
+caller stands. And a rejection test written as `insert ... select` **fails open** when its fixture
+is gone: no rows looks exactly like no error.
+
+**Eighteen migrations, all applied to prod and verified by object except the two crons**
+(`20260826280000`, `20260826360000`), which need the functions deployed and a Vault secret each.
+`CLAUDE.md` forbids renaming columns, so `ig_user_id` / `ig_container_id` / `ig_media_id` survive
+as **dead nullable columns**; reusing them for Facebook data was rejected on the founder's call,
+because `ig_user_id` holding a Page id is the nearly-but-not-quite shape that makes the next
+reader believe a name that lies.
+
+**State at time of writing:** Codex clean, full suite 3735 passing, 97 edge functions type-check
+clean. **Nothing deployed, no cron, no UI** — verified by probe, `facebook-publish-sweep` returns
+404 where the deployed `instagram-insights` returns 401. Both platforms fail closed at the
+permission gate regardless. Outstanding: `pages_manage_posts` and
+`instagram_business_content_publish`, each needing its own App Review; a storage reaper for the
+three remaining orphan paths; and the UI. → [[Native Publishing Queue]],
+[[Facebook Page Publishing]]
+
 ## [2026-08-26] TikTok read-only analytics connector — and four defects one real connection found
 
 **PRs #525 and #529, both merged.** The fifth direct platform connector under the 2026-08-23

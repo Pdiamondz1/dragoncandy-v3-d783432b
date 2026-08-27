@@ -401,6 +401,10 @@ four signatures changed and one function was renamed.
 
 ## 11. The Facebook step machine, 2026-08-26 — and two things the queue got wrong
 
+> **Round numbering, so §9's "six" and this section do not read as a contradiction.** §9 counts the
+> rounds the *Instagram* slice took. This section adds **nine more**, for **sixteen on the branch**;
+> eight of the nine were real and one was refuted by measurement.
+
 `facebook-publish-enqueue` and `facebook-publish-sweep` are built. Four protocols share one
 queue: `feed_text` and `photo_single` are one call, `photo_story` two, `video_session` three. The
 protocol is **derived, never stored** — `validateJobShape` returns it, and both the enqueue path

@@ -167,6 +167,11 @@ Engineering cannot close these. Ordered by what blocks launch.
   one-domain limit makes expand-then-switch structurally impossible.
 - **`READINESS_GATE_ENABLED` flag-row decision** — do **not** enable until a real address
   verifies; until then the `required` address item is display-only.
+- **Publishing permissions, two App Reviews.** `instagram_business_content_publish` and
+  `pages_manage_posts`. Native publishing is built and fails closed without them. The Instagram
+  order is load-bearing: App Review **first**, then add the scope, then **every existing
+  connection must reconnect** — a refresh does not widen a grant. The Page already holds the
+  `CREATE_CONTENT` task, so only the permission is outstanding there.
 - **X API credits** — decided 2026-08-25 not to fund. Until then the connector authenticates
   and honestly reports that it cannot measure.
 - **Hiring** — replies from the three referrals; rotate the committed staging password; untrack
@@ -181,6 +186,16 @@ Engineering cannot close these. Ordered by what blocks launch.
 
 ### In flight
 
+- **Native publishing (Instagram + Facebook Pages)** — the first direct-API **write**; the
+  2026-08-23 *direct APIs measure* split no longer describes these two, though it still holds for
+  X, TikTok and YouTube. One shared `publish_jobs` queue with an exactly-once guarantee modelled
+  on `pending_balance_flushes`, and two protocol modules that are deliberately not shared.
+  Eighteen migrations applied and verified by object; sixteen Codex rounds. **Pending:** the four
+  functions are **not deployed** (probed 2026-08-26: 404, against 401 for a deployed control) and
+  both crons are unapplied pending a Vault secret each; the two App Reviews (founder, above); a
+  storage reaper for three orphan paths; no carousel; no `social_post_log` row for a native post;
+  and **no UI calls either enqueue function**.
+  → `docs/wiki/concepts/native-publishing-queue.md` · `docs/wiki/concepts/facebook-page-publishing.md` · #544
 - **TikTok read-only analytics connector** — the fifth direct platform API under the
   2026-08-23 scope decision. #525 and #529 merged; **four** migrations (this said five, copied
   from the entry that added it — only two widen counters, not three), four functions, all
@@ -540,8 +555,11 @@ boundaries (see `.claude/handoffs/`).
 ## 6. On the Horizon
 
 - Production launch (date TBD — blocked on content delivery system
-  stability). Social media integration handled via Outstand.so; direct
-  platform API approvals (Meta, TikTok, YouTube, X) deferred.
+  stability). Social media integration handled via Outstand.so. **The "direct
+  platform API approvals deferred" clause that stood here is no longer true**:
+  five read-only connectors ship (Instagram, Facebook, YouTube, X, TikTok) and
+  native publishing to Instagram and Facebook is built. What remains deferred is
+  the *approvals* themselves — each platform's App Review — not the work.
 - City-by-city density: one metro first (20–30 creators, 5–10 restaurants),
   then replication scorecard for metro 2.
 - Fine-tuning Donny on proprietary data once 1,000–5,000 campaigns
