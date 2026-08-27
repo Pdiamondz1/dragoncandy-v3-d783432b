@@ -80,23 +80,61 @@ function walk(dir: string): string[] {
   });
 }
 
+const cols = (list: string) =>
+  list.split(',').map((c) => c.trim().replace(/["\s]/g, '')).filter(Boolean);
+
+/**
+ * The EFFECTIVE grant set, replayed in migration order.
+ *
+ * An earlier version unioned every historical `GRANT` and never looked at a
+ * `REVOKE`, so a column revoked by a later migration stayed in the set forever —
+ * and the "is every written column granted?" assertion would pass while prod
+ * answered 42501, which is the precise regression this file exists to catch. A
+ * guard that only ever adds cannot model a privilege that can be taken away.
+ *
+ * Filenames are version-prefixed, so lexicographic order is application order.
+ */
 function grantedColumns(): Set<string> {
   const granted = new Set<string>();
-  const re = new RegExp(
-    `grant\\s+update\\s*\\(([^)]*)\\)\\s*on\\s+public\\.${TABLE}\\s+to\\s+authenticated`,
+  const grantRe = new RegExp(
+    `grant\\s+update\\s*\\(([^)]*)\\)\\s*on\\s+public\\.${TABLE}\\s+to\\s+([a-z_,\\s]+)`,
     'gis',
   );
-  for (const file of readdirSync(MIGRATIONS).filter((f) => f.endsWith('.sql'))) {
+  const revokeColRe = new RegExp(
+    `revoke\\s+update\\s*\\(([^)]*)\\)\\s*on\\s+public\\.${TABLE}\\s+from\\s+([a-z_,\\s]+)`,
+    'gis',
+  );
+  // A table-wide revoke names no columns and clears the lot.
+  const revokeAllRe = new RegExp(
+    `revoke\\s+(?:update|all)[^(\\n]*?\\s+on\\s+public\\.${TABLE}\\s+from\\s+([a-z_,\\s]+)`,
+    'gis',
+  );
+
+  for (const file of readdirSync(MIGRATIONS).filter((f) => f.endsWith('.sql')).sort()) {
     const sql = readFileSync(join(MIGRATIONS, file), 'utf8');
-    for (const m of sql.matchAll(re)) {
-      for (const col of m[1].split(',')) {
-        const name = col.trim().replace(/["\s]/g, '');
-        if (name) granted.add(name);
+    // Statement order within one file matters too — a revoke-then-grant is the
+    // whole lockdown pattern, and replaying it out of order inverts the result.
+    for (const stmt of sql.split(';')) {
+      if (!new RegExp(`public\\.${TABLE}`, 'i').test(stmt)) continue;
+      const grant = grantRe.exec(stmt); grantRe.lastIndex = 0;
+      const revokeCol = revokeColRe.exec(stmt); revokeColRe.lastIndex = 0;
+      const revokeAll = revokeAllRe.exec(stmt); revokeAllRe.lastIndex = 0;
+
+      if (revokeCol && /authenticated/.test(revokeCol[2])) {
+        for (const c of cols(revokeCol[1])) granted.delete(c);
+      } else if (revokeAll && !revokeCol && /authenticated/.test(revokeAll[1])) {
+        granted.clear();
+      }
+      if (grant && /authenticated/.test(grant[2])) {
+        for (const c of cols(grant[1])) granted.add(c);
       }
     }
   }
   return granted;
 }
+
+/** Call sites whose payload this extractor cannot read. Never silently skipped. */
+const unparsed: string[] = [];
 
 /** Every column written by a client `.update({...})` on this table. Quote-agnostic. */
 function writtenColumns(): Map<string, string[]> {
@@ -107,11 +145,23 @@ function writtenColumns(): Map<string, string[]> {
     const text = readFileSync(file, 'utf8');
     for (const m of text.matchAll(fromRe)) {
       const tail = text.slice(m.index! + m[0].length, m.index! + m[0].length + 1400);
+      const anyUpdate = /\.update\(/.exec(tail);
       const update = /\.update\(\s*\{/.exec(tail);
-      if (!update) continue;
       // Only this query's .update — not one belonging to a later .from().
       const nextFrom = /\.from\(/.exec(tail);
-      if (nextFrom && nextFrom.index < update.index) continue;
+      // Written inline rather than through a helper so TypeScript narrows `update`
+      // to non-null for the rest of the loop body.
+      if (!anyUpdate || (nextFrom && nextFrom.index < anyUpdate.index)) continue;
+      if (!update || (nextFrom && nextFrom.index < update.index)) {
+        // `.update(payload)` — a hoisted variable, a spread, a helper call. The
+        // columns are real but invisible here, so the honest response is to FAIL
+        // rather than return a set that looks complete. A guard that quietly skips
+        // what it cannot parse reports "nothing is wrong" when it means "nothing
+        // matched my pattern" — the same thing that let a whole auth-throw shape
+        // through earlier in this codebase.
+        unparsed.push(file.slice(SRC.length + 1));
+        continue;
+      }
 
       let depth = 0;
       let end = update.index + update[0].length - 1;
@@ -149,6 +199,15 @@ describe('campaign_collaborations client write grants', () => {
     // every assertion below pass over an empty set.
     expect(granted.size).toBeGreaterThanOrEqual(10);
     expect(written.size).toBeGreaterThanOrEqual(8);
+  });
+
+  it('could read every update payload it found', () => {
+    expect(
+      unparsed,
+      `This guard could not read the payload at these call sites, so it cannot claim ` +
+        `the write surface is complete. Inline the object, or teach the extractor:\n` +
+        unparsed.map((f) => `  ${f}`).join('\n'),
+    ).toEqual([]);
   });
 
   it('grants every column the client actually writes', () => {
