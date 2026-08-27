@@ -15,6 +15,19 @@
   superseded phrasing — and expect to find it, because a session that writes the same claim into a
   wiki page, `SHIPPED_LOG`, a raw source and `PROJECT_CONTEXT` has made four copies by hand.
 
+- **[probe-the-claim-not-the-status] Before writing a status line, PROBE it — and pair the probe
+  with a control.** On 2026-08-26 the native-publishing branch needed "is this deployed?" answered
+  for a wiki page. Asking the Supabase MCP returned *Unauthorized* (the documented token gap), and
+  the CLI deploy was blocked by the permission classifier — so both of the obvious instruments
+  were unavailable, and the tempting move was to write "deploy pending" from memory. A plain
+  `curl` settled it: the new function returned **404** while the deployed `instagram-insights`
+  returned **401**, which is the control proving the probe distinguishes *absent* from *present
+  and refusing*. Without the second call, 404 is equally consistent with a typo'd URL. The
+  measurement then went INTO the page as evidence, so the next reader does not have to trust the
+  claim. General form of `[probe-the-deployment-not-the-repo]`: that one says reading files cannot
+  tell you what is running; this one says a status line you did not measure is a guess wearing a
+  fact's clothes — and that the cheapest instrument is often not the official one.
+
 - **[probe-the-deployment-not-the-repo] A deployed edge-function bundle is not the repo, and
   reading files cannot tell you what is running.** On 2026-08-26 twelve functions — exactly the
   money surface — answered `.io` to `capacitor://localhost` while `_shared/cors.ts` on `main` had
@@ -418,6 +431,41 @@
   `[orphans]`, which matches on the `(path/to/file.md)` link target and does not have this problem.
 
 ## Run log (newest first — add each new entry at the TOP; never edit/delete past entries)
+
+### 2026-08-26 — Native publishing: one queue, two protocols, and a scope decision that went half false (PR #544, `feat/instagram-native-publishing`)
+
+**Output:** [[Native Publishing Queue]] + [[Facebook Page Publishing]] (both new),
+`raw/sessions/2026-08-26-native-publishing-queue.md`, `index.md` (2 entries), `log.md` (top),
+`SHIPPED_LOG.md` (prepended), `PROJECT_CONTEXT.md` §5 In-flight + founder Open items + §6.
+
+**Happened:** first direct-API WRITE in the project — 21 commits, 18 migrations, 16 Codex rounds.
+The branch had produced NO knowledge artefact at all before this run.
+
+**Worked:**
+- `[scope-paths]` run as written: `git log HEAD..origin/main -- supabase/functions supabase/migrations
+  docs/superpowers/specs` returned #542 and #545, neither a parallel implementation. Two commands,
+  and it is the check that would have caught a duplicate build.
+- `[propagate-the-correction]` found a real one. §9 of the spec says "six Codex rounds" (the
+  Instagram slice) while the new entries say sixteen (the branch). Both true, and a reader trips —
+  §11 now reconciles them in a blockquote. Grepping for the SUPERSEDED value is what surfaced it;
+  nothing else would have.
+- Splitting into two pages by SUBJECT rather than by feature. The queue is ours and
+  platform-agnostic; the protocol is Meta's and differs per product. One page would have buried
+  the reusable half inside Facebook trivia.
+- Stating the CONTRADICTION rather than quietly writing around it: five connector pages assert
+  *Outstand publishes, direct APIs measure*, and that is now false for two of the five. Both new
+  pages say which, and §6's "approvals deferred" line was corrected in place.
+
+**Failed:** nothing lost, but two process notes. The deploy half of the session's task was
+**blocked by the permission classifier** (`supabase functions deploy`), so the knowledge had to be
+written as "not deployed" — which turned out better than the alternative: I deliberately probed
+first (404 vs a 401 control) rather than writing "deploy pending" from memory, and the probe is now
+IN the page as evidence. Also spent a round reconciling round counts that a single grep at the
+start would have caught earlier.
+
+**Remember:** promoted `[probe-the-claim-not-the-status]` below. Also: when a branch changes a
+DECISION that other pages cite (not just code), the sync's job includes finding every page that
+cites it — `grep` the decision's phrasing, not the feature's name.
 
 ### 2026-08-26 — 12 money edge functions answered `.io` to the native origin; stale bundles, not a bug (PR #536)
 
