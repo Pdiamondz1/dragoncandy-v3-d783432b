@@ -26,21 +26,51 @@ import { join } from 'node:path';
  * So this re-derives the write surface from src/ on every CI run, quote-agnostically,
  * and parses the granted list OUT of the migration rather than repeating it — a copy
  * would be a second enumeration to keep in sync, which is the original problem.
+ *
+ * **And that lesson repeated immediately.** 20260827000000 revoked `revision_count`
+ * because the NEW frontend no longer sends it — but the frontend RUNNING ON PROD
+ * still did, and naming a revoked column is a hard 42501, so revision requests
+ * failed until 20260827001000 granted it back. The rule was already written down
+ * for `20260824140000`: a migration that is backward-INCOMPATIBLE with the
+ * frontend at merge time applies only AFTER the deploy. Getting the enumeration
+ * right is not enough if the ORDER is wrong, because the deployed client is part
+ * of the write surface too — and it is the half `src/` cannot show you.
  */
 
 const SRC = join(process.cwd(), 'src');
 const MIGRATIONS = join(process.cwd(), 'supabase', 'migrations');
 const TABLE = 'campaign_collaborations';
 
-/** Columns a client must never write, whatever the app happens to do today. */
-const SERVER_OWNED = [
+/**
+ * Columns that must never be GRANTED to a client. Writing one of these is the
+ * defect itself — there is no trigger standing behind them.
+ */
+const NEVER_GRANTED = [
   'payout_executed_at',
   'stripe_transfer_id',
-  'revision_count',
   'creator_id',
   'campaign_id',
   'content_submitted_at',
 ];
+
+/**
+ * Columns no client code should SEND, which is a larger set than the one above.
+ *
+ * `revision_count` is the interesting case and the reason these are two lists
+ * rather than one. It IS granted — 20260827001000 restored it, because the
+ * frontend deployed on prod still sends it and naming a revoked column is a hard
+ * 42501, not a silent drop. Revoking it broke revision requests on prod until the
+ * grant came back.
+ *
+ * That is safe because the security property was never the grant: the bypass was
+ * that `enforce_revision_limit` READ a number the client chose. The trigger now
+ * assigns `NEW.revision_count` in BOTH branches, so a sent value is discarded
+ * before the row is written — proven on prod, where the bypass still hits the cap
+ * with the column granted and `0` sent every time.
+ *
+ * So sending it is harmless but misleading, and this list keeps it out of `src/`.
+ */
+const NEVER_WRITTEN = [...NEVER_GRANTED, 'revision_count'];
 
 function walk(dir: string): string[] {
   return readdirSync(dir, { withFileTypes: true }).flatMap((e) => {
@@ -130,22 +160,20 @@ describe('campaign_collaborations client write grants', () => {
     ).toEqual([]);
   });
 
-  it('never grants a server-owned column', () => {
-    const leaked = SERVER_OWNED.filter((c) => granted.has(c));
+  it('never grants a column with no trigger standing behind it', () => {
+    const leaked = NEVER_GRANTED.filter((c) => granted.has(c));
     expect(
       leaked,
-      'A client that can write these can forge a payout or bypass the revision cap.',
+      'A client that can write these can forge a payout marker — release-creator-payout ' +
+        'reads a set marker as "money already moved" and pays nobody.',
     ).toEqual([]);
   });
 
-  it('and the client does not try to write one', () => {
-    // The other direction: if a future call site starts writing revision_count
-    // again, the grant test above would pass (it is not granted) while the feature
-    // silently broke. This names it instead.
-    const attempted = SERVER_OWNED.filter((c) => written.has(c)).sort();
+  it('and src/ sends none of them, including the trigger-owned counter', () => {
+    const attempted = NEVER_WRITTEN.filter((c) => written.has(c)).sort();
     expect(
       attempted,
-      `src/ writes server-owned columns:\n${attempted
+      `src/ writes columns it does not own:\n${attempted
         .map((c) => `  ${c} — ${written.get(c)!.join(', ')}`)
         .join('\n')}`,
     ).toEqual([]);
