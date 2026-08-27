@@ -349,6 +349,19 @@ stays capped, so a persistently high `scanned` against a low `deleted` with non-
 `failed_chunks` is the visible signature of the starvation that decision accepts. That state is an
 incident (Storage is refusing), not a steady state.
 
+**Round six then found that two of those very signals asserted more than they measured** — which
+matters more than usual, because they exist to be *trusted* by whoever is deciding whether the
+starvation above has started. `capped` was true whenever the submission budget was **reached**, so
+a run handed exactly 500 candidates and clearing every one of them would still report deferred
+work; it is now `reapable.length > attempted`, i.e. genuinely left behind. And
+`retained_for_review` counted `needs_review` **jobs** while its comment claimed it was the storage
+cost of the retention window: a job's row survives long after its media passes 30 days and is
+reaped, and one row says nothing about how many objects it referenced, so the number would report
+cost for bytes that no longer exist. Renamed `jobs_awaiting_review` and documented as a queue
+depth, rather than widening the decision RPC to join surviving objects — that is a different
+question from the one it answers. **An overstated metric on a monitoring surface is worse than a
+modest one, because it is the one people act on.**
+
 **Codex filed a P1 here that was wrong, TWICE — and the second time it escalated into a claim
 that refutes itself.** Round 1: `storage.objects` has no `is_delete_marker` column, so every cron
 invocation fails. Round 2, over the same diff: the *migration* therefore "fails with

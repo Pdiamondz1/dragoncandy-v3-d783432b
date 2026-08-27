@@ -176,11 +176,18 @@ serve(async (req: Request) => {
     deleted += Array.isArray(removed) ? removed.length : 0;
   }
 
-  // The deliberate cost, stated rather than left implicit. `needs_review` bytes
-  // are kept on purpose (see the migration header); this is how much that is
-  // currently costing, so the retention window is a decision someone can revisit
-  // with a number rather than a feeling.
-  const { count: retainedForReview, error: retainError } = await db
+  // How many jobs are waiting on a HUMAN — a queue depth, not a storage cost.
+  //
+  // This counted the same rows when it was called `retained_for_review`, and the
+  // name made a claim the query does not support: a `needs_review` job keeps its
+  // row forever, so it is still counted long after its media passed the 30-day
+  // window and was reaped, and one row says nothing about how many objects it
+  // referenced. Reporting bytes honestly needs a join from `needs_review` jobs to
+  // surviving `storage.objects`, which is a different question from the one
+  // `reapable_publish_media` answers and would mean widening that RPC. Left as
+  // the number it actually is, under a name that says so — an overstated metric
+  // on a monitoring surface is worse than a modest one, because it is trusted.
+  const { count: jobsAwaitingReview, error: retainError } = await db
     .from('publish_jobs')
     .select('id', { count: 'exact', head: true })
     .eq('status', 'needs_review');
@@ -195,15 +202,17 @@ serve(async (req: Request) => {
     failed_chunks: failedChunks,
     by_reason: byReason,
     // Null, never 0, when the count itself failed — a zero here would read as
-    // "nothing is being retained", which is the opposite of "we do not know".
-    retained_for_review: retainError ? null : (retainedForReview ?? 0),
+    // "no job is waiting on anyone", which is the opposite of "we do not know".
+    jobs_awaiting_review: retainError ? null : (jobsAwaitingReview ?? 0),
     // Both bounds are reported, because they mean different things. `capped`
-    // says the SUBMISSION budget stopped this run — there is more to collect and
-    // tomorrow is not soon enough to assume the bucket is clean. `scan_capped`
-    // says the QUERY hit its window, i.e. the backlog is at least SCAN_LIMIT.
-    // A single boolean would conflate a healthy busy day with a backlog that is
-    // not draining, and the second one is the state that needs a human.
-    capped: attempted >= MAX_SUBMITTED_PER_RUN,
+    // says work was LEFT BEHIND — deliberately not "the budget was reached",
+    // since a run handed exactly MAX_SUBMITTED_PER_RUN candidates submits all of
+    // them and defers nothing; flagging that would raise a backlog alert on a
+    // run that in fact cleared its whole list. `scan_capped` says the QUERY hit
+    // its window, i.e. the backlog is at least SCAN_LIMIT. A single boolean
+    // would conflate a healthy busy day with a backlog that is not draining, and
+    // the second one is the state that needs a human.
+    capped: reapable.length > attempted,
     scan_capped: reapable.length >= SCAN_LIMIT,
     attempted,
   };

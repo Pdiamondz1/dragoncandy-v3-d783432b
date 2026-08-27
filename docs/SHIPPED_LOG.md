@@ -95,7 +95,7 @@ ways (rows under `service_role`, `P0001` under `authenticated`). Deployed with a
 including the transitive `_shared/origins.ts`; live `verify_jwt` read **false** from the
 Management API rather than from `config.toml`. 401 with no bearer and with a wrong one, 404 on
 an invented function name. A real **200** through `net.http_post` with the Vault bearer — the
-cron's exact path — with `retained_for_review` returning `0` rather than `null`, proving the
+cron's exact path — with the review-queue count returning `0` rather than `null`, proving the
 count query ran. Vault secret verified **by content**; cron active at `20 4 * * *`, clear of
 `instagram-refresh-sweep` at 04:00.
 
@@ -122,6 +122,14 @@ conflict is real:** bounding submissions means a run stops at the same failing o
 the tail starves. The cap wins, because a leak is recoverable and an over-delete is not; the wide
 scan survives for observability, so `scanned` high against `deleted` low with non-zero
 `failed_chunks` is the visible signature of the starvation that decision accepts.
+**Round six caught two observability fields asserting more than they measured:** `capped` flagged
+"work left behind" whenever the budget was merely *reached*, so a run handed exactly 500 candidates
+and clearing all of them would still raise a backlog alert — now `reapable.length > attempted`; and
+`retained_for_review` counted `needs_review` **jobs**, which persist long after their media is
+reaped and say nothing about how many objects each referenced, so a "storage cost" number kept
+reporting cost for bytes that were gone. Renamed `jobs_awaiting_review` and documented as a queue
+depth rather than widening the RPC to join surviving objects — an overstated metric on a monitoring
+surface is worse than a modest one, because it is trusted.
 
 **Codex also filed one P1 and it was wrong, twice** — that `storage.objects` has no `is_delete_marker`
 column and every invocation would fail. Prod returns 287 non-marker objects from that predicate
