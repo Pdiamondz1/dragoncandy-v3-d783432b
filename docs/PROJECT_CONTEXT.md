@@ -236,11 +236,13 @@ Engineering cannot close these. Ordered by what blocks launch.
   2026-08-23 *direct APIs measure* split no longer describes these two, though it still holds for
   X, TikTok and YouTube. One shared `publish_jobs` queue with an exactly-once guarantee modelled
   on `pending_balance_flushes`, and two protocol modules that are deliberately not shared.
-  Eighteen migrations applied and verified by object; sixteen Codex rounds. **Pending:** the four
-  functions are **not deployed** (probed 2026-08-26: 404, against 401 for a deployed control) and
-  both crons are unapplied pending a Vault secret each; the two App Reviews (founder, above); a
-  storage reaper for three orphan paths; no carousel; no `social_post_log` row for a native post;
-  and **no UI calls either enqueue function**.
+  Eighteen migrations applied and verified by object; sixteen Codex rounds. **Merged, deployed
+  and running 2026-08-26** — this line said "not deployed" for about an hour: all four functions
+  answer 401 (404 for an invented name), both crons are active on `* * * * *`, and both returned a
+  real 200, told apart by their distinct response shapes. **Pending:** the two App Reviews
+  (founder, above); a storage reaper for three orphan paths; no carousel; no `social_post_log` row
+  for a native post; and **no UI calls either enqueue function**, so nothing can reach the queue
+  yet.
   → `docs/wiki/concepts/native-publishing-queue.md` · `docs/wiki/concepts/facebook-page-publishing.md` · #544
 - **TikTok read-only analytics connector** — the fifth direct platform API under the
   2026-08-23 scope decision. #525 and #529 merged; **four** migrations (this said five, copied

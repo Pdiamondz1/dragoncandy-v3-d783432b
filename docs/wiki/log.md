@@ -1,5 +1,33 @@
 # Wiki Log
 
+## [2026-08-26] update | Native publishing is deployed and running — correcting a status written hours earlier
+
+**Updated** [[Native Publishing Queue]], [[Facebook Page Publishing]] and
+`PROJECT_CONTEXT.md` §5. Both pages shipped saying "nothing is deployed, no cron",
+which was true when written and stopped being true the same night.
+
+`SHIPPED_LOG.md` is deliberately NOT edited — its header states entries are
+historical snapshots and that §5 is the authority on current status. Correcting a
+snapshot would erase the record of what was true at merge.
+
+Proven rather than asserted, and each probe carries a control:
+
+  * all four functions answer **401** to an anonymous POST, where an invented
+    function name answers **404** — so the probe distinguishes *absent* from
+    *present and refusing*;
+  * both crons are active on `* * * * *` and returned a real **200**, told apart
+    by their **distinct response shapes** (`{"staged":...}` vs
+    `{"container_created":...}`), which is what proves the two Vault URLs are not
+    swapped — identical responses would have left that unknowable;
+  * `cron.job_run_details` saying `succeeded` is a **weaker claim than it looks**:
+    `pg_net` is async, so it only means the request was queued. The verdict came
+    from `net._http_response`.
+
+Also worth carrying: the first RAG probe returned **0** for one of the two new
+pages, and the page was there — the token I searched for simply was not in it.
+*A clean-looking zero can be a broken probe.* Re-probed with a token confirmed to
+exist in the file, plus `metadata->>'source_id'` as a second signal: 3 chunks each.
+
 ## [2026-08-26] ingest | Native publishing: the Facebook step machine, and one queue for every platform
 
 **Created** [[Native Publishing Queue]] (`concepts/native-publishing-queue.md`),
