@@ -31,6 +31,21 @@ export interface MetroYear {
   readonly customersAtYearEnd: number;
   /** New customers signed during the year, including replacements for churn. */
   readonly grossAdds: number;
+  /**
+   * The sum of `customersAtMonth` across the year's twelve months — customer-months, the
+   * monthly integral of the ramp.
+   *
+   * It is the one quantity a year-end figure cannot reconstruct. Every revenue and serve-cost
+   * row below is `customerMonths` times a per-customer-per-month rate, so a formula that
+   * multiplied year-end customers by twelve would overstate every ramping year, and one that
+   * multiplied the year's average would need the ramp back again to compute the average.
+   *
+   * That is why the workbook emits this as a CACHED value per metro-year and derives
+   * `campaigns`, `gmv`, `subscriptionRevenue`, `takeRateRevenue` and `serveCost` from it as
+   * live formulas. It is the anchor: the smallest thing that has to be carried across from
+   * the model for the rest of the sheet to be arithmetic a reader can check.
+   */
+  readonly customerMonths: number;
   readonly campaigns: number;
   readonly gmv: number;
   readonly subscriptionRevenue: number;
@@ -82,6 +97,16 @@ export function metroKpis(y: Pick<MetroYear, 'revenue' | 'grossProfit' | 'market
     marketingPctOfRevenue: shareOfRevenue(y.marketingCost),
     costOfRevenuePctOfRevenue: shareOfRevenue(y.costOfRevenue),
   };
+}
+
+/**
+ * The CAC charged per gross add: the midpoint of the registered low/high band.
+ *
+ * Extracted from `projectMetroYear`'s local so the workbook's `ue_cac` cell can cache the
+ * same number it emits a formula for, rather than re-deriving the midpoint a second time.
+ */
+export function blendedCac(): number {
+  return (UNIT_ECONOMICS.restaurantCacLow.value + UNIT_ECONOMICS.restaurantCacHigh.value) / 2;
 }
 
 function metroById(metroId: string) {
@@ -177,8 +202,7 @@ export function projectMetroYear(metroId: string, year: ModelYear, mix: TierMix)
     churned += customersAtMonth(metroId, month - 1) * monthlyChurn;
   }
   const grossAdds = Math.max(0, customersAtYearEnd - customersAtYearStart + churned);
-  const cac = (UNIT_ECONOMICS.restaurantCacLow.value + UNIT_ECONOMICS.restaurantCacHigh.value) / 2;
-  const marketingCost = grossAdds * cac;
+  const marketingCost = grossAdds * blendedCac();
 
   return {
     metroId,
@@ -188,6 +212,7 @@ export function projectMetroYear(metroId: string, year: ModelYear, mix: TierMix)
     customersAtYearStart,
     customersAtYearEnd,
     grossAdds,
+    customerMonths,
     campaigns,
     gmv,
     subscriptionRevenue,

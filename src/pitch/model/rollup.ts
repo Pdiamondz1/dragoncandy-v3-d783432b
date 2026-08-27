@@ -147,6 +147,9 @@ const COHORT_SCALED_FIELDS = [
   'customersAtYearStart',
   'customersAtYearEnd',
   'grossAdds',
+  // Extensive: N metros ramping the same way have N times as many customer-months, exactly as
+  // they have N times the revenue those customer-months produce.
+  'customerMonths',
   'campaigns',
   'gmv',
   'subscriptionRevenue',

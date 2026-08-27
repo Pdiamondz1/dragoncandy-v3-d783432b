@@ -11,7 +11,13 @@ import { PRICING, TIER_TAKE_RATES, MARKET, UNIT_ECONOMICS, type TierName } from 
 
 export type TierMix = Record<TierName, number>;
 
-const TIERS: TierName[] = ['free', 'starter', 'growth', 'pro'];
+/**
+ * The tier order the blends are summed in. Exported because `workbook.ts` emits the same
+ * blend as an Excel formula (`ue_blendedSubscription`) and must iterate the same tiers in the
+ * same order — a second hand-written list is how the sheet and the model would start
+ * disagreeing about what "the mix" contains.
+ */
+export const TIERS: readonly TierName[] = ['free', 'starter', 'growth', 'pro'];
 
 /**
  * The tier mix as registered, assembled in one place.
