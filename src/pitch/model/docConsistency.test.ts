@@ -55,7 +55,18 @@ const SUPERSEDED_BAND = [
  * the record rather than correcting it, which is why `docs/archive/` was left alone during the
  * restatement and why dated design specs are treated as the same class.
  */
-const HISTORICAL_DIRS = ['docs/archive', 'docs/superpowers/specs', 'docs/superpowers/plans'];
+const HISTORICAL_DIRS = [
+  'docs/archive',
+  'docs/superpowers/specs',
+  'docs/superpowers/plans',
+  // `docs/wiki/raw/` is the wiki's IMMUTABLE input — session extracts and dropped sources.
+  // `docs/KNOWLEDGE_WIKI.md` states the rule as "Never modify raw/", and
+  // `scripts/lib/wikilinks.ts` already skips it for the same reason. A session written on the
+  // day the band was restated necessarily quotes the old figures while describing the
+  // restatement, and the fix a failure here would demand is the one edit the wiki forbids.
+  // The SYNTHESIS of a raw source — the `concepts/` page — is live prose and is still checked.
+  'docs/wiki/raw',
+];
 const HISTORICAL_FILES = ['docs/SHIPPED_LOG.md'];
 
 /**

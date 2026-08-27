@@ -2,8 +2,8 @@
 title: Drive Artifact Delivery
 type: concept
 created: 2026-08-24
-updated: 2026-08-24
-sources: [2026-08-24-launch-events-and-drive-delivery.md, 2026-08-24-drive-service-account.md]
+updated: 2026-08-26
+sources: [2026-08-24-launch-events-and-drive-delivery.md, 2026-08-24-drive-service-account.md, 2026-08-26-investor-financial-model-workbook.md]
 tags: [google-drive, rclone, tooling, confidentiality, delivery]
 ---
 # Drive Artifact Delivery
@@ -163,6 +163,22 @@ one. The uploader re-reads the folder listing with `--hash` and compares md5 to 
 file. Same discipline as the Meta console write that returned `{"success":true}` and
 discarded the value ([[Instagram Insights Connector]]).
 
+## `npm run model:upload` — the second artifact (2026-08-26)
+
+`scripts/upload-model-to-drive.ts` puts the financial-model workbook
+([[Bottom-Up Financial Model]]) in the same `11 · Finance` folder, and it **borrows the deck
+uploader's rules rather than rediscovering them**: build identity from the manifest, never the
+filename; the manifest bound to the bytes by md5; the upload verified by reading the folder back.
+`--public` uploads the redacted workbook, under a different remote name, so a public build can
+never overwrite the confidential one.
+
+It adds **one rule of its own, and the placement is the point**: a workbook claiming to be public
+is re-checked for confidential **content** immediately before the bytes leave the machine, against
+the same list the generator refuses on. The generator already refuses to write such a file. This is
+the second gate at the one step that cannot be undone by editing a file afterwards — and it exists
+because the public workbook really did ship the pre-seed budget once
+([[Build-Time Confidentiality]]).
+
 ## Where things live
 
 `DragonCandy — Confidential › 11 · Finance` holds the deck and the Q&A alongside the Capital
@@ -183,6 +199,6 @@ what the deck contains.
 
 ## See Also
 
-- [[Investor Pitch Deck & Capital Raise]]
+- [[Investor Pitch Deck & Capital Raise]] · [[Bottom-Up Financial Model]]
 - [[Build-Time Confidentiality]]
 - [[Google Workspace]]

@@ -1,5 +1,47 @@
 # Wiki Log
 
+## [2026-08-26] ingest | The bottom-up financial model, and the band it restated
+
+**Created** [[Bottom-Up Financial Model]] (`concepts/bottom-up-financial-model.md`).
+**Updated** [[Investor Pitch Deck & Capital Raise]] (a new section — the numbers moved under
+the deck), [[Build-Time Confidentiality]] (two new sections), [[Drive Artifact Delivery]]
+(`npm run model:upload`), `index.md`, `docs/SHIPPED_LOG.md`, `docs/PROJECT_CONTEXT.md` §5.
+Source: `raw/sessions/2026-08-26-investor-financial-model-workbook.md`, cataloged as
+[[Investor Financial Model Session]].
+
+**The finding that survives the feature.** The bottom-up model and the top-down plan disagree,
+and **not about reach** — every metro count lands inside the plan's own band. The gap is ARPU,
+and the model is low *by construction*: it books two of the four revenue streams and values the
+other two at $0, because nothing has ever been charged for them. So the superseded band is **not
+refuted; it is unproven**, and billing history is what would settle it. That is a different
+sentence to say to an investor than "we cut the target".
+
+**Three quantities were all being called "revenue"** — booked, exit ARR, and steady-state at N.
+Comparing the wrong two made the plan look wrong by 3× when the real ratio was half that, and
+separating them surfaced a live ambiguity nobody had noticed: the $400K revenue-per-employee
+kill-switch never said which revenue it measures. Exit ARR clears; booked does not.
+
+**Two lessons about instruments, which is what most of this ingest is.** A **suppressed Census
+cell is UNKNOWN, never zero**, and is recoverable only when exactly one of a row's nine is
+unknown — across all 67 rows the minimum is two and **zero rows qualify**, so a worked example
+claiming a recovery was false on the one sheet whose purpose is to let a reader check us. And *a
+test that only checks formulas cannot see a row that stopped being one*: the agreement test
+iterates cells **with a formula**, so `Exit ARR` silently becoming a plain value failed nothing.
+
+**Scope, not verdict, is what to check about a guard.** `npm run pitch:verify-public` was green
+and irrelevant: it scans `dist/` and the web deck, and **nothing scanned the generated `.xlsx`**,
+which was publishing the pre-seed budget. Its sibling failure is that a value scanner cannot read
+prose — the deck gated the EBITDA number and printed its conclusion in English. And the obvious
+fix would not have worked: **a `*.confidential.tsx` filename does not make its text
+confidential**, because the file is in the public module graph and `build.sourcemap` ships its
+source in the public `.map`.
+
+**The restatement surface was measured three times — 4 → 9 → 11 files — and grew each time**,
+because each instrument was better than the last. The two the grep missed wrote the band in a
+notation it did not cover. *Match every notation the corpus contains, not the one people write.*
+Two of the eleven are **generated** and say so in their own first three lines: check whether a
+doc is generated before editing it.
+
 ## [2026-08-26] ingest | A static privacy policy the site gate can serve
 
 **Created** `raw/sessions/2026-08-26-static-privacy-page.md` and
