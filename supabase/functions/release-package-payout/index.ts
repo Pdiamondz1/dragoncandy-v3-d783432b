@@ -4,6 +4,8 @@ import { createClient, type SupabaseClient } from "npm:@supabase/supabase-js@2.5
 import { corsHeaders } from "../_shared/cors.ts";
 import { verifyPayoutReady } from "../_shared/payout-ready.ts";
 import { applyWalletFirstPayoutCore } from "../_shared/wallet-first-payout.ts";
+import { HttpError, statusFor, unauthorized } from "../_shared/http-error.ts";
+import { orderNotAccessible } from "../_shared/package-order-access.ts";
 
 // Release a package order's held escrow to the creator's wallet. DEPLOY WITH verify_jwt=false: the release
 // is triggered by the BUYER approving the work (a logged-in buyer via JWT, OR a guest via their order token)
@@ -66,30 +68,52 @@ serve(async (req) => {
     const isServiceRole = !!token && token === Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
 
     const { orderId, guestToken } = await req.json();
-    if (!orderId) throw new Error("Missing required field: orderId");
+    if (!orderId) throw new HttpError(400, "Missing required field: orderId");
 
-    // Load the order first — its buyer_user_id / buyer_guest_token are what we authorize against.
+    // ── Resolve the caller's JWT BEFORE the order is read ───────────────────────────────────────────────
+    // The order is fetched with the SERVICE ROLE, so reading it first and authorizing afterwards let an
+    // anonymous caller tell "this order exists" from "it doesn't" — an existence oracle on the payment
+    // surface (see _shared/package-order-access.ts). A guest's credential IS a column on the order, so the
+    // read cannot move below authorization entirely; what CAN move above it is refusing a caller who has
+    // presented nothing at all. Everything past this point had some credential to offer.
+    let jwtUserId: string | null = null;
+    if (!isServiceRole) {
+      const { data: userData } = await supabaseClient.auth.getUser(token);
+      jwtUserId = userData?.user?.id ?? null;
+      if (!jwtUserId && !guestToken) throw unauthorized("User not authenticated");
+    }
+
+    // The order's buyer_user_id / buyer_guest_token are what we authorize against.
     const { data: order, error: orderErr } = await supabaseClient
       .from("package_orders")
       .select("id, creator_id, buyer_user_id, buyer_guest_token, escrow_status, order_status, content_status, price_snapshot, platform_fee_snapshot, payout_executed_at, stripe_transfer_id")
       .eq("id", orderId)
       .single();
-    if (orderErr || !order) throw new Error(`Order not found: ${orderErr?.message}`);
+    // The real reason is logged; the CALLER is told only the shared opaque answer, identical to the one a
+    // non-buyer gets below. Diagnosability without an oracle.
+    if (orderErr || !order) {
+      logStep("Order lookup failed", { orderId, error: orderErr?.message });
+      throw orderNotAccessible();
+    }
 
     // ── Authorize: service-role (cron), OR the buyer approving (logged-in JWT / guest token). NOT the creator ──
+    // The identity comparison is guarded on a non-null jwtUserId: buyer_user_id is NULL on a guest order,
+    // and `null === null` would have authorized a caller who holds a guest token for a DIFFERENT order as
+    // though they were the buyer of this one.
     let callerId: string | null = null;
     if (isServiceRole) {
       logStep("Service-role call (auto-approve / reconcile)");
     } else if (guestToken && order.buyer_guest_token && guestToken === order.buyer_guest_token) {
       logStep("Guest buyer approval", { orderId });
-    } else {
-      const { data: userData, error: userError } = await supabaseClient.auth.getUser(token);
-      if (userError || !userData?.user) throw new Error("User not authenticated");
-      if (userData.user.id !== order.buyer_user_id) {
-        throw new Error("Only the buyer can release this payout");
-      }
-      callerId = userData.user.id;
+    } else if (jwtUserId && jwtUserId === order.buyer_user_id) {
+      callerId = jwtUserId;
       logStep("Buyer authenticated", { userId: callerId });
+    } else {
+      // Deliberately the SAME error as "no such order". That covers the creator too: they are a participant
+      // but may never release their own payout, and telling them apart from a stranger would re-open the
+      // oracle to every authenticated user.
+      logStep("Caller may not release this payout", { orderId, userId: jwtUserId });
+      throw orderNotAccessible();
     }
 
     // ── Durable re-entry guard ──────────────────────────────────────────────────────────────────────
@@ -198,7 +222,7 @@ serve(async (req) => {
     logStep("ERROR", { message: errorMessage });
     return new Response(JSON.stringify({ error: errorMessage }), {
       headers: { ...corsHeaders(req), "Content-Type": "application/json" },
-      status: 500,
+      status: statusFor(error),
     });
   }
 });

@@ -61,13 +61,24 @@ export const OPERATING = {
     value: 45,
     unit: 'accounts',
     label: 'Registered users',
-    source: 'prod: select count(*) from profiles',
+    source:
+      'prod: select count(*) from profiles, MINUS test accounts (see note — the bare count ' +
+      'returns 46 as of 2026-08-26)',
     asOf: '2026-08-24',
     note: 'Read off production 2026-08-24: 45. This row said 30, tagged MEASURED, sourced to ' +
       'PROJECT_CONTEXT.md §4 ("~30 organic users") and carrying a note that it had never been ' +
       'checked — so an investor-facing figure was wrong by a third for as long as the doc was ' +
       'stale, with a provenance tag vouching for it. Surfaced by the Codex second review, which ' +
-      'read the note rather than the tag. 26 organizations exist against these 45 users.',
+      'read the note rather than the tag. 26 organizations exist against these 45 users. ' +
+      'SOURCE AMENDED 2026-08-26: `count(*)` now returns 46. The 46th is ' +
+      '`dame+onboardtest@dragoncandy.com`, created 2026-08-24 22:29 UTC — AFTER the read above — ' +
+      'and it is the only row added since 2026-08-20, so the organic figure is still 45 ' +
+      '(PROJECT_CONTEXT.md §4 records the same reconciliation). The VALUE is unchanged and ' +
+      'correct; what was wrong was the SOURCE, which as written no longer reproduces it. A ' +
+      'MEASURED tag whose command returns a different number is the precise failure this ' +
+      'register exists to prevent, so the source now says what to subtract rather than quietly ' +
+      'disagreeing with itself. Re-read before quoting: a second test account moves the raw ' +
+      'count again and nothing here will notice.',
   }),
   pageComponents: measured({
     value: 96,
@@ -127,6 +138,63 @@ export const OPERATING = {
     label: 'AI spend cap as share of revenue',
     source: 'docs/PROJECT_CONTEXT.md (section 8)',
     asOf: '2026-08-23',
+  }),
+} satisfies Record<string, Assumption<number>>;
+
+/**
+ * When Year 1 IS.
+ *
+ * The model equates 2026 = Y1, 2027 = Y2, 2028 = Y3 and always has -- `MODEL_YEARS`, every
+ * penetration anchor, and `threeYearTrajectory`'s mapping onto PROJECT_CONTEXT section 3's
+ * Y1/Y2/Y3 bands all depend on it. But section 4 says production launch is TBD, so the
+ * mapping was an UNSTATED DEFAULT sitting under every figure in the deck: if Year 1 is
+ * really 2027, every year label on the trajectory slide is off by one and the cross-check
+ * compares the wrong rows.
+ *
+ * It is registered here because that is the difference between an assumption and a habit.
+ * An unstated default cannot be challenged, cannot be found by anyone auditing the model,
+ * and cannot appear on the Assumptions sheet -- which is where an investor looks to find out
+ * what we assumed.
+ *
+ * Deliberately NOT a `FOUNDER_FACTS` entry in `src/pitch/deck/pending.ts`: those are facts
+ * the DECK prints with attribution on a slide, and `model/` importing `deck/` would invert
+ * the layering. This is a modelling convention, so it lives with the modelling assumptions.
+ */
+export const CALENDAR = {
+  year1CalendarYear: modeled({
+    value: 2026,
+    unit: 'calendar year',
+    label: 'The calendar year that is Year 1',
+    source: 'founder confirmation, Damon Williams (CTO), in session 2026-08-26',
+    note:
+      'Raised as an open question because PROJECT_CONTEXT.md section 4 states production ' +
+      'launch is TBD, and confirmed by the founder: 2026 IS Year 1. MODELED rather than ' +
+      'MEASURED because a decision is not a reading -- there is no command that re-runs it, ' +
+      'and MEASURED means read off production, an invoice or the codebase. If launch slips ' +
+      'into 2027 this value moves and every year label in the deck moves with it; that is ' +
+      'the point of stating it here rather than leaving it implicit.',
+  }),
+  year1StartMonth: modeled({
+    value: 1,
+    unit: 'calendar month',
+    label: 'The calendar month Year 1 starts in',
+    source: 'src/pitch/model/metros.ts (Metro.launchMonth, "Absolute month, 1 = 2026-01")',
+    note:
+      'Registered 2026-08-26 because it was the load-bearing HALF of "2026 = Year 1" that ' +
+      'nobody had stated. The year label was confirmed by the founder; the JANUARY ANCHOR was ' +
+      'left an unstated default, which is the exact class of thing that confirmation exists to ' +
+      'eliminate. Hoboken launches at month 1, so the model books customers from February 2026 ' +
+      '(0,1,2,3,4,4,5,6 through month 8). ' +
+      'IT IS 2026-08 AND THAT REVENUE PROVABLY DID NOT OCCUR: `payingCustomers` is a MEASURED ' +
+      '0 in this same register (asOf 2026-08-24) and PROJECT_CONTEXT.md section 4 states ' +
+      'production launch is TBD. So two registered facts in one file disagree, and the honest ' +
+      'reading of the Year 1 column is "the first twelve months of operation", NOT calendar ' +
+      '2026 -- every month already elapsed is one the ramp has not started. ' +
+      'Left as 1 rather than advanced to the current month deliberately: moving it is a ' +
+      'FOUNDER decision about when launch actually happens, and picking a month here would be ' +
+      'inventing the thing this register exists to prevent. Carried to the founder beside the ' +
+      'revenue-per-employee and ARPU decisions. Advancing it shifts every metro later and ' +
+      'reduces Year 1 revenue; it does not change any later year total.',
   }),
 } satisfies Record<string, Assumption<number>>;
 
@@ -236,50 +304,81 @@ export const UNIT_ECONOMICS = {
   }),
 } satisfies Record<string, Assumption<number>>;
 
-const PROJECT_CONTEXT_TARGETS = 'docs/PROJECT_CONTEXT.md (section 3)';
+/**
+ * The SUPERSEDED top-down plan's revenue band.
+ *
+ * PROJECT_CONTEXT section 3 was restated on 2026-08-26 to this model's own bottom-up
+ * figures, so it is no longer the source of these six numbers -- the archive narrative they
+ * originally came from is. Pointing them at section 3 after the restatement would make the
+ * model source its cross-check from a document that now quotes the model.
+ *
+ * **The six VALUES are deliberately unchanged.** Updating them to match the restated section
+ * 3 would make `bottomUpVsPriorPlan` exactly 1.00 every year BY CONSTRUCTION, turn the
+ * trajectory slide's own sentence ("a cross-check, not a number this build was tuned to
+ * meet") into a falsehood, and satisfy the spec's "the gap is reported, never closed" rule by
+ * fiat -- which is the precise failure that rule exists to prevent. Only the label and the
+ * source moved.
+ */
+const PRIOR_PLAN_TARGETS =
+  'docs/archive/DragonCandy_Path_to_Multi-million_annual_profit.md (three-year plan, lines 57-61) ' +
+  '— the top-down plan as published in PROJECT_CONTEXT.md section 3 before 2026-08-26';
 const COST_BREAKDOWN = 'docs/DragonCandy_Pricing_Profitability_Briefing_v2.md (section 7, "The Cost Breakdown" table, line 520)';
 
 /**
- * Three-year revenue and cost bands, our own forward projections — not a benchmark, not a
- * measurement of anything that exists yet. Feeds `threeYearTrajectory()` in `derive.ts`.
+ * Three-year bands, our own forward projections — not a benchmark, not a measurement of
+ * anything that exists yet. Feeds `threeYearTrajectory()` in `derive.ts`.
+ *
+ * The six REVENUE rows are the SUPERSEDED top-down plan, kept at their original values as
+ * the bottom-up build's cross-check. See `PRIOR_PLAN_TARGETS` above for why they must not be
+ * restated. They are ARR figures — a year-end run rate — which is why `rollup.ts` compares
+ * them against `exitArr` and not against revenue booked in-year.
  */
 export const TRAJECTORY = {
   year1RevenueLow: modeled({
     value: 300000,
     unit: 'USD/year',
-    label: 'Year 1 revenue, low',
-    source: PROJECT_CONTEXT_TARGETS,
-    note: 'docs/DragonCandy_Pricing_Profitability_Briefing_v2.md section 7 states the same three-year ranges independently, so they are corroborated across two documents.',
+    label: 'Prior plan (superseded): Year 1 ARR, low',
+    source: PRIOR_PLAN_TARGETS,
+    note:
+      'docs/DragonCandy_Pricing_Profitability_Briefing_v2.md section 7 states the same ' +
+      'three-year ranges independently, so the PRIOR PLAN is corroborated across two ' +
+      'documents. Superseded 2026-08-26, when PROJECT_CONTEXT section 3 was restated to this ' +
+      'model\'s bottom-up figures; retained at its original value as the cross-check. The ' +
+      'archive states this band as ARR explicitly ("ARR reaches $300K-600K"), which is why ' +
+      'the comparison uses exit ARR. Its ARPU assumption ($250/mo in Y1 rising to $400-500 ' +
+      'by Y3) counts Donny credit overages and DragonDash rush surcharges; this model books ' +
+      'neither, because nothing has ever been charged for them — that difference, not the ' +
+      'customer count, is most of the gap.',
   }),
   year1RevenueHigh: modeled({
     value: 600000,
     unit: 'USD/year',
-    label: 'Year 1 revenue, high',
-    source: PROJECT_CONTEXT_TARGETS,
+    label: 'Prior plan (superseded): Year 1 ARR, high',
+    source: PRIOR_PLAN_TARGETS,
   }),
   year2RevenueLow: modeled({
     value: 2000000,
     unit: 'USD/year',
-    label: 'Year 2 revenue, low',
-    source: PROJECT_CONTEXT_TARGETS,
+    label: 'Prior plan (superseded): Year 2 ARR, low',
+    source: PRIOR_PLAN_TARGETS,
   }),
   year2RevenueHigh: modeled({
     value: 4500000,
     unit: 'USD/year',
-    label: 'Year 2 revenue, high',
-    source: PROJECT_CONTEXT_TARGETS,
+    label: 'Prior plan (superseded): Year 2 ARR, high',
+    source: PRIOR_PLAN_TARGETS,
   }),
   year3RevenueLow: modeled({
     value: 7000000,
     unit: 'USD/year',
-    label: 'Year 3 revenue, low',
-    source: PROJECT_CONTEXT_TARGETS,
+    label: 'Prior plan (superseded): Year 3 ARR, low',
+    source: PRIOR_PLAN_TARGETS,
   }),
   year3RevenueHigh: modeled({
     value: 12000000,
     unit: 'USD/year',
-    label: 'Year 3 revenue, high',
-    source: PROJECT_CONTEXT_TARGETS,
+    label: 'Prior plan (superseded): Year 3 ARR, high',
+    source: PRIOR_PLAN_TARGETS,
   }),
   year1CostLow: modeled({
     value: 590000,
@@ -330,6 +429,7 @@ export const REGISTER: Readonly<Record<string, Assumption<number>>> = {
   ...Object.fromEntries(Object.entries(PRICING).map(([k, v]) => [`price_${k}`, v])),
   ...Object.fromEntries(Object.entries(TIER_TAKE_RATES).map(([k, v]) => [`takeRate_${k}`, v])),
   ...OPERATING,
+  ...CALENDAR,
   ...MARKET,
   ...UNIT_ECONOMICS,
   ...TRAJECTORY,

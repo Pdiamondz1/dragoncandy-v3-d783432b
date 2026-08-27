@@ -21,6 +21,7 @@ import { corsHeaders } from "../_shared/cors.ts";
 import { anthropicFetch } from "../_shared/anthropic-fetch.ts";
 import { isKnownRoute } from "./routes.ts";
 import { isCreatorDiscoveryIntent } from "../_shared/creator-discovery.ts";
+import { statusFor, unauthorized } from "../_shared/http-error.ts";
 
 const ANTHROPIC_API_KEY = Deno.env.get("ANTHROPIC_API_KEY");
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
@@ -274,7 +275,7 @@ serve(async (req) => {
 
   try {
     const authHeader = req.headers.get("Authorization");
-    if (!authHeader) throw new Error("No authorization header");
+    if (!authHeader) throw unauthorized("No authorization header");
 
     // --- Dual auth: Supabase session first, OAuth fallback ---
     let userId: string;
@@ -640,7 +641,7 @@ serve(async (req) => {
     mcpBridge?.disconnect();
 
     return new Response(JSON.stringify({ error: msg }), {
-      status: isAuthError ? 401 : 500,
+      status: statusFor(err, isAuthError ? 401 : 500),
       headers: { ...corsHeaders(req), "Content-Type": "application/json" },
     });
   }

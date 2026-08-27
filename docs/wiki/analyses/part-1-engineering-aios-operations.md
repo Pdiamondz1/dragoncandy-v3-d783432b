@@ -68,21 +68,34 @@ Per the strategy docs, marketing is **founder-led first, then systematically han
 
 ## 📊 PART 3 — The Full Picture by Year
 
-**Year 1 — 5–6 people total | $300–600K ARR target**
+> **Revenue targets restated 2026-08-26** from the bottom-up model (`src/pitch/model/`,
+> `PROJECT_CONTEXT.md` §3). Figures below are **exit ARR** — the year-end run rate. The superseded
+> top-down band was $300–600K / $2–4.5M / $7–12M; it stays registered as the model's cross-check at
+> its original values. The **staffing plan itself is unchanged** — what moved is the revenue it is
+> being measured against.
+
+**Year 1 — 5–6 people total | ~$100K exit ARR ($36K booked)**
 - Dame + Joe (founders)
 - AI Developer + Back-End Engineer
 - Bookkeeper (part-time contract)
 - Auto-improvement agents (compute, not headcount)
 
-**Year 2 — 7–8 people total | $2–4.5M ARR target**
+**Year 2 — 7–8 people total | ~$879K exit ARR ($518K booked)**
 - Add: Front-End Engineer, App Admin/DevOps, Sales AE
 - Add: Part-time social/marketing contractor
 - Fractional Security Engineer active
 
-**Year 3 — 10–11 people total | $7–12M ARR target | $2–5M profit**
+**Year 3 — 10–11 people total | ~$4.7M exit ARR ($3.34M booked)**
 - Add: Product Manager (FTE), Brand Partnerships Manager
 - Security Engineer may convert to full FTE
-- Revenue per employee: **$636K–$1.2M** — clears the $400K kill-switch gate comfortably
+- Revenue per employee: **$431–474K on exit ARR** (clears the $400K gate) but **$304–334K on booked
+  revenue** (fails it). This line read "$636K–$1.2M — clears comfortably" until 2026-08-26; the gate
+  now depends on a question it never answered, which revenue it measures. Note the benchmark it is
+  being judged against: private-SaaS median is ~$130K, and ~$100K in the $1–3M ARR band, so $304K is
+  roughly 3× the norm for this size. See [[North Star & KPI Scorecard]] Flag 2 and
+  `PROJECT_CONTEXT.md` §3 — four candidate resolutions, founder's call, none picked.
+- The old **$2–5M profit** figure is removed rather than restated: it was computed against the old
+  revenue band, and against the registered $2.2–3.8M Y3 cost band it becomes −$0.5M to +$1.1M.
 
 ---
 
@@ -90,12 +103,23 @@ Per the strategy docs, marketing is **founder-led first, then systematically han
 
 A normal SaaS company at $7–12M ARR carries **25–40 people.** Our plan runs it with **10–11** because:
 
+> **The $7–12M here is an ANALOGY, not our target. Do not update it to match §3.** It names the size
+> of organisation this team is compared against. DragonCandy's own Year 3 figure was restated to
+> ~$4.7M exit ARR on 2026-08-26, and substituting it destroys the comparison rather than correcting
+> it — a $4.7M org would not carry 25–40 people, so the claim that Donny replaces 15–25 roles
+> collapses. This is the second site of this exact hazard; the other is
+> `docs/DragonCandy_Capital_Raise_Cost_Model.md` §9. Both are registered in the allowlist in
+> `src/pitch/model/docConsistency.test.ts`, which is what stops a future sweep "fixing" them.
+
 - Donny AI and the AIOS auto-improvement agents replace 15–25 roles in content, matching, analytics, scheduling, and routine engineering
 - Creators are our sales team (zero cost — referral program)
 - AI drafts all marketing content — humans direct, not execute
 - Every hire must clear **$500K revenue per head** before being added
 
-The total **fully-loaded annual people cost at steady state: ~$1.4M** — against a Year 3 revenue target of $7–12M. That's the margin engine.
+The total **fully-loaded annual people cost at steady state: ~$1.4M** — against a restated Year 3 of
+**~$4.7M exit ARR / $3.34M booked** (this line said $7–12M until 2026-08-26). That is still the
+margin engine, but it is a thinner one than the original figure implied: ~42% of booked revenue
+rather than ~12–20%.
 
 ---
 

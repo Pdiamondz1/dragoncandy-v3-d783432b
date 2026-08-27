@@ -170,6 +170,525 @@ permission gate regardless. Outstanding: `pages_manage_posts` and
 three remaining orphan paths; and the UI. → [[Native Publishing Queue]],
 [[Facebook Page Publishing]]
 
+## [2026-08-26] The bottom-up financial model, and the three-year band it restated
+
+Branch `worktree-DC-pitchdeck-3`, 35 commits. Spec:
+`docs/superpowers/specs/2026-08-26-investor-financial-model-workbook-design.md`.
+→ [[Bottom-Up Financial Model]] · [[Investor Pitch Deck & Capital Raise]] ·
+[[Build-Time Confidentiality]] · [[Drive Artifact Delivery]]
+
+**What was asked for.** The spreadsheet Adrian's multi-state model implies, for DragonCandy,
+forecast to 2028, with every number explained and sourced — *"We cannot make up numbers"* — and
+put in Google Drive. Later, explicitly: *"can we make the spreadsheet with formulas so if we need
+to change a number in the sheet it will add up correctly?"* That last sentence became the hardest
+requirement in the session and **was not met until a Codex review said so.**
+
+**What shipped.** A committed model (`src/pitch/model/`) that derives the whole forecast from US
+Census venue counts per metro, a stated penetration, and the app's own live pricing. A generated
+`.xlsx` with live formulas, in a public and a confidential build, plus a Drive uploader. A deck
+slide rebuilt on the same model. The three-year band in `PROJECT_CONTEXT.md` §3 restated from it,
+and every live document carrying the old band brought into line. No migrations, no edge functions,
+no schema change.
+
+Four metros: Hoboken (ZIP 07030), Manhattan (county 36061), Palm Beach County (12099), and
+**Montauk + the Hamptons** — a 14-ZIP *set*, which needed a new `zipset` geography kind, because a
+real market is not always one ZIP or one county.
+
+### The finding that matters most
+
+The bottom-up model and the top-down plan disagree — and **not about reach**.
+
+| Year | Metros (plan → model) | Customers EOY | Exit ARR | Booked |
+|---|---|---|---|---|
+| 2026 | 2–3 → 2 | 30 | $99,918 | $35,804 |
+| 2027 | 8–12 → 10 | 264 | $879,278 | $517,631 |
+| 2028 | 20+ → 21 | 1,423 | $4,739,444 | $3,341,424 |
+
+Every metro count lands inside the plan's own band. Y3 customers (1,423) sit just under the
+planned 1,500–3,000. **The gap is price.** Blended ARPU is $277.55, flat, against the plan's
+$400–500 — and it is low *by construction*: `project.ts` books two of the four revenue streams.
+Donny credit overages and DragonDash rush surcharges are live in the product and have **never been
+charged to anyone**, so they are valued at $0. At the plan's own $400, the model's own customer
+count reaches $6.83M — 97.6% of the superseded band's $7M low end.
+
+So the superseded top-down band is **not refuted; it is unproven**, and what would settle it is
+billing history on those two streams. That distinction was the difference between "we cut the
+target" and "here is the floor we can evidence".
+
+### Three quantities were all being called "revenue"
+
+The single most expensive confusion in the session. Booked revenue (what a calendar year invoices,
+summed monthly while customers ramp), exit ARR (year-end run rate), and steady-state annualised
+revenue at N businesses are three different things. §3's column had always meant ARR; the model's
+`revenue` field meant booked. Comparing them made the plan look wrong by 3× when the real ratio was
+half that. `exitArr` became a first-class field and the cross-check compares like with like.
+
+Separating them surfaced a live ambiguity nobody had noticed: the **$400K revenue-per-employee
+kill-switch never said which revenue it measures.** Exit ARR clears ($431–474K); booked does not
+($304–334K). Both numerators exclude two of four streams. The KPI scorecard already held the answer
+to whether the floor itself is right — private-SaaS median is ~$130K/employee, ~$100K in the $1–3M
+ARR band — so even the failing reading is ~3× the norm for this size. **The gate is mis-scoped, not
+failing.** Left to the founder; §3 records all four candidate resolutions.
+
+### Census suppression, and a false claim that shipped to investors
+
+Suppressed cells (`"N"`) are UNKNOWN, never zero. A bucket is recoverable as the residual only when
+exactly ONE of a row's nine is unknown.
+
+Five surfaces — including the investor-facing Sources sheet — stated that Montauk's full-service row
+had one suppressed bucket and was recovered, and Water Mill's had two and was not. **Measured across
+all 67 rows: the minimum is TWO, the distribution runs 2–9, and ZERO rows have exactly one.**
+Montauk's has six; Water Mill's seven. So `resolveSuppressed` recovers nothing on this vintage and
+`bandFloorAcross` is byte-identical with and without it. The claim was true only under a different
+reading of "bucket" — the three inside the addressable band, not the nine in the row.
+
+The figures were all correct — 396 venues, ≥97 addressable, 44 suppressed cells all reproduce. What
+was wrong was a **falsifiable claim on the one sheet whose purpose is to let a reader check us.**
+The function and its ordering test were kept: the rule is right, it simply has no work to do here.
+
+### The Assumptions sheet was inert
+
+Codex filed a P1: `asm_` appeared exactly once in `workbook.ts` — at its definition. **No formula
+referenced a named assumption cell.** Editing the Assumptions sheet changed nothing, against the
+founder's explicit requirement.
+
+It survived because the reason was legitimate: revenue fields are sums over a monthly ramp, so they
+cannot be written as a product of year-end customers. But only **two** quantities per metro-year are
+genuine integrals — `customerMonths` and `grossAdds`. Everything else is a product of those and the
+registered assumptions. Emitting those two as cached values made the rest live: metro sheets went
+24/60 → 51/63 formula cells, the cohort sheet 0/21 → 21/21, with **no number changed**.
+
+**Penetration is only half-live, and that is disclosed rather than hidden.** Booked revenue is built
+on customer-months, and a year-end share cannot reconstruct a twelve-month ramp — so editing a
+penetration moves customers-at-year-end and Exit ARR but not booked revenue. Fixing it properly
+would mean 36 monthly columns per metro on the sheet.
+
+Two metro ids carry hyphens, which are illegal in Excel defined names — and the formula tokenizer
+would have read `asm_palm-beach_…` as a subtraction. All names now go through one sanitiser.
+
+### Two confidentiality leaks
+
+**The public workbook was publishing the pre-seed budget.** `Total shared cost` (686,684 / 775,884 /
+775,884) is the budget annualised; the per-metro allocation and consolidated EBITDA shipped with it.
+Only the Financing sheet had ever been gated — **gating one sheet by name does not gate the figure
+it holds.** It survived because `verify-public-bundle.ts` scans `dist/`, the web deck, and **nothing
+scanned the generated `.xlsx` at all**; the generator runs in Node, so the vite alias that protects
+the website does nothing for the spreadsheet.
+
+**The deck gated the EBITDA number and printed its conclusion in English** — "The company's own line
+stays negative through 2027" rendered unconditionally. A value scanner can never catch prose, and
+the script now says so rather than implying coverage it does not have.
+
+A correction worth recording: the obvious fix — move the sentence into `trajectory.confidential.tsx`
+— **would not have worked.** `slides.tsx` imports that file unconditionally, so it is in the public
+module graph, and with `build.sourcemap` on, its entire source ships inside the public `.map`.
+Confirmed by finding the full source in `dist/assets/PitchDeck-*.js.map`. **A `*.confidential.tsx`
+filename does not make its text confidential, and nothing lints for that.**
+
+### Controls built, and why each exists
+
+- `workbookProvenance.test.ts` — walks every cell for numbers without provenance. Formula cells were
+  exempt until this session; it now allows only `0`, `2`, `12` as bare numerals, each with a reason.
+- `formulaAgreement.test.ts` — every formula must evaluate to its cached value, in **both** builds
+  (the public Totals sheet has a different row layout, so a formula can be right in one and point at
+  the wrong row in the other).
+- Toggle-response suite — the README advertises YES/NO toggles, so every consolidated row must move
+  when one flips. Written because `Exit ARR` had silently become a plain value and **nothing
+  failed**: the agreement test iterates cells with a formula, and a static cell agrees with its own
+  cache trivially. *A test that only checks formulas cannot see a row that stopped being one.*
+- `docConsistency.test.ts` — fails when a live doc quotes the superseded band without marking it
+  superseded. Its **allowlist is the deliverable**: two ANALOGY sites where the old number is correct
+  and a sweep "fixing" it would destroy the argument.
+- Compile-time cohort classification — `Exclude<keyof MetroYear, …>` catches an unclassified field at
+  `tsc`. Found `metroId` on its first run: a string, therefore invisible to a runtime check built
+  from numeric entries.
+- `verify-public-workbook.ts` — two-directional, like its bundle sibling: forbidden values absent
+  from the public file AND present in the confidential one.
+
+### The sweep that kept finding more
+
+The restatement surface was measured three times and grew each time, because each instrument was
+better than the last. A hand-written ledger list named **four** documents. A grep found **nine**. The
+guard, on its first run, found **eleven** — including `DragonCandy_Investor_QA.md`, the crib sheet a
+founder reads *from* in the room, whose slide-12 table described a slide shape that no longer
+existed. Both missed files wrote the band in a notation the grep did not cover (`$300K–$600K`,
+`$2–$4.5M`). **Match every notation the corpus contains, not the one people write.**
+
+Two of the "documents" are **generated** (`DragonCandy_Investor_Model.md`, `DragonCandy_Investor_QA.md`)
+and say so in their own first three lines. Hand-editing either survives exactly until the next
+generator run. Check whether a doc is generated *before* editing it.
+
+### Founder decisions, measured and reported, not decided
+
+1. **Which revenue does the $400K/employee gate measure?** Exit ARR clears, booked fails.
+2. **ARPU** — $277.55 modeled vs $350–500 planned across the archive and pricing docs.
+3. **When does Year 1 start?** `year1StartMonth` is registered as January 2026, so the model books
+   customers from February — while `payingCustomers` is a MEASURED 0 and launch is TBD. Two
+   registered facts in one file disagreed. Year 1 honestly reads "the first twelve months of
+   operation", not calendar 2026. Left at 1 deliberately; advancing it is a launch-date call.
+
+### Files
+
+`src/pitch/model/` (censusTam, metros, metroModel, project, rollup, consolidated, sharedCost,
+workbook, formulaEval, assumptions, confidential) · `scripts/` (generate-financial-model-xlsx,
+generate-investor-model, generate-investor-qa, fetch-census-tam, verify-public-workbook,
+upload-model-to-drive, lib/public-workbook-guard, lib/drive-service-account) · `src/pitch/slides/` ·
+eleven live documents restated.
+
+## [2026-08-26] A static privacy policy the site gate can serve, generated from the app's own source
+
+**PR #547** (`f467b3ed`), live and verified on prod.
+→ [[Static Privacy Page Session]] · [[Site Access Lockdown (Private Preview)]]
+
+**The deadlock, and why it was never a decision.** `PROJECT_CONTEXT` §5's **first**
+founder-action item said the site gate is "a decision, not a task", because switching
+`SITE_GATE_ENABLED` on "breaks every pending platform review" — the allowlist was exactly
+`/robots.txt` and `/favicon.ico`, so `/` and `/privacy` answer 401, and Google, Meta, TikTok and X
+each require an anonymously reachable privacy policy. Read plainly, that says the lockdown and the
+connector approvals are mutually exclusive.
+
+Nothing about the business forces that. It is an artifact of how the gate is built, and it was
+fixable in an afternoon. **A "decision" in a planning doc is sometimes an unexamined engineering
+constraint wearing a decision's clothes** — and this one survived at the top of the launch-blocking
+list precisely because it reads as a genuine trade-off, right up until you ask why the two are
+coupled at all.
+
+**The obvious fix would have un-gated the site.** Adding `/privacy` to the allowlist looks like a
+one-line config change. `gate/decide.ts`'s own comment says why not: `vercel.json` rewrites every
+unmatched path to `/index.html`, so allowlisting a path with no backing file does not serve
+"nothing" — it serves the SPA shell. And because the app talks straight to `supabase.co`, which
+never traverses Vercel, that shell is a **working product**, not a screenshot. Not hypothetical
+either: the lockdown's first implementation allowlisted `/.well-known/` and
+`/apple-app-site-association`, neither of which existed, and both served the shell.
+
+**What shipped.** A real file at `public/privacy.html`, allowlisted, and **generated**, not typed.
+`src/pages/legal/PrivacyPolicyBody.tsx` holds the policy text, extracted hook-free so it renders
+with no React context; `PrivacyPolicy.tsx` is now only the in-app chrome around it;
+`scripts/build-legal-static.ts` (`npm run legal:static`) renders it to a self-contained page. The
+generator **refuses to run** unless `gate/decide.ts` allowlists what it produces — a file nobody
+allowlists is 401'd like everything else, an allowlisted path with no file serves the shell, and the
+two halves are useless apart. That is exactly what the gate's comment already asked of a future
+`apple-app-site-association`, in prose, hoping someone reads it.
+
+Four design points, each easy to get wrong by hand:
+
+- **Generated, because a hand-written copy is a fork of a legal document.** Nothing would keep it in
+  step, and the field guaranteed to change — the "Last updated" date — is what a reader uses to
+  decide whether to trust the page.
+- **Fully self-contained.** With the gate on, *everything* not allowlisted answers 401 — the CSS
+  bundle, the fonts, `/logo.webp`. A stylesheet link would leave a reviewer looking at unstyled text
+  on the one page we are asking them to judge us by. `/favicon.ico` is the single external
+  reference, and only because it is itself allowlisted.
+- **Committed, not built on the fly.** Vite copies `public/` at the *start* of a build, so
+  generating into it mid-build is too late, and a `prebuild` hook would make every plain
+  `npm run build` depend on the script.
+- **`rel="canonical"` points at `/privacy`.** Ungated, the React route is where a human should land,
+  and two indexable URLs for one policy is duplicate content. While gated that target 401s —
+  accepted, since the whole site is de-listed then, which is also why `/sitemap.xml` stays off.
+
+**A rule that was true, stated, and enforced by nothing.** `decide.ts` had carried "only allowlist a
+path with a real file under `public/`" in a doc comment since 2026-08-23, and nothing checked it —
+the same shape as this codebase's four recorded column-level `REVOKE` no-ops. `gate/decide.test.ts`
+now walks the **real** `ALLOWED_EXACT` set (exported for the purpose) and asserts every entry has a
+file, so a future entry is covered by the act of being added. Controls in both directions: the set
+must hold ≥3 entries, since an empty one passes vacuously, and `apple-app-site-association` must NOT
+exist, proving `existsSync` can return false here at all.
+
+**All four guards forced red by hand:**
+
+| guard | forced-red result |
+|---|---|
+| whole-file comparison against a fresh render | bumped the date without regenerating → 2 failures |
+| contiguous numbered sections | deleted §7 and regenerated → `expected [1,2,3,4,5,6,8,9,10,11] to deeply equal […]` |
+| every allowlisted path has a file | allowlisted `/apple-app-site-association` → `"has no file"` |
+| the generator's own refusal | removed the allowlist entry → refuses, exit 1 |
+
+The file comparison is **whole, not sampled**: sampling cannot see a *deleted* section, and a
+privacy policy missing a section is exactly the failure a sampled check waves through.
+
+**A toolchain trap.** `npx tsx` resolves the ROOT `tsconfig.json`, which is solution-style
+(`files: []` + `references`) and carries no `jsx` setting, so esbuild falls back to the classic
+transform — and the failure surfaces not in the script but in the *imported component*, at render
+time, as `ReferenceError: React is not defined` pointing at a file that looks perfectly fine.
+**Adding `jsx` to the root config does not fix it; naming `tsconfig.app.json` does.** The root edit
+was tried, measured as ineffective, and reverted rather than left in as cargo — a change that does
+nothing is worse than no change, because the next reader assumes it is load-bearing.
+
+**Verified on prod — and the first verification lied.** `/privacy.html` serves 7,782 bytes, all 11
+numbered sections, the correct entity and contact address, and is **byte-identical** to
+`origin/main`'s copy. Controls: `/privacy` still returns the React SPA, and `/nope.html` returns the
+SPA shell — demonstrating on prod, rather than arguing, why allowlisting a pathless URL would have
+been a disaster.
+
+The first run reported the SPA shell and looked like a broken change. **The probe was at fault:** it
+polled until `/privacy.html` returned `200`, but the catch-all answers 200 for *every* path, so the
+exit condition could not distinguish "deployed" from "not deployed" and it broke on the first
+request. A control settled it — `robots.txt` serves real text, so static files do beat the rewrite —
+and re-polling on **content** showed it had landed within 30 seconds. **Third instance this session
+of waiting on a signal whose success and failure states are identical**, after an RAG probe run
+before a background sync finished and a `mergeStateStatus: BLOCKED` where every visible check was
+green because the *missing* one was required.
+
+**What it does and does not change.** Nothing deployed: it is a Vercel artifact that ships on merge.
+The gate is still **off** in production, so nothing changed for any visitor. What changed is that
+switching it on no longer breaks the **privacy-policy** requirement of any of the four — and
+**`/privacy.html` is the URL to register in the Google, Meta, TikTok and X consoles**, because it
+works gated *and* ungated, which `/privacy` never will. **That fully unblocks Meta, TikTok and X.
+Google is only half-unblocked**: its verification also needs the HOMEPAGE reachable signed out, and
+`/` is still the SPA. See the round-2 review note below.
+
+**Left open deliberately:** whether `/privacy` should collapse into the static page entirely — one
+URL, no drift risk at its root — which would delete the React route and change what a logged-in user
+sees. A product decision, not a cleanup.
+
+**Codex** clean on the first round. 3,611 tests pass; typecheck clean; lint 0 errors; build emits
+`dist/privacy.html`.
+
+**A correction that had to be made five times, after a reviewer found one.** Codex's only finding on
+the knowledge PR was a [P2]: `PROJECT_CONTEXT`'s TikTok entry still listed the privacy policy as
+blocked by the gate, three sections below the correction saying it was not. Grepping the distinctive
+phrase across `docs/` found the same claim in **five** places — the TikTok and Instagram §5 entries,
+`concepts/tiktok-analytics-connector.md`, `concepts/x-analytics-connector.md`, and
+`runbooks/tiktok-analytics-connector-setup.md`, the last being the one that tells a human which URL
+to paste into a console.
+
+**This is the same session's own `[propagate-the-correction]` lesson, repeating.** Correcting a claim
+where you found it is not correcting the claim. And a reviewer is structurally the wrong backstop
+here: Codex reads the diff, so it can only ever catch survivors that sit near the change. The
+mechanical fix is to grep the distinctive phrase across `docs/` **before** committing a correction.
+
+**Codex round 2 found what round 1's sweep structurally could not: the URL, not the claim.** The
+first sweep grepped the *prose* (`anonymously reachable privacy`) and fixed five copies. What an
+operator actually acts on is a **pasteable string** — `https://dragoncandy.com/privacy` in TikTok's
+console field table — which shares no words with the sentence. Grepping `dragoncandy.com/privacy`
+found it, plus the same URL in the Google runbook. **Sweep for the artifact a reader will USE, not
+only for the sentence you happen to have written.**
+
+**And that second runbook corrected a claim of mine.** `google-oauth-demo-video.md` had already
+proposed this exact fix — "serve the legal pages as real static files and allowlist those paths" —
+so #547 shipped a solution the repo had written down and nobody had built. But the same section
+records that Google's verification needs the **homepage** reachable signed out too, and `/` is the
+SPA and still 401s. So "switching the gate on no longer breaks four app reviews" was **too strong**:
+it is true for Meta, TikTok and X, and only half-true for Google. Corrected in §5's Open items rather
+than left to be discovered by a failed verification.
+
+**Codex rounds 4 and 5 — the review kept finding the same failure one layer out.** Round 4: the raw
+session still carried the over-claim. Round 5, two findings, and the more important one is not a
+documentation problem at all.
+
+**`terms.html` had to ship.** Every console asks for a privacy URL **and a terms URL on the same
+form**, so shipping only `privacy.html` left an anonymously inaccessible legal URL in a live
+submission. The runbook had hedged that as *"TikTok does not appear to fetch it"* — **an assumption
+about a reviewer's behaviour is not evidence, and it is certainly not a basis for calling a
+submission complete.** The generator now walks a page table and emits both; the guard walks that
+same table, so a third legal page is covered by the act of being registered. Note the repo's own
+`google-oauth-demo-video.md` had proposed **both** files from the start, and only one got built —
+so the gap was written down before it was shipped.
+
+**And a rule question the review got wrong in one direction, then right in the other.** Round 4 said
+to correct the raw session; round 5 said correcting it violates `Never modify raw/`. Both cannot
+hold, so it needed a judgment rather than compliance. `git log origin/main` settles it: the TikTok
+raw session **is** merged (#537), so it is a genuine immutable record and its errata was reverted —
+the correction lives in the synthesized pages, which is the prescribed workflow. This session's own
+raw source is **new in this PR**, never merged, so its first merged state can simply be correct.
+The distinction is "already ingested", not "is in `raw/`".
+
+## [2026-08-26] The package-order existence oracle: one answer for "no such order" and "not yours"
+
+**PR #545** (`54ca8b24`), both functions deployed and verified on prod the same day.
+→ [[Package-Order Existence Oracle Session]] · [[Service-Role Data Exposure]] (5th recorded instance)
+
+**Found by verifying a different fix.** The session before moved twenty edge functions from 500 to
+401 on an auth failure; `refund-package-order` and `release-package-payout` did not move, which read
+as "the fix didn't take". Supplying the field the error was asking for settled it:
+
+```
+empty body : {"error":"Missing required field: orderId"}                            [500]
+with field : {"error":"Order not found: Cannot coerce the result to a single JSON"}  [500]
+```
+
+The status had not moved because the auth check was **never reached**. Both functions parse the body,
+**read the order with `SUPABASE_SERVICE_ROLE_KEY`**, and authorize afterwards — so existence is
+established before identity, and an anonymous caller could tell a real order id from an invented one.
+`release-package-payout` leaked a second way and to a wider audience: `"Only the buyer can release
+this payout"` confirmed the order to **any authenticated user**. Bounded in practice, since
+`package_orders.id` is a UUID and not enumerable; still a service-role read answering a stranger.
+
+**Why the obvious fix is wrong.** "Authenticate before you read" **breaks guest refunds**: a guest
+buyer has no JWT and their credential, `buyer_guest_token`, is a **column on the order**, so the row
+genuinely must be fetched before that caller can be identified. What *can* move above the read is
+refusing a caller who presented **nothing at all** — no service-role key, no JWT, no guest token.
+Everything past that point had some credential to offer, so the read is no longer answering an
+anonymous question. Every remaining failure returns **one shared 404** from
+`_shared/package-order-access.ts`, with the real reason sent to `logStep` rather than to the caller.
+One shared constant and one shared status, deliberately not two "identical" strings in two files:
+two copies is the drift that re-opens the leak, because the difference between the two answers *is*
+the leak.
+
+Also finishes the previous session's leftover in these two files — the missing-`orderId` validation
+error was the last 500 on this surface and is now a **400**.
+
+**A hole the restructure opened, and closed before it shipped.** Flattening the authorization chain
+into `else if` branches introduced `callerUserId === order.buyer_user_id`. `buyer_user_id` is **NULL
+on a guest order**, and `callerUserId` is null exactly when the caller came in on a guest token — so
+`null === null` authorizes, and a caller holding a valid guest token for a **different** order would
+have been treated as this order's buyer. The old nested form was safe by *accident of structure*,
+never by an explicit check: it only reached the comparison after `getUser` had produced a real user.
+**Flattening control flow can delete a precondition that was never written down.**
+
+**Scope was re-derived, not inherited** — the immediate lesson from the session before was that a
+count carries its original investigation's sample. Six edge functions touch `package_orders`; all
+five package-order ones are `verify_jwt = false`.
+
+| function | verdict |
+|---|---|
+| `notify-package-order` | `isAuthorizedIngest` gates it before anything is read — no oracle |
+| `create-package-order-escrow` | creates the order; no pre-existing id to probe |
+| `verify-package-order-escrow` | **anonymous by design** — see below |
+| `refund-package-order`, `release-package-payout` | fixed |
+
+`verify-package-order-escrow` is deliberately out of scope and is **named in the guard rather than
+left unmentioned**. A guest returning from Stripe Checkout has no credential at that moment, which is
+why its own header already reasons about being safe unauthenticated: it flips escrow only when Stripe
+reports a paid payment whose `metadata.order_id` matches, and it returns order STATE, never order
+data. It *does* confirm an id exists — an accepted property of an endpoint with **no authorization
+step at all**, which is a different thing from one that has an authorization step and leaks around
+it.
+
+**The guard, and why it is a text check.** `_shared/package-order-access.test.ts` asserts per function
+that `auth.getUser(` appears above `.from("package_orders")` **inside the request handler**, that
+`orderNotAccessible()` is thrown at least twice, and that none of the three distinguishing messages
+survives. Source order is one of the rare security properties a text check can genuinely establish,
+and it **cannot** be a runtime test here: the guest branch legitimately reads the order before its
+credential can be evaluated, so a black-box test would have to distinguish "read for a guest" from
+"read for a stranger" — which is exactly what the fix makes impossible. Two controls: the sources are
+asserted non-empty, and the three "distinguishing" strings are quoted from the **pre-fix** sources so
+the `not.toContain` cannot pass vacuously.
+
+**Its first version failed a correctly-ordered file.** `release-package-payout` defines
+`finalizePackageOrderState` above `serve()`, and that helper reads `package_orders` too, so `indexOf`
+compared the auth call against the *helper's* read. It failed in the safe direction, but a guard that
+cannot say which read it is looking at is measuring the wrong thing either way; it is now scoped to
+the handler slice. Forced-red by hand afterwards: inverting the order in `refund-package-order` fails
+the assertion (`expected 2446 to be less than 1783`), and reverting returns it to green.
+
+**Verified on prod, both directions.** `verify_jwt` was probed before deploying — both declared
+`false` in `config.toml` **and** live `false`, so neither was the dangerous live-false-but-absent
+combination — and both upload logs listed `package-order-access.ts`, the evidence the new code
+shipped rather than the deploy reusing a bundle.
+
+```
+before, no credential : {"orderId":"1111…"} → 500 {"error":"Order not found: Cannot coerce…"}
+        control       : a made-up function name → 404 NOT_FOUND  (the probe reaches the gateway)
+
+after,  no credential : any orderId → 401 {"error":"User not authenticated"}   (read never happens)
+        guest token   : fake id A  → 404 {"error":"Order not found, or you are not authorized…"}
+        guest token   : fake id B  → 404  … byte-identical
+        empty body    → 400
+```
+
+Both halves matter: the 401 shows the read no longer runs for an anonymous caller, and the identical
+404s show that when a credential IS present and the read does run, the two failures are
+indistinguishable.
+
+**What could NOT be verified, stated rather than glossed.** Prod holds **zero `package_orders` rows**
+— control: `profiles` returns 46 on the same query, so the zero is a real count and not a broken
+query. Nothing here was exercised against a real order: not the guest refund path, not the buyer
+release, not the shared 404 on an order that genuinely exists but isn't the caller's. What is proven
+is that a fake id stops being distinguishable and that an anonymous caller is refused before the read;
+the rest rests on construction and tests, which is weaker.
+
+**A near-miss on that same control, and the lesson is the opposite of the obvious one.** It returned
+46 where `PROJECT_CONTEXT` §4 was *remembered* as saying 45, and the first instinct was to correct the
+doc. Reading it first showed §4 had already been corrected — hours earlier, by #541 — and to something
+more precise than the intended edit: **46 rows total, 45 organic**, the 46th being
+`dame+onboardtest@dragoncandy.com`, created after the original read. The control **corroborated** the
+doc, and the "correction" would have destroyed the organic-vs-total distinction while looking like a
+fix. *A number that disagrees with your memory of a doc is a reason to read the doc, not to overwrite
+it* — the same failure mode as a count inherited from an earlier investigation, one step further on.
+
+**Codex** passed clean on the first round: *"The changes consistently authenticate before the
+service-role lookup where possible and return the same opaque 404 for missing and unauthorized
+orders."* 3,604 tests pass; both changed functions are on the `typecheck:functions` checked list (not
+the pre-existing ignore list); build clean; ~230-line diff with no line-ending churn — the CRLF trap
+from the previous session was checked for before editing.
+
+**The durable lessons.** (1) A failure that does not move after a fix is a question, not a leftover.
+(2) The reorder that closes an oracle is often the one that breaks the feature, so record the
+mechanism with the finding. (3) Flattening control flow can delete a precondition nobody wrote down.
+(4) Two "identical" error strings in two files are a leak waiting to reopen — share the answer,
+including its status.
+
+## [2026-08-26] Email verification exercised against prod — and the control that made it mean something
+
+Verification of shipped work, not new code. The §5 entry for the email-verification code flow
+(#527, #528, #530, #531) had carried *"no real signup has exercised the code flow end to end on
+prod"* since it merged. Both routes have now been driven against production on the
+founder-designated account `dame+onboardtest@dragoncandy.com` — **but that clause is only partly
+retired, and the wiki page carries the per-leg table.** The emailed link was clicked by a person in
+a real mail client and verified. The code was posted straight to the endpoint, never typed into the
+signup panel; the account pre-existed, so no fresh signup was involved; and the session came from
+an admin `generate_link` exchange rather than the login form. Calling that "end to end" was an
+overstatement the Codex second review removed.
+
+**The empty token table proved less than it looked like.** `email_verification_tokens` held zero
+rows at inspection, and that was first written up as "the feature had never run". It does not
+support that: the nightly `expire-email-verification-tokens` cron sweeps expired rows, and a
+verification email went out on 2026-08-24 and is still in the mailbox, so a row existed. The Codex
+second review caught the contradiction. The defensible bound is the ship date — `code`, `attempts`
+and the code-bearing template all landed in #530 on 2026-08-26, and the 8/24 email carries the old
+template with no code — so the link had been sent before and the **code** path had not run.
+
+**The forced control is the whole story.** `consume_email_verification_code` returns
+`ok:true, reason:'already_verified'` *before* it looks at the code — correct, because a double
+submit or a race with the link being clicked on another device must not error about work already
+done. It also means every submission on a verified account succeeds. Demonstrated rather than
+assumed: the **wrong** code `999999` returned **HTTP 200 success**, leaving `attempts = 0`. With
+`email_verified` set false, the identical request returned **400 `mismatch`**. Same endpoint,
+same input, opposite answers.
+
+| probe | result |
+|---|---|
+| wrong `999999`, then wrong `000000` | 400 `mismatch`, `remaining` 9 then **8** |
+| real code from the email | 200, `email_verified` false → true, `verified_at` stamped |
+| link token, GET | 302 `/auth?mode=login&verified=1` |
+| same link token replayed | 302 `?status=error&reason=invalid_or_used` |
+| no `Authorization`; anon key as the JWT | 401, 401 |
+| malformed five-digit code | 400 `malformed`, no attempt charged |
+
+`remaining` falling 9 → 8 across two *different* wrong codes is the per-user budget doing the
+thing the migration exists for; a per-code budget answers 9 twice.
+
+**Delivery was checked, not inferred from the provider's success flag** — and the evidence differs
+per mail, since three were sent. The first two were read in the mailbox: inbox not spam, one second
+after the row was written, emailed code identical to the stored code, link on `dragoncandy.com`
+from the honoured `Origin`, footer label matching its own href. The third was never opened by the
+agent; its delivery is evidenced by the founder clicking it.
+
+**A P1 was nearly filed and was wrong.** Read through the claude.ai Gmail connector, every link
+came back corrupted in a way mechanically consistent with quoted-printable decoding of an
+unescaped `=`. An unrelated sender's mail showed the identical damage, which is what stopped it;
+the founder then clicked the real buttons and the function logged `token_prefix: "29ece178"`,
+intact. The first control tried could not have caught it — a Google notification containing no
+`=` followed by two hex digits came back clean and proved nothing. Recorded in project memory as
+`gmail-mcp-mangles-equals-signs`.
+
+Those clicks *did* fail, for a mundane reason worth writing down: the test had already spent both
+tokens. A used verification link failing is the design working. **A third email was then sent and
+deliberately left untouched, and the founder's click on it verified** — token `7bd889aa`, created
+21:25:05, consumed 21:26:02. Recording only the first two clicks reads as "the human route failed";
+the Codex review drew exactly that conclusion from an earlier draft.
+
+Sessions came from the admin API (`generate_link` → `/auth/v1/verify`), never a password.
+`supabase/scripts/staging-login.mjs` performs the same exchange but deliberately refuses
+production, so it was left untouched rather than adapted.
+
+**Still not proven:** the six-digit input has never been typed in a browser. Everything beneath
+it is proven; that one needs a fresh signup.
+
+→ `docs/wiki/concepts/email-verification-routes.md` · `docs/wiki/concepts/verify-before-reporting.md`
+
+
 ## [2026-08-26] TikTok read-only analytics connector — and four defects one real connection found
 
 **PRs #525 and #529, both merged.** The fifth direct platform connector under the 2026-08-23
@@ -313,6 +832,83 @@ which nothing enforces and which fails at token exchange if missed; and App Revi
 **anonymously reachable privacy policy**, which the site gate would break exactly as it breaks
 Google's and Meta's. Both TikTok buttons on the settings page also read "Connect TikTok" — one
 publishes via Outstand, one measures — and nothing on the buttons says which.
+
+## [2026-08-26] An auth failure is not a server error: 401 instead of 500 across 20 edge functions
+
+**#542, merged `ced582f4`, all 20 deployed and verified.** Third and last of the day's
+edge-function corrections, after the `.io` CORS sweep and the proxy wildcard.
+
+These functions share one shape: a big `try` whose `catch` returns `error.message` with a single
+hardcoded status. Every failure therefore became a 500 — a missing `Authorization` header, a bad
+campaign id and a genuinely broken Stripe key all reported identically as "the server broke".
+Measured on prod: **twelve** functions answered an unauthenticated request
+`500 {"error":"No authorization header provided"}`; `get-stripe-dashboard-link` answered 400. The
+body already named the problem; only the status disagreed.
+
+**Why it matters beyond tidiness:** a 500 is the one status a client may retry and monitoring may
+page on. An auth failure is neither retryable nor an incident, so the wrong status makes a routine
+event indistinguishable from an outage — on the payout and escrow surface, where a real outage is
+exactly what someone needs to be able to see.
+
+**The scope went five → fourteen → eighteen → twenty, and each step has a cause.** "Five" was my
+own earlier figure, taken from a probe of only the twelve money functions carrying the `.io`
+defect — a count bounded by a *previous investigation's sample* rather than by this defect.
+Grepping the message found fourteen. The fleet guard found four more that a message-based grep
+structurally could not (same code shape, different message string). And Codex found the branch
+missed entirely: typing the `!authHeader` throw only fixes a MISSING credential, while a header
+that is present but invalid or expired takes `if (userError || !userData.user) throw ...`, which
+stayed bare. Tokens expire; that is the commoner failure. **The lesson is about the guard, not the
+bug — it matched ONE syntactic shape, so it could only ever vouch for that shape. A guard's
+silence means "nothing matched my pattern", never "nothing is wrong."**
+
+**Deliberately minimal.** `HttpError` + `unauthorized()` + `statusFor(error, fallback)` map
+AUTHENTICATION failures to 401 and change nothing else; authorization, not-found and validation
+keep each function's existing generic status, which is why `get-stripe-dashboard-link` passes 400
+rather than being silently promoted. Three functions already returned 401 by **string-matching the
+error message** — correct today, silently a 500 the moment anyone rewords it; the typed error is
+now authoritative and the heuristic is kept as the fallback for the other throws it covers. No
+client behaviour changed: every caller uses `functions.invoke()` and supabase-js turns any non-2xx
+into the same `FunctionsHttpError`; nothing in `src/` branches on a status and there is no 401
+auto-signout.
+
+**The guard states what it does NOT cover.** Two patterns; one named exclusion
+(`suggest-package`). A third shape — a bare `throw new Error("Unauthorized")` in
+`donny-campaign-preview` and `donny-schedule` — is deliberately unclaimed, because each has
+multiple catch blocks per handler and both already answer 401. The `PARKED` list was first written
+from memory and named those two files; the **exact-equality** assertion rejected it, because they
+never matched the patterns at all. A subset check would have accepted the wrong list silently.
+
+**A line-ending trap.** These files are a per-file mix of CRLF and LF from the repo's move off
+Windows. A naive Python read/write rewrote them all to LF — **1,777 phantom line changes** across
+the payout surface on the first attempt, reverted. A diff that size is unreviewable, which is the
+same outcome as not being reviewed.
+
+**Deploy verification.** `verify_jwt` was checked BEFORE deploying, because the dangerous
+combination is live-`false` + absent from `config.toml`, where the deploy applies the platform
+default `true` and the function starts rejecting its own callers. All 20 matched; none was
+live-false-but-absent. Every upload log carried `http-error.ts`. After: the 12 moved 500 → 401,
+`get-stripe-dashboard-link` 400 → 401, the five gateway-protected ones stayed 401, `donny-chat`
+stayed 401, and CORS still answers `capacitor://localhost` everywhere.
+
+**Two did not move, and that is a finding rather than a failure.** `refund-package-order` and
+`release-package-payout` still answer `500 {"error":"Missing required field: orderId"}` because
+their auth check is never reached. Proven by supplying the field: they then answer
+**`"Order not found"`** — so the order is parse body → **look up the order with a service-role
+client** → then authenticate, and **an unauthenticated caller can distinguish "order exists" from
+"order not found"**. That is an existence oracle on a service-role read, worse than the "validates
+the body before auth" note it had been filed under. **The naive fix breaks guest refunds** — the
+branch above the auth check compares `order.buyer_guest_token`, so the order genuinely must be
+fetched before the caller can be identified. The correct fix is to stop leaking existence, not to
+reorder. Bounded because `package_orders.id` is a UUID and not enumerable. Left for its own change,
+with the mechanism recorded so the next session does not reach for the reordering that breaks
+guests.
+
+**The durable lesson: a count inherited from an earlier investigation carries that investigation's
+sample, not the current question's.** "Five" was never wrong about the twelve money functions
+probed for a CORS defect; it was wrong about this defect, and nothing in the number said which it
+was.
+
+→ `docs/wiki/raw/sessions/2026-08-26-auth-401-not-500.md`
 
 ## [2026-08-26] The two proxies answered every origin with `*`, because copying was easier than sharing
 

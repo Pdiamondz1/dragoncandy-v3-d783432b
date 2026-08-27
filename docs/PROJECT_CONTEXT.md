@@ -54,21 +54,59 @@ paid campaign in under 60 seconds.
 
 ## 3. Three-Year Targets
 
-| Year | ARR        | Headcount | Metros | Notes        |
-|------|------------|-----------|--------|--------------|
-| Y1   | $300–600K  | 5–6       | 2–3    |              |
-| Y2   | $2–4.5M    | 7–8       | 8–12   | NRR > 110%   |
-| Y3   | $7–12M     | 10–11     | 20+    | $2–5M profit |
+**Restated 2026-08-26 from the bottom-up model** (`src/pitch/model/`): US Census
+venue counts per metro × a stated penetration × live pricing, every figure traced to a
+provenance-tagged assumption. The ARR column is **exit ARR** — the year-end run rate,
+which is what "ARR" has always meant here. Booked revenue is the lower figure the same
+years actually invoice, because customers ramp through the year; both are in the
+generated workbook (`npm run model:xlsx`). Do not quote one for the other.
+
+**Both revenue columns are a TWO-of-four-streams figure.** §8 stacks four — subscription, take
+rate, Donny credit overages, DragonDash rush surcharge — and the model books the first two and
+values the other two at **$0**, because nothing has ever been charged for them. So every number in
+this table, and every ratio computed from it below, is a floor.
+
+| Year | Exit ARR | Booked | Headcount | Metros | Notes |
+|------|----------|--------|-----------|--------|-------|
+| Y1 (2026) | $100K | $36K   | 5–6   | 2  | 2026 = Y1 is founder-confirmed, not assumed |
+| Y2 (2027) | $879K | $518K  | 7–8   | 10 | NRR > 110% |
+| Y3 (2028) | $4.7M | $3.3M  | 10–11 | 21 | 4 named metros + a 17-metro cohort |
+
+**The superseded plan was $300–600K / $2–4.5M / $7–12M ARR**
+(`docs/archive/DragonCandy_Path_to_Multi-million_annual_profit.md`). It stays registered
+in `src/pitch/model/assumptions.ts` **at those original values** as the model's
+cross-check and must not be updated to match this table — that would make the ratio 1.00
+by construction and destroy the check. Bottom-up exit ARR runs **0.22× / 0.27× / 0.50×**
+the old band's midpoint. Almost the whole Y3 gap is **ARPU, not customers**: the model
+books $277.55/customer/month against the plan's $400–500, because the plan counts Donny
+credit overages and DragonDash rush surcharges and the model books neither (nothing has
+ever been charged for them). At the plan's own ARPU our Y3 customer count would produce
+$6.8M. Changing the mix or the take rate is a founder decision and has not been made.
 
 **Kill-switches** (any trigger ≥ pause and reassess):
 - Churn > 6% **monthly** (SMB SaaS benchmark is 3–5%/mo, so >6%/mo means worse than
   typical SMB; unit clarified 2026-06-10 — was previously unitless)
 - CAC payback > 12 months
 - LTV:CAC < 2:1
-- Revenue per employee < $400K — **Y2–Y3 maturity gate, not a Y1 trigger.** The Y1
-  plan ($300–600K ARR ÷ 5–6 staff ≈ $50–120K/employee) is structurally below this
-  floor, so applying it early would false-trigger; the Y3 plan ($7–12M ÷ 10–11 ≈
-  $636K–$1.2M/employee) clears it. (Scoped 2026-06-10.)
+- Revenue per employee < $400K — **Y2–Y3 maturity gate, not a Y1 trigger.** Scoped
+  2026-06-10 against the old $7–12M Y3 ($636K–$1.2M/employee, which cleared easily).
+  **It no longer clears cleanly — see the open decision below.**
+
+> **OPEN FOUNDER DECISION — three numbers in this section disagree, and nobody has picked.**
+> At the restated Y3, revenue per employee is **$431–474K on exit ARR** (clears the $400K
+> floor) but **$304–334K on booked revenue** (fails it, in both staffing cases). **Both
+> numerators exclude two of the four revenue streams** (see above), so both are floors — a
+> fifth resolution is that the gate is being applied to a deliberately partial revenue figure.
+> Worth weighing against the benchmark: the private-SaaS median is ~$130K per employee and
+> ~$100K in the $1–3M ARR band (`docs/wiki/analyses/north-star-kpi-scorecard.md`), which puts
+> even the failing reading at roughly 3× the norm for this size. Four
+> candidate resolutions, none chosen: (a) Y3 headcount of 10–11 is too high for this
+> revenue; (b) $400K is the wrong floor for a company at this stage; (c) the Y3 target is
+> too low to carry the planned team; (d) the gate never said WHICH revenue it measures —
+> "revenue per employee" conventionally means booked revenue, which is the reading that
+> fails. (d) surfaced only when exit ARR and booked revenue were computed separately on
+> 2026-08-26; it was not a live question while one number stood for both. Decide (d) first,
+> because it determines whether (a)–(c) are even in play.
 
 > Kill-switch thresholds validated against 2025 SMB-SaaS benchmarks and operationalized
 > into a tracked metric set in `docs/wiki/analyses/north-star-kpi-scorecard.md`
@@ -76,10 +114,14 @@ paid campaign in under 60 seconds.
 
 ## 4. Current State
 
-Pre-revenue by choice. **45 organic users** (read off prod 2026-08-24 — `select count(*)
+Pre-revenue by choice. **45 organic users — but `profiles` now returns 46** (re-counted
+2026-08-26). The 46th is `dame+onboardtest@dragoncandy.com`, a test account created
+2026-08-24 22:29 UTC — *after* the read below — and it is the only row added since
+2026-08-20, so organic is still 45 and a bare `count(*)` now overstates it by one.
+Subtract test accounts before quoting this anywhere. (Read off prod 2026-08-24 — `select count(*)
 from profiles`; this line said "~30" and the investor model had copied that figure and
 tagged it MEASURED, so a number wrong by a third was vouched for by its own provenance
-tag), $0 paying customers (also confirmed against prod the same day), **~$569/mo
+tag.) $0 paying customers (also confirmed against prod the same day), **~$569/mo
 operating cost** (as of 2026-08-23: Lovable $50, Anthropic $200, **Outstand.so $249**,
 Supabase $45, OpenAI $25 — sums to $569; this line briefly stated $572, which did not
 reconcile with these same five components, until corrected the same day, and the $3
@@ -150,9 +192,13 @@ Engineering cannot close these. Ordered by what blocks launch.
 - **Site-gate go-live, in this order:** set the four Production-scope Vercel variables →
   deploy → run the runbook's checks → **only then** disable Supabase signup. `SITE_GATE_ENABLED`
   is the lever; deleting the variables is the wrong rollback, because it fails closed.
-  **Switching it on breaks every pending platform review** — the allowlist is exactly
-  `/robots.txt` and `/favicon.ico`, so `/` and `/privacy` answer 401, and Google, Meta, TikTok
-  and X each require an anonymously reachable privacy policy. A decision, not a task.
+  **The legal-URL blocker is closed; a HOMEPAGE one is not.** Generated, self-contained
+  `public/privacy.html` **and `public/terms.html`** are on the allowlist (#547, #548) — every
+  console asks for both on the same form. Register the `.html` URLs, never the pretty routes.
+  **But Google's verification also requires the HOMEPAGE reachable signed out**, and `/` is the
+  SPA and still 401s. So this is now a **task** for Meta/TikTok/X and still a **decision** for
+  Google, which needs the gate off through verification or a static homepage nobody has built.
+  → `docs/runbooks/google-oauth-demo-video.md`
 - **No Facebook Page exists to connect** — creating one is public, outward-facing content. The
   connector is deployed and stops at Meta's Page-selection step until a Page exists.
 - **Demo videos for platform app review** — Google (YouTube) and Meta (Instagram, Facebook).
@@ -209,22 +255,22 @@ Engineering cannot close these. Ordered by what blocks launch.
   connect, where before they landed null. Console is a **sandbox**, because the production form
   will not save without a demo video; that video was recorded 2026-08-26. **Pending:** save and
   submit the production form; **swap the secrets from sandbox to production after approval**,
-  which nothing enforces and which fails at token exchange; App Review's anonymously reachable
-  privacy policy, which the site gate breaks as it does Google's and Meta's.
+  which nothing enforces and which fails at token exchange. **The privacy-policy blocker is GONE**
+  (#547) — register `/privacy.html`, never `/privacy`.
   → `docs/wiki/concepts/tiktok-analytics-connector.md` · #525, #529
 - **Email verification by code — the signup tab stops being thrown away** — signup used to end
   in `signOut()`, discarding the tab that had just done the work; the session now survives and a
-  six-digit code is entered in place, with **the emailed link unchanged** (the only route that
-  works once the tab is closed, so the panel polls and moves on by itself). The durable half is
-  the entropy argument: the UUID link is safe with no session, which is why `verify-email` runs
-  at `verify_jwt = false` — and the ~20-bit code is safe **only** because the function body
-  resolves it against the caller's own JWT. The attempt cap lives in SQL because counting in
-  TypeScript is check-then-act, and is per **user**, since a resend mints a fresh row and would
-  otherwise refill the budget on demand. Verification is a **route gate** (#528); the wizard is
-  entered only when the account never finished it (#527). **Pending:** no real signup has
-  exercised the code flow end to end on prod; `dame+onboardtest@dragoncandy.com` is a live prod
-  account counted in the investor-facing user figure; and a distinct wizard-completion signal to
-  replace `is_completed` as the routing gate.
+  six-digit code is entered in place, with **the emailed link unchanged**. The durable half is the
+  entropy argument: the UUID link is safe with no session (which is why `verify-email` runs at
+  `verify_jwt = false`), and the ~20-bit code is safe **only** because the function body resolves
+  it against the caller's own JWT, behind a per-**user** cap enforced in SQL. Verification is a
+  **route gate** (#528); the wizard is entered only when the account never finished it (#527).
+  **Both routes driven against prod 2026-08-26** (the code path's first run — it shipped that day):
+  the link clicked by a person, the code posted to the endpoint.
+  **Pending:** the six-digit input has never been typed in a browser — everything beneath it is
+  proven and the link was walked by a real click, but no FRESH SIGNUP has entered either route; `dame+onboardtest@dragoncandy.com` is a live prod account
+  and is the **46th** `profiles` row, i.e. NOT inside §4's 45 (see there); and a distinct
+  wizard-completion signal to replace `is_completed` as the routing gate.
   → `docs/wiki/concepts/email-verification-routes.md` · #527, #528, #530, #531
 - **X (Twitter) analytics connector** — merged, applied, deployed. **TWO accounts are connected,
   not one, and the read is no longer failing** — this entry said `last_synced_at` was null and
@@ -254,8 +300,9 @@ Engineering cannot close these. Ordered by what blocks launch.
   exists; `cron.job_run_details` holds 0 runs)" and prod disagrees (checked 2026-08-26):
   `instagram-refresh-sweep` ran at 04:00 UTC on 25 and 26 August, both `succeeded`. Control:
   `auto-approve-content` returns 3,271 runs on the same query, so a 0 would have meant
-  something. **Pending:** App Review, which needs a
-  demo video and an anonymously reachable privacy policy.
+  something. **Pending:** App Review, which needs a demo video. **The privacy-policy half is no
+  longer pending** — #547 put a generated `/privacy.html` on the site gate's allowlist, so it
+  survives the lockdown; register that URL, never `/privacy`.
   → `docs/wiki/concepts/instagram-insights-connector.md` · #489
 - **YouTube read-only analytics connector** — merged, applied, deployed and **working end to
   end** 2026-08-23; published to production; console work done and read back. **Pending:** the
@@ -285,6 +332,11 @@ Engineering cannot close these. Ordered by what blocks launch.
   Google client ID retires during 2026 — the service-account transport is built and proven end
   to end, dormant until a key is dropped in.
   → `docs/wiki/concepts/investor-pitch-deck.md` · `docs/wiki/concepts/build-time-confidentiality.md` · `docs/wiki/concepts/drive-artifact-delivery.md` · #506, #509, #513, #515
+- **The bottom-up financial model** — four metros' Census venue counts × penetration × live pricing
+  drive a formula-live `.xlsx`, the deck's financials and §3's restated band; plan and model agree on
+  reach and differ on ARPU. **Pending:** three founder calls — which revenue the $400K/employee gate
+  measures, ARPU ($277.55 modeled vs $350–500 planned), and when Year 1 starts.
+  → `docs/wiki/concepts/bottom-up-financial-model.md`
 - **Retrieval quality measured, not assumed** — `npm run eval:rag` scores 53 real queries taken
   from `donny_tool_executions`, with out-of-corpus controls run first. `k=10` is now pinned on
   evidence rather than arithmetic. A monthly workflow re-runs it against a committed baseline
@@ -388,6 +440,22 @@ Engineering cannot close these. Ordered by what blocks launch.
 - **Donny-first dashboard (business + creator)** — the dashboard body is Donny for both roles;
   #444 (creator, Phase 3) is **merged**. `billing_agent` is wrong for creators and is routed
   around, not fixed. → `docs/wiki/concepts/donny-first-dashboard.md` · #410, #411, #423, #428, #429, #444
+- **An auth failure is not a server error** — 20 edge functions returned 500 (one 400) to an
+  unauthenticated request, because every failure shared one hardcoded status. Authentication now
+  401; authorization/not-found/validation unchanged. Its one open item is **closed** below.
+  → `docs/wiki/raw/sessions/2026-08-26-auth-401-not-500.md` · #542
+- **The site gate and the platform approvals were mutually exclusive** — four app reviews need
+  anonymously reachable legal URLs and `/privacy` + `/terms` are SPA routes. Closed by generated,
+  self-contained `privacy.html` + `terms.html` on the allowlist; the gate's "real file behind
+  every entry" rule is now machine-checked rather than a comment. Unblocks Meta/TikTok/X;
+  **Google also needs the homepage, which still 401s**. Verified on prod.
+  → `docs/wiki/concepts/site-access-lockdown.md` · #547
+- **A service-role read answered a stranger** — the two functions that would not move to 401 read the
+  order with the service role and authorized after, so "this order exists" was distinguishable from
+  "it doesn't". The reorder that closes it breaks guest refunds, so a caller who presented *nothing*
+  is refused before the read and every later failure is one shared 404. Verified on prod; zero
+  package orders exist, so only the fake-id half is proven.
+  → `docs/wiki/concepts/service-role-data-exposure.md` (5th instance) · #545
 - **Two proxies answered every origin with `*`** — the only 2 of 125; they needed a wider
   `Allow-Headers` than `corsHeaders` gives, so copying the block beat sharing it. Fixed by
   sharing the origin *decision* and stamping it at the response boundary. Fleet sweep: 0.

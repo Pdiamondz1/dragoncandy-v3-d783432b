@@ -32,13 +32,22 @@ import {
   businessStepTable,
   isLiquid,
   monthsToLiquidity,
-  threeYearTrajectory,
   unitEconomics,
 } from '../model/derive';
+// The confidential-FREE half of the model. `consolidated.ts` (shared cost, company EBITDA)
+// must NEVER be imported here: it reaches the pre-seed budget by a relative path the
+// `@pitch/confidential` alias cannot intercept, so importing it would put every budget line
+// label into the public bundle's sourcemap. The company EBITDA line comes from
+// `trajectory.confidential.tsx`, behind the same build-time gate the ask uses.
+import { rollup } from '../model/rollup';
 import { Gloss, PendingMark, Source, Tag } from '../deck/components';
 import { count, money, moneyShort, pct } from '../deck/format';
 import { FOUNDER_FACTS, FOUNDER_INPUTS, LAUNCH_EVENTS } from '../deck/pending';
 import { AskFigures } from './ask.confidential';
+import {
+  TrajectoryConsolidatedEbitda,
+  TrajectoryConsolidatedNote,
+} from './trajectory.confidential';
 
 /**
  * Slide 2 exists in three forms, picked by this constant before an export (spec §6.1).
@@ -562,7 +571,7 @@ export function SlideUnitEconomics({ index, total }: SlideProps) {
         />
       </div>
 
-      <div className="mt-8 max-w-5xl space-y-2 text-lg text-dc-text-muted">
+      <div className="mt-6 max-w-5xl space-y-1.5 text-lg text-dc-text-muted">
         <p>
           <b className="text-dc-text">
             <Gloss t="LTV" />
@@ -630,10 +639,10 @@ export function SlideLiquidity({ index, total }: SlideProps) {
         <Gloss t="liquidity" />
       </p>
 
-      <div className="mt-5 grid grid-cols-2 gap-5">
-        <Card dark>
+      <div className="mt-3 grid grid-cols-2 gap-5">
+        <Card dark className="!p-6">
           <p className="text-sm font-bold uppercase tracking-wider text-dc-teal">Our definition</p>
-          <p className="mt-3 text-xl leading-relaxed text-white/85">
+          <p className="mt-2 text-lg leading-snug text-white/85">
             A posted campaign draws at least{' '}
             <b className="text-white">{LIQUIDITY_THRESHOLD.minApplicantsPerCampaign} applicants</b>{' '}
             over the {MARKET.campaignOpenDays.value} days it stays open,{' '}
@@ -644,21 +653,21 @@ export function SlideLiquidity({ index, total }: SlideProps) {
             they can apply to right now.
           </p>
         </Card>
-        <Card dark>
+        <Card dark className="!p-6">
           <p className="text-sm font-bold uppercase tracking-wider text-dc-teal">The answer</p>
-          <p className="mt-3 text-6xl font-extrabold text-white">
+          <p className="mt-2 text-6xl font-extrabold text-white">
             {atTarget === null ? 'Never' : `Month ${atTarget}`}
           </p>
-          <p className="mt-2 text-lg text-white/70">
+          <p className="mt-1.5 text-base text-white/70">
             at 2 restaurants and {2 * ratio} creators signed per month.
           </p>
         </Card>
       </div>
 
-      <div className="mt-5 grid grid-cols-2 gap-5">
-        <div className="rounded-2xl border border-dc-pink-accent/40 bg-dc-pink-accent/10 px-7 py-4">
+      <div className="mt-3 grid grid-cols-2 gap-5">
+        <div className="rounded-2xl border border-dc-pink-accent/40 bg-dc-pink-accent/10 px-6 py-3">
           <p className="text-lg font-bold text-dc-pink">More restaurants do not fix it.</p>
-          <p className="mt-1.5 text-base text-white/70">
+          <p className="mt-1 text-base text-white/70">
             Sign 2 restaurants a month but only 2 creators each and the market is{' '}
             <b className="text-white">
               {underRatio === null ? 'never liquid, at any restaurant count' : `liquid only in month ${underRatio}`}
@@ -667,9 +676,9 @@ export function SlideLiquidity({ index, total }: SlideProps) {
             to say so.
           </p>
         </div>
-        <div className="rounded-2xl border border-white/15 bg-white/5 px-7 py-4">
+        <div className="rounded-2xl border border-white/15 bg-white/5 px-6 py-3">
           <p className="text-lg font-bold text-white">The headline clears by very little.</p>
-          <p className="mt-1.5 text-base text-white/70">
+          <p className="mt-1 text-base text-white/70">
             At the target ratio we get {headline.toFixed(1)} applicants per campaign against a
             floor of {LIQUIDITY_THRESHOLD.minApplicantsPerCampaign.toFixed(1)} — about{' '}
             {(((headline - LIQUIDITY_THRESHOLD.minApplicantsPerCampaign) / headline) * 100).toFixed(0)}%
@@ -680,7 +689,7 @@ export function SlideLiquidity({ index, total }: SlideProps) {
 
       {/* The founder mark gets its own row. Inline inside `Source` it wrapped mid-sentence
           and pushed the whole block off the bottom of the canvas. */}
-      <div className="mt-4 flex items-baseline gap-3">
+      <div className="mt-3 flex items-baseline gap-3">
         <p className="shrink-0 text-base text-white/60">Restaurants in Hoboken, town-wide:</p>
         <PendingMark input={FOUNDER_INPUTS.hobokenRestaurantCount} dark />
       </div>
@@ -708,31 +717,31 @@ export function SlideScale({ index, total }: SlideProps) {
         while it holds that count, not a calendar prediction of when it gets there.
       </p>
 
-      <div className="mt-8 overflow-hidden rounded-2xl border border-dc-teal/20">
+      <div className="mt-6 overflow-hidden rounded-2xl border border-dc-teal/20">
         <table className="w-full">
           <thead className="bg-dc-teal/[0.07]">
             <tr className="text-left text-sm font-bold uppercase tracking-wider text-dc-text-muted">
-              <th className="px-7 py-4">Businesses</th>
-              <th className="px-7 py-4 text-right">Creators</th>
-              <th className="px-7 py-4 text-right">Campaign volume / mo</th>
-              <th className="px-7 py-4 text-right">Revenue / mo</th>
-              <th className="px-7 py-4 text-right">Revenue / yr</th>
-              <th className="px-7 py-4 text-right">Gross margin</th>
+              <th className="px-7 py-3">Businesses</th>
+              <th className="px-7 py-3 text-right">Creators</th>
+              <th className="px-7 py-3 text-right">Campaign volume / mo</th>
+              <th className="px-7 py-3 text-right">Revenue / mo</th>
+              <th className="px-7 py-3 text-right">Revenue / yr</th>
+              <th className="px-7 py-3 text-right">Gross margin</th>
             </tr>
           </thead>
           <tbody className="text-xl font-semibold tabular-nums">
             {rows.map((r) => (
               <tr key={r.businesses} className="border-t border-dc-teal/15">
-                <td className="px-7 py-4 font-extrabold">{count(r.businesses)}</td>
-                <td className="px-7 py-4 text-right text-dc-text-muted">{count(r.creators)}</td>
-                <td className="px-7 py-4 text-right text-dc-text-muted">
+                <td className="px-7 py-3 font-extrabold">{count(r.businesses)}</td>
+                <td className="px-7 py-3 text-right text-dc-text-muted">{count(r.creators)}</td>
+                <td className="px-7 py-3 text-right text-dc-text-muted">
                   {moneyShort(r.monthlyGmv)}
                 </td>
-                <td className="px-7 py-4 text-right">{moneyShort(r.monthlyRevenue)}</td>
-                <td className="px-7 py-4 text-right text-dc-teal-btn">
+                <td className="px-7 py-3 text-right">{moneyShort(r.monthlyRevenue)}</td>
+                <td className="px-7 py-3 text-right text-dc-teal-btn">
                   {moneyShort(r.annualRevenue)}
                 </td>
-                <td className="px-7 py-4 text-right">{pct(r.grossMarginPct, 1)}</td>
+                <td className="px-7 py-3 text-right">{pct(r.grossMarginPct, 1)}</td>
               </tr>
             ))}
           </tbody>
@@ -795,59 +804,98 @@ export function SlideScale({ index, total }: SlideProps) {
 /* ---------- 12 · The trajectory ---------- */
 
 export function SlideTrajectory({ index, total }: SlideProps) {
-  const years = threeYearTrajectory();
-  const max = Math.max(...years.map((y) => y.revenueHigh));
+  const years = rollup();
+  // Scaled off revenue, not off the cost overlay: 2026 costs more than it earns, so a max
+  // taken across both would let the one loss-making year set the scale for all three.
+  const max = Math.max(...years.map((y) => y.revenue));
   return (
     <SlideShell index={index} total={total} variant="dark" eyebrow="The trajectory">
       <H2>
-        Three years, with the cost line
+        Three years, built from
         <br />
-        <GradientText>drawn in.</GradientText>
+        <GradientText>venue counts up.</GradientText>
       </H2>
 
-      <div className="mt-8 space-y-6">
+      {/* Spacing here is measured, not chosen. The canvas is a fixed 1280x720 and nothing
+          clips it — content simply runs off the bottom of the exported PDF page. With the
+          confidential EBITDA line rendered, this slide is the tallest in the deck, and at
+          `mt-7 space-y-5` plus a five-line paragraph it overflowed by 59px. Re-measure
+          (headless Chrome, `slide.scrollHeight` vs `clientHeight`) before adding a line. */}
+      <div className="mt-6 space-y-4">
         {years.map((y) => (
-          <div key={y.year} className="flex items-center gap-7">
-            <p className="w-20 shrink-0 text-2xl font-extrabold">Y{y.year}</p>
+          <div
+            key={y.year}
+            data-testid={`trajectory-row-${y.year}`}
+            className="flex items-center gap-7"
+          >
+            <p className="w-24 shrink-0 text-2xl font-extrabold">{y.year}</p>
             <div className="relative h-9 flex-1 overflow-hidden rounded-lg bg-white/5">
               <div
                 className="absolute inset-y-0 left-0 rounded-lg bg-gradient-to-r from-dc-teal-btn to-dc-teal"
-                style={{ width: `${(y.revenueHigh / max) * 100}%` }}
+                style={{ width: `${(y.revenue / max) * 100}%` }}
               />
+              {/* What the metros themselves cost — delivery plus that metro's own
+                  marketing. In 2026 it is wider than the revenue bar, which is the point. */}
               <div
                 className="absolute inset-y-0 left-0 rounded-lg bg-white/25"
-                style={{ width: `${(y.totalCostHigh / max) * 100}%` }}
+                style={{ width: `${((y.revenue - y.metroEbitda) / max) * 100}%` }}
               />
             </div>
-            <div className="w-[26rem] shrink-0 text-right text-lg tabular-nums">
-              <span className="font-bold text-white">
-                {moneyShort(y.revenueLow)}–{moneyShort(y.revenueHigh)}
-              </span>
-              <span className="text-white/45"> revenue · </span>
-              <span className={y.ebitdaHigh >= 0 ? 'font-bold text-dc-teal' : 'font-bold text-dc-pink'}>
-                {moneyShort(y.ebitdaLow)} to {moneyShort(y.ebitdaHigh)}
-              </span>
-              <span className="text-white/45"> EBITDA</span>
+            <div className="w-[24rem] shrink-0 text-right">
+              <p className="text-lg tabular-nums">
+                <span className="font-bold text-white">{moneyShort(y.revenue)}</span>
+                <span className="text-white/45"> booked · </span>
+                <span
+                  className={
+                    y.metroEbitda >= 0 ? 'font-bold text-dc-teal' : 'font-bold text-dc-pink'
+                  }
+                >
+                  {moneyShort(y.metroEbitda)}
+                </span>
+                <span className="text-white/45"> metro contribution</span>
+              </p>
+              <p className="text-sm text-white/45">
+                {moneyShort(y.exitArr)} exit ARR · {y.metrosLive} metros live
+              </p>
             </div>
           </div>
         ))}
       </div>
 
-      <p className="mt-7 max-w-5xl text-lg text-white/70">
+      <TrajectoryConsolidatedEbitda />
+
+      {/* The opening "built bottom-up: Census venue counts, a stated share, our live pricing"
+          sentence that used to start this paragraph was DELETED, not moved: the Source block
+          below already says it almost word for word, and the slide has no vertical slack to
+          spend saying it twice. See the measurement note above. */}
+      <p className="mt-3 max-w-5xl text-base leading-relaxed text-white/70">
+        Bars are revenue <b className="text-white">booked</b> during the year; exit{' '}
+        <Gloss t="ARR" className="text-white" /> is where it ends, and it is what a plan is
+        stated in — our superseded plan put{' '}
         <b className="text-white">
-          <Gloss t="EBITDA" />
-        </b>
-        . The worst case pairs the low revenue with the high cost; the best case pairs high
-        revenue with low cost. Year 1 is negative in every pairing, which is what a pre-seed is
-        for.
+          {moneyShort(years[2].priorPlanArrLow)}–{moneyShort(years[2].priorPlanArrHigh)}
+        </b>{' '}
+        on 2028, a cross-check we did not tune to meet. The pale overlay is what the metros
+        cost to run; what is left is <b className="text-white">metro contribution</b>, before
+        company payroll, AI and infrastructure — so it is not{' '}
+        <Gloss t="EBITDA" className="text-white" />.
+        {/* The sentence that used to end this paragraph — "The company's own line stays
+            negative through 2027, which is what the raise is for" — was rendered
+            unconditionally, which stated in prose the very conclusion the gated
+            `TrajectoryConsolidatedEbitda` above withholds as a number. It now comes from
+            `@pitch/confidential`, so it is absent from the public build's JavaScript AND
+            its sourcemap. The paragraph ends as a complete sentence without it. */}
+        <TrajectoryConsolidatedNote />
       </p>
 
       <div className="mt-auto flex items-center gap-3">
         <Tag p="MODELED" dark />
         <Source dark>
-          Cost is all-in — Stripe, AI, infrastructure, payroll, marketing and legal — so it is
-          not comparable to the gross-margin line two slides back, which excludes everything
-          below the gross-profit line.
+          Every figure here is read from the model at render time: Census venue counts per
+          metro, a stated share of them signed, and our live pricing. Metro contribution is
+          after delivery cost and that metro&rsquo;s own marketing and before every
+          company-level cost, so it is not comparable to the margin figure on the
+          unit-economics slide, which excludes everything below gross profit.
         </Source>
       </div>
     </SlideShell>
@@ -865,24 +913,24 @@ export function SlideCompounds({ index, total }: SlideProps) {
         that runs the <GradientText>next campaign.</GradientText>
       </H2>
 
-      <div className="mt-8 grid grid-cols-2 gap-5">
-        <Card>
+      <div className="mt-6 grid grid-cols-2 gap-5">
+        <Card className="!p-6">
           <IconBadge>
             <Database className="h-6 w-6" />
           </IconBadge>
-          <p className="mt-4 text-2xl font-bold">A campaign is not one row.</p>
-          <p className="mt-3 text-lg leading-relaxed text-dc-text-muted">
+          <p className="mt-3 text-2xl font-bold">A campaign is not one row.</p>
+          <p className="mt-2 text-base leading-snug text-dc-text-muted">
             It is a chain: a brief that states intent, several applicants resolving to one hire —
             a preference pair — an approve-or-reject that is a quality label, and a performance
             record that is the outcome. One campaign yields tens of labelled rows, not one.
           </p>
         </Card>
-        <Card>
+        <Card className="!p-6">
           <IconBadge tone="pink">
             <Bot className="h-6 w-6" />
           </IconBadge>
-          <p className="mt-4 text-2xl font-bold">Which is why the threshold is low.</p>
-          <p className="mt-3 text-lg leading-relaxed text-dc-text-muted">
+          <p className="mt-3 text-2xl font-bold">Which is why the threshold is low.</p>
+          <p className="mt-2 text-base leading-snug text-dc-text-muted">
             A few thousand campaigns produce tens of thousands of labelled preference pairs — the
             regime <Gloss t="LoRA" /> is sample-efficient in, at $50–300 a run. We tune three
             things: match ranking, brief generation, performance prediction.
@@ -890,9 +938,9 @@ export function SlideCompounds({ index, total }: SlideProps) {
         </Card>
       </div>
 
-      <div className="mt-6 flex items-center gap-4 rounded-2xl border-2 border-dc-teal/40 bg-dc-teal/[0.05] px-7 py-5">
+      <div className="mt-4 flex items-center gap-4 rounded-2xl border-2 border-dc-teal/40 bg-dc-teal/[0.05] px-6 py-3.5">
         <ArrowRight className="h-6 w-6 shrink-0 text-dc-teal-btn" />
-        <p className="text-lg text-dc-text">
+        <p className="text-base text-dc-text">
           <b>The unit is labelled examples, not campaigns.</b> If an investor with an AI
           background challenges "1,000 to 5,000 campaigns", that is the right challenge and this
           is the answer — the number was defensible, the unit was wrong, and we fixed the unit.

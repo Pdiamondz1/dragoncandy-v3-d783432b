@@ -35,6 +35,7 @@ import { chromium } from "@playwright/test";
 import { preview } from "vite";
 import { writeFileSync, existsSync, readFileSync } from "node:fs";
 import { createHash } from "node:crypto";
+import { measureSlide } from "./pitch-layout-check.mjs";
 
 const withNotes = process.env.PITCH_NOTES === "1";
 const out =
@@ -120,10 +121,21 @@ try {
   confidential = !isPublicBuild;
   console.log(confidential ? "Build: CONFIDENTIAL (complete)" : "Build: public (figures omitted)");
 
+  // Overflow guard: `SlideShell` is a fixed 1280x720 canvas that does not clip, so a
+  // slide taller than 720px simply runs its content off the bottom of the exported PDF
+  // page — silently, with no visual cue in the browser. This is the one place that
+  // matters most: it is the actual investor deliverable. See `pitch-layout-check.mjs`
+  // and `npm run pitch:measure` for the full explanation and the standalone checker.
+  const overflowing = [];
+
   await page.keyboard.press("Home");
   for (let i = 0; i < total; i++) {
     if (i > 0) await page.keyboard.press("ArrowRight");
     await page.waitForTimeout(450); // let the opacity transition settle
+    const { scrollHeight, clientHeight } = await measureSlide(page);
+    if (scrollHeight > clientHeight) {
+      overflowing.push({ slide: i + 1, over: scrollHeight - clientHeight });
+    }
     const el = page.locator(".pitch-slide-wrap.is-active .pitch-slide");
     const buf = await el.screenshot({ type: "jpeg", quality: 92 });
     // JPEG SOF marker → intrinsic pixel dimensions.
@@ -131,6 +143,18 @@ try {
     shots.push({ buf, ...dims });
   }
   console.log(`Captured ${shots.length} slides`);
+
+  if (overflowing.length) {
+    throw new Error(
+      "Refusing to export: " +
+        `${overflowing.length} slide(s) exceed the 1280x720 canvas and would be silently ` +
+        "clipped in the PDF: " +
+        overflowing.map((o) => `#${o.slide} (+${o.over}px)`).join(", ") +
+        ". Fix the layout (see docs on SlideShell) — do not add overflow-hidden/max-h to " +
+        "hide this, that would ship the missing content, not restore it. Re-run " +
+        "`npm run pitch:measure` to iterate.",
+    );
+  }
 } finally {
   await browser.close();
   if (server) await new Promise((r) => server.httpServer.close(r));

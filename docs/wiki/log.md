@@ -33,6 +33,191 @@ Facts worth carrying beyond this feature, all recorded on the pages:
   * **A rejection test written as `insert ... select` fails open** when its
     fixture is gone — no rows looks exactly like no error.
 
+## [2026-08-26] ingest | The bottom-up financial model, and the band it restated
+
+**Created** [[Bottom-Up Financial Model]] (`concepts/bottom-up-financial-model.md`).
+**Updated** [[Investor Pitch Deck & Capital Raise]] (a new section — the numbers moved under
+the deck), [[Build-Time Confidentiality]] (two new sections), [[Drive Artifact Delivery]]
+(`npm run model:upload`), `index.md`, `docs/SHIPPED_LOG.md`, `docs/PROJECT_CONTEXT.md` §5.
+Source: `raw/sessions/2026-08-26-investor-financial-model-workbook.md`, cataloged as
+[[Investor Financial Model Session]].
+
+**The finding that survives the feature.** The bottom-up model and the top-down plan disagree,
+and **not about reach** — every metro count lands inside the plan's own band. The gap is ARPU,
+and the model is low *by construction*: it books two of the four revenue streams and values the
+other two at $0, because nothing has ever been charged for them. So the superseded band is **not
+refuted; it is unproven**, and billing history is what would settle it. That is a different
+sentence to say to an investor than "we cut the target".
+
+**Three quantities were all being called "revenue"** — booked, exit ARR, and steady-state at N.
+Comparing the wrong two made the plan look wrong by 3× when the real ratio was half that, and
+separating them surfaced a live ambiguity nobody had noticed: the $400K revenue-per-employee
+kill-switch never said which revenue it measures. Exit ARR clears; booked does not.
+
+**Two lessons about instruments, which is what most of this ingest is.** A **suppressed Census
+cell is UNKNOWN, never zero**, and is recoverable only when exactly one of a row's nine is
+unknown — across all 67 rows the minimum is two and **zero rows qualify**, so a worked example
+claiming a recovery was false on the one sheet whose purpose is to let a reader check us. And *a
+test that only checks formulas cannot see a row that stopped being one*: the agreement test
+iterates cells **with a formula**, so `Exit ARR` silently becoming a plain value failed nothing.
+
+**Scope, not verdict, is what to check about a guard.** `npm run pitch:verify-public` was green
+and irrelevant: it scans `dist/` and the web deck, and **nothing scanned the generated `.xlsx`**,
+which was publishing the pre-seed budget. Its sibling failure is that a value scanner cannot read
+prose — the deck gated the EBITDA number and printed its conclusion in English. And the obvious
+fix would not have worked: **a `*.confidential.tsx` filename does not make its text
+confidential**, because the file is in the public module graph and `build.sourcemap` ships its
+source in the public `.map`.
+
+**The restatement surface was measured three times — 4 → 9 → 11 files — and grew each time**,
+because each instrument was better than the last. The two the grep missed wrote the band in a
+notation it did not cover. *Match every notation the corpus contains, not the one people write.*
+Two of the eleven are **generated** and say so in their own first three lines: check whether a
+doc is generated before editing it.
+
+## [2026-08-26] ingest | A static privacy policy the site gate can serve
+
+**Created** `raw/sessions/2026-08-26-static-privacy-page.md` and
+[[Static Privacy Page Session]] (`sources/static-privacy-page-session.md`).
+**Updated** [[Site Access Lockdown (Private Preview)]] (two new sections; **and its stale
+"the allowlist is now exactly `/robots.txt` and `/favicon.ico`" claim**),
+`docs/runbooks/site-access-lockdown.md` (two post-deploy checks, one of them a warning
+against the status-code probe that mis-verified this), `index.md`, `docs/SHIPPED_LOG.md`,
+`docs/PROJECT_CONTEXT.md` §5 — where the **first founder-action item** is corrected: it
+said the gate was "a decision, not a task" because switching it on breaks every platform
+review, and that is no longer true.
+
+**The correction to §5 is the point of this ingest, not a side effect.** That item had sat
+at the top of the launch-blocking list reading as a genuine trade-off — lock the site *or*
+get approved — when it was an artifact of how the gate was built. **A "decision" in a
+planning doc is sometimes an unexamined engineering constraint wearing a decision's
+clothes**, and the tell is that nobody had asked why the two were coupled.
+
+**Codex named ONE stale copy; the sweep found FIVE.** The [P2] was that `PROJECT_CONTEXT`'s TikTok
+entry still listed the privacy policy as blocked by the gate, contradicting the correction three
+sections above it. Grepping `anonymously reachable privacy` across `docs/` turned up the same claim
+in the **Instagram** §5 entry, in `concepts/tiktok-analytics-connector.md`, in
+`concepts/x-analytics-connector.md`, and in `runbooks/tiktok-analytics-connector-setup.md` — the last
+of which tells a human which URL to paste into the console, so it was the copy most likely to be
+acted on.
+
+**This is the `[propagate-the-correction]` lesson repeating in the same session it was written
+down.** Correcting the claim where you found it is not correcting the claim. The mechanical fix is
+to grep the distinctive phrase across `docs/` **before** committing a correction, not after a
+reviewer notices one survivor — a reviewer sees the diff, so it can only ever catch the copies that
+happen to sit near it.
+
+**Codex round 2 found what round 1's sweep structurally could not: the URL, not the claim.** The
+first sweep grepped the *prose* (`anonymously reachable privacy`) and fixed five copies. What an
+operator actually acts on is a **pasteable string** — `https://dragoncandy.com/privacy` in TikTok's
+console field table — which shares no words with the sentence. Grepping `dragoncandy.com/privacy`
+found it, plus the same URL in the Google runbook. **Sweep for the artifact a reader will USE, not
+only for the sentence you happen to have written.**
+
+**And that second runbook corrected a claim of mine.** `google-oauth-demo-video.md` had already
+proposed this exact fix — "serve the legal pages as real static files and allowlist those paths" —
+so #547 shipped a solution the repo had written down and nobody had built. But the same section
+records that Google's verification needs the **homepage** reachable signed out too, and `/` is the
+SPA and still 401s. So "switching the gate on no longer breaks four app reviews" was **too strong**:
+it is true for Meta, TikTok and X, and only half-true for Google. Corrected in §5's Open items rather
+than left to be discovered by a failed verification.
+
+**Codex rounds 4 and 5 — the review kept finding the same failure one layer out.** Round 4: the raw
+session still carried the over-claim. Round 5, two findings, and the more important one is not a
+documentation problem at all.
+
+**`terms.html` had to ship.** Every console asks for a privacy URL **and a terms URL on the same
+form**, so shipping only `privacy.html` left an anonymously inaccessible legal URL in a live
+submission. The runbook had hedged that as *"TikTok does not appear to fetch it"* — **an assumption
+about a reviewer's behaviour is not evidence, and it is certainly not a basis for calling a
+submission complete.** The generator now walks a page table and emits both; the guard walks that
+same table, so a third legal page is covered by the act of being registered. Note the repo's own
+`google-oauth-demo-video.md` had proposed **both** files from the start, and only one got built —
+so the gap was written down before it was shipped.
+
+**And a rule question the review got wrong in one direction, then right in the other.** Round 4 said
+to correct the raw session; round 5 said correcting it violates `Never modify raw/`. Both cannot
+hold, so it needed a judgment rather than compliance. `git log origin/main` settles it: the TikTok
+raw session **is** merged (#537), so it is a genuine immutable record and its errata was reverted —
+the correction lives in the synthesized pages, which is the prescribed workflow. This session's own
+raw source is **new in this PR**, never merged, so its first merged state can simply be correct.
+The distinction is "already ingested", not "is in `raw/`".
+
+## [2026-08-26] ingest | The package-order existence oracle, found by verifying a different fix
+
+**Created** `raw/sessions/2026-08-26-package-order-existence-oracle.md` and
+[[Package-Order Existence Oracle Session]] (`sources/package-order-existence-oracle-session.md`).
+**Updated** [[Service-Role Data Exposure]] (5th recorded instance + See Also), `index.md`
+(catalogues the new source, **and corrects [[Auth 401-Not-500 Session]]'s "Left open" clause**,
+which this closed the same day), `docs/SHIPPED_LOG.md`, `docs/PROJECT_CONTEXT.md` §5 (§4 needed no change — see below).
+
+**Compounded onto the class page rather than starting a thin new one.** This is a *weaker* form of
+[[Service-Role Data Exposure]] — it leaked existence, not data — which is exactly why it is worth
+recording: the weak form is the one a reviewer waves through, and this one had already been filed
+under a benign label ("validates the body before auth") consistent with everything visible from
+outside.
+
+**§4's user count was NOT corrected, and that is the point.** The `profiles` control returned 46
+against a remembered "45", and §4 turned out to have been corrected already by #541 — to **46 rows,
+45 organic**, which is more precise than the edit would have been. The control corroborated the doc.
+Recorded because the near-miss is the transferable part: *a number that disagrees with your memory of
+a doc is a reason to read the doc, not to overwrite it.*
+
+## [2026-08-26] ingest | Email verification exercised on prod, and a P1 that was nearly filed
+
+**Created** `raw/sessions/2026-08-26-email-verification-prod-exercise.md` and
+[[Email Verification Prod Exercise Session]] (`sources/email-verification-prod-exercise-session.md`).
+**Updated**
+[[Email Verification Routes]], [[Verify Before Reporting]], `docs/SHIPPED_LOG.md`,
+`docs/PROJECT_CONTEXT.md` §5, `index.md`.
+
+**The `sources/` page was skipped, then added.** The first pass declined it: the workflow lists one
+per raw source, but practice is 29 of 182 raw sessions, and a summary risks restating the raw file
+while both concept pages already carry the synthesis. The Codex review raised it twice, and the
+second time correctly — *an exception argued from prior noncompliance is not an argument*. Changing
+the workflow is a separate decision from quietly not following it. The page is a claims summary
+with provenance, not a copy, and `index.md` now carries it so the query workflow can reach it.
+
+Compounded onto the two existing pages rather than creating a third. The session produced no new
+subject — it produced *evidence* about one page's subject and *an instance* of the other's, which
+is what those pages are for.
+
+Both verification routes were driven against production — **partially**, and the page carries a
+per-leg table saying which three legs were covered and which three were not: no fresh signup, no
+browser code entry, and no session from the login form. The durable half is not that they work; it
+is what had to be true for the test to be capable of failing. The RPC short-circuits on
+`already_verified` before reading the code, so on the verified test account a **wrong** code
+returned HTTP 200; only after `email_verified` was set false did the same request return 400.
+Recorded on [[Verify Before Reporting]] as its own section, because "ask what the system does when
+the work is already done" generalises past this feature.
+
+The Gmail-connector instance went onto the same page's *instrument* section. It is the sharpest
+one recorded: the false reading was internally consistent, survived a direct test, and was refuted
+only by a control from an unrelated sender — after a first control that came back clean because it
+could not express the failure at all. It was then confirmed from the other end by a human clicking
+the real buttons, which logged the token intact.
+
+## [2026-08-26] ingest | An auth failure is not a server error
+
+**Created** `raw/sessions/2026-08-26-auth-401-not-500.md` and
+[[Auth 401-Not-500 Session]] (`sources/auth-401-not-500-session.md`).
+**Updated** `index.md` (catalogues the new source), `docs/SHIPPED_LOG.md`,
+`docs/PROJECT_CONTEXT.md` §5.
+
+Code change + deploy (#542, `ced582f4`, 20 functions). Every failure in these functions returned
+one hardcoded status, so an unauthenticated request answered 500 — retryable and pageable, which
+an auth failure is not. Scope went 5 → 14 → 18 → 20: the "5" was inherited from an earlier
+investigation's sample, a message-grep found 14, the fleet guard found 4 more with the same shape
+and a different message, and Codex found the rejected-credential branch (expired tokens — the
+commoner failure). **A guard's silence means "nothing matched my pattern", never "nothing is
+wrong."** `verify_jwt` probed before and after and unchanged.
+
+**Surfaced in the process:** `refund-package-order` and `release-package-payout` look up the order
+with a service-role client BEFORE authenticating, so an anonymous caller can distinguish "order
+exists" from "order not found". Proven by supplying the field. The naive reorder breaks guest
+refunds (the guest branch needs `order.buyer_guest_token`), so the fix is to stop leaking
+existence. Left for its own change.
+
 ## [2026-08-26] ingest | The two proxies answered every origin with `*`
 
 **Created** `raw/sessions/2026-08-26-proxy-cors-wildcard.md` and

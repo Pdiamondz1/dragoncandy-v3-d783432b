@@ -3,7 +3,7 @@ title: Email Verification Routes
 type: concept
 created: 2026-08-26
 updated: 2026-08-26
-sources: [2026-08-26-email-verification-by-code.md]
+sources: [2026-08-26-email-verification-by-code.md, 2026-08-26-email-verification-prod-exercise.md]
 tags: [auth, onboarding, security, edge-functions, rate-limiting]
 ---
 # Email Verification Routes
@@ -107,11 +107,111 @@ documented no-op against Supabase's ambient grant, the lesson
 
 **A dormant permission is not a safe one — it is one feature away from being live.**
 
+## Exercised against prod, 2026-08-26 — and exactly how far that goes
+
+Both routes were driven against production on the founder-designated account
+`dame+onboardtest@dragoncandy.com`. **Be precise about what that covered**, because the first
+draft of this section said "end to end" and cleared a gap it had not closed:
+
+| leg | covered? |
+|---|---|
+| function → Resend → real inbox, code matching the stored row | **yes** |
+| emailed **link**, clicked by a person in a real mail client | **yes** — founder click on the THIRD token, consumed 21:26:02 |
+| **code** submitted and accepted, attempt budget spent | yes, but **posted straight to the endpoint** |
+| six-digit code typed into the signup panel | **no** |
+| a fresh signup creating the account | **no** — the account pre-existed |
+| the login form | **no** — the session came from an admin `generate_link` exchange |
+
+**Three tokens were issued, and the order matters** — a reviewer reading this page without it
+concluded the human click had failed, which is the opposite of what happened:
+
+| token | created | consumed by |
+|---|---|---|
+| `29ece178` | 21:09:21 | the agent spending its **code** at 21:18:09 |
+| `4779a877` | 21:10:53 | the agent's **link** probe at 21:12:31 |
+| `7bd889aa` | **21:25:05** | the **founder's click** at 21:26:02 |
+
+The founder first clicked the two *already-spent* tokens at 21:22 and both correctly refused with
+`invalid_or_used` — a used verification link failing is the design working, and the agent had
+burned both during testing without warning anyone. A third email was then sent specifically so a
+human could click a live one, and left untouched by the agent. That is the click in the table.
+
+So the link route has been walked by a human from mail client to a verified *account* — note the
+endpoint stamps `verified_at` and `email_verified` and then redirects to
+`/auth?mode=login&verified=1`. **It does not create a session**; the destination is a login prompt,
+which is the whole reason the code route exists for the tab that is already signed in. The code route
+is proven from send through delivery to acceptance, with the browser input still untested, and
+neither route has been entered from a real signup. Raised by the Codex second review after this
+page claimed otherwise.
+
+**What the empty table did and did not prove.** `email_verification_tokens` held zero rows at
+inspection, and the first draft of this section read that as "the feature had never run". It does
+not: `cron.job` `expire-email-verification-tokens` deletes expired rows at 05:30 daily, and a
+verification email demonstrably went out on 2026-08-24 — it is still in the mailbox — so a row
+existed and was swept. *An empty result is ambiguous*, which is [[Verify Before Reporting]]'s own
+lesson, applied late and only because the Codex second review pushed back.
+
+What IS established comes from the ship date, not the table: `code`, `attempts` and the
+code-bearing template all shipped in **#530 on 2026-08-26**, and the 2026-08-24 email carries the
+old template with no code in it. So the **link** had been sent before; the **code** path could not
+have run before that day, and had not.
+
+**The whole test turned on one forced control.** `consume_email_verification_code` returns
+`ok:true, reason:'already_verified'` *before* it looks at the code, so on an already-verified
+account every submission succeeds. That is correct behaviour — a double submit, or a race
+with the link being clicked on another device, must not raise an error about something that
+already worked — but it means a verification test run against a verified account is a
+guaranteed false pass. Demonstrated rather than reasoned about: the **wrong** code `999999`
+returned **HTTP 200 success**, leaving `attempts = 0` and `verified_at` null. After
+`email_verified` was set false, the identical request returned **HTTP 400 `mismatch`**.
+
+| probe | before the flip | after |
+|---|---|---|
+| wrong code `999999` | **200 success** | **400 `mismatch`**, `remaining` 9 |
+| wrong code `000000` | — | 400 `mismatch`, `remaining` **8** |
+| real code from the email | — | 200, `email_verified` false → true |
+
+`remaining` falling 9 → 8 across two *different* wrong codes is the per-user budget working:
+a per-code budget would have answered 9 twice. Both attempts landed on the live row and left
+the already-spent row at `attempts = 0`.
+
+The link route: a valid token returned **302 `/auth?mode=login&verified=1`** and stamped
+`verified_at`; replayed after use the same token on the same endpoint returned **302
+`?status=error&reason=invalid_or_used`**. A query string carrying no `token=` at all returns
+`missing_token`, distinct from both — so each answer discriminates.
+
+Auth: no `Authorization` header → 401; **the anon key used as the bearer** → 401 (the
+[[verify_jwt Is Not Authorization]] class, and the only thing rejecting it is this function's
+own `getUser`); a malformed five-digit code → 400 with no attempt charged.
+
+Delivery was real, not a provider success flag — and **the evidence differs per mail, since three
+were sent**. The first two were opened and read in the mailbox: **inbox, not spam**, one second
+after the row was written, emailed code identical to the stored code, link built on
+`dragoncandy.com` from the honoured request `Origin`, and the footer's visible label matching its
+own href — the derived-label anti-phishing fix holding in a real message rather than in the
+template source. The third was never opened by the agent; its delivery is evidenced instead by the
+founder clicking its link, which is stronger evidence of delivery and silent about the code it
+carried.
+
+**Sessions came from the admin API, never a password:** `generate_link` (type `magiclink`)
+then `/auth/v1/verify` on the `hashed_token`. `supabase/scripts/staging-login.mjs` performs
+the same exchange but deliberately refuses production, so it was left alone rather than
+adapted.
+
 ## Known Issues
 
-- **No real signup has exercised the code flow end to end on prod.** Deployed, boot-verified
-  and proven at the SQL layer is not the same as exercised — the same *recorded is not actual*
-  distinction [[Updated-At Trigger Drift]] records three cases of.
+- **The UI has still never been exercised.** Nobody has typed a code into the six-digit input
+  in a browser. Everything beneath it — send, delivery, code, link, attempt budget, auth — is
+  proven on prod (above); the input itself needs a fresh signup, which is why this survived the
+  2026-08-26 pass. *Proven below the UI is not proven*, the same distinction
+  [[Updated-At Trigger Drift]] records three cases of.
+- **Reading the delivered mail through the claude.ai Gmail connector corrupts it.** Every `=`
+  followed by two hex digits is eaten as a quoted-printable escape, so `?token=29ece178` reads
+  back as `?token)ece178` and the links look uniformly broken. They are not — an unrelated
+  sender's mail shows the identical damage. Verify a link against the stored token, never
+  against that reader. See [[Verify Before Reporting]].
+- `_shared/verification-code.ts`'s doc comment says "against a five-attempt cap" while
+  `MAX_CODE_ATTEMPTS` is **10**. Prose only — the constant is what reaches the RPC.
 - The frontend polls `profiles.email_verified`, and the tests mock that read. The grant was
   checked separately against prod; a future narrowing of the `profiles` column grants would
   break the poll **silently**, exactly like the `useProfileNames` 42703 this repo swallowed.

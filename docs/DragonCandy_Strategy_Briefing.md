@@ -3,7 +3,7 @@
 ## Executive Summary
 DragonCandy is an AI-powered marketplace designed to connect local restaurants with content creators, utilizing a high-efficiency, bootstrapped model to achieve significant market defensibility and profitability. The platform's core value proposition lies in its "Donny AI" integration, which automates creator matching and campaign management, providing a "command center" for restaurant marketing. 
 
-The strategic roadmap targets a multi-million dollar annual profit ($2–4M) within three years by maintaining a lean team (5–10 people) and stacking multiple high-margin revenue streams, including SaaS subscriptions, marketplace take rates, and AI-driven "rush" services. Defensibility is established through a six-layer "moat" strategy focusing on proprietary data flywheels, hyperlocal network effects, and deep restaurant workflow integrations (POS systems). This document outlines the path from a 90-day production launch to long-term market dominance.
+The strategic roadmap targets profitability within three years by maintaining a lean team and stacking multiple high-margin revenue streams, including SaaS subscriptions, marketplace take rates, and AI-driven "rush" services. Defensibility is established through a six-layer "moat" strategy focusing on proprietary data flywheels, hyperlocal network effects, and deep restaurant workflow integrations (POS systems). This document outlines the path from a 90-day production launch to long-term market dominance.
 
 ---
 
@@ -22,7 +22,18 @@ DragonCandy’s competitive advantage is built on compounding interactions rathe
 | **Brand Verbification** | Establishing "DragonDash" as the verb for rapid content delivery, creating a high-speed value proposition separate from the "DragonCandy" ecosystem brand. |
 
 ### 2. Profitability and Financial Architecture
-DragonCandy aims for $5–8M ARR with a net profit margin of 20–40%. The strategy emphasizes high revenue per employee (targeting $1M+ per head) to remain "default alive" without venture capital.
+The strategy emphasizes high revenue per employee to remain "default alive" without venture capital.
+
+> **Corrected 2026-08-26 — this paragraph carried a THIRD three-year number.** It said DragonCandy
+> "aims for $5–8M ARR with a net profit margin of 20–40%" and "$1M+ per head", while §"Profitability
+> Milestones" below said $7–12M and `PROJECT_CONTEXT.md` §3 said $7–12M — three figures in two
+> places in one document, none of them derived from anything. All are now superseded by the
+> bottom-up model: **Year 3 exit ARR ~$4.7M, $3.34M booked** (`src/pitch/model/`). Against the
+> registered $2.2–3.8M Year 3 cost band, net margin runs **−14% to +34%**, so the old 20–40% was the
+> optimistic edge of a range that includes losses. Revenue per employee is **$431–474K on exit ARR,
+> $304–334K on booked**, not $1M+ — though note the benchmark that matters: the private-SaaS median
+> is ~$130K and ~$100K in the $1–3M ARR band ([[North Star & KPI Scorecard]]), so the real figure is
+> roughly 3× the norm for this size, and $1M+ per head was never a stage-appropriate target.
 
 *   **Four Revenue Streams:**
     1.  **SaaS Subscriptions:** Free / $149 / $449 / $899 / Enterprise tiers with 80–90% gross margins. See `docs/STRIPE_PRICES.md` for current pricing.
@@ -83,9 +94,32 @@ To activate all six moats simultaneously, the following execution sequence is pr
 *   **Brand Seeding:** Explicitly use the term "DragonDashing" in all marketing to encourage verbification of the high-speed delivery service.
 
 ### Profitability Milestones
-*   **Year 1 (The Wedge):** Reach 100–200 restaurants in 2–3 markets. Aim for $300K–$600K ARR.
-*   **Year 2 (Inflection):** Expand to 8–12 markets and 500–1,000 restaurants. Profitability should reach $500K–$2M.
-*   **Year 3 (Scale):** Penetrate 20+ markets with 1,500–3,000 restaurants. Target $7–12M ARR and $2–5M annual profit.
+
+**Restated 2026-08-26 from the bottom-up model** (`src/pitch/model/`; see `PROJECT_CONTEXT.md` §3).
+ARR here is **exit ARR** — the year-end run rate, which is what "ARR" has always meant in this
+company's targets. Booked revenue is the lower figure the same year actually invoices, because
+customers ramp through it. The market counts below barely moved, because the model reproduced them;
+the revenue figures fell.
+
+*   **Year 1 (2026, The Wedge):** 2 markets, ~30 restaurants. Exit ARR ~$100K ($36K booked).
+    Original plan: 2–3 markets, 100–200 restaurants — the market count holds, the restaurant count
+    does not.
+*   **Year 2 (2027, Inflection):** 10 markets, ~264 restaurants. Exit ARR ~$879K ($518K booked).
+    Original: 8–12 markets, 500–1,000 restaurants — markets inside the band, restaurants about half.
+*   **Year 3 (2028, Scale):** 21 markets, ~1,423 restaurants. Exit ARR ~$4.7M ($3.3M booked).
+    Original: 20+ markets, 1,500–3,000 restaurants — **both hold**; only the revenue moved.
+
+**The Year 3 gap is price, not reach.** The model books $277.55 per restaurant per month; the plan
+assumed $400–500. At $400 the model's own 1,423 restaurants produce **$6.8M** — 97.6% of the old
+band's low end. The difference is that the model bills **two of the four revenue streams**,
+subscription and take rate, and books Donny credit overages and DragonDash rush surcharges at zero
+because neither has ever been charged to anyone (`src/pitch/model/project.ts`). So the old band is
+not refuted; it is **unproven**, and what would prove it is billing history on those two streams.
+
+**The profit figures are removed rather than restated.** "$500K–$2M" (Y2) and "$2–5M annual profit"
+(Y3) were computed against the old revenue band and do not follow at the restated revenue. The
+model does compute EBITDA, but net of shared costs that is a confidential-build figure — read it
+off the workbook's Totals sheet (`npm run model:xlsx`), never from this document.
 
 ### Why Staying Lean Beats Raising Capital
 

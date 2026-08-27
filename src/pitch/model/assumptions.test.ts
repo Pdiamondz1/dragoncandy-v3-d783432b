@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { findStale, MAX_MEASURED_AGE_DAYS } from './types';
-import { REGISTER, PRICING, TIER_TAKE_RATES, MARKET } from './assumptions';
+import { REGISTER, PRICING, TIER_TAKE_RATES, MARKET, CALENDAR, TRAJECTORY } from './assumptions';
+import { MODEL_YEARS } from './metros';
 
 describe('the assumptions register', () => {
   it('has no stale MEASURED rows', () => {
@@ -53,5 +54,62 @@ describe('the assumptions register', () => {
     const total =
       MARKET.tierMixFree.value + MARKET.tierMixStarter.value + MARKET.tierMixGrowth.value + MARKET.tierMixPro.value;
     expect(total).toBeCloseTo(1, 10);
+  });
+
+  /**
+   *2026 = Year 1 was an UNSTATED DEFAULT under every figure in the deck until 2026-08-26.
+   * PROJECT_CONTEXT section 4 says production launch is TBD, so nothing in the repo said
+   * which calendar year the Y1/Y2/Y3 bands land on -- and if it were 2027, every year label
+   * on the trajectory slide is off by one and the cross-check compares the wrong rows.
+   *
+   * Tied to `MODEL_YEARS` rather than asserted as a bare 2026, so the registered value and
+   * the horizon the model actually walks cannot drift apart: moving one without the other
+   * fails here.
+   */
+  /**
+   * THE CROSS-CHECK MUST NOT BE ABLE TO PASS BY FIAT.
+   *
+   * PROJECT_CONTEXT section 3 was restated on 2026-08-26 to this model's own bottom-up
+   * figures. The obvious follow-on edit -- updating these six registered values to match --
+   * would make `bottomUpVsPriorPlan` exactly 1.00 every year BY CONSTRUCTION, make the
+   * trajectory slide's own sentence ("a cross-check, not a number this build was tuned to
+   * meet") false, and satisfy the spec's "the gap is reported, never closed" rule by fiat.
+   *
+   * So the six values are pinned at the SUPERSEDED plan's numbers. If the prior plan itself
+   * is ever genuinely restated -- a different question -- this test is the place to record
+   * that, deliberately, with the reason.
+   */
+  it('keeps the superseded plan\'s band at its ORIGINAL values, never the restated ones', () => {
+    expect(TRAJECTORY.year1RevenueLow.value).toBe(300_000);
+    expect(TRAJECTORY.year1RevenueHigh.value).toBe(600_000);
+    expect(TRAJECTORY.year2RevenueLow.value).toBe(2_000_000);
+    expect(TRAJECTORY.year2RevenueHigh.value).toBe(4_500_000);
+    expect(TRAJECTORY.year3RevenueLow.value).toBe(7_000_000);
+    expect(TRAJECTORY.year3RevenueHigh.value).toBe(12_000_000);
+  });
+
+  /**
+   * ...and they must not be sourced to the document they now supersede. PROJECT_CONTEXT
+   * section 3 quotes the MODEL as of 2026-08-26, so a cross-check citing section 3 would be
+   * the model checking itself through one extra hop -- circular, and invisible in the value.
+   */
+  it('sources the band to the archive narrative, not to the section it superseded', () => {
+    for (const key of ['year1RevenueLow', 'year1RevenueHigh', 'year2RevenueLow',
+                       'year2RevenueHigh', 'year3RevenueLow', 'year3RevenueHigh'] as const) {
+      expect(TRAJECTORY[key].source, key).toMatch(/docs\/archive\//);
+      expect(TRAJECTORY[key].source, key).toMatch(/before 2026-08-26/);
+      expect(TRAJECTORY[key].label, key).toMatch(/superseded/i);
+      // The label must say ARR, because the value IS ARR and the model compares exit ARR
+      // against it. A label reading "revenue" is what let booked revenue be divided by it.
+      expect(TRAJECTORY[key].label, key).toMatch(/ARR/);
+    }
+  });
+
+  it('states which calendar year is Year 1, and agrees with MODEL_YEARS', () => {
+    expect(CALENDAR.year1CalendarYear.value).toBe(MODEL_YEARS[0]);
+    expect(REGISTER.year1CalendarYear).toBe(CALENDAR.year1CalendarYear);
+    // Founder-confirmed, so the source must name a person and a date -- not a document.
+    expect(CALENDAR.year1CalendarYear.source).toMatch(/founder confirmation/i);
+    expect(CALENDAR.year1CalendarYear.source).toMatch(/\d{4}-\d{2}-\d{2}/);
   });
 });
