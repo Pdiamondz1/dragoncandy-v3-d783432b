@@ -321,6 +321,16 @@ Worth keeping as a pattern: **a limit that serves two purposes is usually two li
 number was doing "how much may this delete" (a blast radius) and "how much may this see" (a
 cursor), and only the first was ever reasoned about.
 
+**Round four found that the split cap still did not hold, for the same reason the reaper counts
+deletions the way it does.** `deleted` counts what Storage *confirmed* removing, which lags what
+was submitted whenever an object was already gone — so breaking on `deleted >= 500` admits one
+more full 100-object chunk while the counter sits at 499, destroying up to 599 objects under a
+comment promising 500. Fixed by slicing each request to the remaining budget rather than breaking
+after the fact, so the cap is true of what is **submitted**, which is the only number that bounds
+destruction. Note the shape: this is the *same* defect class as the RPC's half-lockdown above — a
+comment vouching for a property the code did not hold — found twice in one branch, in code written
+carefully both times.
+
 **Codex filed a P1 here that was wrong, TWICE — and the second time it escalated into a claim
 that refutes itself.** Round 1: `storage.objects` has no `is_delete_marker` column, so every cron
 invocation fails. Round 2, over the same diff: the *migration* therefore "fails with

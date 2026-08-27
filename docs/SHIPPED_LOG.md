@@ -107,6 +107,13 @@ by reporting `capped` and `scan_capped` as separate booleans so a busy day canno
 the state that needs a human. Redeploy confirmed live by the **new response shape**, not by the CLI
 saying "Deployed Functions." The generalisable form: **a limit serving two purposes is two limits**
 — this one was both a blast radius and a cursor, and only the blast radius was ever reasoned about.
+**Round four then found the split cap still did not hold:** `deleted` counts *confirmed* removals,
+which lag submissions whenever an object was already gone, so breaking after the fact admitted one
+more 100-object chunk at 499 and could destroy 599 under a comment promising 500. Each request is
+now sliced to the remaining budget, making the cap true of what is submitted. Same defect class as
+the half-lockdown above — a comment vouching for a property the code did not hold — twice in one
+branch. Redeploy confirmed by the function **version incrementing 2 → 3**, since this change did
+not alter the response shape and the previous round's discriminator was no longer available.
 
 **Codex also filed one P1 and it was wrong, twice** — that `storage.objects` has no `is_delete_marker`
 column and every invocation would fail. Prod returns 287 non-marker objects from that predicate

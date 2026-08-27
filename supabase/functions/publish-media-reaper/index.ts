@@ -74,10 +74,19 @@ interface Reapable {
   age_seconds: number;
 }
 
-function chunk<T>(items: readonly T[], size: number): T[][] {
-  const out: T[][] = [];
-  for (let i = 0; i < items.length; i += size) out.push(items.slice(i, i + size));
-  return out;
+/**
+ * The remaining delete budget, as a chunk size. Never larger than DELETE_CHUNK.
+ *
+ * This exists because `deleted` counts what Storage CONFIRMED removing, which
+ * lags what was submitted whenever an object was already gone. Breaking on
+ * `deleted >= MAX_DELETES_PER_RUN` therefore admits one more full chunk while
+ * the counter sits at 499 — up to 599 real objects destroyed by a function
+ * whose own comment promises 500. Slicing the request to the remaining budget
+ * makes the cap true of what is SUBMITTED, which is the only number that bounds
+ * destruction.
+ */
+function nextChunkSize(deleted: number): number {
+  return Math.min(DELETE_CHUNK, MAX_DELETES_PER_RUN - deleted);
 }
 
 serve(async (req: Request) => {
@@ -115,11 +124,18 @@ serve(async (req: Request) => {
   let failedChunks = 0;
   let attempted = 0;
 
-  for (const group of chunk(reapable.map((r) => r.object_name), DELETE_CHUNK)) {
+  const candidates = reapable.map((r) => r.object_name);
+
+  for (let i = 0; i < candidates.length; ) {
     // Stop on the DELETE budget, not on the scan window. Reaching it means the
     // run did its full day's work; the rest is tomorrow's, and `capped` says so.
-    if (deleted >= MAX_DELETES_PER_RUN) break;
+    const size = nextChunkSize(deleted);
+    if (size <= 0) break;
 
+    const group = candidates.slice(i, i + size);
+    // Advance by what was SUBMITTED, never by what succeeded — that is what
+    // walks the cursor past a chunk that failed instead of retrying it forever.
+    i += group.length;
     attempted += group.length;
 
     const { data: removed, error: removeError } = await db.storage
