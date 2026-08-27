@@ -830,6 +830,7 @@ the token models do. Read the notes under the table before assuming a pattern ca
 | `instagram_account_connections` | One row per linked Instagram account (`20260825120000`, applied 2026-08-24). `ig_user_id`, `username`, `account_type`, `followers_count`, `permissions`, `access_token` (NOT NULL), `token_issued_at`, `token_expires_at`, `status`, `last_error`, `connected_at`, `last_synced_at`. |
 | `facebook_page_connections` | One row per linked Facebook **Page** — many per user, unique on `(user_id, page_id)` (`20260825150000`, applied 2026-08-24). `fb_user_id` (Meta's **app-scoped** user id; the deauthorize callback sends nothing else we hold), `page_id`, `page_name`, `category`, `followers_count`, **`page_access_token`** (NOT NULL, reads insights, never expires), **`user_access_token`** (NOT NULL, exists only to revoke, ~60 days), `user_token_expires_at`, `permissions`, `tasks`, `status`, `last_error`, `connected_at`, `last_synced_at`. |
 | `x_account_connections` | One row per linked X (Twitter) account (`20260826100000`, applied 2026-08-24). `x_user_id`, `username`, `display_name`, `followers_count`, `following_count`, `tweet_count`, `scopes`, `access_token` + `access_token_expires_at`, `refresh_token`, `status`, `last_error`, `connected_at`, `last_synced_at`, plus a cached `insights` / `insights_cached_at` snapshot and **three claim pairs** (`refresh_*`, `insights_*`, `disconnect_*`). |
+| `tiktok_account_connections` | One row per linked TikTok account (`20260826200000`, applied 2026-08-26). `open_id`, `union_id`, `display_name`, `username`, `avatar_url`, `profile_deep_link`, four **`bigint`** counters (`follower_count`, `following_count`, `likes_count`, `video_count`), `scopes`, `access_token` + `access_token_expires_at` (**24 hours**), `refresh_token` + `refresh_token_expires_at` (**365 days**), `status`, `last_error`, `connected_at`, `last_synced_at`, a cached `insights` / `insights_cached_at` snapshot, and **two** claim pairs (`refresh_*`, `disconnect_*`). |
 
 > **The column sets differ for a reason that is the whole design.** Instagram has **no refresh
 > token**: the 60-day access token *is* the credential, and `ig_refresh_token` extends that same
@@ -925,6 +926,61 @@ the token models do. Read the notes under the table before assuming a pattern ca
 > Proven by impersonating a real user in a rolled-back transaction: the status function returns an
 > empty set, while the same caller reading the table directly and calling a claim RPC both raise
 > **42501**.
+
+> **TikTok carries TWO claim pairs where X carries three, and the missing one is the design.**
+> X's insights claim is a **cost** control: X bills per read, so two tabs missing the cache
+> together are two invoices. TikTok's Display API is **free** (600 req/min per endpoint), so
+> `insights` / `insights_cached_at` are a plain cache with **no lock**. Carrying the machinery
+> anyway would not be free either — every lock is a place a claim can strand and block a user
+> for a TTL. The two that survive are correctness, not cost: the refresh token **rotates** (two
+> concurrent refreshes can leave us holding a token TikTok has already superseded,
+> unrecoverable without re-consent), and a disconnect racing a reconnect can delete the row the
+> reconnect just wrote — the same hazard `claim_facebook_page_disconnect` fixed above. Both take
+> the **same** advisory key, `hashtext('tiktok_grant:' || user_id)`; three different keys is the
+> defect Codex found in the X connector at round 7, where three operations on one grant
+> serialised against nothing.
+>
+> **The counters are `bigint`, and that is not future-proofing.** `likes_count` is the
+> **lifetime** sum of likes across every video; `int4` stops at 2,147,483,647 and the largest
+> creators passed it long ago. The failure mode is not a wrong number — `store_tiktok_connection`
+> raises `22003`, the callback treats it as `storage_failed`, and that branch **revokes the
+> token**, so a large account cannot connect and loses its grant on every attempt behind an error
+> naming storage rather than the counter that overflowed. Shipped as `integer` in
+> `20260826200000` and widened by `20260826230000` (columns + both write RPCs) and
+> `20260826240000` (the read RPC). **Widening a column is not a local change:** an SQL function
+> coerces its result to its declared type, so `tiktok_connection_status()` silently narrowed
+> `bigint` back to `int4` on the way out until its `RETURNS TABLE` moved too. Every function
+> *declaring* that type has to move with the column — and all three were `drop` + `create`, since
+> a different parameter list makes an **overload** rather than a replacement, and PostgreSQL
+> refuses outright to change an existing function's return type.
+>
+> **`store_tiktok_connection` sets the counters from `excluded`, deliberately NOT `coalesce`.**
+> A reconnect can be to a **different** TikTok account, so a null from the new account must
+> overwrite a number from the old one: a real measurement attributed to the wrong subject is a
+> fabrication, not staleness. `cache_tiktok_insights` does the opposite and is also right — it
+> returns `account_changed` unless `open_id` matches, so it is always refreshing the **same**
+> account and an absent stat should leave the last known value. Opposite rules on adjacent
+> functions; a test pins both.
+>
+> **There is no dormancy sweep, and that DEFERS Instagram's failure rather than removing it.**
+> Instagram needs a sweep because Meta only extends a still-valid token, so a connection nobody
+> reads dies. TikTok's refresh token lasts **365 days** and every refresh writes a fresh
+> `refresh_token_expires_at`, so an account read even once a year never dies. But refresh here is
+> **on demand only** — a connection nobody reads for more than 365 days has its refresh token
+> expire before anything tries to use it, and is then recoverable only by the user re-consenting.
+> **That is exactly Instagram's failure on a 365-day clock**; the difference is quantitative.
+> Written here as "a failure that cannot happen" until the Codex second review refuted it. No
+> sweep is built, which is an accepted limitation, not a proof of safety — earliest possible
+> occurrence is **2027-08-26**. TikTok also **has** a revoke endpoint (`/v2/oauth/revoke/`),
+> unlike Instagram and Facebook, so disconnect can genuinely withdraw access.
+>
+> Lockdown matches the sibling tables and was verified rather than assumed on prod 2026-08-26:
+> RLS enabled with **zero policies for any role** plus TABLE-level revocation, grants reading
+> back as exactly `postgres` + `service_role`, and `tiktok_connection_status()` `SECURITY
+> DEFINER`, taking **no arguments** so identity can only come from `auth.uid()`, returning **no
+> token column**, granted to `authenticated` but never `anon`. The zero-policy count carried a
+> control — the same query against `profiles` returns 7, so a 0 could have meant a broken query
+> rather than a locked-down table. See [[TikTok Analytics Connector]].
 
 ## Social & Outstand Integration
 

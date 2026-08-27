@@ -114,10 +114,14 @@ $6.8M. Changing the mix or the take rate is a founder decision and has not been 
 
 ## 4. Current State
 
-Pre-revenue by choice. **45 organic users** (read off prod 2026-08-24 — `select count(*)
+Pre-revenue by choice. **45 organic users — but `profiles` now returns 46** (re-counted
+2026-08-26). The 46th is `dame+onboardtest@dragoncandy.com`, a test account created
+2026-08-24 22:29 UTC — *after* the read below — and it is the only row added since
+2026-08-20, so organic is still 45 and a bare `count(*)` now overstates it by one.
+Subtract test accounts before quoting this anywhere. (Read off prod 2026-08-24 — `select count(*)
 from profiles`; this line said "~30" and the investor model had copied that figure and
 tagged it MEASURED, so a number wrong by a third was vouched for by its own provenance
-tag), $0 paying customers (also confirmed against prod the same day), **~$569/mo
+tag.) $0 paying customers (also confirmed against prod the same day), **~$569/mo
 operating cost** (as of 2026-08-23: Lovable $50, Anthropic $200, **Outstand.so $249**,
 Supabase $45, OpenAI $25 — sums to $569; this line briefly stated $572, which did not
 reconcile with these same five components, until corrected the same day, and the $3
@@ -151,8 +155,10 @@ holds no Toast credentials. See §6.
 > task, forever.
 >
 > **The exception is load-bearing: an entry marked `→ no wiki page yet` is the ONLY copy.**
-> **One** exists today — the TikTok connector (#525, #529); email verification was the second
-> until #531 backfilled it hours later. Do not
+> **None exists today.** There were two: email verification, backfilled by #531 hours after it
+> was flagged, and the TikTok connector, backfilled by this PR. Both were found the same way —
+> a mid-session `git fetch` moving `origin/main` — which is the actual detector here, so expect
+> the count to go back above zero rather than treating zero as the steady state. Do not
 > trim one to an index line before its prose has been backfilled to `SHIPPED_LOG.md`; that is
 > the one edit in this file that can destroy information rather than relocate it. Trimming is
 > safe *because* the richer copy was checked to exist — never because this header says so.
@@ -186,9 +192,13 @@ Engineering cannot close these. Ordered by what blocks launch.
 - **Site-gate go-live, in this order:** set the four Production-scope Vercel variables →
   deploy → run the runbook's checks → **only then** disable Supabase signup. `SITE_GATE_ENABLED`
   is the lever; deleting the variables is the wrong rollback, because it fails closed.
-  **Switching it on breaks every pending platform review** — the allowlist is exactly
-  `/robots.txt` and `/favicon.ico`, so `/` and `/privacy` answer 401, and Google, Meta, TikTok
-  and X each require an anonymously reachable privacy policy. A decision, not a task.
+  **The legal-URL blocker is closed; a HOMEPAGE one is not.** Generated, self-contained
+  `public/privacy.html` **and `public/terms.html`** are on the allowlist (#547, #548) — every
+  console asks for both on the same form. Register the `.html` URLs, never the pretty routes.
+  **But Google's verification also requires the HOMEPAGE reachable signed out**, and `/` is the
+  SPA and still 401s. So this is now a **task** for Meta/TikTok/X and still a **decision** for
+  Google, which needs the gate off through verification or a static homepage nobody has built.
+  → `docs/runbooks/google-oauth-demo-video.md`
 - **No Facebook Page exists to connect** — creating one is public, outward-facing content. The
   connector is deployed and stops at Meta's Page-selection step until a Page exists.
 - **Demo videos for platform app review** — Google (YouTube) and Meta (Instagram, Facebook).
@@ -218,30 +228,34 @@ Engineering cannot close these. Ordered by what blocks launch.
 ### In flight
 
 - **TikTok read-only analytics connector** — the fifth direct platform API under the
-  2026-08-23 scope decision. #525 merged 2026-08-25, #529 (connect dropped the stats it had
-  already fetched, plus three type bugs) merged 2026-08-26. Four functions, all
-  `verify_jwt = true`, and all four registered on prod (a POST returns 401; an invented name
-  returns 404). Five migrations on `origin/main` — the table, the stats write, and **three**
-  follow-ups widening counters to `bigint`. **Added to this index 2026-08-26: it had no §5
-  entry at all, and none of #525–#530 has reached `SHIPPED_LOG.md` or the wiki**, so the
-  knowledge layer owes five PRs. **Pending:** the knowledge-sync backfill; whether a real
-  account has ever connected is **unverified** — the acceptance signal is `last_synced_at`
-  landing seconds after `connected_at`, and checking it needs prod DB access; App Review needs
-  a demo video, and the site gate breaks its privacy-policy requirement exactly as it does
-  Google's and Meta's. → no wiki page yet · #525, #529
+  2026-08-23 scope decision. #525 and #529 merged; **four** migrations (this said five, copied
+  from the entry that added it — only two widen counters, not three), four functions, all
+  `verify_jwt = true` and verified on prod by object. **CONNECTED AND MEASURING 2026-08-26**
+  (`@tumericturtle`, the four read scopes, `status=active`) — this entry called that
+  "unverified" and also named the wrong acceptance signal. **`last_synced_at` does NOT land
+  seconds after `connected_at` here**, unlike the other three connectors: TikTok's read fires
+  on card render, so the gap was 38 minutes and then 89 seconds, and a null stamp is
+  **inconclusive** — the card can show correct figures while the cache write fails, which is what
+  the `int4` overflow did. The reconnect proved #529 on prod — counters are written at
+  connect, where before they landed null. Console is a **sandbox**, because the production form
+  will not save without a demo video; that video was recorded 2026-08-26. **Pending:** save and
+  submit the production form; **swap the secrets from sandbox to production after approval**,
+  which nothing enforces and which fails at token exchange. **The privacy-policy blocker is GONE**
+  (#547) — register `/privacy.html`, never `/privacy`.
+  → `docs/wiki/concepts/tiktok-analytics-connector.md` · #525, #529
 - **Email verification by code — the signup tab stops being thrown away** — signup used to end
   in `signOut()`, discarding the tab that had just done the work; the session now survives and a
-  six-digit code is entered in place, with **the emailed link unchanged** (the only route that
-  works once the tab is closed, so the panel polls and moves on by itself). The durable half is
-  the entropy argument: the UUID link is safe with no session, which is why `verify-email` runs
-  at `verify_jwt = false` — and the ~20-bit code is safe **only** because the function body
-  resolves it against the caller's own JWT. The attempt cap lives in SQL because counting in
-  TypeScript is check-then-act, and is per **user**, since a resend mints a fresh row and would
-  otherwise refill the budget on demand. Verification is a **route gate** (#528); the wizard is
-  entered only when the account never finished it (#527). **Pending:** no real signup has
-  exercised the code flow end to end on prod; `dame+onboardtest@dragoncandy.com` is a live prod
-  account counted in the investor-facing user figure; and a distinct wizard-completion signal to
-  replace `is_completed` as the routing gate.
+  six-digit code is entered in place, with **the emailed link unchanged**. The durable half is the
+  entropy argument: the UUID link is safe with no session (which is why `verify-email` runs at
+  `verify_jwt = false`), and the ~20-bit code is safe **only** because the function body resolves
+  it against the caller's own JWT, behind a per-**user** cap enforced in SQL. Verification is a
+  **route gate** (#528); the wizard is entered only when the account never finished it (#527).
+  **Both routes driven against prod 2026-08-26** (the code path's first run — it shipped that day):
+  the link clicked by a person, the code posted to the endpoint.
+  **Pending:** the six-digit input has never been typed in a browser — everything beneath it is
+  proven and the link was walked by a real click, but no FRESH SIGNUP has entered either route; `dame+onboardtest@dragoncandy.com` is a live prod account
+  and is the **46th** `profiles` row, i.e. NOT inside §4's 45 (see there); and a distinct
+  wizard-completion signal to replace `is_completed` as the routing gate.
   → `docs/wiki/concepts/email-verification-routes.md` · #527, #528, #530, #531
 - **X (Twitter) analytics connector** — merged, applied, deployed. **TWO accounts are connected,
   not one, and the read is no longer failing** — this entry said `last_synced_at` was null and
@@ -271,8 +285,9 @@ Engineering cannot close these. Ordered by what blocks launch.
   exists; `cron.job_run_details` holds 0 runs)" and prod disagrees (checked 2026-08-26):
   `instagram-refresh-sweep` ran at 04:00 UTC on 25 and 26 August, both `succeeded`. Control:
   `auto-approve-content` returns 3,271 runs on the same query, so a 0 would have meant
-  something. **Pending:** App Review, which needs a
-  demo video and an anonymously reachable privacy policy.
+  something. **Pending:** App Review, which needs a demo video. **The privacy-policy half is no
+  longer pending** — #547 put a generated `/privacy.html` on the site gate's allowlist, so it
+  survives the lockdown; register that URL, never `/privacy`.
   → `docs/wiki/concepts/instagram-insights-connector.md` · #489
 - **YouTube read-only analytics connector** — merged, applied, deployed and **working end to
   end** 2026-08-23; published to production; console work done and read back. **Pending:** the
@@ -341,17 +356,14 @@ Engineering cannot close these. Ordered by what blocks launch.
   → `docs/wiki/concepts/domain-migration-io-to-com.md`
 - **Apple App Store (Capacitor)** — phases 1–2 shipped; organization enrollment `5HA89RBHQH`
   approved; **ran on physical hardware 2026-08-14** (boot, login and Donny all pass, the last
-  proving the `capacitor://localhost` CORS path). **Icon + launch image replaced and confirmed on a
-  physical iPhone 2026-08-26 (#532)** — the "black eye" was a hole in the alpha channel, not paint;
-  the splash was still Capacitor's; `npm run cap:assets` rebuilds and asserts both. **Pending:** the
-  splash→shell **handoff** (not separately reported); deploying the **12** edge functions that still
-  answer `.io` to a native origin — re-measured 2026-08-26 across all 125 functions (this line said
-  13), 93 answer correctly, and the 12 are **exactly** the money surface: `release-creator-payout`,
-  `release-package-payout`, `release-sponsorship-payout`, `withdraw-pending-balance`,
-  `refund-campaign-escrow`, `refund-package-order`, `create-package-order-escrow`,
-  `verify-campaign-escrow`, `verify-package-order-escrow`, `verify-sponsorship-payment`,
-  `invoice-rush-surcharges`, `get-stripe-dashboard-link` — a `.com` control echoes `.com`, so it is
-  not a probe artifact, and in `WKWebView` it is a generic fetch error, not a cosmetic mismatch;
+  proving the `capacitor://localhost` CORS path). **The 12 money edge functions that answered `.io`
+  to a native origin were redeployed 2026-08-26 and all 125 now sweep clean** — stale bundles, no
+  code change; `verify_jwt` was probed before and after and did not move. **Icon + launch image
+  replaced and confirmed on a physical iPhone 2026-08-26 (#532)** — the "black eye" was a hole in
+  the alpha channel, not paint;
+  the splash was still Capacitor's; `npm run cap:assets` rebuilds and asserts both, and the
+  splash→shell **handoff is confirmed seamless on device** — the derived colour and 423px logo
+  hold. **Pending:**
   device checks #4/#6/#8/#9; TestFlight (no App Store Connect record yet); `.nvmrc` plus a vitest
   worktrees exclude; a private-window look at the landing footer on prod.
   → `docs/superpowers/specs/2026-08-09-ios-testflight-first-build-design.md` · `docs/wiki/concepts/legal-entity-identity.md` · `docs/wiki/concepts/ios-app-icon-and-launch-image.md` · #439, #532
@@ -379,7 +391,7 @@ Engineering cannot close these. Ordered by what blocks launch.
   is proven against the real provider, not a stub. **Pending:** no address has been geocoded end
   to end; the `READINESS_GATE_ENABLED` decision (founder, above); `send-promotion-notification`
   still reads the three Twilio secrets that were overwritten and has not been re-checked; two
-  functions surface an unauthenticated request as 500 rather than 401 (pre-existing); the
+  functions surface an unauthenticated request as 500 rather than 401 — **re-measured 2026-08-26 as FIVE, not two** (`release-creator-payout`, `release-sponsorship-payout`, `verify-campaign-escrow`, `verify-sponsorship-payment`, `withdraw-pending-balance`), all pre-existing; the
   pre-existing unauthenticated IDOR in `get_user_conversations`, found in scope and left for an
   owner. → `docs/wiki/concepts/identity-verification.md`
 - **Notification + invitation authorization** — three pre-existing holes closed, each proven on
@@ -408,6 +420,26 @@ Engineering cannot close these. Ordered by what blocks launch.
 - **Donny-first dashboard (business + creator)** — the dashboard body is Donny for both roles;
   #444 (creator, Phase 3) is **merged**. `billing_agent` is wrong for creators and is routed
   around, not fixed. → `docs/wiki/concepts/donny-first-dashboard.md` · #410, #411, #423, #428, #429, #444
+- **An auth failure is not a server error** — 20 edge functions returned 500 (one 400) to an
+  unauthenticated request, because every failure shared one hardcoded status. Authentication now
+  401; authorization/not-found/validation unchanged. Its one open item is **closed** below.
+  → `docs/wiki/raw/sessions/2026-08-26-auth-401-not-500.md` · #542
+- **The site gate and the platform approvals were mutually exclusive** — four app reviews need
+  anonymously reachable legal URLs and `/privacy` + `/terms` are SPA routes. Closed by generated,
+  self-contained `privacy.html` + `terms.html` on the allowlist; the gate's "real file behind
+  every entry" rule is now machine-checked rather than a comment. Unblocks Meta/TikTok/X;
+  **Google also needs the homepage, which still 401s**. Verified on prod.
+  → `docs/wiki/concepts/site-access-lockdown.md` · #547
+- **A service-role read answered a stranger** — the two functions that would not move to 401 read the
+  order with the service role and authorized after, so "this order exists" was distinguishable from
+  "it doesn't". The reorder that closes it breaks guest refunds, so a caller who presented *nothing*
+  is refused before the read and every later failure is one shared 404. Verified on prod; zero
+  package orders exist, so only the fake-id half is proven.
+  → `docs/wiki/concepts/service-role-data-exposure.md` (5th instance) · #545
+- **Two proxies answered every origin with `*`** — the only 2 of 125; they needed a wider
+  `Allow-Headers` than `corsHeaders` gives, so copying the block beat sharing it. Fixed by
+  sharing the origin *decision* and stamping it at the response boundary. Fleet sweep: 0.
+  → `docs/wiki/concepts/edge-function-deploy-bundling.md` · #539
 - **A third of Donny's internal corpus was never embedded** — a 24,000-char slice dropped 33% of
   the corpus, silent in every signal the run produced; now chunked ~6k server-side. Verified on
   prod by content: 144 documents → 401 rows.

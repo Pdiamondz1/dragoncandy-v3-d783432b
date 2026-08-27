@@ -95,6 +95,15 @@ reached production. Before merging any change to `middleware.ts` or `gate/`:
 - [ ] `curl -sI https://dragoncandy.com/robots.txt | head -1` → `HTTP/2 200`
 - [ ] `curl -s https://dragoncandy.com/robots.txt` → `Disallow: /`
 - [ ] `curl -sI https://dragoncandy.com/sitemap.xml | head -1` → `HTTP/2 401`
+- [ ] **The privacy policy is still reachable anonymously.** This is what keeps the
+      Google / Meta / TikTok / X app reviews alive while the gate is on (#547):
+      `curl -s https://dragoncandy.com/privacy.html | grep -c '<title>Privacy Policy'` → `1`
+      **Do not check the status code alone.** The SPA catch-all answers `200` for
+      every path, so a `200` here is consistent with the file being missing and the
+      shell being served instead — which is how this was first mis-verified. Grep the
+      title, or confirm `<div id="root"` is ABSENT.
+- [ ] `curl -sI https://dragoncandy.com/privacy | head -1` → `HTTP/2 401`. The pretty
+      URL is a SPA route and stays gated; only `/privacy.html` is allowlisted.
 - [ ] `curl -sI -u ":$SITE_PASSWORD" https://dragoncandy.com/ | head -1` → `HTTP/2 200`
 - [ ] A bundle asset is refused anonymously. Take a real filename from the page
       source after logging in, then: `curl -sI https://dragoncandy.com/assets/<file>.js | head -1` → `HTTP/2 401`

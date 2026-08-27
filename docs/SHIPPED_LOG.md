@@ -32,6 +32,736 @@
 >
 > **Adding an entry:** prepend it (newest first). See `knowledge-sync` step 4.
 
+## [2026-08-26] A static privacy policy the site gate can serve, generated from the app's own source
+
+**PR #547** (`f467b3ed`), live and verified on prod.
+→ [[Static Privacy Page Session]] · [[Site Access Lockdown (Private Preview)]]
+
+**The deadlock, and why it was never a decision.** `PROJECT_CONTEXT` §5's **first**
+founder-action item said the site gate is "a decision, not a task", because switching
+`SITE_GATE_ENABLED` on "breaks every pending platform review" — the allowlist was exactly
+`/robots.txt` and `/favicon.ico`, so `/` and `/privacy` answer 401, and Google, Meta, TikTok and X
+each require an anonymously reachable privacy policy. Read plainly, that says the lockdown and the
+connector approvals are mutually exclusive.
+
+Nothing about the business forces that. It is an artifact of how the gate is built, and it was
+fixable in an afternoon. **A "decision" in a planning doc is sometimes an unexamined engineering
+constraint wearing a decision's clothes** — and this one survived at the top of the launch-blocking
+list precisely because it reads as a genuine trade-off, right up until you ask why the two are
+coupled at all.
+
+**The obvious fix would have un-gated the site.** Adding `/privacy` to the allowlist looks like a
+one-line config change. `gate/decide.ts`'s own comment says why not: `vercel.json` rewrites every
+unmatched path to `/index.html`, so allowlisting a path with no backing file does not serve
+"nothing" — it serves the SPA shell. And because the app talks straight to `supabase.co`, which
+never traverses Vercel, that shell is a **working product**, not a screenshot. Not hypothetical
+either: the lockdown's first implementation allowlisted `/.well-known/` and
+`/apple-app-site-association`, neither of which existed, and both served the shell.
+
+**What shipped.** A real file at `public/privacy.html`, allowlisted, and **generated**, not typed.
+`src/pages/legal/PrivacyPolicyBody.tsx` holds the policy text, extracted hook-free so it renders
+with no React context; `PrivacyPolicy.tsx` is now only the in-app chrome around it;
+`scripts/build-legal-static.ts` (`npm run legal:static`) renders it to a self-contained page. The
+generator **refuses to run** unless `gate/decide.ts` allowlists what it produces — a file nobody
+allowlists is 401'd like everything else, an allowlisted path with no file serves the shell, and the
+two halves are useless apart. That is exactly what the gate's comment already asked of a future
+`apple-app-site-association`, in prose, hoping someone reads it.
+
+Four design points, each easy to get wrong by hand:
+
+- **Generated, because a hand-written copy is a fork of a legal document.** Nothing would keep it in
+  step, and the field guaranteed to change — the "Last updated" date — is what a reader uses to
+  decide whether to trust the page.
+- **Fully self-contained.** With the gate on, *everything* not allowlisted answers 401 — the CSS
+  bundle, the fonts, `/logo.webp`. A stylesheet link would leave a reviewer looking at unstyled text
+  on the one page we are asking them to judge us by. `/favicon.ico` is the single external
+  reference, and only because it is itself allowlisted.
+- **Committed, not built on the fly.** Vite copies `public/` at the *start* of a build, so
+  generating into it mid-build is too late, and a `prebuild` hook would make every plain
+  `npm run build` depend on the script.
+- **`rel="canonical"` points at `/privacy`.** Ungated, the React route is where a human should land,
+  and two indexable URLs for one policy is duplicate content. While gated that target 401s —
+  accepted, since the whole site is de-listed then, which is also why `/sitemap.xml` stays off.
+
+**A rule that was true, stated, and enforced by nothing.** `decide.ts` had carried "only allowlist a
+path with a real file under `public/`" in a doc comment since 2026-08-23, and nothing checked it —
+the same shape as this codebase's four recorded column-level `REVOKE` no-ops. `gate/decide.test.ts`
+now walks the **real** `ALLOWED_EXACT` set (exported for the purpose) and asserts every entry has a
+file, so a future entry is covered by the act of being added. Controls in both directions: the set
+must hold ≥3 entries, since an empty one passes vacuously, and `apple-app-site-association` must NOT
+exist, proving `existsSync` can return false here at all.
+
+**All four guards forced red by hand:**
+
+| guard | forced-red result |
+|---|---|
+| whole-file comparison against a fresh render | bumped the date without regenerating → 2 failures |
+| contiguous numbered sections | deleted §7 and regenerated → `expected [1,2,3,4,5,6,8,9,10,11] to deeply equal […]` |
+| every allowlisted path has a file | allowlisted `/apple-app-site-association` → `"has no file"` |
+| the generator's own refusal | removed the allowlist entry → refuses, exit 1 |
+
+The file comparison is **whole, not sampled**: sampling cannot see a *deleted* section, and a
+privacy policy missing a section is exactly the failure a sampled check waves through.
+
+**A toolchain trap.** `npx tsx` resolves the ROOT `tsconfig.json`, which is solution-style
+(`files: []` + `references`) and carries no `jsx` setting, so esbuild falls back to the classic
+transform — and the failure surfaces not in the script but in the *imported component*, at render
+time, as `ReferenceError: React is not defined` pointing at a file that looks perfectly fine.
+**Adding `jsx` to the root config does not fix it; naming `tsconfig.app.json` does.** The root edit
+was tried, measured as ineffective, and reverted rather than left in as cargo — a change that does
+nothing is worse than no change, because the next reader assumes it is load-bearing.
+
+**Verified on prod — and the first verification lied.** `/privacy.html` serves 7,782 bytes, all 11
+numbered sections, the correct entity and contact address, and is **byte-identical** to
+`origin/main`'s copy. Controls: `/privacy` still returns the React SPA, and `/nope.html` returns the
+SPA shell — demonstrating on prod, rather than arguing, why allowlisting a pathless URL would have
+been a disaster.
+
+The first run reported the SPA shell and looked like a broken change. **The probe was at fault:** it
+polled until `/privacy.html` returned `200`, but the catch-all answers 200 for *every* path, so the
+exit condition could not distinguish "deployed" from "not deployed" and it broke on the first
+request. A control settled it — `robots.txt` serves real text, so static files do beat the rewrite —
+and re-polling on **content** showed it had landed within 30 seconds. **Third instance this session
+of waiting on a signal whose success and failure states are identical**, after an RAG probe run
+before a background sync finished and a `mergeStateStatus: BLOCKED` where every visible check was
+green because the *missing* one was required.
+
+**What it does and does not change.** Nothing deployed: it is a Vercel artifact that ships on merge.
+The gate is still **off** in production, so nothing changed for any visitor. What changed is that
+switching it on no longer breaks the **privacy-policy** requirement of any of the four — and
+**`/privacy.html` is the URL to register in the Google, Meta, TikTok and X consoles**, because it
+works gated *and* ungated, which `/privacy` never will. **That fully unblocks Meta, TikTok and X.
+Google is only half-unblocked**: its verification also needs the HOMEPAGE reachable signed out, and
+`/` is still the SPA. See the round-2 review note below.
+
+**Left open deliberately:** whether `/privacy` should collapse into the static page entirely — one
+URL, no drift risk at its root — which would delete the React route and change what a logged-in user
+sees. A product decision, not a cleanup.
+
+**Codex** clean on the first round. 3,611 tests pass; typecheck clean; lint 0 errors; build emits
+`dist/privacy.html`.
+
+**A correction that had to be made five times, after a reviewer found one.** Codex's only finding on
+the knowledge PR was a [P2]: `PROJECT_CONTEXT`'s TikTok entry still listed the privacy policy as
+blocked by the gate, three sections below the correction saying it was not. Grepping the distinctive
+phrase across `docs/` found the same claim in **five** places — the TikTok and Instagram §5 entries,
+`concepts/tiktok-analytics-connector.md`, `concepts/x-analytics-connector.md`, and
+`runbooks/tiktok-analytics-connector-setup.md`, the last being the one that tells a human which URL
+to paste into a console.
+
+**This is the same session's own `[propagate-the-correction]` lesson, repeating.** Correcting a claim
+where you found it is not correcting the claim. And a reviewer is structurally the wrong backstop
+here: Codex reads the diff, so it can only ever catch survivors that sit near the change. The
+mechanical fix is to grep the distinctive phrase across `docs/` **before** committing a correction.
+
+**Codex round 2 found what round 1's sweep structurally could not: the URL, not the claim.** The
+first sweep grepped the *prose* (`anonymously reachable privacy`) and fixed five copies. What an
+operator actually acts on is a **pasteable string** — `https://dragoncandy.com/privacy` in TikTok's
+console field table — which shares no words with the sentence. Grepping `dragoncandy.com/privacy`
+found it, plus the same URL in the Google runbook. **Sweep for the artifact a reader will USE, not
+only for the sentence you happen to have written.**
+
+**And that second runbook corrected a claim of mine.** `google-oauth-demo-video.md` had already
+proposed this exact fix — "serve the legal pages as real static files and allowlist those paths" —
+so #547 shipped a solution the repo had written down and nobody had built. But the same section
+records that Google's verification needs the **homepage** reachable signed out too, and `/` is the
+SPA and still 401s. So "switching the gate on no longer breaks four app reviews" was **too strong**:
+it is true for Meta, TikTok and X, and only half-true for Google. Corrected in §5's Open items rather
+than left to be discovered by a failed verification.
+
+**Codex rounds 4 and 5 — the review kept finding the same failure one layer out.** Round 4: the raw
+session still carried the over-claim. Round 5, two findings, and the more important one is not a
+documentation problem at all.
+
+**`terms.html` had to ship.** Every console asks for a privacy URL **and a terms URL on the same
+form**, so shipping only `privacy.html` left an anonymously inaccessible legal URL in a live
+submission. The runbook had hedged that as *"TikTok does not appear to fetch it"* — **an assumption
+about a reviewer's behaviour is not evidence, and it is certainly not a basis for calling a
+submission complete.** The generator now walks a page table and emits both; the guard walks that
+same table, so a third legal page is covered by the act of being registered. Note the repo's own
+`google-oauth-demo-video.md` had proposed **both** files from the start, and only one got built —
+so the gap was written down before it was shipped.
+
+**And a rule question the review got wrong in one direction, then right in the other.** Round 4 said
+to correct the raw session; round 5 said correcting it violates `Never modify raw/`. Both cannot
+hold, so it needed a judgment rather than compliance. `git log origin/main` settles it: the TikTok
+raw session **is** merged (#537), so it is a genuine immutable record and its errata was reverted —
+the correction lives in the synthesized pages, which is the prescribed workflow. This session's own
+raw source is **new in this PR**, never merged, so its first merged state can simply be correct.
+The distinction is "already ingested", not "is in `raw/`".
+
+## [2026-08-26] The package-order existence oracle: one answer for "no such order" and "not yours"
+
+**PR #545** (`54ca8b24`), both functions deployed and verified on prod the same day.
+→ [[Package-Order Existence Oracle Session]] · [[Service-Role Data Exposure]] (5th recorded instance)
+
+**Found by verifying a different fix.** The session before moved twenty edge functions from 500 to
+401 on an auth failure; `refund-package-order` and `release-package-payout` did not move, which read
+as "the fix didn't take". Supplying the field the error was asking for settled it:
+
+```
+empty body : {"error":"Missing required field: orderId"}                            [500]
+with field : {"error":"Order not found: Cannot coerce the result to a single JSON"}  [500]
+```
+
+The status had not moved because the auth check was **never reached**. Both functions parse the body,
+**read the order with `SUPABASE_SERVICE_ROLE_KEY`**, and authorize afterwards — so existence is
+established before identity, and an anonymous caller could tell a real order id from an invented one.
+`release-package-payout` leaked a second way and to a wider audience: `"Only the buyer can release
+this payout"` confirmed the order to **any authenticated user**. Bounded in practice, since
+`package_orders.id` is a UUID and not enumerable; still a service-role read answering a stranger.
+
+**Why the obvious fix is wrong.** "Authenticate before you read" **breaks guest refunds**: a guest
+buyer has no JWT and their credential, `buyer_guest_token`, is a **column on the order**, so the row
+genuinely must be fetched before that caller can be identified. What *can* move above the read is
+refusing a caller who presented **nothing at all** — no service-role key, no JWT, no guest token.
+Everything past that point had some credential to offer, so the read is no longer answering an
+anonymous question. Every remaining failure returns **one shared 404** from
+`_shared/package-order-access.ts`, with the real reason sent to `logStep` rather than to the caller.
+One shared constant and one shared status, deliberately not two "identical" strings in two files:
+two copies is the drift that re-opens the leak, because the difference between the two answers *is*
+the leak.
+
+Also finishes the previous session's leftover in these two files — the missing-`orderId` validation
+error was the last 500 on this surface and is now a **400**.
+
+**A hole the restructure opened, and closed before it shipped.** Flattening the authorization chain
+into `else if` branches introduced `callerUserId === order.buyer_user_id`. `buyer_user_id` is **NULL
+on a guest order**, and `callerUserId` is null exactly when the caller came in on a guest token — so
+`null === null` authorizes, and a caller holding a valid guest token for a **different** order would
+have been treated as this order's buyer. The old nested form was safe by *accident of structure*,
+never by an explicit check: it only reached the comparison after `getUser` had produced a real user.
+**Flattening control flow can delete a precondition that was never written down.**
+
+**Scope was re-derived, not inherited** — the immediate lesson from the session before was that a
+count carries its original investigation's sample. Six edge functions touch `package_orders`; all
+five package-order ones are `verify_jwt = false`.
+
+| function | verdict |
+|---|---|
+| `notify-package-order` | `isAuthorizedIngest` gates it before anything is read — no oracle |
+| `create-package-order-escrow` | creates the order; no pre-existing id to probe |
+| `verify-package-order-escrow` | **anonymous by design** — see below |
+| `refund-package-order`, `release-package-payout` | fixed |
+
+`verify-package-order-escrow` is deliberately out of scope and is **named in the guard rather than
+left unmentioned**. A guest returning from Stripe Checkout has no credential at that moment, which is
+why its own header already reasons about being safe unauthenticated: it flips escrow only when Stripe
+reports a paid payment whose `metadata.order_id` matches, and it returns order STATE, never order
+data. It *does* confirm an id exists — an accepted property of an endpoint with **no authorization
+step at all**, which is a different thing from one that has an authorization step and leaks around
+it.
+
+**The guard, and why it is a text check.** `_shared/package-order-access.test.ts` asserts per function
+that `auth.getUser(` appears above `.from("package_orders")` **inside the request handler**, that
+`orderNotAccessible()` is thrown at least twice, and that none of the three distinguishing messages
+survives. Source order is one of the rare security properties a text check can genuinely establish,
+and it **cannot** be a runtime test here: the guest branch legitimately reads the order before its
+credential can be evaluated, so a black-box test would have to distinguish "read for a guest" from
+"read for a stranger" — which is exactly what the fix makes impossible. Two controls: the sources are
+asserted non-empty, and the three "distinguishing" strings are quoted from the **pre-fix** sources so
+the `not.toContain` cannot pass vacuously.
+
+**Its first version failed a correctly-ordered file.** `release-package-payout` defines
+`finalizePackageOrderState` above `serve()`, and that helper reads `package_orders` too, so `indexOf`
+compared the auth call against the *helper's* read. It failed in the safe direction, but a guard that
+cannot say which read it is looking at is measuring the wrong thing either way; it is now scoped to
+the handler slice. Forced-red by hand afterwards: inverting the order in `refund-package-order` fails
+the assertion (`expected 2446 to be less than 1783`), and reverting returns it to green.
+
+**Verified on prod, both directions.** `verify_jwt` was probed before deploying — both declared
+`false` in `config.toml` **and** live `false`, so neither was the dangerous live-false-but-absent
+combination — and both upload logs listed `package-order-access.ts`, the evidence the new code
+shipped rather than the deploy reusing a bundle.
+
+```
+before, no credential : {"orderId":"1111…"} → 500 {"error":"Order not found: Cannot coerce…"}
+        control       : a made-up function name → 404 NOT_FOUND  (the probe reaches the gateway)
+
+after,  no credential : any orderId → 401 {"error":"User not authenticated"}   (read never happens)
+        guest token   : fake id A  → 404 {"error":"Order not found, or you are not authorized…"}
+        guest token   : fake id B  → 404  … byte-identical
+        empty body    → 400
+```
+
+Both halves matter: the 401 shows the read no longer runs for an anonymous caller, and the identical
+404s show that when a credential IS present and the read does run, the two failures are
+indistinguishable.
+
+**What could NOT be verified, stated rather than glossed.** Prod holds **zero `package_orders` rows**
+— control: `profiles` returns 46 on the same query, so the zero is a real count and not a broken
+query. Nothing here was exercised against a real order: not the guest refund path, not the buyer
+release, not the shared 404 on an order that genuinely exists but isn't the caller's. What is proven
+is that a fake id stops being distinguishable and that an anonymous caller is refused before the read;
+the rest rests on construction and tests, which is weaker.
+
+**A near-miss on that same control, and the lesson is the opposite of the obvious one.** It returned
+46 where `PROJECT_CONTEXT` §4 was *remembered* as saying 45, and the first instinct was to correct the
+doc. Reading it first showed §4 had already been corrected — hours earlier, by #541 — and to something
+more precise than the intended edit: **46 rows total, 45 organic**, the 46th being
+`dame+onboardtest@dragoncandy.com`, created after the original read. The control **corroborated** the
+doc, and the "correction" would have destroyed the organic-vs-total distinction while looking like a
+fix. *A number that disagrees with your memory of a doc is a reason to read the doc, not to overwrite
+it* — the same failure mode as a count inherited from an earlier investigation, one step further on.
+
+**Codex** passed clean on the first round: *"The changes consistently authenticate before the
+service-role lookup where possible and return the same opaque 404 for missing and unauthorized
+orders."* 3,604 tests pass; both changed functions are on the `typecheck:functions` checked list (not
+the pre-existing ignore list); build clean; ~230-line diff with no line-ending churn — the CRLF trap
+from the previous session was checked for before editing.
+
+**The durable lessons.** (1) A failure that does not move after a fix is a question, not a leftover.
+(2) The reorder that closes an oracle is often the one that breaks the feature, so record the
+mechanism with the finding. (3) Flattening control flow can delete a precondition nobody wrote down.
+(4) Two "identical" error strings in two files are a leak waiting to reopen — share the answer,
+including its status.
+
+## [2026-08-26] Email verification exercised against prod — and the control that made it mean something
+
+Verification of shipped work, not new code. The §5 entry for the email-verification code flow
+(#527, #528, #530, #531) had carried *"no real signup has exercised the code flow end to end on
+prod"* since it merged. Both routes have now been driven against production on the
+founder-designated account `dame+onboardtest@dragoncandy.com` — **but that clause is only partly
+retired, and the wiki page carries the per-leg table.** The emailed link was clicked by a person in
+a real mail client and verified. The code was posted straight to the endpoint, never typed into the
+signup panel; the account pre-existed, so no fresh signup was involved; and the session came from
+an admin `generate_link` exchange rather than the login form. Calling that "end to end" was an
+overstatement the Codex second review removed.
+
+**The empty token table proved less than it looked like.** `email_verification_tokens` held zero
+rows at inspection, and that was first written up as "the feature had never run". It does not
+support that: the nightly `expire-email-verification-tokens` cron sweeps expired rows, and a
+verification email went out on 2026-08-24 and is still in the mailbox, so a row existed. The Codex
+second review caught the contradiction. The defensible bound is the ship date — `code`, `attempts`
+and the code-bearing template all landed in #530 on 2026-08-26, and the 8/24 email carries the old
+template with no code — so the link had been sent before and the **code** path had not run.
+
+**The forced control is the whole story.** `consume_email_verification_code` returns
+`ok:true, reason:'already_verified'` *before* it looks at the code — correct, because a double
+submit or a race with the link being clicked on another device must not error about work already
+done. It also means every submission on a verified account succeeds. Demonstrated rather than
+assumed: the **wrong** code `999999` returned **HTTP 200 success**, leaving `attempts = 0`. With
+`email_verified` set false, the identical request returned **400 `mismatch`**. Same endpoint,
+same input, opposite answers.
+
+| probe | result |
+|---|---|
+| wrong `999999`, then wrong `000000` | 400 `mismatch`, `remaining` 9 then **8** |
+| real code from the email | 200, `email_verified` false → true, `verified_at` stamped |
+| link token, GET | 302 `/auth?mode=login&verified=1` |
+| same link token replayed | 302 `?status=error&reason=invalid_or_used` |
+| no `Authorization`; anon key as the JWT | 401, 401 |
+| malformed five-digit code | 400 `malformed`, no attempt charged |
+
+`remaining` falling 9 → 8 across two *different* wrong codes is the per-user budget doing the
+thing the migration exists for; a per-code budget answers 9 twice.
+
+**Delivery was checked, not inferred from the provider's success flag** — and the evidence differs
+per mail, since three were sent. The first two were read in the mailbox: inbox not spam, one second
+after the row was written, emailed code identical to the stored code, link on `dragoncandy.com`
+from the honoured `Origin`, footer label matching its own href. The third was never opened by the
+agent; its delivery is evidenced by the founder clicking it.
+
+**A P1 was nearly filed and was wrong.** Read through the claude.ai Gmail connector, every link
+came back corrupted in a way mechanically consistent with quoted-printable decoding of an
+unescaped `=`. An unrelated sender's mail showed the identical damage, which is what stopped it;
+the founder then clicked the real buttons and the function logged `token_prefix: "29ece178"`,
+intact. The first control tried could not have caught it — a Google notification containing no
+`=` followed by two hex digits came back clean and proved nothing. Recorded in project memory as
+`gmail-mcp-mangles-equals-signs`.
+
+Those clicks *did* fail, for a mundane reason worth writing down: the test had already spent both
+tokens. A used verification link failing is the design working. **A third email was then sent and
+deliberately left untouched, and the founder's click on it verified** — token `7bd889aa`, created
+21:25:05, consumed 21:26:02. Recording only the first two clicks reads as "the human route failed";
+the Codex review drew exactly that conclusion from an earlier draft.
+
+Sessions came from the admin API (`generate_link` → `/auth/v1/verify`), never a password.
+`supabase/scripts/staging-login.mjs` performs the same exchange but deliberately refuses
+production, so it was left untouched rather than adapted.
+
+**Still not proven:** the six-digit input has never been typed in a browser. Everything beneath
+it is proven; that one needs a fresh signup.
+
+→ `docs/wiki/concepts/email-verification-routes.md` · `docs/wiki/concepts/verify-before-reporting.md`
+
+
+## [2026-08-26] TikTok read-only analytics connector — and four defects one real connection found
+
+**PRs #525 and #529, both merged.** The fifth direct platform connector under the 2026-08-23
+scope decision (*Outstand publishes, direct APIs measure*). Per-user OAuth on `user.info.basic`,
+`user.info.profile`, `user.info.stats` and `video.list`. **Nothing here can post** — the Content
+Posting API is deliberately not requested, and the consent screen the user sees itemises four
+*reads*. Migration `20260826200000` (`tiktok_account_connections` + 8 RPCs), four edge functions,
+three shared modules, plus three follow-up migrations from the review loop.
+
+Verified on prod **by object**, not by the ledger: RLS on with zero policies, grants exactly
+`postgres` + `service_role`, `tiktok_connection_status()` executable by `authenticated` but not
+`anon` and taking no arguments. The zero-policy count carried a control — the same query against
+`profiles` returns 7, so a 0 could have meant a broken query rather than a locked-down table.
+
+### What deliberately did not copy the X connector
+
+X carries **three** claim pairs; this carries **two**, and the missing one is the design. X's
+insights claim exists because **X bills per read**, so two tabs arriving after a cache expiry both
+miss, both call X, and both get invoiced — serialising the cache fill is a *cost* control.
+TikTok's Display API is **free** (600 req/min per endpoint, nowhere near our scale), so the
+snapshot is a plain cache with no lock. **Unjustified locking is not free**: every lock is a place
+a claim can strand and block a user for a TTL.
+
+The two locks that survive are correctness. The refresh token **rotates**, so two concurrent
+refreshes can leave us holding a token TikTok has already superseded — unrecoverable without
+re-consent. And a disconnect racing a reconnect can delete the row the reconnect just wrote,
+destroying a live grant's only stored token, the same hazard the Facebook connector fixed under
+lock. Both take the **same** advisory key; three different keys is the defect Codex found in the X
+connector at round 7 — three operations on one grant serialising against nothing.
+
+Platform facts were read at source rather than inferred from a sibling, because the Facebook
+connector shipped a real defect by pattern-matching Instagram. Access token **24 hours**; refresh
+token **365 days**, and each refresh writes a fresh expiry, so an account read even once a year
+never dies and **no dormancy sweep exists**. That **defers** Instagram's failure rather than
+removing it — refresh is on demand only, so a connection nobody reads for over 365 days expires
+before anything tries to renew it and needs re-consent. This entry first called that "a failure
+that cannot happen"; the Codex second review refuted it, and the difference from Instagram is
+quantitative (365 days vs 60), not categorical. A **revoke endpoint does exist**,
+unlike Instagram and Facebook. `username` needs `user.info.profile` while only `display_name`
+comes with `basic` — and the connector reads just `username` and `profile_deep_link` from that
+scope, because **a scope is not the same as what you fetch**.
+
+### The first real connection found four defects (#529)
+
+`@tumericturtle` connected cleanly and the row landed with all four counters **null**. Each was
+uncovered by fixing the one before it.
+
+**(1)** The callback fetched the stats and never passed them to `store_tiktok_connection` — under
+a comment saying it fetched early precisely *so* the row would carry stats. The code did the exact
+thing its own comment warned against, and **the comment read as evidence that it did not**. Third
+time on that branch a comment claimed a property the code lacked; Codex caught the other two, and
+none was caught by a test. **A comment is a claim, and nothing tests it.**
+
+**(2)** A reconnect kept the **previous account's** numbers: the `on conflict` branch never listed
+those columns, so it left them untouched while correctly resetting `last_synced_at` and
+`insights`. A reconnect can be to a different account — the function's own comment says so before
+leaving four columns doing exactly that. Now set from `excluded`, deliberately **not** coalesced,
+because **a real measurement attributed to the wrong subject is a fabrication, not staleness**.
+`coalesce` stays correct one function over in `cache_tiktok_insights`, which always refreshes the
+same account. Opposite rules on adjacent functions, both pinned by tests.
+
+**(3)** `likes_count` is a **lifetime** total that does not fit `int4` (Codex P2). The failure
+mode is not a wrong number: the RPC raises `22003`, the callback treats it as `storage_failed`,
+and that branch **revokes the token** — correctly, by the rule that a live grant is never
+abandoned. So a large account cannot connect and loses its grant on every attempt, behind an error
+naming storage rather than the counter that overflowed. **The population that breaks is exactly
+the one worth having.** All four columns were widened; the review named only the connect path, but
+`cache_tiktok_insights` wrote the same columns through its own RPC and declared them `integer`
+too, where the identical crash marks a healthy connection failed on *every refresh*.
+
+**(4)** Widening the columns left `tiktok_connection_status()` declaring them `integer` in its
+`RETURNS TABLE`, and an SQL function coerces its result to the declared type — so it narrowed
+`bigint` straight back to `int4` and raised `22003` for exactly the values the widening existed to
+permit (Codex P1). That is the **UI-facing** function, and its hook throws on error, so one large
+account would have taken the card's red branch on all three settings surfaces. **Widening a column
+is not a local change** — every function *declaring* that type has to move with it. `drop` then
+`create` throughout: a different parameter list makes an **overload**, not a replacement, and
+PostgreSQL refuses outright to change a function's return type.
+
+### Method
+
+**The first probe of (4) said it was fine** — the status RPC returned a row with no error, because
+every counter on it was null and a null coerces to anything. Re-probed by writing `12,000,000,000`
+into `likes_count` in a rolled-back transaction, which raised `22003`. **When a probe comes back
+clean, prove it could have come back dirty**; this project wrote that rule down after measuring
+the wrong element for the mobile scroll bug and had to learn it twice in one session.
+
+**Two forced controls caught flaws in the tests rather than the code**, both substring assertions
+satisfied by text that does not do the thing: `p_likes_count bigint` matched a *different*
+function twelve lines away while the one under test was reverted to `integer`, and a
+`drop function` assertion passed with the drop **commented out**. Now scoped and anchored. 14
+forced controls across three rounds, every one caught.
+
+A version collision also went the right way: `20260826220000` was already recorded on prod by
+another branch, `db:apply` **refused**, and it was renumbered rather than forced — forcing past
+that refusal is exactly how `recorded != actual` happens.
+
+### Working end to end, and an acceptance signal that is not the siblings'
+
+First connection 2026-08-26 13:56 UTC with exactly the four read scopes, `status=active`,
+`last_error=null`. **YouTube, Instagram and Facebook all stamp `last_synced_at` seconds after
+`connected_at`, and that gap is their proof the API was really called. TikTok's read fires when
+the card first renders** — measured gaps of **38 minutes**, then **89 seconds**. The runbook
+asserted the sibling rule and was wrong; corrected.
+
+**The first correction was also wrong**, and Codex caught it against the code. It said a null
+stamp meant nobody had opened the page. `tiktok-insights` returns the figures it fetched **even
+when `cache_tiktok_insights` errors** — deliberately, since the read already happened and losing
+a real answer over a bookkeeping failure is worse — so the card can render correct numbers while
+the stamp stays null. That is exactly what the `int4` overflow did: `22003` inside the cache RPC,
+figures on screen, stamp frozen. **The wording would have hidden this connector's own headline
+bug.** A null is *inconclusive*; open the card, and if figures render while the stamp stays null,
+grep the logs for `[tiktok-insights] could not cache snapshot`.
+
+After #529 the reconnect proved the fix on prod: `follower_count 10`, `likes_count 4`,
+`video_count 1` written **at connect time**, where before they landed null. The card's `0
+Comments` is a **genuine** zero, checked rather than assumed, because it is the shape of the
+fabricated zero this codebase has shipped before — `Number(null)` is 0 and 0 is finite.
+
+### Console and the demo video
+
+TikTok's **production** app form will not save without a demo video, stated on the page in
+TikTok's own words. So the console was configured as a **sandbox** — no app review, its own
+products/scopes/redirect URI, up to 10 target users. **Adding a target user requires that
+account's login credentials**, so it is founder work by construction. `TIKTOK_CLIENT_KEY` was
+proven to be the sandbox key by SHA-256 digest comparison, with a control proving the instrument
+could have disagreed.
+
+The demo video was recorded on 2026-08-26 (1:47, 2.5 MB, against a 50 MB cap): not-connected card
+→ Connect → consent screen with all four scopes → Continue → redirect to `dragoncandy.com` →
+populated card → Refresh moving the "Measured" timestamp. Two Chrome artefacts had to be cropped
+out because neither can be dismissed — the extension's debugging infobar (browser chrome) and its
+"active in this tab group" pill (not in the page DOM). The crop keeps the URL bar, since TikTok
+requires the reviewed domain on screen.
+
+### Not done
+
+The **production** console form (now unblocked by the video); swapping
+`TIKTOK_CLIENT_KEY`/`TIKTOK_CLIENT_SECRET` from sandbox to production credentials after approval,
+which nothing enforces and which fails at token exchange if missed; and App Review's need for an
+**anonymously reachable privacy policy**, which the site gate would break exactly as it breaks
+Google's and Meta's. Both TikTok buttons on the settings page also read "Connect TikTok" — one
+publishes via Outstand, one measures — and nothing on the buttons says which.
+
+## [2026-08-26] An auth failure is not a server error: 401 instead of 500 across 20 edge functions
+
+**#542, merged `ced582f4`, all 20 deployed and verified.** Third and last of the day's
+edge-function corrections, after the `.io` CORS sweep and the proxy wildcard.
+
+These functions share one shape: a big `try` whose `catch` returns `error.message` with a single
+hardcoded status. Every failure therefore became a 500 — a missing `Authorization` header, a bad
+campaign id and a genuinely broken Stripe key all reported identically as "the server broke".
+Measured on prod: **twelve** functions answered an unauthenticated request
+`500 {"error":"No authorization header provided"}`; `get-stripe-dashboard-link` answered 400. The
+body already named the problem; only the status disagreed.
+
+**Why it matters beyond tidiness:** a 500 is the one status a client may retry and monitoring may
+page on. An auth failure is neither retryable nor an incident, so the wrong status makes a routine
+event indistinguishable from an outage — on the payout and escrow surface, where a real outage is
+exactly what someone needs to be able to see.
+
+**The scope went five → fourteen → eighteen → twenty, and each step has a cause.** "Five" was my
+own earlier figure, taken from a probe of only the twelve money functions carrying the `.io`
+defect — a count bounded by a *previous investigation's sample* rather than by this defect.
+Grepping the message found fourteen. The fleet guard found four more that a message-based grep
+structurally could not (same code shape, different message string). And Codex found the branch
+missed entirely: typing the `!authHeader` throw only fixes a MISSING credential, while a header
+that is present but invalid or expired takes `if (userError || !userData.user) throw ...`, which
+stayed bare. Tokens expire; that is the commoner failure. **The lesson is about the guard, not the
+bug — it matched ONE syntactic shape, so it could only ever vouch for that shape. A guard's
+silence means "nothing matched my pattern", never "nothing is wrong."**
+
+**Deliberately minimal.** `HttpError` + `unauthorized()` + `statusFor(error, fallback)` map
+AUTHENTICATION failures to 401 and change nothing else; authorization, not-found and validation
+keep each function's existing generic status, which is why `get-stripe-dashboard-link` passes 400
+rather than being silently promoted. Three functions already returned 401 by **string-matching the
+error message** — correct today, silently a 500 the moment anyone rewords it; the typed error is
+now authoritative and the heuristic is kept as the fallback for the other throws it covers. No
+client behaviour changed: every caller uses `functions.invoke()` and supabase-js turns any non-2xx
+into the same `FunctionsHttpError`; nothing in `src/` branches on a status and there is no 401
+auto-signout.
+
+**The guard states what it does NOT cover.** Two patterns; one named exclusion
+(`suggest-package`). A third shape — a bare `throw new Error("Unauthorized")` in
+`donny-campaign-preview` and `donny-schedule` — is deliberately unclaimed, because each has
+multiple catch blocks per handler and both already answer 401. The `PARKED` list was first written
+from memory and named those two files; the **exact-equality** assertion rejected it, because they
+never matched the patterns at all. A subset check would have accepted the wrong list silently.
+
+**A line-ending trap.** These files are a per-file mix of CRLF and LF from the repo's move off
+Windows. A naive Python read/write rewrote them all to LF — **1,777 phantom line changes** across
+the payout surface on the first attempt, reverted. A diff that size is unreviewable, which is the
+same outcome as not being reviewed.
+
+**Deploy verification.** `verify_jwt` was checked BEFORE deploying, because the dangerous
+combination is live-`false` + absent from `config.toml`, where the deploy applies the platform
+default `true` and the function starts rejecting its own callers. All 20 matched; none was
+live-false-but-absent. Every upload log carried `http-error.ts`. After: the 12 moved 500 → 401,
+`get-stripe-dashboard-link` 400 → 401, the five gateway-protected ones stayed 401, `donny-chat`
+stayed 401, and CORS still answers `capacitor://localhost` everywhere.
+
+**Two did not move, and that is a finding rather than a failure.** `refund-package-order` and
+`release-package-payout` still answer `500 {"error":"Missing required field: orderId"}` because
+their auth check is never reached. Proven by supplying the field: they then answer
+**`"Order not found"`** — so the order is parse body → **look up the order with a service-role
+client** → then authenticate, and **an unauthenticated caller can distinguish "order exists" from
+"order not found"**. That is an existence oracle on a service-role read, worse than the "validates
+the body before auth" note it had been filed under. **The naive fix breaks guest refunds** — the
+branch above the auth check compares `order.buyer_guest_token`, so the order genuinely must be
+fetched before the caller can be identified. The correct fix is to stop leaking existence, not to
+reorder. Bounded because `package_orders.id` is a UUID and not enumerable. Left for its own change,
+with the mechanism recorded so the next session does not reach for the reordering that breaks
+guests.
+
+**The durable lesson: a count inherited from an earlier investigation carries that investigation's
+sample, not the current question's.** "Five" was never wrong about the twelve money functions
+probed for a CORS defect; it was wrong about this defect, and nothing in the number said which it
+was.
+
+→ `docs/wiki/raw/sessions/2026-08-26-auth-401-not-500.md`
+
+## [2026-08-26] The two proxies answered every origin with `*`, because copying was easier than sharing
+
+**#539, merged `8bd8b3c0`, deployed and swept.** Code change plus deploy — the follow-up to the
+`.io` sweep below, which found this and deliberately left it out.
+
+`outstand-proxy` and `social-proxy` were the only 2 of 125 deployed functions answering
+`Access-Control-Allow-Origin: *`. Measured before the change: both echoed `*` to **every** origin
+tried, `https://evil.example` included.
+
+**Not a live hole, and the record should say so.** Neither sets
+`Access-Control-Allow-Credentials`, so a cross-origin page still could not read a response without
+already holding the user's JWT — which lives in localStorage on our own origin. Consistency and
+defence in depth, not an incident.
+
+**Why they diverged is the durable part.** Both need a WIDER `Allow-Headers` than
+`_shared/cors.ts` provides (`accept`, `x-org-unit-id`, and outstand's two delegation headers), and
+`outstand-proxy` serves five verbs where the shared helper allows POST. Calling `corsHeaders`
+would have broken them, so copying the block was the path of least resistance — and a copied block
+is where a wildcard survives. The fix shares the *origin decision* (`resolveAllowedOrigin`)
+without forcing the header lists to match.
+
+**Why the origin is stamped at the boundary.** Both build most responses in module-level
+`jsonResponse` helpers with no `req` in scope — 28 and 41 call sites, most outside the request
+handler. Threading `req` through touches 55+ sites and a dozen signatures, where one miss ships a
+wrong origin that nothing catches until a browser blocks it. And caching the origin in module
+state is a **cross-request bug**: Deno serves concurrent requests in one isolate, so request A's
+origin can be read by request B — written into the helper's doc comment because it is the answer
+that makes the smallest, most attractive diff. So `serve(req => withAllowedOrigin(req, await
+handleRequest(req)))`, which every response leaves through and therefore cannot miss a path. The
+module-level fallback became `DEFAULT_ORIGIN`, never `*`.
+
+`Vary: Origin` added to both — without it a shared cache can hand one origin's ACAO to another.
+The platform already sets `Vary: Accept-Encoding`, so the helper **appends** rather than
+overwrites; confirmed on prod afterwards as `Vary: Accept-Encoding, Origin`.
+
+**The guard is fleet-wide and was forced red.** It walks the real function tree, so a NEW function
+copying the block fails too — a guard watching only the pair you already repaired cannot see the
+third. Three controls: it found 100+ sources (a bad glob would otherwise pass over zero); its
+pattern matches a real declaration in both quote styles; and it does NOT match prose about the
+wildcard, which both proxies now carry in a comment — **a guard that matched its own documentation
+would break the moment the fix was documented**. Proven by planting a wildcard in a throwaway
+function, with cleanup in a `finally`.
+
+**Two Codex findings declined on measurement, not preference.** Allow-listing `*.vercel.app` would
+be strictly worse than the wildcard removed — it is a *shared domain*, so any Vercel user's page
+becomes an allowed origin — and previews point at staging anyway. And `http://127.0.0.1:8080` (the
+`npm run dev` origin, filed P1) was measured against prod: `donny-orchestrator`,
+`create-notification` and `release-creator-payout` **already** answer `.com` to a localhost origin,
+so local dev has never been able to call Donny, notifications or any money function from the
+browser. These two were the last exception, not a working baseline. Not fixed inline for blast
+radius — adding localhost to `ALLOWED` widens CORS on all 125 functions including payouts — and
+the measurement is in the doc comment so it can be reversed deliberately. **Accepted cost, stated
+rather than buried: developing social features locally now fails.**
+
+**Verification.** Identical probe before and after, so differences are attributable: apex `*` →
+`.com`; `capacitor://localhost` `*` → itself; `evil.example` `*` → `.com` (the fix); localhost `*`
+→ `.com` (by decision); `Vary` gains `Origin`; unauth POST still gateway-401, so `verify_jwt` did
+not move. **The check that mattered most**: `Allow-Headers` still carries all eight values
+including both delegation headers and `Allow-Methods` all five verbs — narrowing either was the
+real way this could have broken working features. Both upload logs listed `_shared/cors.ts` and
+`origins.ts`, which is the evidence the fix shipped. Fleet sweep after: ok = 107, stale = 0,
+nocors = 18, **wildcard = 0** — 125 exactly.
+
+**The durable lesson: a shared helper only gets used if it fits.** These two did not copy the block
+out of carelessness — `corsHeaders` would have broken them, and nothing offered the origin decision
+separately from the header list. The fix was to make the shared thing decomposable, not to demand
+the callers conform. Where a helper is nearly-but-not-quite right, expect copies, and expect them
+to drift in whatever direction is easiest to write.
+
+→ `docs/wiki/concepts/edge-function-deploy-bundling.md` · `docs/wiki/raw/sessions/2026-08-26-proxy-cors-wildcard.md`
+
+## [2026-08-26] The 12 money edge functions answering `.io` were stale bundles, not a bug
+
+**Deploy only — no code change, no migration, no PR for the fix itself.**
+
+A CORS preflight from `Origin: capacitor://localhost` — the origin every fetch carries inside
+the iOS Capacitor shell — was answered `Access-Control-Allow-Origin: https://dragoncandy.io` by
+12 deployed edge functions. The browser blocks that response, and in `WKWebView` it surfaces as
+a generic fetch error naming nothing. The 12 were **exactly the money surface**:
+`release-creator-payout`, `release-package-payout`, `release-sponsorship-payout`,
+`withdraw-pending-balance`, `refund-campaign-escrow`, `refund-package-order`,
+`create-package-order-escrow`, `verify-campaign-escrow`, `verify-package-order-escrow`,
+`verify-sponsorship-payment`, `invoice-rush-surcharges`, `get-stripe-dashboard-link`.
+
+**The repo was already correct.** `_shared/cors.ts` on `main` composes `NATIVE_APP_ORIGINS`
+into its allow-set and defaults to `https://dragoncandy.com`, so current source cannot emit
+`.io` **to an origin that is not itself allow-listed**. It can and does emit `.io` to an `.io`
+caller — both TLDs stay in `APP_ORIGINS` on purpose, because GoTrue honours `.io` redirect
+targets, and `corsHeaders` echoes an allowed origin verbatim. The invariant is about the
+*fallback*, not the string. Nothing to fix; something to ship.
+
+**The control did more than confirm the finding.** Preflighting each function twice — once from
+`capacitor://localhost`, once from `https://dragoncandy.com` — showed the `.com` origin echoed
+correctly while the native one fell to `.io`. So the deployed bundle *did* know `.com`: it was
+stranded between two separate changes, after the domain migration added `.com` to `APP_ORIGINS`
+but before `DEFAULT_ORIGIN` was flipped and `NATIVE_APP_ORIGINS` existed. Without the paired
+origin, "everything answers `.com`" is indistinguishable from "the function ignores `Origin`".
+
+**The real hazard was `verify_jwt`, not the code.** `supabase functions deploy` reads
+`supabase/config.toml` relative to the working directory and applies the platform default
+`verify_jwt = true` to any function the file does not mention. Ten of the 12 are declared
+`false`; **two — `invoice-rush-surcharges` and `refund-campaign-escrow` — are absent from the
+file entirely**, which is the dangerous case precisely because it is silent. Live posture was
+therefore measured *before* deploying, with no credential, by POSTing unauthenticated and
+reading which body came back: the platform's `UNAUTHORIZED_NO_AUTH_HEADER` means the gateway
+rejected the call before our code ran; our own JSON means our code ran and rejected it. An
+invented function name returns 404, separating "registered and rejecting" from "absent". Posture
+matched `config.toml` on all 12 — the two absent ones are live `true`, exactly what the default
+would re-apply — so the deploy preserved every posture. Established, not assumed.
+
+**One constant that is not only a header.** `create-package-order-escrow` is one of three
+functions that mint real user-facing URLs from `DEFAULT_ORIGIN` when their env var is unset.
+Checked by **digest, not by value**: `supabase secrets list` returns each secret's SHA-256, and
+`APP_URL`, `DRAGONCANDY_APP_URL` and `PUBLIC_SITE_URL` all hash to the digest of
+`https://dragoncandy.com`. All set, fallback unreachable, no minted URL changed.
+
+**Verified the way the defect was found.** Every upload log listed `_shared/origins.ts` and
+`_shared/cors.ts` among its assets — a deploy that fails to bundle keeps serving the old
+version, so `Deployed Functions.` alone proves nothing, and neither does an empty diff or a
+green build. After the deploy all 12 echo `capacitor://localhost` with the `.com` control still
+echoing `.com`, and the `verify_jwt` table is byte-identical. Then a **full sweep of all 125
+deployed functions** — strictly stronger than re-testing the 12 that were touched, since it also
+catches a regression elsewhere or a function the original count missed: **stale = 0**, ok = 105,
+nocors = 18, wildcard = 2 — 125 exactly, and the buckets are stated so they add up. The 2 are
+`outstand-proxy` and `social-proxy` answering `*` (below); an unreconciled total is how a
+silently-dropped case hides inside a clean result. Those 18 answer no preflight at all and stay their own bucket; they are
+cron and webhook endpoints with no browser caller, and folding "no header" into "wrong header"
+would inflate the count and hide the real defect inside it.
+
+**The 13 → 12 delta reconciles rather than contradicting the earlier count.**
+`check-creator-payout-status` and `disconnect-stripe-account` had been fixed in between, carried
+along by the identity slice-2 deploy that redeployed them for unrelated work. And
+`refund-campaign-escrow` was newly found, because this probe covered all 125 deployed functions
+where the 2026-08-14 one covered only the 50 that `src/` invokes. **That is the same lesson one
+layer up:** the earlier entry corrects a sample generalised to the fleet, then bounds its own
+re-measurement by a different sample.
+
+**Found in scope, deliberately left alone — and closed the same day by #539.**
+`outstand-proxy` and `social-proxy` answer `Access-Control-Allow-Origin: *` — in the repo source, not a stale bundle, so a code change and
+out of scope; neither sets `Access-Control-Allow-Credentials`, so a cross-origin page still
+cannot read a response without holding the user's JWT. Five of the 12 answer 500 rather than 401
+unauthenticated — `PROJECT_CONTEXT` recorded that class as two and is corrected to five in
+this same change — and four validate the request
+body before checking auth. All pre-existing: mixing a behaviour change into a redeploy makes a
+failure impossible to attribute to one or the other, which is the whole reason a no-code-change
+deploy is verifiable at all.
+
+**The durable lesson.** A deployed bundle is not the repo, and reading the repo cannot tell you
+what is running. Both halves were true at once here — the source was correct, so a code review
+would have found nothing, and the behaviour was wrong, so a probe found it immediately. This
+class of bug is invisible to every check that reads files, and the fix has to be verified the
+same way it was found.
+
+→ `docs/wiki/concepts/edge-function-deploy-bundling.md` · `docs/wiki/concepts/ios-testflight-first-build.md`
+
 ## [2026-08-26] The app icon's black eye was the background showing through a hole
 
 **PR #532, open at time of writing.** Codex clean at round 2; `npm run build` clean; 3493 tests
@@ -117,8 +847,12 @@ evidence it is clean.
 **VERIFIED ON HARDWARE the same day** — this entry read "nothing has run on a device or simulator"
 for about an hour. The founder confirmed both assets on a physical **iPhone 15 Pro Max**: the
 launch image renders the mark on grape, and the icon renders the dragon on off-white with a light
-eye. **Still unconfirmed, and not to be read as covered:** whether the splash→shell *handoff* is
-seamless — a different observation from "the splash looks right", and not separately reported.
+eye. **The splash→shell handoff is confirmed seamless too** — "no flash, it went straight to the
+app" — which is the observation that actually validates the two derivations, since it is the only
+way to know that the *native* launch image and the *web* shell agree on both colour and logo size.
+Had `SPLASH_BG` or the 423px width been wrong, this is where it would have shown, and nowhere else.
+This paragraph asked for the check separately rather than letting it ride on "the splash looks
+right"; the answer came back clean.
 
 **Getting it onto the phone took three attempts and none of them was a build problem.** The
 founder deleted, rebuilt and reinstalled while still seeing the old icon. Xcode's DerivedData
@@ -185,7 +919,9 @@ All 111 cited PRs checked against the repo's 530 in one call.
 ### Two workstreams were missing entirely
 
 The **TikTok read-only analytics connector** (#525, #529 — four deployed functions, five
-migrations) had **no §5 entry at all**, and neither did the **email-verification rework** (#527,
+migrations — **four**, corrected 2026-08-26: only two widen counters, not three, and the
+miscount was copied straight into §5 by the entry that fixed the omission)
+had **no §5 entry at all**, and neither did the **email-verification rework** (#527,
 #528, #530). None of #525–#530 has reached `SHIPPED_LOG.md` or the wiki either, so **the knowledge
 layer owes five PRs**; both new entries say so rather than implying coverage. Found only because a
 mid-session `git fetch` moved `origin/main` and prompted a check of what had landed.
@@ -230,8 +966,8 @@ worktree session cannot reach. Migrations *applied* to prod, cron run counts, an
 `SOCIAL_LOGIN_ENABLED` / `READINESS_GATE_ENABLED` flag rows are therefore **unverified, not
 verified-true**, and were left as written. *A refusal that names itself is the good failure.*
 
-**Lead, not a finding:** `outstand-proxy` and `social-proxy` answer
-`Access-Control-Allow-Origin: *` where the other 93 use the allow-list. Both authenticate by
+**Lead, not a finding — pursued and closed 2026-08-26 (#539).** `outstand-proxy` and
+`social-proxy` answer `Access-Control-Allow-Origin: *` where the other 93 use the allow-list. Both authenticate by
 bearer token; exploitability untested, so it is recorded for an owner rather than called a defect.
 
 **Verified:** 3,549 tests pass (320 files); production build clean; **`npm run typecheck` passes

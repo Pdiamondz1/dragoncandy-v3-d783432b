@@ -61,13 +61,24 @@ export const OPERATING = {
     value: 45,
     unit: 'accounts',
     label: 'Registered users',
-    source: 'prod: select count(*) from profiles',
+    source:
+      'prod: select count(*) from profiles, MINUS test accounts (see note — the bare count ' +
+      'returns 46 as of 2026-08-26)',
     asOf: '2026-08-24',
     note: 'Read off production 2026-08-24: 45. This row said 30, tagged MEASURED, sourced to ' +
       'PROJECT_CONTEXT.md §4 ("~30 organic users") and carrying a note that it had never been ' +
       'checked — so an investor-facing figure was wrong by a third for as long as the doc was ' +
       'stale, with a provenance tag vouching for it. Surfaced by the Codex second review, which ' +
-      'read the note rather than the tag. 26 organizations exist against these 45 users.',
+      'read the note rather than the tag. 26 organizations exist against these 45 users. ' +
+      'SOURCE AMENDED 2026-08-26: `count(*)` now returns 46. The 46th is ' +
+      '`dame+onboardtest@dragoncandy.com`, created 2026-08-24 22:29 UTC — AFTER the read above — ' +
+      'and it is the only row added since 2026-08-20, so the organic figure is still 45 ' +
+      '(PROJECT_CONTEXT.md §4 records the same reconciliation). The VALUE is unchanged and ' +
+      'correct; what was wrong was the SOURCE, which as written no longer reproduces it. A ' +
+      'MEASURED tag whose command returns a different number is the precise failure this ' +
+      'register exists to prevent, so the source now says what to subtract rather than quietly ' +
+      'disagreeing with itself. Re-read before quoting: a second test account moves the raw ' +
+      'count again and nothing here will notice.',
   }),
   pageComponents: measured({
     value: 96,

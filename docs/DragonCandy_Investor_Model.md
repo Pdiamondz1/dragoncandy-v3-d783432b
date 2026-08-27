@@ -26,7 +26,7 @@
 | Pro tier take rate (`takeRate_pro`) | 0.03 | fraction | MEASURED | `supabase/functions/stripe-webhook/index.ts (TIER_TAKE_RATES)` | 2026-08-23 |
 | Monthly operating cost (`burnMonthly`) | 569 | USD/month | MEASURED | `vendor invoices \| Lovable 50 + Anthropic 200 + Outstand 249 + Supabase 45 + OpenAI 25` | 2026-08-23 |
 | Paying customers (`payingCustomers`) | 0 | accounts | MEASURED | `prod: select count(*) from organizations where take_rate is not null and stripe_subscription_id is not null` | 2026-08-24 |
-| Registered users (`registeredUsers`) | 45 | accounts | MEASURED | `prod: select count(*) from profiles` | 2026-08-24 |
+| Registered users (`registeredUsers`) | 45 | accounts | MEASURED | `prod: select count(*) from profiles, MINUS test accounts (see note — the bare count returns 46 as of 2026-08-26)` | 2026-08-24 |
 | Page components (`pageComponents`) | 96 | files | MEASURED | `find src/pages -name '*.tsx' \| wc -l` | 2026-08-24 |
 | React hooks (`hooks`) | 277 | files | MEASURED | `find src/hooks -name 'use*.ts' -o -name 'use*.tsx' \| wc -l` | 2026-08-24 |
 | Edge functions (`edgeFunctions`) | 111 | functions | MEASURED | `ls -d supabase/functions/*/ \| grep -v _shared \| wc -l` | 2026-08-24 |
@@ -36,6 +36,7 @@
 | Test files (`testFiles`) | 291 | files | MEASURED | `npx vitest run` | 2026-08-24 |
 | AI spend cap as share of revenue (`aiCostCapPctOfRevenue`) | 0.15 | fraction | MEASURED | `docs/PROJECT_CONTEXT.md (section 8)` | 2026-08-23 |
 | The calendar year that is Year 1 (`year1CalendarYear`) | 2026 | calendar year | MODELED | `founder confirmation, Damon Williams (CTO), in session 2026-08-26` | — |
+| The calendar month Year 1 starts in (`year1StartMonth`) | 1 | calendar month | MODELED | `src/pitch/model/metros.ts (Metro.launchMonth, "Absolute month, 1 = 2026-01")` | — |
 | Standard delivery, low band (`campaignPriceStandardLow`) | 75 | USD/deliverable | MEASURED | `src/lib/campaignPricing.ts (TIER_PRICE_BANDS)` | 2026-08-23 |
 | Standard delivery, high band (`campaignPriceStandardHigh`) | 150 | USD/deliverable | MEASURED | `src/lib/campaignPricing.ts (TIER_PRICE_BANDS)` | 2026-08-23 |
 | Deliverables per campaign (`deliverablesPerCampaign`) | 3 | deliverables | MODELED | `src/pitch/model/assumptions.ts` | — |

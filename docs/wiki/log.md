@@ -1,5 +1,203 @@
 # Wiki Log
 
+## [2026-08-26] ingest | A static privacy policy the site gate can serve
+
+**Created** `raw/sessions/2026-08-26-static-privacy-page.md` and
+[[Static Privacy Page Session]] (`sources/static-privacy-page-session.md`).
+**Updated** [[Site Access Lockdown (Private Preview)]] (two new sections; **and its stale
+"the allowlist is now exactly `/robots.txt` and `/favicon.ico`" claim**),
+`docs/runbooks/site-access-lockdown.md` (two post-deploy checks, one of them a warning
+against the status-code probe that mis-verified this), `index.md`, `docs/SHIPPED_LOG.md`,
+`docs/PROJECT_CONTEXT.md` §5 — where the **first founder-action item** is corrected: it
+said the gate was "a decision, not a task" because switching it on breaks every platform
+review, and that is no longer true.
+
+**The correction to §5 is the point of this ingest, not a side effect.** That item had sat
+at the top of the launch-blocking list reading as a genuine trade-off — lock the site *or*
+get approved — when it was an artifact of how the gate was built. **A "decision" in a
+planning doc is sometimes an unexamined engineering constraint wearing a decision's
+clothes**, and the tell is that nobody had asked why the two were coupled.
+
+**Codex named ONE stale copy; the sweep found FIVE.** The [P2] was that `PROJECT_CONTEXT`'s TikTok
+entry still listed the privacy policy as blocked by the gate, contradicting the correction three
+sections above it. Grepping `anonymously reachable privacy` across `docs/` turned up the same claim
+in the **Instagram** §5 entry, in `concepts/tiktok-analytics-connector.md`, in
+`concepts/x-analytics-connector.md`, and in `runbooks/tiktok-analytics-connector-setup.md` — the last
+of which tells a human which URL to paste into the console, so it was the copy most likely to be
+acted on.
+
+**This is the `[propagate-the-correction]` lesson repeating in the same session it was written
+down.** Correcting the claim where you found it is not correcting the claim. The mechanical fix is
+to grep the distinctive phrase across `docs/` **before** committing a correction, not after a
+reviewer notices one survivor — a reviewer sees the diff, so it can only ever catch the copies that
+happen to sit near it.
+
+**Codex round 2 found what round 1's sweep structurally could not: the URL, not the claim.** The
+first sweep grepped the *prose* (`anonymously reachable privacy`) and fixed five copies. What an
+operator actually acts on is a **pasteable string** — `https://dragoncandy.com/privacy` in TikTok's
+console field table — which shares no words with the sentence. Grepping `dragoncandy.com/privacy`
+found it, plus the same URL in the Google runbook. **Sweep for the artifact a reader will USE, not
+only for the sentence you happen to have written.**
+
+**And that second runbook corrected a claim of mine.** `google-oauth-demo-video.md` had already
+proposed this exact fix — "serve the legal pages as real static files and allowlist those paths" —
+so #547 shipped a solution the repo had written down and nobody had built. But the same section
+records that Google's verification needs the **homepage** reachable signed out too, and `/` is the
+SPA and still 401s. So "switching the gate on no longer breaks four app reviews" was **too strong**:
+it is true for Meta, TikTok and X, and only half-true for Google. Corrected in §5's Open items rather
+than left to be discovered by a failed verification.
+
+**Codex rounds 4 and 5 — the review kept finding the same failure one layer out.** Round 4: the raw
+session still carried the over-claim. Round 5, two findings, and the more important one is not a
+documentation problem at all.
+
+**`terms.html` had to ship.** Every console asks for a privacy URL **and a terms URL on the same
+form**, so shipping only `privacy.html` left an anonymously inaccessible legal URL in a live
+submission. The runbook had hedged that as *"TikTok does not appear to fetch it"* — **an assumption
+about a reviewer's behaviour is not evidence, and it is certainly not a basis for calling a
+submission complete.** The generator now walks a page table and emits both; the guard walks that
+same table, so a third legal page is covered by the act of being registered. Note the repo's own
+`google-oauth-demo-video.md` had proposed **both** files from the start, and only one got built —
+so the gap was written down before it was shipped.
+
+**And a rule question the review got wrong in one direction, then right in the other.** Round 4 said
+to correct the raw session; round 5 said correcting it violates `Never modify raw/`. Both cannot
+hold, so it needed a judgment rather than compliance. `git log origin/main` settles it: the TikTok
+raw session **is** merged (#537), so it is a genuine immutable record and its errata was reverted —
+the correction lives in the synthesized pages, which is the prescribed workflow. This session's own
+raw source is **new in this PR**, never merged, so its first merged state can simply be correct.
+The distinction is "already ingested", not "is in `raw/`".
+
+## [2026-08-26] ingest | The package-order existence oracle, found by verifying a different fix
+
+**Created** `raw/sessions/2026-08-26-package-order-existence-oracle.md` and
+[[Package-Order Existence Oracle Session]] (`sources/package-order-existence-oracle-session.md`).
+**Updated** [[Service-Role Data Exposure]] (5th recorded instance + See Also), `index.md`
+(catalogues the new source, **and corrects [[Auth 401-Not-500 Session]]'s "Left open" clause**,
+which this closed the same day), `docs/SHIPPED_LOG.md`, `docs/PROJECT_CONTEXT.md` §5 (§4 needed no change — see below).
+
+**Compounded onto the class page rather than starting a thin new one.** This is a *weaker* form of
+[[Service-Role Data Exposure]] — it leaked existence, not data — which is exactly why it is worth
+recording: the weak form is the one a reviewer waves through, and this one had already been filed
+under a benign label ("validates the body before auth") consistent with everything visible from
+outside.
+
+**§4's user count was NOT corrected, and that is the point.** The `profiles` control returned 46
+against a remembered "45", and §4 turned out to have been corrected already by #541 — to **46 rows,
+45 organic**, which is more precise than the edit would have been. The control corroborated the doc.
+Recorded because the near-miss is the transferable part: *a number that disagrees with your memory of
+a doc is a reason to read the doc, not to overwrite it.*
+
+## [2026-08-26] ingest | Email verification exercised on prod, and a P1 that was nearly filed
+
+**Created** `raw/sessions/2026-08-26-email-verification-prod-exercise.md` and
+[[Email Verification Prod Exercise Session]] (`sources/email-verification-prod-exercise-session.md`).
+**Updated**
+[[Email Verification Routes]], [[Verify Before Reporting]], `docs/SHIPPED_LOG.md`,
+`docs/PROJECT_CONTEXT.md` §5, `index.md`.
+
+**The `sources/` page was skipped, then added.** The first pass declined it: the workflow lists one
+per raw source, but practice is 29 of 182 raw sessions, and a summary risks restating the raw file
+while both concept pages already carry the synthesis. The Codex review raised it twice, and the
+second time correctly — *an exception argued from prior noncompliance is not an argument*. Changing
+the workflow is a separate decision from quietly not following it. The page is a claims summary
+with provenance, not a copy, and `index.md` now carries it so the query workflow can reach it.
+
+Compounded onto the two existing pages rather than creating a third. The session produced no new
+subject — it produced *evidence* about one page's subject and *an instance* of the other's, which
+is what those pages are for.
+
+Both verification routes were driven against production — **partially**, and the page carries a
+per-leg table saying which three legs were covered and which three were not: no fresh signup, no
+browser code entry, and no session from the login form. The durable half is not that they work; it
+is what had to be true for the test to be capable of failing. The RPC short-circuits on
+`already_verified` before reading the code, so on the verified test account a **wrong** code
+returned HTTP 200; only after `email_verified` was set false did the same request return 400.
+Recorded on [[Verify Before Reporting]] as its own section, because "ask what the system does when
+the work is already done" generalises past this feature.
+
+The Gmail-connector instance went onto the same page's *instrument* section. It is the sharpest
+one recorded: the false reading was internally consistent, survived a direct test, and was refuted
+only by a control from an unrelated sender — after a first control that came back clean because it
+could not express the failure at all. It was then confirmed from the other end by a human clicking
+the real buttons, which logged the token intact.
+
+## [2026-08-26] ingest | An auth failure is not a server error
+
+**Created** `raw/sessions/2026-08-26-auth-401-not-500.md` and
+[[Auth 401-Not-500 Session]] (`sources/auth-401-not-500-session.md`).
+**Updated** `index.md` (catalogues the new source), `docs/SHIPPED_LOG.md`,
+`docs/PROJECT_CONTEXT.md` §5.
+
+Code change + deploy (#542, `ced582f4`, 20 functions). Every failure in these functions returned
+one hardcoded status, so an unauthenticated request answered 500 — retryable and pageable, which
+an auth failure is not. Scope went 5 → 14 → 18 → 20: the "5" was inherited from an earlier
+investigation's sample, a message-grep found 14, the fleet guard found 4 more with the same shape
+and a different message, and Codex found the rejected-credential branch (expired tokens — the
+commoner failure). **A guard's silence means "nothing matched my pattern", never "nothing is
+wrong."** `verify_jwt` probed before and after and unchanged.
+
+**Surfaced in the process:** `refund-package-order` and `release-package-payout` look up the order
+with a service-role client BEFORE authenticating, so an anonymous caller can distinguish "order
+exists" from "order not found". Proven by supplying the field. The naive reorder breaks guest
+refunds (the guest branch needs `order.buyer_guest_token`), so the fix is to stop leaking
+existence. Left for its own change.
+
+## [2026-08-26] ingest | The two proxies answered every origin with `*`
+
+**Created** `raw/sessions/2026-08-26-proxy-cors-wildcard.md` and
+[[Proxy CORS Wildcard Session]] (`sources/proxy-cors-wildcard-session.md`).
+**Updated** [[Edge-Function Deploy & Bundling]] (the "left alone" bullet closed, and its tally
+annotated), `index.md` (both the concept entry and the new source), `docs/SHIPPED_LOG.md` (two
+cross-refs marked closed plus a new top entry), `docs/PROJECT_CONTEXT.md` §5 Shipped.
+
+Code change + deploy (#539, `8bd8b3c0`). `outstand-proxy` and `social-proxy` were the only 2 of
+125 answering a wildcard ACAO — because both need a WIDER `Allow-Headers` than `corsHeaders`
+provides, so copying the block was easier than sharing it. Fixed by sharing the *origin decision*
+(`resolveAllowedOrigin`) and stamping it at the response boundary, since both build most responses
+in module-level helpers with no `req` in scope. Fleet sweep after: **wildcard = 0**, and
+`verify_jwt` unchanged. Two Codex findings (Vercel previews, `127.0.0.1:8080`) declined on
+measurement, with the reasoning recorded in the helper so it can be reversed deliberately.
+
+## [2026-08-26] ingest | TikTok connector: two locks not three, and four defects one real connection found
+
+**Created** [[TikTok Analytics Connector]] (`concepts/tiktok-analytics-connector.md`) and
+`raw/sessions/2026-08-26-tiktok-analytics-connector.md`. **Updated** `index.md`,
+`docs/SHIPPED_LOG.md`, `docs/PROJECT_CONTEXT.md` §5, `docs/DATABASE_SCHEMA.md`,
+`docs/runbooks/tiktok-analytics-connector-setup.md`.
+
+New page rather than a compound onto [[X Analytics Connector]]: this connector is defined by the
+places it deliberately **diverges** from X, so folding it in would bury the divergence as a
+retrieval key — and the divergence is the whole content.
+
+The durable half is not "TikTok works". It is three transferable rules. **A cost control is not a
+correctness control**: X's insights lock exists because X bills per read, TikTok's Display API is
+free, and carrying the lock anyway would add a place a claim can strand for no benefit.
+**Widening a column is not a local change** — every function *declaring* that type has to move
+with it, which is why the fix took three migrations rather than one. And **when a probe comes
+back clean, prove it could have come back dirty**: the status-RPC bug read as fine because every
+counter on the row was null, and a null coerces to anything.
+
+Also recorded, because it contradicts the other four connectors: **the acceptance signal differs
+per platform.** `last_synced_at` landing seconds after `connected_at` proves the API was really
+called on YouTube, Instagram and Facebook. TikTok's read fires on card render, so the gap was 38
+minutes, then 89 seconds. The runbook asserted the sibling rule and was wrong; corrected in place.
+
+## [2026-08-26] ingest | The 12 money functions answering `.io` were stale bundles, not a bug
+
+**Created** `raw/sessions/2026-08-26-money-functions-stale-cors-bundles.md`.
+**Updated** [[Edge-Function Deploy & Bundling]] (new 2026-08-26 section — the paired-origin
+control, measuring `verify_jwt` with no credential before deploying, digest-not-value secret
+proof, the full-125 sweep, and the three findings deliberately left out of a redeploy),
+[[iOS TestFlight First Build]] (the "sweep is still unowned" claim closed; the 13 → 12 delta
+reconciled — two incidentally fixed by an unrelated deploy, one newly found by widening the
+probe from the 50 `src/` invokes to all 125), `index.md`, `docs/PROJECT_CONTEXT.md` §5,
+`docs/SHIPPED_LOG.md`.
+
+Deploy only — no code change, no migration. Verified by re-probing: all 12 now echo
+`capacitor://localhost` with a `.com` control still echoing `.com`, `verify_jwt` byte-identical
+before and after, and a sweep of all 125 deployed functions returning **stale = 0**.
+
 ## [2026-08-26] ingest | The app icon's black eye was the background showing through a hole
 
 **Created** [[iOS App Icon & Launch Image]] (`concepts/ios-app-icon-and-launch-image.md`) and
@@ -30,8 +228,14 @@ with the wrong reasoning kept.
 
 **Updated the same day after hardware verification.** Both assets confirmed by the founder on a
 physical iPhone 15 Pro Max, so the "nothing has run on a device" caveat was struck from the
-concept page, `SHIPPED_LOG.md` and §5 within the hour — the splash→shell **handoff** remains
-separately unconfirmed and is recorded as such rather than folded in. Getting it onto the phone
+concept page, `SHIPPED_LOG.md` and §5 within the hour. The splash→shell **handoff** was held back
+as separately unconfirmed rather than folded in — and was **answered later the same day: "no
+flash, it went straight to the app."** All three docs now say confirmed. That separation was worth
+making: the handoff is the only place a wrong `SPLASH_BG` or a wrong 423px logo width could show,
+so a correct-looking splash screenshot would not have settled it. **Note `raw/sessions/2026-08-26-
+ios-app-icon-and-launch-image.md` still reads "nothing has run on a device"** — that is correct
+and stays: `raw/` is immutable input, a record of what was known when it was written, and this
+log entry is where the later state lives. Getting it onto the phone
 added the section *"Three copies of this project exist on disk"*: three delete-and-rebuild cycles
 failed because Xcode was building a **different worktree** whose icon hashed byte-identical to the
 old one, which DerivedData's `WorkspacePath` answers in one command. ***"It didn't update" is a
