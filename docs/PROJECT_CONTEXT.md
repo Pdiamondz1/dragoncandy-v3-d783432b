@@ -317,6 +317,11 @@ Engineering cannot close these. Ordered by what blocks launch.
   Google client ID retires during 2026 — the service-account transport is built and proven end
   to end, dormant until a key is dropped in.
   → `docs/wiki/concepts/investor-pitch-deck.md` · `docs/wiki/concepts/build-time-confidentiality.md` · `docs/wiki/concepts/drive-artifact-delivery.md` · #506, #509, #513, #515
+- **The bottom-up financial model** — four metros' Census venue counts × penetration × live pricing
+  drive a formula-live `.xlsx`, the deck's financials and §3's restated band; plan and model agree on
+  reach and differ on ARPU. **Pending:** three founder calls — which revenue the $400K/employee gate
+  measures, ARPU ($277.55 modeled vs $350–500 planned), and when Year 1 starts.
+  → `docs/wiki/concepts/bottom-up-financial-model.md`
 - **Retrieval quality measured, not assumed** — `npm run eval:rag` scores 53 real queries taken
   from `donny_tool_executions`, with out-of-corpus controls run first. `k=10` is now pinned on
   evidence rather than arithmetic. A monthly workflow re-runs it against a committed baseline
