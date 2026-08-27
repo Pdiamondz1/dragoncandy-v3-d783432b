@@ -15,6 +15,7 @@ import {
   PUBLIC_FORBIDDEN_ROW_LABELS,
   checkableForbiddenValues,
 } from './lib/public-workbook-guard';
+import { applyTheme, withNegativeStyle } from './lib/workbook-theme';
 import { writeFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 
@@ -104,13 +105,16 @@ for (const sheet of spec) {
       } else if (cell.v !== null) {
         target.value = cell.v;
       }
-      if (cell.fmt) target.numFmt = cell.fmt;
+      // `withNegativeStyle` only ever ADDS a negative section to a `$` format that has not
+      // stated one, so the positive half a reader sees is byte-identical to the spec's.
+      if (cell.fmt) target.numFmt = withNegativeStyle(cell.fmt) as string;
       if (cell.name) wb.definedNames.add(`${sheet.name}!${target.address}`, cell.name);
     });
   });
-  ws.getColumn(1).width = 44;
-  for (let c = 2; c <= 8; c += 1) ws.getColumn(c).width = 18;
-  ws.getRow(1).font = { bold: true };
+
+  // Every value, formula and defined name is on the sheet by this point. The theme decorates
+  // what is there and writes no values — see scripts/lib/workbook-theme.ts.
+  applyTheme(ws, sheet);
 
   // The Totals sheet's "Include?" toggle column must only ever hold YES/NO — a dropdown
   // instead of free text, so a typo can't silently fail to match the `IF(...="NO",...)`

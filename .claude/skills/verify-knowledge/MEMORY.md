@@ -81,6 +81,26 @@
 
 ## Run log (newest first — add each new entry at the TOP; never edit/delete past entries)
 
+### 2026-08-26 — after PR #550 (multi-metro financial model) merged and local main refreshed
+**Output:** verdict block emitted in-session — `done:true`, all three criteria met.
+**Happened:** Probed the RAG with FOUR tokens taken from lines the newest in-scope wiki revision
+(`64e17123`) ADDED — `customerMonths`, `bandFloorAcross`, `zipset`, `resolveSuppressed` — each
+returning 1 row, against an invented control token returning 0. Table holds 494 rows.
+**Worked:** Taking the probe from `git diff <sha>^1 <sha>` added-lines rather than from memory of
+what the session wrote. Two of the four are code identifiers that appear nowhere else in the
+corpus, so a hit cannot be inherited from an older page — the trap this check's own wording warns
+about.
+**Failed:** nothing.
+**Remember:** The post-merge hook log at `<git-common-dir>/knowledge-sync.log` is direct evidence
+the sync RAN, and is readable from a worktree even though the main checkout is not — resolve it
+with `git rev-parse --path-format=absolute --git-common-dir`. Reading it FIRST turns "did the hook
+fire?" from an inference into an observation, and its `inserted/updated/errors` line is the sync's
+own success authority. Cheaper than any DB query; make it step one of check (b). This run it also
+confirmed the `[wiki-is-internal]` lesson in the wild: `sync:wiki` reported `Publishing 0 page(s)`
+(expected) while `sync:internal` carried the page — `documents=165 rows=484 inserted=2 updated=482
+errors=0`.
+
+
 ### [2026-08-26] `worktree-xcode-app` — iOS app icon + launch image knowledge sync
 
 **Output:** verdict block emitted in-session — `done:true`, all three criteria `met:true`.

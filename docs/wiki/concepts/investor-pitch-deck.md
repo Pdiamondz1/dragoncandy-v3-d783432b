@@ -76,9 +76,11 @@ the honest answer to "how do you know that?".
   **30 → 45**, an investor-facing count understated by a third and certified by the system built to
   prevent that. Found by the Codex second review reading the note rather than the tag.
 - **Two consumers of one register will disagree if each does its own arithmetic.** The deck sized
-  the runway buffer on the FIRST month's burn (the engineers start in months 3 and 4) with a
-  3-month buffer, where the document used the ending burn and 6. $1,157,147 versus $1,462,568, both
-  sendable in the same email. One `preSeedRaise()` now.
+  the runway buffer on the FIRST month's burn (nobody has started in month 1) with a 3-month
+  buffer, where the document used the ending burn and 6. $1,157,147 versus $1,462,568, both
+  sendable in the same email. One `preSeedRaise()` now. Both figures are the ones the roster of
+  the day produced and are left as written; the raise has since moved (below), which is the point
+  — the bug was two arithmetics, not two numbers.
 - **A text assertion proves a string is present, never that a human can read it.** The gloss on the
   ask slide rendered as invisible text — `GradientText` is `bg-clip-text text-transparent`, and a
   wrapped inline span has no background behind its second line — while the glossary test passed
@@ -162,8 +164,18 @@ Four founder inputs, each a marked hole on its slide and printed by the exporter
 PDF: **SAFE terms**, **real team bios**, a **countable Hoboken restaurant number** (town-wide), and
 the **launch-event dates, venue bookings and budget**. Uncle Rocco's status and Adrian Vella's
 consent were answered 2026-08-24 — Adrian as a **board member**, not an advisor, which the deck had
-understated throughout. The corrected raise is **$1,462,568**, inside the intended $500K–$1.5M
-pre-seed band by $37K.
+understated throughout.
+
+**The raise is $1,491,244** (2026-08-26). It read **$1,462,568** until the pre-seed budget was
+re-cut onto the four roles the tech-department plan is actually recruiting — product manager, UX
+designer, senior developer, mid-level developer — in place of the back-end and AI engineers it used
+to fund, neither of whom appears in that plan or in the outreach sent 2026-08-21. The raise is
+computed from the budget, so changing who it funds changes it; nothing was re-sized by hand.
+
+**Read the band margin, not just the figure.** $1,491,244 is inside the intended $500K–$1.5M
+pre-seed band by **$8,756**. The old figure cleared it by $37K. The next line item of any size
+takes the raise out of the band, and the band is the constraint that has been treated as
+comfortable in every prior write-up here — it no longer is.
 
 ## The ask (superseded — the first deck's framing)
 

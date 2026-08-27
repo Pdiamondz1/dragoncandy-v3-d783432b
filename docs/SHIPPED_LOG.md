@@ -32,6 +32,146 @@
 >
 > **Adding an entry:** prepend it (newest first). See `knowledge-sync` step 4.
 
+## [2026-08-26] The pre-seed funds the four people we are actually hiring, and the workbook gets a design
+
+Branch `feat/preseed-four-hires`, two commits. Codex second review clean, no findings.
+`tsc --noEmit` clean, 341 test files / 3931 tests, `npm run build` green, and
+`npm run pitch:verify-public-workbook` still reporting the public file carrying none of the 4
+forbidden labels, none of the 21 forbidden values and neither gated sheet — with its control
+confirming all of them ARE findable in the confidential one.
+
+### The budget funded two roles nobody is hiring
+
+`src/pitch/model/confidential.ts` funded a **back-end engineer** ($195K loaded) and an **AI
+engineer** ($215K loaded). Neither role appears in `docs/DragonCandy_Tech_Department_Scope.md` §4,
+and neither appears in the outreach sent 2026-08-21 to Adrian's three referrals. The plan actually
+being executed recruits four different people: a product manager, a UX designer, a senior
+developer and a mid-level developer.
+
+Funding a team nobody is recruiting is not a conservative assumption. It is a wrong one, and it
+propagates — **the raise is computed from the budget**, so the number an investor was to be asked
+for had been sized against a roster that does not exist.
+
+The four lines now sit on the tech scope's own recommended US/Europe mix, and the four annuals
+reproduce that document's stated band exactly. It says the mix is "about $415–445K in salary":
+low = 195 + 90 + 60 + 70 = 415, high = 195 + 120 + 60 + 70 = 445, the spread being the product
+manager's $90–120K range, of which the midpoint $105K is taken. US FTE figures are loaded (~30%
+employer cost); the Europe/contract figures are not, which is correct rather than an oversight —
+a European contractor carries no employer load for us. Software and AI costs are deliberately NOT
+folded in, because the same document's "$450–500K a year with software and AI" is already carried
+by the separate `infra` and `agents` lines, and adding it here would double-count.
+
+**Start months are inherited or sourced, never chosen here.** Month 3 is carried over unchanged
+from the `backend` line these replace, and applies to the senior developer, the mid-level
+developer and the designer. The product manager is month 6 because the cost model's §5 states the
+PM as a month-6 hire ("Dame covers product early"). The tech scope argues the PM should instead
+start FIRST, since the audit is their job — a real disagreement between two live documents,
+recorded in the tech scope's own "Two places this differs from our existing cost model" note
+rather than silently resolved by a code file.
+
+**Three consequences, each stated rather than left to be discovered.**
+
+*No dedicated AI engineer is funded across the 18-month horizon.* Donny work sits with the CTO and
+the senior developer. `docs/DragonCandy_Capital_Raise_Cost_Model.md` §5 keeps its full roster with
+a note explaining that it describes the fully-ramped seed-stage team behind a **$3M priced round**,
+not the four hires a pre-seed pays for, and that where the two disagree on a role the tech scope is
+current. Its other roles — AI developer, DevOps/App Administrator, part-time security engineer,
+sales AE — are not cancelled; the tech scope's own words are that they "aren't cancelled. They're
+just later." One consequence that document did not previously state is now written into it: with
+no App Administrator funded, the "auto-improvement agents" compute line is owned by the CTO and
+the senior developer.
+
+*The raise moved: $1,462,568 → $1,491,244.* Nothing was re-sized by hand. The margin matters more
+than the figure — it now sits inside the intended $500K–$1.5M pre-seed band by **$8,756**, where
+the old figure cleared it by $37K. Every prior write-up treated that band as comfortable. The next
+line item of any size takes the raise out of it.
+
+*Y1 headcount is 7, not 5–6* — a count (2 founders + 4 hires + bookkeeper), not an estimate. That
+broke the year-over-year composition in the staffing analysis, and the contradiction is FLAGGED
+rather than guessed at: Year 2 is 7–8 people, so it adds at most one person while its list names
+three FTE roles plus a contractor; and Year 3 says "Add: Product Manager (FTE)" for someone who is
+now a Year 1 hire. The Y2/Y3 totals were written against a 5–6 Year 1 and were not re-derived,
+because re-deriving them means deciding who is actually hired in 2027 and 2028 — a founder call.
+`PROJECT_CONTEXT.md` §3's claim that nothing in its own three-year table derives from the Y1 cell
+still holds (revenue per employee is computed against Y3 alone), so the contradiction is in the
+**composition** of the years, not in any revenue figure.
+
+**A needle aimed at a deleted line reports clean forever.** `workbookProvenance.test.ts` asserts no
+confidential salary reaches the public workbook, and its needle was the AI engineer's **$17,900** —
+a value this budget no longer emits. That is the same failure `verify-public-bundle.ts` records in
+its own header: a probe whose subject went missing passes for the wrong reason. It now uses the
+mid-level developer's **$5,833**, chosen over the designer's round $5,000 for the same reason that
+file avoids round needles, and it carries a **control** — the same needle must be FOUND in the
+confidential spec. Without it, "absent from the public build" is also what you get from a needle
+nothing emits.
+
+### The workbook had two style rules
+
+`npm run model:xlsx` shipped with column A at width 44 and row 1 bold. That is enough to read and
+not enough to follow: twelve identical grey sheets, no way to see where a section begins, no way to
+tell a subtotal from the rows above it, and no way to tell the sheet you may edit from the sheet
+that is a Census extract. The explanatory paragraphs are hand-wrapped one row per line, so they
+read as data until you notice they are prose.
+
+**The split is the design.** The spec (`src/pitch/model/workbook.ts`) gains a `CellRole` — `title`,
+`subtitle`, `header`, `section`, `note`, `input`, `total`, `headline`, `provenance` — which are
+claims about the document's STRUCTURE, true in a PDF or in a renderer with no colours at all.
+`scripts/lib/workbook-theme.ts` is the only file that decides a section is teal. Putting fills in
+the spec would turn the model into a stylesheet, and `workbookProvenance.test.ts` walks every cell
+in it asserting each number traces to a registered assumption — every colour added there is another
+cell that walk has to learn to ignore.
+
+**A role on the first cell of a row governs the row**, which is why tagging four metro sheets,
+Totals, Financing, Unit_Economics, the cohort sheet, Sources and the README cost about forty edits
+rather than four hundred. Inferring structure in the writer from a row's SHAPE was rejected: a
+prose row and a section heading are the same shape — one string in column A, nothing beside it —
+and a rule that cannot tell them apart formats every explanatory paragraph as a heading.
+
+**No row was added, moved or removed**, which is a constraint rather than a coincidence. `rowOf()`
+resolves cross-sheet formulas by LABEL and `totalsSheet` addresses metro sheets by row NUMBER, so a
+presentation change that shifted a row would silently repoint a formula while its cached value
+stayed right. The role helpers leave `v` byte-identical, so both resolvers see what they always saw.
+
+What a reader gets: a dark-teal title band per sheet, tinted section headings, prose merged across
+the sheet in muted italic, subtotals with a rule above them, the headline row of each block tinted,
+the label column and header row frozen, per-sheet column widths measured from the content
+(excluding merged prose rows, or one 90-character sentence would set column A's width), grouped tab
+colours, landscape fit-to-one-page-wide print setup, and losses as red bracketed accounting
+figures. Colours are the `dc-*` tokens from `DESIGN_SYSTEM.md`: the header fill is `dc-teal-btn`
+**#0F766E**, the dark teal that system reserves for FILLS, for the same reason it is used behind
+white text there — the bright brand teal #4DD9C0 is ~1.6:1 against white. The design system records
+that trap as "dark-fill-as-text"; a spreadsheet header is the same mistake one medium over.
+
+**Two of these are not cosmetic.** The Assumptions value column had **no number format at all**, so
+the one sheet a reader is told to edit showed `0.029` for a 2.9% Stripe fee and `0.005` for a
+half-percent Manhattan penetration — the two figures most likely to be mistyped by an order of
+magnitude, in the form that makes the mistake invisible. Formats are now derived from the registered
+UNIT (`fraction` → `0.00%`, `USD*` → `$#,##0.00`, `calendar` → `0`, else `#,##0.###`), which also
+makes the edit natural: typing `8%` into a percent-formatted cell stores 0.08, where typing it into
+a General cell stores text. `calendar` is special-cased AHEAD of the numeric fallback, because 2026
+is a year and `#,##0` renders it `2,026`. And the **editable cells are now visibly editable** — the
+Assumptions values and the Totals YES/NO toggles carry a boxed amber fill and nothing else does,
+pinned by a test asserting exactly two sheets ever hold an `input` cell. The README promises two
+editable surfaces; a third would be a promise nothing made.
+
+**The control is that presentation may not change a value.** `scripts/lib/workbook-theme.test.ts`
+builds the spec, writes it the way the generator does, applies the theme, then reads every cell back
+and compares to the spec — over a thousand cells, with a floor asserted so the check cannot pass on
+an empty workbook. It also pins that a number format's POSITIVE section is byte-identical to the
+spec's, because a format is presentation fully capable of lying (`0.029` shown as `3%`).
+`withNegativeStyle` therefore only appends a negative section, only to `$` formats, and never to a
+format that already declares its own sections — one that does has said what it wants, and overriding
+it would make the spec's instruction silently inoperative.
+
+**Found and not fixed:** a formula cell whose cached result is **zero** reads back from `exceljs`
+with the result missing. It predates this work — the real writer has always behaved this way — and
+it is harmless in Excel and Sheets, both of which recalculate on open. It matters only to something
+that trusts a cached value without recalculating. The test records it rather than papering over it.
+
+→ [[Bottom-Up Financial Model]] · [[Investor Pitch Deck & Capital Raise]] ·
+`docs/wiki/raw/sessions/2026-08-26-preseed-roster-and-workbook-design.md`
+
+
 ## [2026-08-26] Native publishing — the Facebook step machine, and one queue for every platform
 
 **PR #544, open at time of writing.** 21 commits. The first direct-API **WRITE** in this

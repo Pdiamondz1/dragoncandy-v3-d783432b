@@ -1,5 +1,28 @@
 # Wiki Log
 
+## [2026-08-26] ingest | The pre-seed roster, and giving the workbook a design
+
+**Created** `raw/sessions/2026-08-26-preseed-roster-and-workbook-design.md`.
+**Updated** [[Bottom-Up Financial Model]] (two new sections plus two founder decisions),
+[[Investor Pitch Deck & Capital Raise]] (the raise, and the band margin that went with it),
+[[PART 1 — Engineering & AIOS Operations]] (Y1 roster, and an OPEN CONTRADICTION flagged rather
+than resolved), [[North Star & KPI Scorecard]], `PROJECT_CONTEXT.md` §3,
+`DragonCandy_Capital_Raise_Cost_Model.md` §5, `index.md`.
+
+Two threads. **(1)** The pre-seed budget funded a back-end engineer and an AI engineer, and
+neither role appears in the hiring plan or the outreach sent 2026-08-21. Because the raise is
+computed from the budget, the ask had been sized against a roster that does not exist:
+$1,462,568 → **$1,491,244**, which sits inside the intended $500K–$1.5M band by **$8,756** where
+the old figure cleared it by $37K. Y1 headcount became a **count** of 7, and that broke the
+year-over-year composition — flagged, not guessed at, because re-deriving Y2/Y3 means deciding
+who is hired in 2027–28. The public-workbook leak probe had been aimed at a value the budget no
+longer emits, so it would have reported clean forever; repointed, with a control asserting the
+same needle IS found in the confidential build. **(2)** The workbook got a design: semantic
+`CellRole` in the spec, colour only in `scripts/lib/workbook-theme.ts`, prose merged so it cannot
+be clipped, editable cells visibly editable, and the Assumptions column that displayed `0.029`
+for a 2.9% fee formatted from its registered unit — all under a test that **presentation may not
+change a value**, over a thousand cells with a floor so it cannot pass on an empty workbook.
+
 ## [2026-08-26] update | Native publishing is deployed and running — correcting a status written hours earlier
 
 **Updated** [[Native Publishing Queue]], [[Facebook Page Publishing]] and
