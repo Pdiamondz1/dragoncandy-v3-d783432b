@@ -171,7 +171,17 @@ export const METROS: readonly Metro[] = [
           'launch month (this window contains two selling SEASONS, not twenty months), so ' +
           'applying it again to the rate would be double-counting it. Note the denominator ' +
           'is itself a floor, so ten venues is a slightly smaller share of the real market ' +
-          'than 10% — the bias runs toward understating, which is the direction we want.',
+          'than 10% — the bias runs toward understating, which is the direction we want. ' +
+          'CAVEAT, added 2026-08-26 after review: the launch-month discount and the seasonal ' +
+          'one are NOT the same effect, so "already carried" is doing less work than it reads. ' +
+          'Launch month discounts ENTRY TIMING; seasonality is RECURRING ANNUAL COMPRESSION, ' +
+          'and the launchMonth note itself says a large share of these venues are dark from ' +
+          'November. The revenue treatment bills all ten customers twelve months a year at the ' +
+          'blended ARPU and 2.5 campaigns/month, identical to Manhattan. It is left that way ' +
+          'because the effect is IMMATERIAL and modelling it would mean inventing a ' +
+          'month-by-month seasonal curve nobody has measured: this metro is 0.7% of 2028 exit ' +
+          'ARR ($33,306 of $4,739,444). Recorded rather than fixed, because two statements in ' +
+          'this file disagreed and a reader deserves to know which one the model follows.',
       }),
     },
   },

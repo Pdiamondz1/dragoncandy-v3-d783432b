@@ -74,9 +74,16 @@ describe('the workbook spec', () => {
       'states the range on every sheet showing %s\'s addressable count',
       (metroId) => {
         const band = addressableBand(metroId);
+        // Located by ROW LABEL, not by numeric equality against the count itself. Matching on
+        // `c.v === band.value` reports any unrelated cell that happens to equal 97, and skips a
+        // floored count emitted as a FORMULA entirely — so it could go quiet in exactly the
+        // case it exists to catch. The label is the thing that makes a cell "the addressable
+        // count"; the value is a coincidence a reader cannot rely on.
         const showing = confidential.filter((sheet) =>
-          sheet.rows.some((r) =>
-            r.some((c) => c.f === undefined && c.v === band.value),
+          sheet.rows.some(
+            (r) =>
+              String(r[0]?.v ?? '').startsWith('Addressable venues') &&
+              r.slice(1).some((c) => c.v === band.value || c.f !== undefined),
           ),
         );
         expect(showing.length, `no sheet prints ${metroId}'s count at all`).toBeGreaterThan(0);

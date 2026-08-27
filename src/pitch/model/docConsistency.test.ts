@@ -22,7 +22,7 @@
  * wrong: a superseded figure sitting in a live document with nothing marking it as superseded.
  */
 import { describe, expect, it } from 'vitest';
-import { readFileSync, readdirSync, statSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import { REGISTER } from './assumptions';
 
@@ -278,6 +278,56 @@ describe('live documents versus the superseded three-year band', () => {
 
   it('scans a non-trivial number of live documents', () => {
     expect(LIVE_DOCS.length).toBeGreaterThan(20);
+  });
+});
+
+/**
+ * The prior plan's citation must RESOLVE, not merely look like a citation.
+ *
+ * `PRIOR_PLAN_TARGETS` points at a file in `docs/archive/` and quotes line numbers. The existing
+ * check pattern-matches that string for `docs/archive/` and `before 2026-08-26` — which passes
+ * just as happily if the file is renamed, moved, or emptied. A provenance tag whose source
+ * cannot be opened is the failure this whole register exists to prevent: this project has a
+ * recorded case of a figure wrong by a third being vouched for by its own MEASURED tag.
+ *
+ * Asserted on CONTENT, never on the line numbers the citation names. Line numbers rot on the
+ * first edit above them, and a test that fails on an unrelated insertion above line 57 teaches
+ * people to loosen the test.
+ */
+describe('the superseded band cites a source that resolves', () => {
+  const CITED = 'docs/archive/DragonCandy_Path_to_Multi-million_annual_profit.md';
+
+  it('names a file that exists', () => {
+    expect(existsSync(CITED), `${CITED} is cited by PRIOR_PLAN_TARGETS but is not on disk`).toBe(true);
+  });
+
+  it('that file still carries all three years of the band it is cited for', () => {
+    const body = readFileSync(CITED, 'utf8');
+    // Each of the three year-patterns, individually — `matchesBand` is an OR, so it would pass
+    // on Year 1 alone and report nothing about the other two.
+    const missing = SUPERSEDED_BAND.filter((re) => {
+      re.lastIndex = 0;
+      return !re.test(body);
+    }).map((re) => re.source);
+    // Only the three abbreviated forms are expected here; the expanded ones are a rendering
+    // of the generated docs, not of this archive file.
+    expect(
+      missing.filter((s) => !s.includes(',')),
+      `${CITED} no longer states the full three-year band. The citation still resolves, but it ` +
+        'no longer supports what it is cited for — re-read it before relaxing this.',
+    ).toEqual([]);
+  });
+
+  /**
+   * §3 argues the whole Y3 gap is ARPU, and attributes the plan's $400–500 to expansion revenue
+   * from DragonDash rush and AI usage. That attribution is what makes the argument checkable, so
+   * it must survive in the source too — the alternative is an argument resting on a
+   * characterisation of a document nobody re-reads.
+   */
+  it('still attributes the plan ARPU to the two streams the model books at zero', () => {
+    const body = readFileSync(CITED, 'utf8');
+    expect(body).toMatch(/\$400[–-]500\/month/);
+    expect(body.toLowerCase()).toContain('dragondash rush');
   });
 });
 

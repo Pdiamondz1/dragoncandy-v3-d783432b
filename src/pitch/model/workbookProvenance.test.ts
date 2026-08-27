@@ -172,7 +172,7 @@ describe('workbook provenance', () => {
       // zero branch of every `IF(revenue=0,0,...)` KPI guard. Not a business assumption —
       // a function argument and a guard's literal zero.
       '0': 'ROUND(...,0) precision arg, and the 0 branch of the revenue=0 KPI guards',
-      // The "/2" in the top-down cross-check's `(low+high)/2` — an arithmetic mean, the same
+      // The "/2" in the prior-plan cross-check's `(low+high)/2` — an arithmetic mean, the same
       // one `rollup()`'s `midpoint = (band.revenueLow + band.revenueHigh) / 2` computes in
       // TypeScript. Structural (how you average two numbers), not a modeled input.
       '2': 'the midpoint divisor in (top-down low + top-down high) / 2',

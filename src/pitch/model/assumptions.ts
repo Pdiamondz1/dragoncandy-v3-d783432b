@@ -163,6 +163,28 @@ export const CALENDAR = {
       'into 2027 this value moves and every year label in the deck moves with it; that is ' +
       'the point of stating it here rather than leaving it implicit.',
   }),
+  year1StartMonth: modeled({
+    value: 1,
+    unit: 'calendar month',
+    label: 'The calendar month Year 1 starts in',
+    source: 'src/pitch/model/metros.ts (Metro.launchMonth, "Absolute month, 1 = 2026-01")',
+    note:
+      'Registered 2026-08-26 because it was the load-bearing HALF of "2026 = Year 1" that ' +
+      'nobody had stated. The year label was confirmed by the founder; the JANUARY ANCHOR was ' +
+      'left an unstated default, which is the exact class of thing that confirmation exists to ' +
+      'eliminate. Hoboken launches at month 1, so the model books customers from February 2026 ' +
+      '(0,1,2,3,4,4,5,6 through month 8). ' +
+      'IT IS 2026-08 AND THAT REVENUE PROVABLY DID NOT OCCUR: `payingCustomers` is a MEASURED ' +
+      '0 in this same register (asOf 2026-08-24) and PROJECT_CONTEXT.md section 4 states ' +
+      'production launch is TBD. So two registered facts in one file disagree, and the honest ' +
+      'reading of the Year 1 column is "the first twelve months of operation", NOT calendar ' +
+      '2026 -- every month already elapsed is one the ramp has not started. ' +
+      'Left as 1 rather than advanced to the current month deliberately: moving it is a ' +
+      'FOUNDER decision about when launch actually happens, and picking a month here would be ' +
+      'inventing the thing this register exists to prevent. Carried to the founder beside the ' +
+      'revenue-per-employee and ARPU decisions. Advancing it shifts every metro later and ' +
+      'reduces Year 1 revenue; it does not change any later year total.',
+  }),
 } satisfies Record<string, Assumption<number>>;
 
 export const MARKET = {

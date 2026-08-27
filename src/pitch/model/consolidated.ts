@@ -23,7 +23,7 @@
  * So the model is split by what a number DEPENDS ON, not by what renders it:
  *
  *   - `rollup.ts`      — revenue, gross profit, marketing, metro EBITDA, metros live and
- *                        the top-down cross-check band. Confidential-free. A public slide
+ *                        the prior-plan cross-check band. Confidential-free. A public slide
  *                        may import it.
  *   - `sharedCost.ts`  — the arithmetic (sum a budget, split it by revenue share). Holds
  *                        no figures, so it is public too.

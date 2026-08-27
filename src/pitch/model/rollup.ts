@@ -176,11 +176,60 @@ const COHORT_UNSCALED_FIELDS = [
   'penetrationAtYearEnd',
 ] as const satisfies readonly (keyof MetroYear)[];
 
-/** Both lists, for the completeness test in `rollup.test.ts`. */
+/**
+ * Fields the cohort REPLACES outright, rather than scaling or carrying.
+ *
+ * There is exactly one, and it existed before this list did: `cohortMetroYear` returns
+ * `{ ...template, metroId: COHORT_METRO_ID, ...scaled }`. It gets its own category because
+ * "unscaled" is documented as *carried from the template unchanged*, and `metroId` is
+ * emphatically not — filing it there would have made the classification say something false in
+ * order to make a check pass.
+ *
+ * It was invisible to the runtime completeness test because that test derives its key set from
+ * the NUMERIC entries of a projected metro, and `metroId` is a string. The compile-time
+ * assertion below found it on its first run.
+ */
+const COHORT_OVERRIDDEN_FIELDS = ['metroId'] as const satisfies readonly (keyof MetroYear)[];
+
+/** All three lists, for the completeness test in `rollup.test.ts`. */
 export const COHORT_FIELD_CLASSIFICATION = {
   scaled: COHORT_SCALED_FIELDS,
   unscaled: COHORT_UNSCALED_FIELDS,
+  overridden: COHORT_OVERRIDDEN_FIELDS,
 } as const;
+
+type CohortScaled = (typeof COHORT_SCALED_FIELDS)[number];
+type CohortUnscaled = (typeof COHORT_UNSCALED_FIELDS)[number] | (typeof COHORT_OVERRIDDEN_FIELDS)[number];
+
+/**
+ * Compile-time exhaustiveness. Every key of `MetroYear` must appear in exactly one list, and
+ * `tsc` says so before any test runs.
+ *
+ * `as const satisfies readonly (keyof MetroYear)[]` on the lists themselves only checks that
+ * the names present ARE valid keys — never that they are all present. The runtime completeness
+ * test in `rollup.test.ts` closes the common case, but it derives its key set from
+ * `Object.entries(projectMetroYear(...))` on ONE metro, so three shapes ride straight through
+ * it: an optional numeric absent on that metro, a `number | null` that is null there, and an
+ * object of numbers carried by the `...template` spread. All three are `keyof MetroYear`, so
+ * this catches them and the runtime test cannot.
+ *
+ * If this line stops compiling, a field was added to `MetroYear` and not classified. Add it to
+ * the scaled list if N metros have N times as much of it, and to the unscaled list if it is a
+ * rate, a label, or a per-metro market size. Do not widen the type to make the error go away —
+ * an unclassified field is silently carried through unscaled, which is exactly how `exitArr`
+ * shipped a cohort row holding one metro's ARR beside seventeen metros' revenue.
+ */
+export const COHORT_CLASSIFICATION_IS_EXHAUSTIVE: Exclude<
+  keyof MetroYear,
+  CohortScaled | CohortUnscaled
+> extends never
+  ? true
+  : ['UNCLASSIFIED MetroYear field(s)', Exclude<keyof MetroYear, CohortScaled | CohortUnscaled>] = true;
+
+/** Same, in the other direction: a field must not be in BOTH lists. */
+export const COHORT_CLASSIFICATION_IS_DISJOINT: [CohortScaled & CohortUnscaled] extends [never]
+  ? true
+  : ['FIELD IN BOTH LISTS', CohortScaled & CohortUnscaled] = true;
 
 export function cohortMetroYear(year: ModelYear, mix: TierMix): MetroYear {
   const count = COHORT_METRO_COUNTS[year].value;
