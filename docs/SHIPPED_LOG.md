@@ -111,7 +111,13 @@ have been the only way to actually break this.
 
 **Open:** the scheduled trigger has not fired (first 04:20 UTC); `deleted > 0` is unreachable
 until the queue has a UI producer, since nothing has ever been staged; and `publish_jobs` is
-absent from `docs/DATABASE_SCHEMA.md`, which shipped without a table entry.
+**was** absent from `docs/DATABASE_SCHEMA.md` — closed in this same PR, and documenting it
+turned up two things reading the migrations would not have: `idx_publish_jobs_account_published`
+is keyed on the legacy `ig_user_id` while the live `claim_publish_job` contains **zero**
+references to that column, and the legacy `publish_jobs_connection_id_fkey` is **still
+`ON DELETE CASCADE`** where `20260826430000` moved the two live connection FKs to `SET NULL`.
+The cascade is inert only because no RPC populates `connection_id`; anything that backfills it
+silently re-arms the behaviour that migration removed. Both recorded, neither fixed here.
 
 → [[Native Publishing Queue]] · `docs/wiki/raw/sessions/2026-08-27-publish-media-reaper.md`
 ## [2026-08-26] The pre-seed funds the four people we are actually hiring, and the workbook gets a design

@@ -19,6 +19,13 @@ not the in-body `request.jwt.claims` guard its four siblings carry.
 
 Verified on prod with a planted, rolled-back five-object population: three reaped, two withheld.
 A Codex P1 asserting `storage.objects` has no `is_delete_marker` column was **refuted** by prod.
+
+**Also documented `publish_jobs` in `DATABASE_SCHEMA.md`**, which the native-publishing work had
+shipped without. Written from prod rather than from the migrations, which surfaced two things the
+files would not have: a rate-window index still keyed on the legacy `ig_user_id` that the live
+`claim_publish_job` never references, and a legacy FK still `ON DELETE CASCADE` where
+`20260826430000` moved the live ones to `SET NULL` — inert only because nothing populates that
+column. Recorded, not fixed.
 ## [2026-08-26] ingest | The pre-seed roster, and giving the workbook a design
 
 **Created** `raw/sessions/2026-08-26-preseed-roster-and-workbook-design.md`.

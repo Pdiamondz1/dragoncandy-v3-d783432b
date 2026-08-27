@@ -982,6 +982,104 @@ the token models do. Read the notes under the table before assuming a pattern ca
 > control — the same query against `profiles` returns 7, so a 0 could have meant a broken query
 > rather than a locked-down table. See [[TikTok Analytics Connector]].
 
+## Native publishing queue
+
+The first direct-API **write**. One queue serves both Instagram and Facebook Pages; the
+protocol modules are deliberately not shared. Read alongside [[Native Publishing Queue]] and
+[[Facebook Page Publishing]] — this section is the schema, those are the reasoning.
+
+**This table shipped undocumented here.** It is added 2026-08-27 and every fact below was read
+off **prod**, not off the migration files.
+
+| Table | Purpose |
+|-|-|
+| `publish_jobs` | One row per scheduled native post. Service-role only. 29 columns; the load-bearing ones are `platform` (`instagram`/`facebook`), `account_key`, `media_paths text[]`, `scheduled_at`, `status`, `attempts`, `claim_id`/`claimed_at`, `publishing_at`, `provider_ref`, `provider_post_id`, `idempotency_key`. |
+
+> **Lockdown, verified on prod rather than assumed:** RLS enabled with **zero policies for any
+> role**, and grants reading back as exactly `postgres` + `service_role`. The zero carried a
+> control — the same policy query against `profiles` returns **7** — so it means "locked down",
+> not "broken query". Same construction as the five connector tables above: grants and RLS are
+> independent gates, so a future migration that re-grants the table still hits
+> RLS-with-no-policy.
+>
+> **`status` is exactly six values**, and every consumer's exhaustiveness depends on it:
+> `queued`, `claimed`, `published`, `failed`, `stuck`, `needs_review`. Three more CHECKs encode
+> invariants worth knowing before writing a row by hand: `publish_jobs_published_has_post_id`
+> (a `published` row must carry `provider_post_id`), `publish_jobs_review_has_publishing_at`
+> (a `needs_review` row must carry `publishing_at` — that is what makes the state *ambiguous*
+> rather than merely failed), and `publish_jobs_post_id_pairs_with_time`
+> (`provider_post_id IS NULL` **iff** `published_at IS NULL`).
+>
+> **`publish_jobs_has_media_or_text` is the one that already bit.** It reads
+> `COALESCE(array_length(media_paths, 1), 0) >= 1 OR (facebook feed with a caption)` — the
+> `COALESCE` is not defensive tidying: `array_length('{}', 1)` is **NULL**, and a CHECK
+> **passes** on NULL, so the original constraint had never rejected anything.
+>
+> **A `BEFORE INSERT` trigger, not a CHECK, requires a connection.**
+> `trg_publish_jobs_require_connection → enforce_publish_job_has_connection` raises *"a new
+> instagram publish job must name a connection"*. It is a trigger because the rule is about a
+> **transition** (creation) and a CHECK cannot tell an insert from an update — the same split the
+> `guard_*_verification_columns` triggers make. Practical consequence: you cannot hand-insert a
+> row without naming a real connection, which is what makes a probe against this table awkward.
+>
+> **Four indexes plus the PK, and one of them is stale.** `idx_publish_jobs_due`
+> (`scheduled_at where status='queued'`) and `idx_publish_jobs_claimed`
+> (`claimed_at where status='claimed'`) serve the sweep and its janitor;
+> `idx_publish_jobs_account` (`platform, account_key`) serves the per-account rate window; and
+> `publish_jobs_user_idempotency_key` is **UNIQUE on `(user_id, idempotency_key)` WHERE the key
+> is not null**, which is the enqueue's dedup. But
+> `idx_publish_jobs_account_published` is on **`(ig_user_id, published_at)`**, and the live
+> `claim_publish_job` contains **zero** references to `ig_user_id` — measured against `pg_proc`
+> on prod. It is a leftover from the Instagram-first shape, kept here as an observation rather
+> than removed in the reaper's branch.
+
+> **Legacy columns from the Instagram-first shape, and one dormant landmine.** The table was
+> built for Instagram and later generalised, so BOTH column sets still exist. Live:
+> `platform`, `account_key`, `instagram_connection_id`, `facebook_connection_id`,
+> `provider_ref`, `provider_post_id`. Legacy: `connection_id`, `ig_user_id`, `ig_container_id`,
+> `ig_media_id`. Measured against `pg_proc`: `ig_container_id` and `ig_media_id` are referenced
+> by **no** queue RPC at all; `ig_user_id` is written by `enqueue_publish_job` only (mirroring
+> `account_key` for Instagram) and read by none.
+>
+> **The landmine is in the FKs, and it is inert only by accident of what nothing writes.**
+> `20260826430000` deliberately made the two live connection FKs `ON DELETE SET NULL` so that
+> disconnecting an account can no longer cascade-delete its jobs — a cascade there would destroy
+> the row while leaving its staged media behind, which is exactly the orphan class
+> [[Native Publishing Queue]]'s reaper exists to collect. **But the legacy
+> `publish_jobs_connection_id_fkey` is still `ON DELETE CASCADE`** to
+> `instagram_account_connections`. It causes nothing today because **no RPC populates
+> `connection_id`** (checked on prod with a word-boundary match, so `instagram_connection_id`
+> cannot mask it), so the column is uniformly NULL and the cascade never fires. Anything that
+> ever backfills that column silently re-arms the behaviour `20260826430000` removed. Do not
+> treat "the cascade was fixed" as true of this table — it was fixed on the columns in use.
+>
+> `user_id` and `acting_user_id` are both `ON DELETE CASCADE` to `auth.users`; in v1 they are
+> equal by construction, because `enqueue_publish_job` takes identity from `auth.uid()` and has
+> no id parameter to point elsewhere. `source_schedule_id` is `ON DELETE SET NULL` to
+> `donny_scheduled_posts`.
+
+> **The queue's RPCs** — all `SECURITY DEFINER`, `search_path=public`, and all but the enqueue
+> service-role-only by EXECUTE grant **and** an in-body
+> `current_setting('request.jwt.claims', true)::jsonb->>'role' = 'service_role'` guard:
+> `enqueue_publish_job` (the only creator; granted `authenticated`, since the caller's JWT **is**
+> the authorization), `claim_publish_job` (hands one due job to one sweep run, under a
+> `pg_advisory_xact_lock` keyed on the account, and carries the 48h-deadline janitor),
+> `record_publish_container`, `confirm_publish_job`, `fail_publish_job`, and
+> `reapable_publish_media`.
+>
+> **`reapable_publish_media(p_orphan_grace_seconds, p_terminal_retention_seconds,
+> p_review_retention_seconds, p_limit)`** (`20260826440000`, applied 2026-08-27) decides — in one
+> snapshot — which objects in the private `publish-media` Storage bucket nothing can need again.
+> It **returns names and deletes nothing**: removing a row from `storage.objects` in SQL deletes
+> the bookkeeping and leaves the file, so `publish-media-reaper` does the deleting through the
+> Storage API. Retention is orphan 6h / terminal 72h / `needs_review` 30d, under one
+> age-independent absolute — a `queued` or `claimed` job's media is never touched **at any age**,
+> because a post scheduled a month out sits `queued` for a month. The clock is
+> `greatest(object.created_at, job.updated_at)`: `publish_jobs` has **no** `handle_updated_at`
+> trigger (only `trg_publish_jobs_require_connection`), so its `updated_at` moves solely because
+> each transition RPC assigns `now()` explicitly, and `greatest` makes a future transition that
+> forgets cost retention rather than data. See [[Updated-At Trigger Drift]].
+
 ## Social & Outstand Integration
 
 | Table | Purpose |
