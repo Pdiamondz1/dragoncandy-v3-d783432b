@@ -432,6 +432,28 @@
 
 ## Run log (newest first — add each new entry at the TOP; never edit/delete past entries)
 
+### 2026-08-26 — `feat/preseed-four-hires` (pre-seed roster re-cut + workbook design pass)
+**Output:** `docs/wiki/raw/sessions/2026-08-26-preseed-roster-and-workbook-design.md`; two new
+sections on [[Bottom-Up Financial Model]]; `log.md` entry "The pre-seed roster, and giving the
+workbook a design"; `SHIPPED_LOG.md` prepended entry.
+**Happened:** Applied `[propagate-the-correction]` deliberately and it paid: the raise figure
+$1,462,568 lived in FOUR live files, and a `grep` for the OLD value found all of them plus ten
+historical occurrences that correctly stay. Also swept for the superseded Y1 headcount and the
+deleted `$17,900` needle.
+**Worked:** Trimming a §5 entry to make room, **after verifying by distinctive token that every
+fact in it exists in both the wiki page and `SHIPPED_LOG`** (`tumericturtle`, `38 minutes`,
+`int4` — each present in both). That is the header's own "trimming is safe *because* the richer
+copy was checked to exist" rule actually executed rather than assumed.
+**Failed:** Nothing broke, but the run nearly stalled: `PROJECT_CONTEXT.md` arrived from
+`origin/main` at **59,545 B against a 60,000 B cap** — 455 bytes of headroom for a whole session's
+index line. My §3 note had to be cut to a pointer twice before it fit, and the required §5 update
+was only possible after the trim above.
+**Remember:** **Check `wc -c docs/PROJECT_CONTEXT.md` at the START of the run, not when the test
+goes red.** Under ~1,000 bytes of headroom, plan the trim BEFORE writing, because the alternative
+is discovering it after the prose is drafted and compressing under pressure — which is how a
+load-bearing sentence gets cut instead of a redundant one. The cap is not a per-session problem;
+it is a standing one that every session now inherits, and the file arrives near it by default.
+
 ### 2026-08-26 — Native publishing: one queue, two protocols, and a scope decision that went half false (PR #544, `feat/instagram-native-publishing`)
 
 **Output:** [[Native Publishing Queue]] + [[Facebook Page Publishing]] (both new),

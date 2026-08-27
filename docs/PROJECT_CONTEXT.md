@@ -250,21 +250,12 @@ Engineering cannot close these. Ordered by what blocks launch.
   for a native post; and **no UI calls either enqueue function**, so nothing can reach the queue
   yet.
   → `docs/wiki/concepts/native-publishing-queue.md` · `docs/wiki/concepts/facebook-page-publishing.md` · #544
-- **TikTok read-only analytics connector** — the fifth direct platform API under the
-  2026-08-23 scope decision. #525 and #529 merged; **four** migrations (this said five, copied
-  from the entry that added it — only two widen counters, not three), four functions, all
-  `verify_jwt = true` and verified on prod by object. **CONNECTED AND MEASURING 2026-08-26**
-  (`@tumericturtle`, the four read scopes, `status=active`) — this entry called that
-  "unverified" and also named the wrong acceptance signal. **`last_synced_at` does NOT land
-  seconds after `connected_at` here**, unlike the other three connectors: TikTok's read fires
-  on card render, so the gap was 38 minutes and then 89 seconds, and a null stamp is
-  **inconclusive** — the card can show correct figures while the cache write fails, which is what
-  the `int4` overflow did. The reconnect proved #529 on prod — counters are written at
-  connect, where before they landed null. Console is a **sandbox**, because the production form
-  will not save without a demo video; that video was recorded 2026-08-26. **Pending:** save and
-  submit the production form; **swap the secrets from sandbox to production after approval**,
-  which nothing enforces and which fails at token exchange. **The privacy-policy blocker is GONE**
-  (#547) — register `/privacy.html`, never `/privacy`.
+- **TikTok read-only analytics connector** — the fifth direct platform API; four migrations, four
+  functions, verified on prod by object. **Connected and measuring 2026-08-26** (`@tumericturtle`).
+  A null `last_synced_at` is **inconclusive** here, unlike the other connectors — the read fires on
+  card render. **Pending:** save and submit the production form (the console is a sandbox); **swap
+  the secrets from sandbox to production after approval**, which nothing enforces and which fails at
+  token exchange. Register `/privacy.html`, never `/privacy`.
   → `docs/wiki/concepts/tiktok-analytics-connector.md` · #525, #529
 - **Email verification by code — the signup tab stops being thrown away** — signup used to end
   in `signOut()`, discarding the tab that had just done the work; the session now survives and a
@@ -342,8 +333,13 @@ Engineering cannot close these. Ordered by what blocks launch.
   → `docs/wiki/concepts/investor-pitch-deck.md` · `docs/wiki/concepts/build-time-confidentiality.md` · `docs/wiki/concepts/drive-artifact-delivery.md` · #506, #509, #513, #515
 - **The bottom-up financial model** — four metros' Census venue counts × penetration × live pricing
   drive a formula-live `.xlsx`, the deck's financials and §3's restated band; plan and model agree on
-  reach and differ on ARPU. **Pending:** three founder calls — which revenue the $400K/employee gate
-  measures, ARPU ($277.55 modeled vs $350–500 planned), and when Year 1 starts.
+  reach and differ on ARPU. **Re-cut 2026-08-26** onto the four roles actually being hired (the budget
+  funded a back-end and an AI engineer who appear in no hiring plan), so the raise moved $1,462,568 →
+  **$1,491,244** — inside the intended band by **$8,756**, not $37K. The workbook also gained a
+  design: semantic roles in the spec, colour only in the writer, under a test that presentation
+  cannot change a value. **Pending:** five founder calls — which revenue the $400K/employee gate
+  measures, ARPU ($277.55 modeled vs $350–500 planned), when Year 1 starts, who Y2/Y3 actually hire
+  now that Y1 is a count of 7, and whether that $8,756 margin is acceptable.
   → `docs/wiki/concepts/bottom-up-financial-model.md`
 - **Retrieval quality measured, not assumed** — `npm run eval:rag` scores 53 real queries taken
   from `donny_tool_executions`, with out-of-corpus controls run first. `k=10` is now pinned on
