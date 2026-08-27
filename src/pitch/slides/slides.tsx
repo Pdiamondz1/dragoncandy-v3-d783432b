@@ -44,7 +44,10 @@ import { Gloss, PendingMark, Source, Tag } from '../deck/components';
 import { count, money, moneyShort, pct } from '../deck/format';
 import { FOUNDER_FACTS, FOUNDER_INPUTS, LAUNCH_EVENTS } from '../deck/pending';
 import { AskFigures } from './ask.confidential';
-import { TrajectoryConsolidatedEbitda } from './trajectory.confidential';
+import {
+  TrajectoryConsolidatedEbitda,
+  TrajectoryConsolidatedNote,
+} from './trajectory.confidential';
 
 /**
  * Slide 2 exists in three forms, picked by this constant before an export (spec §6.1).
@@ -875,8 +878,14 @@ export function SlideTrajectory({ index, total }: SlideProps) {
         on 2028, a cross-check we did not tune to meet. The pale overlay is what the metros
         cost to run; what is left is <b className="text-white">metro contribution</b>, before
         company payroll, AI and infrastructure — so it is not{' '}
-        <Gloss t="EBITDA" className="text-white" />. The company&rsquo;s own line stays
-        negative through 2027, which is what the raise is for.
+        <Gloss t="EBITDA" className="text-white" />.
+        {/* The sentence that used to end this paragraph — "The company's own line stays
+            negative through 2027, which is what the raise is for" — was rendered
+            unconditionally, which stated in prose the very conclusion the gated
+            `TrajectoryConsolidatedEbitda` above withholds as a number. It now comes from
+            `@pitch/confidential`, so it is absent from the public build's JavaScript AND
+            its sourcemap. The paragraph ends as a complete sentence without it. */}
+        <TrajectoryConsolidatedNote />
       </p>
 
       <div className="mt-auto flex items-center gap-3">

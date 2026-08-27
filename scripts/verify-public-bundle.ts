@@ -24,6 +24,7 @@ import { join } from 'node:path';
 
 import { money } from '../src/pitch/deck/format';
 import {
+  CONSOLIDATED_LINE_CONCLUSION,
   PRE_SEED_BUDGET,
   USE_OF_FUNDS_SPLIT,
   buildFundsAllocation,
@@ -124,13 +125,39 @@ const forbidden: { what: string; needle: string }[] = [
   // change that inlines a precomputed total, not to detect today's leak.
   //
   // **The labels are the load-bearing check.** Measured, not assumed: scanning a
-  // `VITE_PITCH_CONFIDENTIAL=1` build reports 12 leaks, all of them labels, and 0 against
-  // the default build. If the labels are ever removed from this list, this script stops
-  // being able to detect anything at all while still printing "clean".
+  // `VITE_PITCH_CONFIDENTIAL=1` build reports 13 leaks — the 12 labels plus the prose
+  // conclusion added at the end of this list — and 0 against the default build. (It was
+  // 12/0 before that entry existed; re-measure rather than adjusting this by arithmetic.)
+  // If the labels are ever removed from this list, this script stops being able to detect
+  // anything at all while still printing "clean".
   { what: 'the raise total', needle: String(Math.round(raise)) },
   { what: 'the operating need', needle: String(Math.round(operatingNeed)) },
   { what: 'the raise total, formatted', needle: money(raise) },
   { what: 'the operating need, formatted', needle: money(operatingNeed) },
+  /**
+   * A PROSE conclusion, not a value — and the reason it is checkable at all is that it is
+   * stored as a string in the confidential module rather than typed into a component.
+   *
+   * The trajectory slide gated the consolidated-EBITDA figure and then printed what the
+   * figure MEANS ("the company's own line stays negative through 2027") to every public
+   * reader. Nothing in the list above could ever have caught that: it holds budget labels
+   * and derived totals, and a sentence contains neither.
+   *
+   * ## What this check does NOT cover — read before assuming coverage
+   *
+   * This is a scan for one exact known string. It cannot see a PARAPHRASE, a figure spelled
+   * out in words, a chart whose shape gives the same fact away, or a new sentence nobody
+   * thought to route through `@pitch/confidential`. A value scanner has no notion of
+   * meaning, and this entry does not give it one — it only means that THIS sentence, having
+   * been found once, cannot come back.
+   *
+   * The durable protection is structural, not this list: a confidential conclusion belongs
+   * in `confidential.ts`, whose text the alias keeps out of the public graph entirely. A
+   * sentence written directly into a `*.confidential.tsx` file is NOT protected — those
+   * files are in the public module graph and `build.sourcemap` embeds their whole source in
+   * `sourcesContent`, which is what this script scans. Prose review is a human step.
+   */
+  { what: 'the consolidated-EBITDA conclusion, in prose', needle: CONSOLIDATED_LINE_CONCLUSION },
 ];
 
 /**

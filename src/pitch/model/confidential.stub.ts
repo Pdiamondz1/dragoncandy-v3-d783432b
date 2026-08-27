@@ -28,6 +28,17 @@ export type { BudgetLine, FundsBucket, PreSeedRaise, RaiseInput, UseOfFundsSplit
 
 export const PRE_SEED_BUDGET: readonly BudgetLine[] = [];
 
+/**
+ * Empty, for the same reason every figure above is: the real one is a sentence stating that
+ * the company's own line is negative through 2027, which is the CONCLUSION drawn from the
+ * budget. See the real module's note on why a confidential sentence cannot live in
+ * `trajectory.confidential.tsx` — that file's source ships inside the public sourcemap.
+ *
+ * Nothing renders it: its only consumer is behind `__PITCH_CONFIDENTIAL__`, folded to
+ * `false` in exactly the builds that get this file.
+ */
+export const CONSOLIDATED_LINE_CONCLUSION = '';
+
 export const PRE_SEED_HORIZON_MONTHS = 0;
 
 export const PRE_SEED_BUFFER_MONTHS = 0;

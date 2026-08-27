@@ -36,6 +36,9 @@ import { SlideTrajectory } from './slides';
 import { moneyShort } from '../deck/format';
 import { rollup } from '../model/rollup';
 import { consolidated } from '../model/consolidated';
+// The real module, by relative path, in both vitest configurations — see the public-build
+// assertion below for why that matters.
+import { CONSOLIDATED_LINE_CONCLUSION } from '../model/confidential';
 
 declare const __PITCH_CONFIDENTIAL__: boolean;
 
@@ -99,11 +102,15 @@ describe('the trajectory slide', () => {
   });
 
   /**
-   * The slide says in prose that the company's own line "stays negative through 2027" — a
-   * claim the public build cannot compute, because consolidated EBITDA comes from the
-   * confidential budget. So it is pinned here instead, against the real model. If the model
-   * ever turns 2027 positive, this fails rather than letting the sentence quietly go stale
-   * and understate the business to an investor.
+   * The CONFIDENTIAL build says in prose that the company's own line "stays negative through
+   * 2027" — a claim the public build cannot compute, because consolidated EBITDA comes from
+   * the confidential budget. So it is pinned here, against the real model. If the model ever
+   * turns 2027 positive, this fails rather than letting the sentence quietly go stale and
+   * understate the business to an investor.
+   *
+   * The sentence itself is `CONSOLIDATED_LINE_CONCLUSION` in `confidential.ts`. It rendered
+   * unconditionally until it was gated: the deck withheld the number and printed what the
+   * number means, which discloses the same fact.
    */
   it('backs the prose claim that the company line is negative through 2027', () => {
     const byYear = new Map(consolidated().map((y) => [y.year, y.ebitda]));
@@ -120,10 +127,31 @@ describe('the trajectory slide', () => {
         expect(row.textContent).toContain(moneyShort(y.ebitda));
       }
     });
+
+    it('draws the conclusion in prose too, in the same build that shows the numbers', () => {
+      const { container } = renderSlide();
+      expect(container.textContent).toContain(CONSOLIDATED_LINE_CONCLUSION);
+    });
   } else {
     it('omits the company EBITDA line entirely from a public build', () => {
       renderSlide();
       expect(screen.queryByTestId('trajectory-consolidated')).toBeNull();
+    });
+
+    /**
+     * Gating the figure and keeping the sentence discloses the same fact in English. Note
+     * this asserts against the string from the REAL module — under vitest the relative
+     * import gives the real one regardless of the flag — so it is comparing the rendered
+     * slide with the actual confidential sentence, not with an empty stub value that would
+     * make the assertion vacuous.
+     */
+    it('does not state the confidential conclusion in prose either', () => {
+      const { container } = renderSlide();
+      expect(CONSOLIDATED_LINE_CONCLUSION.length).toBeGreaterThan(20);
+      expect(container.textContent).not.toContain(CONSOLIDATED_LINE_CONCLUSION);
+      expect(container.textContent).not.toMatch(/stays negative through/i);
+      // The public paragraph must still end as a complete sentence, not mid-clause.
+      expect(container.textContent).toMatch(/so it is not\s*EBITDA/i);
     });
   }
 

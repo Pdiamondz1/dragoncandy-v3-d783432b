@@ -22,7 +22,7 @@
  * takes the aliased budget and applies the same `sharedCostFromBudget` the model does:
  * one implementation of the arithmetic, two ways of being handed the figures.
  */
-import { PRE_SEED_BUDGET } from '@pitch/confidential';
+import { CONSOLIDATED_LINE_CONCLUSION, PRE_SEED_BUDGET } from '@pitch/confidential';
 
 import { moneyShort } from '../deck/format';
 import { rollup } from '../model/rollup';
@@ -62,4 +62,22 @@ function ConsolidatedEbitdaLine() {
 
 export function TrajectoryConsolidatedEbitda() {
   return CONFIDENTIAL ? <ConsolidatedEbitdaLine /> : null;
+}
+
+/**
+ * The last sentence of the slide's body paragraph, gated the same way.
+ *
+ * It used to be written inline in `slides.tsx` and rendered unconditionally, which disclosed
+ * in English exactly what `TrajectoryConsolidatedEbitda` withholds as a number — that the
+ * company is loss-making through 2027. **The words themselves are the confidential half**, so
+ * they come from `@pitch/confidential` rather than being typed here: this file's full source
+ * is embedded in the public bundle's sourcemap (`sourcesContent`), so a sentence written in
+ * THIS file would still ship in `dist/`. See `CONSOLIDATED_LINE_CONCLUSION`'s note.
+ *
+ * A fragment, not a block: it belongs inside the existing `<p>`, and the public paragraph
+ * ends as a complete sentence one clause earlier. Rendering nothing is `null`, so a public
+ * build emits no stray whitespace either.
+ */
+export function TrajectoryConsolidatedNote() {
+  return CONFIDENTIAL ? <> {CONSOLIDATED_LINE_CONCLUSION}</> : null;
 }

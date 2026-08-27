@@ -279,3 +279,39 @@ export function preSeedRaise(): PreSeedRaise {
     raise,
   };
 }
+
+/**
+ * The one-sentence CONCLUSION the confidential trajectory slide draws from the numbers
+ * above, as a string, because a sentence can disclose a fact as completely as a figure can.
+ *
+ * The trajectory slide gates `TrajectoryConsolidatedEbitda` — the actual EBITDA line — out
+ * of public builds, and then printed "The company's own line stays negative through 2027,
+ * which is what the raise is for." to every public reader anyway. That sentence IS the
+ * conclusion: it says the company is loss-making through 2027 and that the raise covers the
+ * gap. Withholding the number while stating what the number means protects nothing.
+ *
+ * ## Why it lives HERE and not in `trajectory.confidential.tsx`
+ *
+ * A `*.confidential.tsx` file is in the PUBLIC module graph — `slides.tsx` imports it
+ * unconditionally, and `__PITCH_CONFIDENTIAL__` folding to `false` only drops the rendered
+ * branch. `build.sourcemap` is true, so Rollup embeds that file's entire source in
+ * `sourcesContent`, comments and JSX text included. Verified against a public `dist/`: the
+ * whole of `trajectory.confidential.tsx` is sitting in `PitchDeck-*.js.map`. So moving the
+ * sentence into that file would move it out of the `.js` and into the `.map`, still inside
+ * the directory `npm run pitch:verify-public` scans, and the leak would be one grep away
+ * from being rediscovered.
+ *
+ * `@pitch/confidential` is the ONLY specifier `vite.config.ts` swaps for a stub, so this
+ * module is the only place in the repo whose text cannot reach a public build at all. A
+ * confidential sentence therefore belongs in the confidential module, next to the figures it
+ * is a conclusion about — the stub exports an empty string, and `confidential.stub.test.ts`
+ * fails if that pairing ever drifts.
+ *
+ * It is a constant rather than derived from `consolidated()` because that module cannot be
+ * imported from a component (see its header). The claim it makes is pinned against the real
+ * model by `slideTrajectory.test.tsx`, which asserts 2026 and 2027 EBITDA are negative and
+ * 2028 positive — so if the model ever turns 2027 profitable this sentence fails a test
+ * rather than quietly understating the business to an investor.
+ */
+export const CONSOLIDATED_LINE_CONCLUSION =
+  'The company’s own line stays negative through 2027, which is what the raise is for.';
