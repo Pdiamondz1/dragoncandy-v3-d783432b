@@ -2,7 +2,7 @@
 title: Facebook Page Publishing
 type: concept
 created: 2026-08-26
-updated: 2026-08-26
+updated: 2026-08-27
 sources: [2026-08-26-native-publishing-queue.md]
 tags: [facebook, publishing, meta, app-review, connectors, exactly-once]
 ---
@@ -218,9 +218,12 @@ Video stays `mp4`/`mov`, because every video path goes through `video_reels` or
 
 - **`pages_manage_posts` is not on the Meta app and needs its own App Review.**
   The `CREATE_CONTENT` task is already held on the live Page.
-- **Not deployed, no cron.** `facebook-publish-sweep` returns 404 as of
-  2026-08-26; `20260826360000` is deliberately unapplied until the function
-  exists and `facebook_publish_sweep_url` is in Vault.
+- ~~**Not deployed, no cron.**~~ **Corrected 2026-08-27.** `facebook-publish-sweep`
+  is deployed (401 to an anonymous POST, against 404 for an invented name) and
+  `20260826360000` is applied, with `facebook_publish_sweep_url` in Vault. Its first
+  cron run returned **200** with `{"staged":0,...}` — a response shape only this
+  function produces, which is what proves the Vault URL points here and not at the
+  Instagram sweep.
 - **The connection re-read in the sweep is belt-and-braces here, not
   load-bearing** — unlike Instagram, where one row per *user* means a reconnect
   to a different account reuses it. `facebook_page_connections` is unique on
