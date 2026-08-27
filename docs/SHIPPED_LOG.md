@@ -114,6 +114,14 @@ now sliced to the remaining budget, making the cap true of what is submitted. Sa
 the half-lockdown above — a comment vouching for a property the code did not hold — twice in one
 branch. Redeploy confirmed by the function **version incrementing 2 → 3**, since this change did
 not alter the response shape and the previous round's discriminator was no longer available.
+**Round five then showed the budget was still spent against the wrong quantity** — `remove()` can
+delete server-side and return an error, so confirmed deletions lag what was destroyed; the budget
+is now spent against **submissions**, the only quantity that bounds destruction under an
+unreliable reply (version 3 → 4). **That contradicts round three's anti-starvation fix, and the
+conflict is real:** bounding submissions means a run stops at the same failing objects nightly and
+the tail starves. The cap wins, because a leak is recoverable and an over-delete is not; the wide
+scan survives for observability, so `scanned` high against `deleted` low with non-zero
+`failed_chunks` is the visible signature of the starvation that decision accepts.
 
 **Codex also filed one P1 and it was wrong, twice** — that `storage.objects` has no `is_delete_marker`
 column and every invocation would fail. Prod returns 287 non-marker objects from that predicate

@@ -321,8 +321,9 @@ Worth keeping as a pattern: **a limit that serves two purposes is usually two li
 number was doing "how much may this delete" (a blast radius) and "how much may this see" (a
 cursor), and only the first was ever reasoned about.
 
-**Round four found that the split cap still did not hold, for the same reason the reaper counts
-deletions the way it does.** `deleted` counts what Storage *confirmed* removing, which lags what
+**Rounds four and five turned into a genuine conflict between two safety properties, and the
+resolution is a decision rather than more code.** Round four: the split cap still did not hold,
+for the same reason the reaper counts deletions the way it does. `deleted` counts what Storage *confirmed* removing, which lags what
 was submitted whenever an object was already gone — so breaking on `deleted >= 500` admits one
 more full 100-object chunk while the counter sits at 499, destroying up to 599 objects under a
 comment promising 500. Fixed by slicing each request to the remaining budget rather than breaking
@@ -330,6 +331,23 @@ after the fact, so the cap is true of what is **submitted**, which is the only n
 destruction. Note the shape: this is the *same* defect class as the RPC's half-lockdown above — a
 comment vouching for a property the code did not hold — found twice in one branch, in code written
 carefully both times.
+
+Round five then showed that spending the budget against *confirmed* deletions was still the wrong
+quantity: `remove()` can delete server-side and return an error to us, so the confirmed count lags
+what was actually destroyed, and a run could keep submitting while the counter stood still. The
+budget is now spent against **submissions**, which is the only quantity that bounds destruction
+under an unreliable reply.
+
+**That directly contradicts round three's fix, and the contradiction is real.** Bounding
+submissions means a run stops at the same persistently-failing objects every night, so the tail
+behind them starves — exactly what round three set out to prevent. Both cannot hold. **The cap
+wins**, because the failure modes are not symmetric: a leak is recoverable and costs storage, an
+over-delete destroys a customer's media and is not. Failing toward "delete less" is the right
+direction for the only irreversible operation here. The wide scan window survives for
+**observability** rather than for reach — `scanned` reports the true backlog while `attempted`
+stays capped, so a persistently high `scanned` against a low `deleted` with non-zero
+`failed_chunks` is the visible signature of the starvation that decision accepts. That state is an
+incident (Storage is refusing), not a steady state.
 
 **Codex filed a P1 here that was wrong, TWICE — and the second time it escalated into a claim
 that refutes itself.** Round 1: `storage.objects` has no `is_delete_marker` column, so every cron

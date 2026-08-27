@@ -36,29 +36,45 @@ const LABEL = '[publish-media-reaper]';
 const DELETE_CHUNK = 100;
 
 /**
- * Objects DELETED per invocation. The cron is daily, so this is not a latency
- * budget — it is a blast radius. If this function is ever wrong, it is wrong
- * about 500 objects and there is a day to notice before it is wrong about 500
- * more.
+ * Objects SUBMITTED for deletion per invocation. The cron is daily, so this is
+ * not a latency budget — it is a blast radius. If this function is ever wrong,
+ * it is wrong about 500 objects and there is a day to notice before it is wrong
+ * about 500 more.
+ *
+ * It counts SUBMISSIONS, not confirmed deletions, and that distinction is the
+ * whole guarantee. `remove()` can delete server-side and still return an error
+ * to us, and it omits already-missing paths from its result — so the confirmed
+ * count LAGS what was actually destroyed. A budget spent against the confirmed
+ * count would let a run keep submitting while the counter stood still, and the
+ * cap would bound the wrong quantity. Nothing can be destroyed that was not
+ * submitted; that is the only bound that holds under an unreliable reply.
  */
-const MAX_DELETES_PER_RUN = 500;
+const MAX_SUBMITTED_PER_RUN = 500;
 
 /**
  * Objects the query is allowed to RETURN, deliberately larger than the delete
  * budget — they are two different limits and collapsing them starves the queue.
  *
- * The RPC orders oldest-first. If the scan window equalled the delete budget,
- * then N objects that persistently fail to delete would be re-selected on every
- * run forever, and everything newer than them would never be looked at — an
- * unbounded leak whose only symptom is a `failed_chunks` count nobody is
- * watching. Scanning wider lets a run walk PAST a failing object to the ones
- * behind it, so a failure costs one object rather than the whole tail.
+ * SCANNING IS FOR OBSERVABILITY; ACTING IS BOUNDED SEPARATELY. The query is
+ * allowed to see 2000 so `scanned` reports the real backlog, while `attempted`
+ * never exceeds 500. That asymmetry is deliberate and resolves a genuine
+ * tension between two safety properties that cannot both hold:
  *
- * The residual is stated rather than hidden: more than SCAN_LIMIT persistently
- * failing objects would still starve the remainder. That needs per-object
- * failure tracking, which is a table, and is not worth one on a bucket whose
- * steady state is empty. `failed_chunks` in the response is the signal that the
- * assumption stopped holding.
+ *   - bound what a single run may destroy, and
+ *   - walk past objects that persistently fail to delete, so the newer ones
+ *     behind them are eventually collected.
+ *
+ * Under persistent failure these conflict: honouring the cap means a run stops
+ * at the same failing objects every night and the tail behind them starves.
+ * **The cap wins**, because the two failure modes are not symmetric — a leak is
+ * recoverable and costs storage, an over-delete destroys a customer's media and
+ * is not. Failing toward "delete less" is the correct direction for the only
+ * irreversible operation this function performs.
+ *
+ * The starvation that decision accepts is therefore made VISIBLE rather than
+ * argued away: a persistently high `scanned` against a low `deleted`, with
+ * `failed_chunks` non-zero, is the signature, and it means a human should look
+ * at why Storage is refusing — which is an incident, not a steady state.
  */
 const SCAN_LIMIT = 2000;
 
@@ -75,18 +91,16 @@ interface Reapable {
 }
 
 /**
- * The remaining delete budget, as a chunk size. Never larger than DELETE_CHUNK.
+ * The remaining submission budget, as a chunk size. Never larger than
+ * DELETE_CHUNK, and spent against `attempted` — never against `deleted`.
  *
- * This exists because `deleted` counts what Storage CONFIRMED removing, which
- * lags what was submitted whenever an object was already gone. Breaking on
- * `deleted >= MAX_DELETES_PER_RUN` therefore admits one more full chunk while
- * the counter sits at 499 — up to 599 real objects destroyed by a function
- * whose own comment promises 500. Slicing the request to the remaining budget
- * makes the cap true of what is SUBMITTED, which is the only number that bounds
- * destruction.
+ * Breaking the loop AFTER the fact was the earlier shape and it did not hold:
+ * the confirmed count can sit at 499 while another full chunk is admitted,
+ * destroying up to 599 under a comment promising 500. Slicing the request up
+ * front makes the cap true by construction.
  */
-function nextChunkSize(deleted: number): number {
-  return Math.min(DELETE_CHUNK, MAX_DELETES_PER_RUN - deleted);
+function nextChunkSize(attempted: number): number {
+  return Math.min(DELETE_CHUNK, MAX_SUBMITTED_PER_RUN - attempted);
 }
 
 serve(async (req: Request) => {
@@ -127,14 +141,15 @@ serve(async (req: Request) => {
   const candidates = reapable.map((r) => r.object_name);
 
   for (let i = 0; i < candidates.length; ) {
-    // Stop on the DELETE budget, not on the scan window. Reaching it means the
-    // run did its full day's work; the rest is tomorrow's, and `capped` says so.
-    const size = nextChunkSize(deleted);
+    // Stop on the SUBMISSION budget, not on the scan window and not on the
+    // confirmed count. Reaching it means the run did its full day's work; the
+    // rest is tomorrow's, and `capped` says so.
+    const size = nextChunkSize(attempted);
     if (size <= 0) break;
 
     const group = candidates.slice(i, i + size);
-    // Advance by what was SUBMITTED, never by what succeeded — that is what
-    // walks the cursor past a chunk that failed instead of retrying it forever.
+    // Advance by what was SUBMITTED, never by what succeeded — retrying a
+    // failed chunk inside one run would spend the whole budget on it.
     i += group.length;
     attempted += group.length;
 
@@ -183,13 +198,12 @@ serve(async (req: Request) => {
     // "nothing is being retained", which is the opposite of "we do not know".
     retained_for_review: retainError ? null : (retainedForReview ?? 0),
     // Both bounds are reported, because they mean different things. `capped`
-    // says the DELETE budget stopped this run — there is more to collect and
+    // says the SUBMISSION budget stopped this run — there is more to collect and
     // tomorrow is not soon enough to assume the bucket is clean. `scan_capped`
-    // says the QUERY hit its window, which is the condition under which a wall
-    // of failing objects could still hide newer ones behind it. A single
-    // boolean would conflate a healthy busy day with the one state that needs
-    // a human.
-    capped: deleted >= MAX_DELETES_PER_RUN,
+    // says the QUERY hit its window, i.e. the backlog is at least SCAN_LIMIT.
+    // A single boolean would conflate a healthy busy day with a backlog that is
+    // not draining, and the second one is the state that needs a human.
+    capped: attempted >= MAX_SUBMITTED_PER_RUN,
     scan_capped: reapable.length >= SCAN_LIMIT,
     attempted,
   };
