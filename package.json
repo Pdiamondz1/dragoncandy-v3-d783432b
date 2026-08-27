@@ -26,6 +26,7 @@
     "model:doc": "npx tsx scripts/generate-investor-model.ts",
     "model:tam": "npx tsx scripts/fetch-census-tam.ts",
     "model:xlsx": "npx tsx scripts/generate-financial-model-xlsx.ts",
+    "model:upload": "npx tsx scripts/upload-model-to-drive.ts",
     "build:workspace": "node scripts/workspace/build-gs.mjs",
     "preview:url": "node scripts/preview-url.mjs",
     "pitch:pdf": "vite build && npx tsx scripts/emit-pitch-notes.ts && node scripts/export-pitch-pdf.mjs",

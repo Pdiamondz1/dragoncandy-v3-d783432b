@@ -16,6 +16,7 @@ import {
   checkableForbiddenValues,
 } from './lib/public-workbook-guard';
 import { writeFileSync } from 'node:fs';
+import { createHash } from 'node:crypto';
 
 const isPublic = process.argv.includes('--public');
 const OUT = isPublic
@@ -127,12 +128,29 @@ for (const sheet of spec) {
 }
 
 const buffer = await wb.xlsx.writeBuffer();
-writeFileSync(OUT, Buffer.from(buffer));
+
+/**
+ * The manifest records WHICH BUILD these bytes are, and `md5` is what binds the two.
+ *
+ * Without it the manifest is an unattached assertion: regenerate as public, and a stale
+ * `confidential: true` manifest sits beside the new file describing the old one. The uploader
+ * decides the Drive filename from `confidential`, so an unbound manifest is one rename away
+ * from putting the budget in a folder under a name that says it is public.
+ *
+ * Same reasoning, and the same md5 mechanism, as `scripts/upload-pitch-to-drive.ts` — which
+ * added it after a Codex review made exactly this point about the deck.
+ */
+// One `bytes`, written to disk and hashed into the manifest, so the file and the manifest
+// describing it cannot diverge even transiently.
+const bytes = Buffer.from(buffer);
+writeFileSync(OUT, bytes);
 
 const manifest = {
   file: OUT,
   confidential: !isPublic,
   sheets: spec.map((s) => s.name),
+  md5: createHash('md5').update(bytes).digest('hex'),
+  bytes: bytes.length,
   generatedAt: new Date().toISOString(),
 };
 writeFileSync(`${OUT}.manifest.json`, JSON.stringify(manifest, null, 2) + '\n');
