@@ -36,11 +36,31 @@ const LABEL = '[publish-media-reaper]';
 const DELETE_CHUNK = 100;
 
 /**
- * Objects per invocation. The cron is daily, so this is not a latency budget —
- * it is a blast radius. If this function is ever wrong, it is wrong about 500
- * objects and there is a day to notice before it is wrong about 500 more.
+ * Objects DELETED per invocation. The cron is daily, so this is not a latency
+ * budget — it is a blast radius. If this function is ever wrong, it is wrong
+ * about 500 objects and there is a day to notice before it is wrong about 500
+ * more.
  */
-const MAX_PER_RUN = 500;
+const MAX_DELETES_PER_RUN = 500;
+
+/**
+ * Objects the query is allowed to RETURN, deliberately larger than the delete
+ * budget — they are two different limits and collapsing them starves the queue.
+ *
+ * The RPC orders oldest-first. If the scan window equalled the delete budget,
+ * then N objects that persistently fail to delete would be re-selected on every
+ * run forever, and everything newer than them would never be looked at — an
+ * unbounded leak whose only symptom is a `failed_chunks` count nobody is
+ * watching. Scanning wider lets a run walk PAST a failing object to the ones
+ * behind it, so a failure costs one object rather than the whole tail.
+ *
+ * The residual is stated rather than hidden: more than SCAN_LIMIT persistently
+ * failing objects would still starve the remainder. That needs per-object
+ * failure tracking, which is a table, and is not worth one on a bucket whose
+ * steady state is empty. `failed_chunks` in the response is the signal that the
+ * assumption stopped holding.
+ */
+const SCAN_LIMIT = 2000;
 
 const json = (req: Request, body: unknown, status = 200) =>
   new Response(JSON.stringify(body), {
@@ -72,7 +92,7 @@ serve(async (req: Request) => {
   const db = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
   const { data, error } = await db.rpc('reapable_publish_media', {
-    p_limit: MAX_PER_RUN,
+    p_limit: SCAN_LIMIT,
   });
 
   if (error) {
@@ -93,8 +113,15 @@ serve(async (req: Request) => {
 
   let deleted = 0;
   let failedChunks = 0;
+  let attempted = 0;
 
   for (const group of chunk(reapable.map((r) => r.object_name), DELETE_CHUNK)) {
+    // Stop on the DELETE budget, not on the scan window. Reaching it means the
+    // run did its full day's work; the rest is tomorrow's, and `capped` says so.
+    if (deleted >= MAX_DELETES_PER_RUN) break;
+
+    attempted += group.length;
+
     const { data: removed, error: removeError } = await db.storage
       .from(PUBLISH_BUCKET)
       .remove(group);
@@ -103,6 +130,8 @@ serve(async (req: Request) => {
       // Best effort, like `discardStaged` in the sweeps: a failure here leaves
       // litter, and the next daily run picks the same objects up again because
       // the query is a function of state, not of what a previous run believed.
+      // Continuing rather than returning is what lets a failing chunk cost its
+      // own objects instead of every object behind it.
       failedChunks += 1;
       console.error(`${LABEL} remove failed for ${group.length} object(s):`, removeError);
       continue;
@@ -137,10 +166,16 @@ serve(async (req: Request) => {
     // Null, never 0, when the count itself failed — a zero here would read as
     // "nothing is being retained", which is the opposite of "we do not know".
     retained_for_review: retainError ? null : (retainedForReview ?? 0),
-    // The sweep is bounded, so say when it was bounded. A run that hit the cap
-    // means there is more to collect and tomorrow is not soon enough to assume
-    // the bucket is clean.
-    capped: reapable.length >= MAX_PER_RUN,
+    // Both bounds are reported, because they mean different things. `capped`
+    // says the DELETE budget stopped this run — there is more to collect and
+    // tomorrow is not soon enough to assume the bucket is clean. `scan_capped`
+    // says the QUERY hit its window, which is the condition under which a wall
+    // of failing objects could still hide newer ones behind it. A single
+    // boolean would conflate a healthy busy day with the one state that needs
+    // a human.
+    capped: deleted >= MAX_DELETES_PER_RUN,
+    scan_capped: reapable.length >= SCAN_LIMIT,
+    attempted,
   };
 
   if (result.scanned > 0 || result.failed_chunks > 0) {

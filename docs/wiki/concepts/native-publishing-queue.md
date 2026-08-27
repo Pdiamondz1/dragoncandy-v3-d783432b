@@ -303,6 +303,24 @@ inside a rolled-back transaction: five objects, of which `orphan`, `review_expir
 everything. The guard was then proven both directions — correct rows under a `service_role`
 claim, `P0001` under `authenticated`.
 
+**Codex's third round found something real, and it is worth more than the two false ones.**
+The scan window and the delete budget were the same number (500), and the RPC orders oldest-first
+— so N objects that persistently fail to delete would be re-selected every night forever, and
+everything newer than them would never be looked at. An unbounded leak inside the thing built to
+stop unbounded leaks, whose only symptom is a `failed_chunks` count nobody watches. Fixed by
+**separating the two limits**: scan 2000, delete at most 500, and walk *past* a failing chunk so a
+failure costs its own objects rather than the whole tail behind them. The response now reports
+`capped` (the delete budget stopped this run — a healthy busy day) and `scan_capped` (the query
+hit its window — the state that can hide newer objects) as **separate** booleans, because one flag
+conflating them is how this would go unnoticed a second time. The residual is stated rather than
+hidden: more than 2000 persistently failing objects would still starve the remainder, which needs
+per-object failure tracking, which is a table, and is not worth one on a bucket whose steady state
+is empty.
+
+Worth keeping as a pattern: **a limit that serves two purposes is usually two limits.** The same
+number was doing "how much may this delete" (a blast radius) and "how much may this see" (a
+cursor), and only the first was ever reasoned about.
+
 **Codex filed a P1 here that was wrong, TWICE — and the second time it escalated into a claim
 that refutes itself.** Round 1: `storage.objects` has no `is_delete_marker` column, so every cron
 invocation fails. Round 2, over the same diff: the *migration* therefore "fails with

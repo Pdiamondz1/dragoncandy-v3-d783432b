@@ -99,7 +99,16 @@ cron's exact path — with `retained_for_review` returning `0` rather than `null
 count query ran. Vault secret verified **by content**; cron active at `20 4 * * *`, clear of
 `instagram-refresh-sweep` at 04:00.
 
-**Codex filed one P1 and it was wrong, twice** — that `storage.objects` has no `is_delete_marker`
+**Codex's third round found a real P2**: the scan window and the delete budget were the same
+number, so objects that persistently fail to delete would be re-selected forever and everything
+newer would never be looked at — an unbounded leak inside the thing built to stop unbounded leaks.
+Fixed by separating the two limits (scan 2000, delete at most 500, walk past a failing chunk), and
+by reporting `capped` and `scan_capped` as separate booleans so a busy day cannot be mistaken for
+the state that needs a human. Redeploy confirmed live by the **new response shape**, not by the CLI
+saying "Deployed Functions." The generalisable form: **a limit serving two purposes is two limits**
+— this one was both a blast radius and a cursor, and only the blast radius was ever reasoned about.
+
+**Codex also filed one P1 and it was wrong, twice** — that `storage.objects` has no `is_delete_marker`
 column and every invocation would fail. Prod returns 287 non-marker objects from that predicate
 on PG 17.6, and the live 200 had already executed the query. Codex's sandbox has no prod access
 and inferred the schema from the repo. Re-run over the same diff it escalated to "the migration
