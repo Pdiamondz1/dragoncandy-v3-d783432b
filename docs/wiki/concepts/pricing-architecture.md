@@ -21,7 +21,9 @@ LTV and reduce churn dependency on any single stream.
 
 ## Tier Structure
 
-5 tiers: Free → Starter ($149) → Growth ($449) → Pro ($899) → Enterprise.
+> **Superseded 2026-08-28.** Prices, tier name, campaign limits, and DragonDash access have all changed. See `docs/DragonCandy_Pricing_Architecture_v3.md` as the single source of truth. Summary of changes: Growth renamed Standard ($449→$349/mo); Pro $899→$599/mo; campaign caps removed on all paid tiers; DragonDash opened to all tiers (Pro retains 20% surcharge discount). For Stripe Price IDs see `docs/STRIPE_PRICES.md` (pending approval of queued corrections).
+
+5 tiers: Free → Starter ($149) → Standard ($349) → Pro ($599) → Enterprise.
 Annual billing gives 20% discount. Per-seat add-ons available on paid tiers.
 
 ## Constraints
