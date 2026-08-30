@@ -30,10 +30,16 @@ built works; the data costs money nobody has agreed to spend.
 ## X is the only connector that charges
 
 YouTube, Instagram and Facebook insights are free. All three read on every card
-render without anyone thinking about it. X is **pay-per-use**: roughly **$0.005 a
+render without anyone thinking about it. X is **pay-per-use** across both reads and writes: roughly **$0.005 a
 post read** and **$0.010 a user read**, with **no free path to a user timeline at
 all**. A `402` with `type: https://api.x.com/2/problems/credits-depleted` means
 the developer account is unfunded.
+
+**Publishing costs (POST /2/tweets, pay-per-use as of February 2026):**
+- Standard text post: **$0.015 per post**
+- Post containing a link (URL): **$0.20 per post**
+
+This means every X post published via Outstand or direct API on behalf of a DragonCandy customer that includes a link costs $0.20. At scale this is a material line item: 1,000 link-containing posts/month = $200. Factor this into any X publishing feature costing or tier decision. Sources: data365.co, bundle.social, buffer.com — verified August 2026.
 
 This is the single fact that shapes the whole design:
 
