@@ -32,6 +32,126 @@
 >
 > **Adding an entry:** prepend it (newest first). See `knowledge-sync` step 4.
 
+## [2026-08-27] The staged-media reaper — and two gates that each looked like one
+
+**Branch** `feat/publish-media-reaper`. **Migrations** `20260826440000_reapable_publish_media`,
+`20260826450000_publish_media_reaper_cron`. **New edge function** `publish-media-reaper`. Also
+`supabase/config.toml`.
+
+Closes the one item the native-publishing queue left behind: staged bytes in `publish-media`
+that nothing will ever reference again.
+
+**There were FOUR orphan paths, not the three the design spec enumerated**, and the fourth is
+the one an enumeration structurally could not catch, because it is a deliberate design choice
+rather than an oversight: a best-effort `discardStaged` delete that **failed**. It logs and
+continues on purpose — "a failed delete must never turn a published post into a reported
+failure" — so it is deliberate litter that nothing collected. The other three: the deadline
+branch (`claim_publish_job`'s janitor, which is SQL and cannot reach Storage), a `needs_review`
+job whose media is kept so a person can see what was about to go out, and an enqueue whose RPC
+never committed. One rule covers all four — **delete an object when nothing can need it again**
+— which is the case for a sweep over four cleanups bolted onto four call sites, the shape the
+spec had already rejected as the enumeration failure this repo watched three times on `profiles`
+write grants. That the written enumeration was itself one short is the evidence for the argument.
+
+**The decision is one SQL query, and that is load-bearing.** "Is this referenced" and "is this
+old" must be answered of the same instant; read the bucket then the jobs and a job inserted
+between the two reads makes a live object look like an orphan — deleting the media out from
+under a scheduled post. The residual window between the query and the DELETE is closed by
+construction, not by a lock: `plannedDestinations` mints a fresh random batch directory per
+invocation, so an object unreferenced in the snapshot can never become referenced. **The row is
+not deleted in SQL** — that removes the bookkeeping and leaves the file, an invisible leak
+replacing a visible one — so SQL decides and the edge function deletes through the Storage API.
+
+Three retention windows (orphan 6h, terminal 72h, `needs_review` 30d) sit under one
+age-independent absolute: a `queued` or `claimed` job's bytes are never touched at any age,
+because a post scheduled a month out sits `queued` for a month and any "old enough" rule would
+delete exactly the posts a customer cared about most. The clock is
+`greatest(object.created_at, job.updated_at)` rather than the job stamp alone, so a future
+transition that forgets to assign `now()` costs retention instead of data.
+
+**Two findings, both of which presented as already-handled.** `supabase/config.toml` had **no
+entry at all** for the new function while all three sibling cron sweeps carry
+`verify_jwt = false`; the platform default is `true`, so the gateway would have 401'd the cron
+before `isAuthorizedIngest` ever ran. That is worse than an ordinary break — the healthy state
+of this reaper is zero deletions on an empty bucket, so a permanently-401ing daily job is
+indistinguishable from a working one. And the RPC's own header claimed "same lockdown as every
+other function on this queue", which was true of the GRANT half and false of the in-body
+`request.jwt.claims ->> 'role'` guard its four siblings carry. Nothing leaked — the EXECUTE
+lockdown is the real gate and was correct — but the gates fail independently, and one
+re-granting migration would expose every staged object's name, which is
+`<user-id>/<batch>/<n>.<ext>` and enumerates user ids and pending-post counts. Adding the guard
+moved the function to `plpgsql` and required an explicit `::text` on the CASE that
+`language sql` had coerced silently. The guard was checked against a live sibling first:
+`instagram-publish-sweep` returns `"expired":0`, read straight off `claim_publish_job`, which
+carries the identical guard — so the cron→bearer→service-role path does populate the claim.
+
+**Verification, on a bucket with zero objects and a queue with zero jobs** — where a broken
+query and a clean bucket produce the same zero. RPC confirmed by `pg_proc` (plpgsql, SECURITY
+DEFINER, four integer args) with an invented name as control; EXECUTE exactly `postgres` +
+`service_role`. A planted five-object population in a rolled-back transaction returned `orphan`,
+`review_expired` and `terminal` while **withholding** a `queued` job's 40-day-old media and a
+too-fresh orphan — two of five withheld, which is what makes it a control. The guard proven both
+ways (rows under `service_role`, `P0001` under `authenticated`). Deployed with all five assets
+including the transitive `_shared/origins.ts`; live `verify_jwt` read **false** from the
+Management API rather than from `config.toml`. 401 with no bearer and with a wrong one, 404 on
+an invented function name. A real **200** through `net.http_post` with the Vault bearer — the
+cron's exact path — with the review-queue count returning `0` rather than `null`, proving the
+count query ran. Vault secret verified **by content**; cron active at `20 4 * * *`, clear of
+`instagram-refresh-sweep` at 04:00.
+
+**Codex's third round found a real P2**: the scan window and the delete budget were the same
+number, so objects that persistently fail to delete would be re-selected forever and everything
+newer would never be looked at — an unbounded leak inside the thing built to stop unbounded leaks.
+Fixed by separating the two limits (scan 2000, delete at most 500, walk past a failing chunk), and
+by reporting `capped` and `scan_capped` as separate booleans so a busy day cannot be mistaken for
+the state that needs a human. Redeploy confirmed live by the **new response shape**, not by the CLI
+saying "Deployed Functions." The generalisable form: **a limit serving two purposes is two limits**
+— this one was both a blast radius and a cursor, and only the blast radius was ever reasoned about.
+**Round four then found the split cap still did not hold:** `deleted` counts *confirmed* removals,
+which lag submissions whenever an object was already gone, so breaking after the fact admitted one
+more 100-object chunk at 499 and could destroy 599 under a comment promising 500. Each request is
+now sliced to the remaining budget, making the cap true of what is submitted. Same defect class as
+the half-lockdown above — a comment vouching for a property the code did not hold — twice in one
+branch. Redeploy confirmed by the function **version incrementing 2 → 3**, since this change did
+not alter the response shape and the previous round's discriminator was no longer available.
+**Round five then showed the budget was still spent against the wrong quantity** — `remove()` can
+delete server-side and return an error, so confirmed deletions lag what was destroyed; the budget
+is now spent against **submissions**, the only quantity that bounds destruction under an
+unreliable reply (version 3 → 4). **That contradicts round three's anti-starvation fix, and the
+conflict is real:** bounding submissions means a run stops at the same failing objects nightly and
+the tail starves. The cap wins, because a leak is recoverable and an over-delete is not; the wide
+scan survives for observability, so `scanned` high against `deleted` low with non-zero
+`failed_chunks` is the visible signature of the starvation that decision accepts.
+**Round six caught two observability fields asserting more than they measured:** `capped` flagged
+"work left behind" whenever the budget was merely *reached*, so a run handed exactly 500 candidates
+and clearing all of them would still raise a backlog alert — now `reapable.length > attempted`; and
+`retained_for_review` counted `needs_review` **jobs**, which persist long after their media is
+reaped and say nothing about how many objects each referenced, so a "storage cost" number kept
+reporting cost for bytes that were gone. Renamed `jobs_awaiting_review` and documented as a queue
+depth rather than widening the RPC to join surviving objects — an overstated metric on a monitoring
+surface is worse than a modest one, because it is trusted.
+
+**Codex also filed one P1 and it was wrong, twice** — that `storage.objects` has no `is_delete_marker`
+column and every invocation would fail. Prod returns 287 non-marker objects from that predicate
+on PG 17.6, and the live 200 had already executed the query. Codex's sandbox has no prod access
+and inferred the schema from the repo. Re-run over the same diff it escalated to "the migration
+fails ... preventing both the RPC and subsequent cron migration from deploying" — falsified by the
+applied ledger rows, `pg_proc` and `cron.job` that this very branch produced. Recorded because the
+shape recurs and grows *more* persuasive on repetition: a reviewer that cannot see the environment
+asserting facts about it in increasingly specific terms. Deleting the predicate to satisfy it would
+have been the only way to actually break this.
+
+**Open:** the scheduled trigger has not fired (first 04:20 UTC); `deleted > 0` is unreachable
+until the queue has a UI producer, since nothing has ever been staged; and `publish_jobs` is
+**was** absent from `docs/DATABASE_SCHEMA.md` — closed in this same PR, and documenting it
+turned up two things reading the migrations would not have: `idx_publish_jobs_account_published`
+is keyed on the legacy `ig_user_id` while the live `claim_publish_job` contains **zero**
+references to that column, and the legacy `publish_jobs_connection_id_fkey` is **still
+`ON DELETE CASCADE`** where `20260826430000` moved the two live connection FKs to `SET NULL`.
+The cascade is inert only because no RPC populates `connection_id`; anything that backfills it
+silently re-arms the behaviour that migration removed. Both recorded, neither fixed here.
+
+→ [[Native Publishing Queue]] · `docs/wiki/raw/sessions/2026-08-27-publish-media-reaper.md`
 ## [2026-08-26] The pre-seed funds the four people we are actually hiring, and the workbook gets a design
 
 Branch `feat/preseed-four-hires`, two commits. Codex second review clean, no findings.
@@ -307,7 +427,7 @@ clean. **Nothing deployed, no cron, no UI** — verified by probe, `facebook-pub
 404 where the deployed `instagram-insights` returns 401. Both platforms fail closed at the
 permission gate regardless. Outstanding: `pages_manage_posts` and
 `instagram_business_content_publish`, each needing its own App Review; a storage reaper for the
-three remaining orphan paths; and the UI. → [[Native Publishing Queue]],
+the remaining orphan paths (**four**, not the three enumerated here — see the 2026-08-27 entry); and the UI. → [[Native Publishing Queue]],
 [[Facebook Page Publishing]]
 
 ## [2026-08-26] The bottom-up financial model, and the three-year band it restated

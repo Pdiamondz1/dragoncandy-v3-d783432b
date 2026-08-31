@@ -246,7 +246,7 @@ Engineering cannot close these. Ordered by what blocks launch.
   and running 2026-08-26** — this line said "not deployed" for about an hour: all four functions
   answer 401 (404 for an invented name), both crons are active on `* * * * *`, and both returned a
   real 200, told apart by their distinct response shapes. **Pending:** the two App Reviews
-  (founder, above); a storage reaper for three orphan paths; no carousel; no `social_post_log` row
+  (founder, above); the staged-media reaper is **built and running** (2026-08-27; FOUR orphan paths, not three) but has reaped nothing, since nothing has ever been staged; no carousel; no `social_post_log` row
   for a native post; and **no UI calls either enqueue function**, so nothing can reach the queue
   yet.
   → `docs/wiki/concepts/native-publishing-queue.md` · `docs/wiki/concepts/facebook-page-publishing.md` · #544

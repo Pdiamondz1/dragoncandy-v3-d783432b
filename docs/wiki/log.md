@@ -1,5 +1,31 @@
 # Wiki Log
 
+## [2026-08-27] ingest | The staged-media reaper, and two gates that each looked like one
+
+**Updated** [[Native Publishing Queue]] — a new section on the `publish-media` reaper and the
+strikethrough of the "No storage reaper" known issue. **Source**
+`raw/sessions/2026-08-27-publish-media-reaper.md`.
+
+There were **four** orphan paths, not the three the design spec enumerated; the fourth is a
+best-effort `discardStaged` delete that failed by design, which no enumeration would have caught
+because it is a choice rather than a gap. One rule covers all four — delete an object when
+nothing can need it again — which is the argument for a sweep over four per-call-site cleanups.
+
+Two review findings, both of which presented as already-handled: `config.toml` had **no**
+`verify_jwt` entry for the new function (the platform default inverts to `true`, and on a reaper
+whose healthy state is zero deletions a permanently-401ing cron is indistinguishable from a
+working one), and the RPC carried half the lockdown its own comment claimed — the GRANT half but
+not the in-body `request.jwt.claims` guard its four siblings carry.
+
+Verified on prod with a planted, rolled-back five-object population: three reaped, two withheld.
+A Codex P1 asserting `storage.objects` has no `is_delete_marker` column was **refuted** by prod.
+
+**Also documented `publish_jobs` in `DATABASE_SCHEMA.md`**, which the native-publishing work had
+shipped without. Written from prod rather than from the migrations, which surfaced two things the
+files would not have: a rate-window index still keyed on the legacy `ig_user_id` that the live
+`claim_publish_job` never references, and a legacy FK still `ON DELETE CASCADE` where
+`20260826430000` moved the live ones to `SET NULL` — inert only because nothing populates that
+column. Recorded, not fixed.
 ## [2026-08-26] ingest | The pre-seed roster, and giving the workbook a design
 
 **Created** `raw/sessions/2026-08-26-preseed-roster-and-workbook-design.md`.

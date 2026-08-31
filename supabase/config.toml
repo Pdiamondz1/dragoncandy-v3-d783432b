@@ -388,6 +388,21 @@ verify_jwt = true
 verify_jwt = false
 
 # ---------------------------------------------------------------------------
+# Staged-media reaper for the publish queue
+#
+# Anonymous for the same reason as the two sweeps above: pg_cron calls it with
+# the Vault-held ingest bearer, not a user JWT, and it authorizes via
+# _shared/ingest-auth.ts (isAuthorizedIngest).
+#
+# The default matters more here than usual. Absent an entry, the platform
+# default is verify_jwt = true, and the gateway would 401 the cron before the
+# function body ran — a reaper that silently collects nothing, reporting
+# nothing, on a bucket whose healthy state is already zero deletions. The
+# failure would look exactly like success.
+[functions.publish-media-reaper]
+verify_jwt = false
+
+# ---------------------------------------------------------------------------
 # Facebook Page Insights connector (read-only)
 #
 # All four require a JWT, and none is a Meta callback. That differs from the
