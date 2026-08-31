@@ -276,7 +276,7 @@ code and money changes human-gated.
   (`operator does not exist: extensions.vector <=> extensions.vector`) and retrieval silently fell
   back to full-text search. Prod resolved the operator (pgvector reachable from `public`), so prod was
   unaffected. Same drift class as the logo trigger — see [[Migration Replay Drift]]. **Fixed:**
-  migration `20260610130000_fix_match_donny_knowledge_search_path.sql` sets the function search_path to
+  migration `20260610130001_fix_match_donny_knowledge_search_path.sql` sets the function search_path to
   `public, extensions`; applied to staging **and prod**, and captured for replay everywhere.
 - ~~Prod `donny_knowledge` is empty~~ **(resolved 2026-06-11).** Prod now holds 9 consumer rows plus
   46 **internal-scoped** rows (the full strategy/wiki library synced via

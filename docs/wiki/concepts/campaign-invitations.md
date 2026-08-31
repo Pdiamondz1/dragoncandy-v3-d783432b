@@ -100,7 +100,7 @@ function has real failure modes (403 non-owner, not published, crew rejection), 
 
 Explaining the invite in #382 meant reading its data path closely, and that surfaced two live
 holes. Both were **proven on prod by impersonating a real user inside a rolled-back
-transaction**, then re-proven closed. Migrations `20260808010000` + `20260808020000`.
+transaction**, then re-proven closed. Migrations `20260808010000` + `20260808020001`.
 
 ### The `campaign_invitations` UPDATE policy
 
