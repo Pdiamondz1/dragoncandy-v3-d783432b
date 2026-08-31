@@ -108,7 +108,9 @@ export function CampaignContentGallery({ campaignId }: CampaignContentGalleryPro
         .update({
           deliverables_status: ds,
           content_status: 'revision_requested',
-          revision_count: (collab.revision_count ?? 0) + 1,
+          // revision_count is NOT sent — the trigger derives it (20260827000000).
+          // This also removes a lost-update race: two concurrent revision requests
+          // both read the same count and both wrote the same increment.
           updated_at: new Date().toISOString(),
         })
         .eq('id', file.collaborationId);
